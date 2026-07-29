@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.vite/
+*.tsbuildinfo
+
+# Electron Forge
+.webpack/
+apps/desktop/out/
+
+# Test / coverage
+coverage/
+
+# Local runtime data — user data, credentials, and secrets must never be tracked.
+# See docs/dev-rules/credentials-and-local-storage.md.
+*.local
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

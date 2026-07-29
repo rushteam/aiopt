@@ -1,0 +1,14 @@
+# DCO App config (github.com/apps/dco). Only the copy on the default branch takes effect.
+#
+# Allow remediation commits: a contributor can push a follow-up commit that signs off
+# earlier commits using the fixed remediation format, instead of rewriting history with a
+# force-push (which would mark every existing review comment as outdated). The format and
+# usage are documented in CONTRIBUTING.md under the DCO section.
+# thirdParty depends on individual, so both must be enabled together.
+allowRemediationCommits:
+  individual: true
+  thirdParty: true
+# Deliberately not setting require.members: false. That switch skips the "org member with a
+# GPG signature" check, but this repo does not require GPG signatures, so enabling it would
+# either do nothing or leave a sign-off gap exactly on internal commits — and the whole point
+# of DCO on an open project is to keep a complete provenance record of contributions.

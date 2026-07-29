@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "sourceLocale": "en",
+  "locales": ["en", "zh-CN"],
+  "terms": [
+    {
+      "id": "ipc-boundary",
+      "en": "IPC boundary",
+      "status": "decided",
+      "note": "The trust boundary between the untrusted renderer and the privileged main process. Every renderer request crosses it through a named IPC channel, where the main process authorizes the sender and validates the payload at runtime. Not a generic 'bridge' or 'channel'.",
+      "translations": { "zh-CN": "IPC 边界" },
+      "forbidden": { "zh-CN": ["进程通信桥", "通信管道"] }
+    },
+    {
+      "id": "renderer",
+      "en": "Renderer",
+      "status": "decided",
+      "note": "The untrusted web context (the BrowserWindow document). Treated as hostile input; holds no privileged capability of its own.",
+      "translations": { "zh-CN": "渲染进程" },
+      "forbidden": { "zh-CN": ["前端页面"] }
+    },
+    {
+      "id": "main-process",
+      "en": "Main process",
+      "status": "decided",
+      "note": "The privileged Node.js process. Owns all OS capability; exposes it to the renderer only through authorized IPC handlers.",
+      "translations": { "zh-CN": "主进程" },
+      "forbidden": {}
+    },
+    {
+      "id": "trusted-sender",
+      "en": "Trusted sender",
+      "status": "proposed",
+      "note": "An IPC event whose origin is verified to be the app's own top-level renderer, using only fields taken from event.sender / event.senderFrame — never renderer-reported values. Term still under discussion.",
+      "translations": { "zh-CN": "可信发送方" },
+      "forbidden": {}
+    }
+  ]
+}

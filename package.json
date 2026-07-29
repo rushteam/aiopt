@@ -1,0 +1,24 @@
+{
+  "name": "hearth",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Hearth — a security-first Electron desktop app framework scaffold. Untrusted renderer / minimal preload / privileged main, IPC as the authorization boundary.",
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter desktop dev",
+    "build": "pnpm --filter desktop build",
+    "typecheck": "pnpm -r run --if-present typecheck",
+    "test:unit": "node scripts/test-workspaces.mjs",
+    "check:dco": "node scripts/check-dco.mjs",
+    "dco:install-hook": "node scripts/install-dco-hook.mjs",
+    "check:i18n-glossary": "node scripts/check-i18n-glossary.mjs",
+    "glossary:generate": "node scripts/generate-glossary-doc.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
