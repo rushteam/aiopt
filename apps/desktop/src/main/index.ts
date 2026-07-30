@@ -9,6 +9,7 @@ import {
   registerPrivilegedSchemes,
 } from './bootstrap-electron';
 import { createMainWindow } from './window/mainWindow';
+import { registerHandlers } from './ipc/registerHandlers';
 import { logger } from './logger';
 
 // Windows Squirrel first-run shortcut handling; quits early during install.
@@ -33,6 +34,9 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   installSessionSecurity();
+  // Handlers must be registered before the window loads so the renderer's first
+  // calls always find one.
+  registerHandlers();
   createMainWindow();
 
   app.on('activate', () => {

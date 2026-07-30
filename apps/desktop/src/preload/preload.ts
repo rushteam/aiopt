@@ -2,12 +2,23 @@
 // contextBridge; NEVER expose raw ipcRenderer or a channel-choosing function.
 // See docs/dev-rules/electron-security-and-process-boundaries.md §4.
 //
-// Stage 1 exposes only static, non-privileged info to prove the bridge is wired.
-// IPC-backed methods are added in the IPC-authorization stage — each one a single
-// named action with explicit argument and return types, dropping the Electron
-// event before anything reaches the renderer.
+// Each method is a single named action with explicit argument/return types that
+// maps to one allowlisted channel, and every event subscription drops the raw
+// IpcRendererEvent before anything reaches the renderer.
 
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import {
+  IPC_CHANNELS,
+  IPC_EVENTS,
+  type PreferencesShape,
+} from '../shared/ipc-channels';
+
+/** Subscribe to a push channel, stripping the Electron event; returns an unsubscribe fn. */
+function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
+  const listener = (_event: unknown, payload: T) => callback(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
 
 const api = {
   platform: process.platform,
@@ -16,6 +27,33 @@ const api = {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
     node: process.versions.node,
+  },
+
+  /** Layered user preferences (defaults + overrides; reads are the effective snapshot). */
+  config: {
+    getAll: (): Promise<PreferencesShape> => ipcRenderer.invoke(IPC_CHANNELS.configGetAll),
+    set: <K extends keyof PreferencesShape>(
+      key: K,
+      value: PreferencesShape[K],
+    ): Promise<PreferencesShape> => ipcRenderer.invoke(IPC_CHANNELS.configSet, { key, value }),
+    reset: (key: keyof PreferencesShape): Promise<PreferencesShape> =>
+      ipcRenderer.invoke(IPC_CHANNELS.configReset, { key }),
+    /** Subscribe to preference changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (prefs: PreferencesShape) => void): (() => void) =>
+      subscribe(IPC_EVENTS.configChanged, callback),
+  },
+
+  /**
+   * OS-encrypted secret store. The renderer can store / check / clear a secret,
+   * but can NEVER read its plaintext back — decryption is main-only.
+   */
+  secret: {
+    set: (key: string, value: string): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.secretSet, { key, value }),
+    has: (key: string): Promise<{ present: boolean }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.secretHas, { key }),
+    delete: (key: string): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.secretDelete, { key }),
   },
 } as const;
 
