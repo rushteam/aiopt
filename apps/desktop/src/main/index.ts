@@ -10,6 +10,7 @@ import {
 } from './bootstrap-electron';
 import { createMainWindow } from './window/mainWindow';
 import { registerHandlers } from './ipc/registerHandlers';
+import { installAppMenu } from './menu/appMenu';
 import { logger } from './logger';
 
 // Windows Squirrel first-run shortcut handling; quits early during install.
@@ -37,6 +38,9 @@ app.whenReady().then(() => {
   // Handlers must be registered before the window loads so the renderer's first
   // calls always find one.
   registerHandlers();
+  // Native menu dispatches commands to the renderer, so install it before the
+  // window loads.
+  installAppMenu();
   createMainWindow();
 
   app.on('activate', () => {

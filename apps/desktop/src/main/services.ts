@@ -5,7 +5,7 @@
 // Electron is touched ONLY here (paths + safeStorage); the stores themselves are
 // Electron-free and unit-tested with injected adapters.
 
-import { safeStorage } from 'electron';
+import { app, safeStorage } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -13,6 +13,7 @@ import {
 } from './config/configStore';
 import { createSecretStore, type SecretCryptor, type SecretStore } from './secrets/secretStore';
 import { preferencesFilePath, secretsDir } from './paths';
+import type { AppVersionsResult } from '../shared/ipc-channels';
 
 let configStore: ConfigStore | null = null;
 let secretStore: SecretStore | null = null;
@@ -36,4 +37,14 @@ export function getSecretStore(): SecretStore {
     secretStore = createSecretStore(secretsDir(), electronCryptor);
   }
   return secretStore;
+}
+
+/** The version strings shown on the About page. */
+export function getAppVersions(): AppVersionsResult {
+  return {
+    app: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+  };
 }

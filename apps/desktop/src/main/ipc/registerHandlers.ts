@@ -10,10 +10,12 @@ import { createElectronIpcRegistry } from './registry';
 import { broadcastToRenderers } from './broadcast';
 import { registerConfigIpc } from '../config/configIpc';
 import { registerSecretIpc } from '../secrets/secretIpc';
-import { getConfigStore, getSecretStore } from '../services';
+import { registerAppInfoIpc } from '../app/appInfoIpc';
+import { getAppVersions, getConfigStore, getSecretStore } from '../services';
 
 export function registerHandlers(): void {
   const registry = createElectronIpcRegistry(ipcMain);
   registerConfigIpc(registry, getConfigStore(), broadcastToRenderers);
   registerSecretIpc(registry, getSecretStore());
+  registerAppInfoIpc(registry, getAppVersions);
 }

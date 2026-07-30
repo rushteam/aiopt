@@ -22,6 +22,9 @@ export const IPC_CHANNELS = {
   secretSet: 'secret:set',
   secretHas: 'secret:has',
   secretDelete: 'secret:delete',
+
+  // App info. Version strings for the About page / diagnostics footer.
+  appGetVersions: 'app:get-versions',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -34,6 +37,13 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 export const IPC_EVENTS = {
   /** The effective preferences changed; payload is the new snapshot. */
   configChanged: 'config:changed',
+  /**
+   * A native application-menu item was activated; payload is a `MenuCommand`
+   * string (see shared/menuCommands.ts). One-way main → renderer so the UI
+   * (e.g. open Settings) reacts to the OS menu. The renderer re-validates the
+   * command against the allowlist before acting.
+   */
+  menuCommand: 'app:menu-command',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -89,6 +99,14 @@ export interface SecretHasResult {
   present: boolean;
 }
 
+/** Version strings surfaced on the About page. `app` is the framework app version. */
+export interface AppVersionsResult {
+  app: string;
+  electron: string;
+  chrome: string;
+  node: string;
+}
+
 export interface IpcContract {
   [IPC_CHANNELS.ping]: { request: PingRequest; result: PingResult };
   [IPC_CHANNELS.configGetAll]: { request: void; result: PreferencesShape };
@@ -97,4 +115,5 @@ export interface IpcContract {
   [IPC_CHANNELS.secretSet]: { request: SecretSetRequest; result: Record<string, never> };
   [IPC_CHANNELS.secretHas]: { request: SecretKeyRequest; result: SecretHasResult };
   [IPC_CHANNELS.secretDelete]: { request: SecretKeyRequest; result: Record<string, never> };
+  [IPC_CHANNELS.appGetVersions]: { request: void; result: AppVersionsResult };
 }

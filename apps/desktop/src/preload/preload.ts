@@ -10,8 +10,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   IPC_CHANNELS,
   IPC_EVENTS,
+  type AppVersionsResult,
   type PreferencesShape,
 } from '../shared/ipc-channels';
+import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
 
 /** Subscribe to a push channel, stripping the Electron event; returns an unsubscribe fn. */
 function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
@@ -55,6 +57,20 @@ const api = {
     delete: (key: string): Promise<Record<string, never>> =>
       ipcRenderer.invoke(IPC_CHANNELS.secretDelete, { key }),
   },
+
+  /** Read the app/runtime version strings for the About page. */
+  getVersions: (): Promise<AppVersionsResult> => ipcRenderer.invoke(IPC_CHANNELS.appGetVersions),
+
+  /**
+   * Subscribe to native application-menu commands. The payload is re-validated
+   * against the command allowlist here — a push carrying anything else is
+   * dropped, so the renderer only ever sees a known `MenuCommand`. Returns an
+   * unsubscribe fn.
+   */
+  onMenuCommand: (callback: (command: MenuCommand) => void): (() => void) =>
+    subscribe<unknown>(IPC_EVENTS.menuCommand, (raw) => {
+      if (isMenuCommand(raw)) callback(raw);
+    }),
 } as const;
 
 export type HearthBridge = typeof api;
