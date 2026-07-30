@@ -15,6 +15,11 @@ import { registerAuthIpc } from '../auth/authIpc';
 import { registerUpdateIpc } from '../update/updateIpc';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
 import {
+  registerAppShortcutIpc,
+  installAppShortcutSyncChannels,
+} from '../app-shortcuts/appShortcutIpc';
+import {
+  getAppShortcutStore,
   getAppVersions,
   getAuthManager,
   getConfigStore,
@@ -29,8 +34,12 @@ export function registerHandlers(): void {
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());
   registerUpdateIpc(registry, getUpdateService());
+  const appShortcutStore = getAppShortcutStore();
+  registerAppShortcutIpc(registry, appShortcutStore);
   // Synchronous first-paint theme read (its own ipcMain.on, not registry-based).
   installThemeSyncChannel();
+  // Raw app-shortcut channels: synchronous overrides read + the recording gate.
+  installAppShortcutSyncChannels(appShortcutStore, process.platform);
   // Restore any persisted session in the background; the state-change broadcast
   // brings signed-in windows up to date once it resolves.
   void getAuthManager().initialize();

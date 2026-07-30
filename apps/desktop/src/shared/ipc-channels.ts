@@ -5,6 +5,12 @@
 // the renderer choose an arbitrary channel (see the security rule §4); it may
 // only call the named bridge methods that map to these channels.
 
+import type {
+  AppShortcutCombo,
+  AppShortcutId,
+  AppShortcutOverrides,
+} from './appShortcuts';
+
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
   /** Diagnostics round-trip that exercises the full authorization path. */
@@ -39,6 +45,14 @@ export const IPC_CHANNELS = {
   // feed is a high-risk change gated by docs/dev-rules/updater.md.
   updateGetStatus: 'update:get-status',
   updateCheck: 'update:check',
+
+  // App shortcuts. Write path for user rebinds. The renderer pre-validates, but
+  // main re-validates every write (bindable / system-reserved / conflict) before
+  // it touches disk — the effective binding is resolved on BOTH sides by the same
+  // shared/appShortcuts code (see shortcuts get below), so they never drift.
+  appShortcutsSetOverride: 'app-shortcuts:set-override',
+  appShortcutsClearOverride: 'app-shortcuts:clear-override',
+  appShortcutsResetAll: 'app-shortcuts:reset-all',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -51,6 +65,29 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 export const IPC_SYNC_CHANNELS = {
   /** Read the stored theme preference synchronously for the first paint. */
   themeGet: 'config:get-theme-sync',
+  /**
+   * Read the app-shortcut overrides + platform synchronously, so the renderer's
+   * shortcut store is populated on its first render (no flash of default combos
+   * before an async round-trip resolves). Returns overrides + platform only —
+   * never anything secret.
+   */
+  appShortcutsGet: 'app-shortcuts:get',
+} as const;
+
+/**
+ * One-way renderer → main sends (no reply). Distinct from `invoke` (which returns
+ * a value) and from push events (main → renderer). Used for the shortcut-recording
+ * gate: while the settings page is capturing a keystroke, main must NOT let a
+ * menu accelerator fire for that same keystroke.
+ */
+export const IPC_SEND_CHANNELS = {
+  /**
+   * Tell main the settings page started / stopped recording a new binding.
+   * While active, main rebuilds the native menu with accelerators unregistered so
+   * a captured keystroke never triggers a menu command. Reset automatically if the
+   * sending window is destroyed mid-record.
+   */
+  appShortcutsSetRecording: 'app-shortcuts:set-recording',
 } as const;
 
 /**
@@ -76,6 +113,13 @@ export const IPC_EVENTS = {
   authStateChanged: 'auth:state-changed',
   /** The update status changed (idle → checking → result); payload is `UpdateStatus`. */
   updateStatusChanged: 'update:status-changed',
+  /**
+   * The app-shortcut overrides changed (a rebind / reset in this or another
+   * window); payload is `AppShortcutsChangedEvent`. Every window re-resolves its
+   * effective combos from the same shared/appShortcuts code so they stay in step
+   * with the native menu.
+   */
+  appShortcutsChanged: 'app-shortcuts:changed',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -180,6 +224,44 @@ export interface UpdateStatus {
   nextVersion?: string;
 }
 
+// --- App-shortcut wire contract -------------------------------------------
+//
+// The renderer only ever sends/receives the OVERRIDE diff (see appShortcuts.ts):
+// defaults live in the shared registry, resolved identically on both sides, so
+// the wire never carries the effective table — only the user's changes.
+
+/** Initial sync read: the persisted overrides + this platform (for combo resolution). */
+export interface AppShortcutsGetResult {
+  overrides: AppShortcutOverrides;
+  platform: string;
+}
+
+/** Every write returns the new override set so the renderer store can replace its copy. */
+export interface AppShortcutsMutationResult {
+  overrides: AppShortcutOverrides;
+}
+
+/** Rebind (or `combo: null` to disable) one shortcut. Main re-validates before persisting. */
+export interface AppShortcutsSetOverrideRequest {
+  id: AppShortcutId;
+  combo: AppShortcutCombo | null;
+}
+
+/** Reset one shortcut to its registry default (delete its override). */
+export interface AppShortcutsClearOverrideRequest {
+  id: AppShortcutId;
+}
+
+/** One-way send: settings page toggling the recording gate. */
+export interface AppShortcutsSetRecordingRequest {
+  recording: boolean;
+}
+
+/** Push payload when overrides change in any window. */
+export interface AppShortcutsChangedEvent {
+  overrides: AppShortcutOverrides;
+}
+
 export interface IpcContract {
   [IPC_CHANNELS.ping]: { request: PingRequest; result: PingResult };
   [IPC_CHANNELS.configGetAll]: { request: void; result: PreferencesShape };
@@ -194,4 +276,16 @@ export interface IpcContract {
   [IPC_CHANNELS.authLogout]: { request: void; result: AuthState };
   [IPC_CHANNELS.updateGetStatus]: { request: void; result: UpdateStatus };
   [IPC_CHANNELS.updateCheck]: { request: void; result: UpdateStatus };
+  [IPC_CHANNELS.appShortcutsSetOverride]: {
+    request: AppShortcutsSetOverrideRequest;
+    result: AppShortcutsMutationResult;
+  };
+  [IPC_CHANNELS.appShortcutsClearOverride]: {
+    request: AppShortcutsClearOverrideRequest;
+    result: AppShortcutsMutationResult;
+  };
+  [IPC_CHANNELS.appShortcutsResetAll]: {
+    request: void;
+    result: AppShortcutsMutationResult;
+  };
 }

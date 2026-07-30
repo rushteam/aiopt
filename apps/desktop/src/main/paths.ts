@@ -6,6 +6,7 @@
 
 import { app } from 'electron';
 import path from 'node:path';
+import { APP_SHORTCUTS_FILE_NAME } from './app-shortcuts/AppShortcutStore';
 
 /** Layered-preference overrides (defaults are code, only overrides persist). */
 export function preferencesFilePath(): string {
@@ -15,4 +16,9 @@ export function preferencesFilePath(): string {
 /** Directory holding OS-encrypted `<key>.enc` secret files. */
 export function secretsDir(): string {
   return path.join(app.getPath('userData'), 'secrets');
+}
+
+/** User overrides of app shortcuts (only the rebinds; defaults stay in code). */
+export function appShortcutsFilePath(): string {
+  return path.join(app.getPath('userData'), APP_SHORTCUTS_FILE_NAME);
 }

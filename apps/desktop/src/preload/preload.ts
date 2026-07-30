@@ -10,13 +10,18 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   IPC_CHANNELS,
   IPC_EVENTS,
+  IPC_SEND_CHANNELS,
   IPC_SYNC_CHANNELS,
+  type AppShortcutsChangedEvent,
+  type AppShortcutsGetResult,
+  type AppShortcutsMutationResult,
   type AppVersionsResult,
   type AuthState,
   type PreferencesShape,
   type ThemePreference,
   type UpdateStatus,
 } from '../shared/ipc-channels';
+import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
 import { applyThemeVariables } from '../renderer/themes/tokens';
 
@@ -114,6 +119,42 @@ const api = {
     /** Subscribe to status changes pushed from main; returns an unsubscribe fn. */
     onStatusChanged: (callback: (status: UpdateStatus) => void): (() => void) =>
       subscribe(IPC_EVENTS.updateStatusChanged, callback),
+  },
+
+  /**
+   * User-rebindable keyboard shortcuts. The renderer reads the current overrides
+   * synchronously (so its store is populated on first render), writes rebinds
+   * through main (which re-validates every write), and toggles the recording gate
+   * while capturing a keystroke. Only the OVERRIDE diff crosses the bridge; the
+   * default table lives in shared/appShortcuts and resolves identically here.
+   */
+  appShortcuts: {
+    /** Synchronous initial read: persisted overrides + platform. */
+    getState: (): AppShortcutsGetResult => {
+      const value = ipcRenderer.sendSync(IPC_SYNC_CHANNELS.appShortcutsGet) as unknown;
+      if (value && typeof value === 'object' && 'overrides' in value && 'platform' in value) {
+        return value as AppShortcutsGetResult;
+      }
+      return { overrides: {}, platform: process.platform };
+    },
+    /** Rebind one shortcut (`combo: null` disables it). Rejected combos throw a coded error. */
+    setOverride: (
+      id: AppShortcutId,
+      combo: AppShortcutCombo | null,
+    ): Promise<AppShortcutsMutationResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.appShortcutsSetOverride, { id, combo }),
+    /** Reset one shortcut to its default (delete its override). */
+    clearOverride: (id: AppShortcutId): Promise<AppShortcutsMutationResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.appShortcutsClearOverride, { id }),
+    /** Reset all shortcuts to defaults (clear every override). */
+    resetAll: (): Promise<AppShortcutsMutationResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.appShortcutsResetAll),
+    /** Tell main the settings page started / stopped capturing a keystroke. */
+    setRecording: (recording: boolean): void =>
+      ipcRenderer.send(IPC_SEND_CHANNELS.appShortcutsSetRecording, { recording }),
+    /** Subscribe to override changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (event: AppShortcutsChangedEvent) => void): (() => void) =>
+      subscribe(IPC_EVENTS.appShortcutsChanged, callback),
   },
 
   /** Read the app/runtime version strings for the About page. */

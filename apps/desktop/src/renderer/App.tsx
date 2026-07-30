@@ -1,8 +1,10 @@
 // App root. Themed home screen plus the settings view, which the native menu can
 // open (Settings / About commands arrive via `onMenuCommand`).
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { token } from './themes/tokens';
+import { useTheme } from './themes/ThemeProvider';
+import { useAppShortcut } from './hooks/useAppShortcut';
 import { useT } from './i18n';
 import { SettingsView, type SettingsSectionId } from './features/settings/SettingsView';
 import { MENU_COMMANDS } from '../shared/menuCommands';
@@ -11,6 +13,7 @@ type View = { name: 'home' } | { name: 'settings'; section: SettingsSectionId };
 
 export function App() {
   const t = useT();
+  const { resolved, setPreference } = useTheme();
   const [view, setView] = useState<View>({ name: 'home' });
 
   // React to native-menu commands (already allowlist-validated in preload).
@@ -23,6 +26,15 @@ export function App() {
       }),
     [],
   );
+
+  // The rebindable demo shortcut: flip between light and dark. This proves the
+  // renderer `useAppShortcut` path end to end (the menu-backed shortcuts prove the
+  // native-accelerator path). Setting an explicit preference resolves `system`.
+  const toggleTheme = useCallback(
+    () => setPreference(resolved === 'dark' ? 'light' : 'dark'),
+    [resolved, setPreference],
+  );
+  useAppShortcut('toggle-theme', toggleTheme);
 
   if (view.name === 'settings') {
     return <SettingsView initialSection={view.section} onClose={() => setView({ name: 'home' })} />;

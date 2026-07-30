@@ -16,14 +16,17 @@ import { createAuthManager, type AuthManager } from './auth/authManager';
 import { createLocalStubAuthProvider } from './auth/localStubAuthProvider';
 import { createUpdateService, type UpdateService } from './update/updateService';
 import { createLocalStubUpdateProvider } from './update/localStubUpdateProvider';
+import { AppShortcutStore } from './app-shortcuts/AppShortcutStore';
+import { broadcastAppShortcutChange } from './app-shortcuts/appShortcutIpc';
 import { broadcastToRenderers } from './ipc/broadcast';
-import { preferencesFilePath, secretsDir } from './paths';
+import { appShortcutsFilePath, preferencesFilePath, secretsDir } from './paths';
 import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 
 let configStore: ConfigStore | null = null;
 let secretStore: SecretStore | null = null;
 let authManager: AuthManager | null = null;
 let updateService: UpdateService | null = null;
+let appShortcutStore: AppShortcutStore | null = null;
 
 export function getConfigStore(): ConfigStore {
   if (!configStore) {
@@ -67,6 +70,18 @@ export function getUpdateService(): UpdateService {
     );
   }
   return updateService;
+}
+
+export function getAppShortcutStore(): AppShortcutStore {
+  if (!appShortcutStore) {
+    appShortcutStore = new AppShortcutStore({
+      getFilePath: appShortcutsFilePath,
+      platform: process.platform,
+      // Propagate every rebind to all windows (override diff only, never secret).
+      onChanged: (overrides) => broadcastAppShortcutChange(overrides),
+    });
+  }
+  return appShortcutStore;
 }
 
 /** The version strings shown on the About page. */

@@ -6,14 +6,30 @@
 // menu is the ONLY place these commands originate; the command vocabulary itself
 // lives in shared/menuCommands.ts and is reused by preload + renderer.
 //
+// Accelerators are DERIVED from the app-shortcut store, not hard-coded: the
+// effective combo for each menu-backed shortcut is converted to an Electron
+// accelerator by the same shared/appShortcuts code the renderer uses, so a rebind
+// updates the menu binding and the Shortcuts page together. The menu rebuilds when
+// overrides change, and while the settings page is recording a keystroke the
+// accelerators are left UNREGISTERED (still shown) so capturing e.g. ⌘, doesn't
+// also fire "open Settings".
+//
 // Platform shape: on macOS the first submenu is the bold app menu (About /
 // Settings / Check for Updates / Quit); elsewhere those land under File and Help.
 
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 import { MENU_COMMANDS, type MenuCommand } from '../../shared/menuCommands';
-import { SHORTCUTS } from '../../shared/shortcuts';
+import {
+  comboToElectronAccelerator,
+  type AppShortcutId,
+} from '../../shared/appShortcuts';
 import { IPC_EVENTS } from '../../shared/ipc-channels';
 import { MENU_LABELS, resolveMenuLocale, type MenuLabels } from './menuLabels';
+import { getAppShortcutStore } from '../services';
+import {
+  isAppShortcutRecordingActive,
+  subscribeAppShortcutRecording,
+} from '../app-shortcuts/appShortcutIpc';
 import { logger } from '../logger';
 
 const log = logger.child('menu');
@@ -29,19 +45,33 @@ function dispatchToRenderer(command: MenuCommand): void {
   log.info('menu.command', { command });
 }
 
+/**
+ * The Electron accelerator for a menu-backed shortcut, or undefined when it has no
+ * expressible / non-disabled binding. Taken from the store's effective combos, so
+ * it tracks user rebinds.
+ */
+function acceleratorFor(id: AppShortcutId): string | undefined {
+  const [primary] = getAppShortcutStore().getEffectiveCombos(id);
+  if (!primary) return undefined;
+  return comboToElectronAccelerator(primary, process.platform) ?? undefined;
+}
+
 function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
   const isMac = process.platform === 'darwin';
+  // While recording, show the accelerator but DON'T register it with the system,
+  // so the captured keystroke reaches the settings page instead of the menu.
+  const registerAccelerator = !isAppShortcutRecordingActive();
 
-  // Accelerators come from the shared shortcut registry, so the menu binding and
-  // the renderer's Shortcuts page can never drift.
   const settingsItem: MenuItemConstructorOptions = {
     label: labels.settings,
-    accelerator: SHORTCUTS.openSettings.accelerator,
+    accelerator: acceleratorFor('open-settings'),
+    registerAccelerator,
     click: () => dispatchToRenderer(MENU_COMMANDS.openSettings),
   };
   const updatesItem: MenuItemConstructorOptions = {
     label: labels.checkForUpdates,
-    accelerator: SHORTCUTS.checkForUpdates.accelerator,
+    accelerator: acceleratorFor('check-for-updates'),
+    registerAccelerator,
     click: () => dispatchToRenderer(MENU_COMMANDS.checkForUpdates),
   };
   const aboutItem: MenuItemConstructorOptions = {
@@ -91,8 +121,23 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
   return template;
 }
 
-/** Build the native menu for the app's locale and install it as the app menu. */
-export function installAppMenu(): void {
+let installed = false;
+
+/** Rebuild + install the native menu for the app's locale. */
+function rebuildMenu(): void {
   const labels = MENU_LABELS[resolveMenuLocale(app.getLocale())];
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildTemplate(labels)));
+}
+
+/**
+ * Build the native menu and keep it in sync: rebuild when shortcut overrides change
+ * (so a rebind re-binds the accelerator) and when the recording gate toggles (so
+ * accelerators pause / resume). Idempotent — the subscriptions are installed once.
+ */
+export function installAppMenu(): void {
+  rebuildMenu();
+  if (installed) return;
+  installed = true;
+  getAppShortcutStore().subscribe(() => rebuildMenu());
+  subscribeAppShortcutRecording(() => rebuildMenu());
 }

@@ -38,9 +38,32 @@
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",
+    "recording": "Press the new shortcut… (Esc to cancel)",
+    "recordingHint": "Recording…",
+    "none": "Not bound",
+    "edit": "Edit",
+    "disable": "Disable",
+    "reset": "Reset",
+    "resetAll": "Reset all",
     "items": {
-      "openSettings": "Open Settings",
-      "checkForUpdates": "Check for Updates"
+      "open-settings": {
+        "label": "Open Settings",
+        "description": "Open the settings window."
+      },
+      "check-for-updates": {
+        "label": "Check for Updates",
+        "description": "Check whether a newer version is available."
+      },
+      "toggle-theme": {
+        "label": "Toggle Light / Dark",
+        "description": "Switch between the light and dark appearance."
+      }
+    },
+    "errors": {
+      "notBindable": "That key can't be used on its own. Add a modifier, or use a function key.",
+      "systemReserved": "That shortcut is reserved by the operating system.",
+      "conflict": "That shortcut is already used by another action.",
+      "saveFailed": "Couldn't save the shortcut. Try again."
     }
   },
   "updates": {
