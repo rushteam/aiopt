@@ -25,6 +25,17 @@
     "light": "浅色",
     "dark": "深色"
   },
+  "account": {
+    "title": "账户",
+    "signedInAs": "已登录",
+    "signedOutHelp": "登录以连接此设备。本地 stub 接受任意用户名与密码。",
+    "username": "用户名",
+    "password": "密码",
+    "logIn": "登录",
+    "loggingIn": "登录中…",
+    "logOut": "退出登录",
+    "error": "登录失败，请检查信息后重试。"
+  },
   "about": {
     "title": "关于",
     "appVersion": "应用版本",

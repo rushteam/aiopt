@@ -25,6 +25,17 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "account": {
+    "title": "Account",
+    "signedInAs": "Signed in as",
+    "signedOutHelp": "Sign in to connect this device. The local stub accepts any username and password.",
+    "username": "Username",
+    "password": "Password",
+    "logIn": "Log in",
+    "loggingIn": "Signing in…",
+    "logOut": "Log out",
+    "error": "Sign-in failed. Check your details and try again."
+  },
   "about": {
     "title": "About",
     "appVersion": "App version",

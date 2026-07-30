@@ -9,9 +9,10 @@ import { useState, type ComponentType } from 'react';
 import { token } from '../../themes/tokens';
 import { useT } from '../../i18n';
 import { AppearanceSection } from './AppearanceSection';
+import { AccountSection } from './AccountSection';
 import { AboutSection } from './AboutSection';
 
-export type SettingsSectionId = 'appearance' | 'about';
+export type SettingsSectionId = 'appearance' | 'account' | 'about';
 
 interface SectionDef {
   id: SettingsSectionId;
@@ -22,6 +23,7 @@ interface SectionDef {
 
 const SECTIONS = [
   { id: 'appearance', labelKey: 'appearance', Component: AppearanceSection },
+  { id: 'account', labelKey: 'account', Component: AccountSection },
   { id: 'about', labelKey: 'about', Component: AboutSection },
 ] as const satisfies readonly SectionDef[];
 

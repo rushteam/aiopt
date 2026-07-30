@@ -12,11 +12,15 @@ import {
   type ConfigStore,
 } from './config/configStore';
 import { createSecretStore, type SecretCryptor, type SecretStore } from './secrets/secretStore';
+import { createAuthManager, type AuthManager } from './auth/authManager';
+import { createLocalStubAuthProvider } from './auth/localStubAuthProvider';
+import { broadcastToRenderers } from './ipc/broadcast';
 import { preferencesFilePath, secretsDir } from './paths';
-import type { AppVersionsResult } from '../shared/ipc-channels';
+import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 
 let configStore: ConfigStore | null = null;
 let secretStore: SecretStore | null = null;
+let authManager: AuthManager | null = null;
 
 export function getConfigStore(): ConfigStore {
   if (!configStore) {
@@ -37,6 +41,18 @@ export function getSecretStore(): SecretStore {
     secretStore = createSecretStore(secretsDir(), electronCryptor);
   }
   return secretStore;
+}
+
+export function getAuthManager(): AuthManager {
+  if (!authManager) {
+    authManager = createAuthManager(
+      createLocalStubAuthProvider(),
+      getSecretStore(),
+      // Announce every session change to all windows (safe state only, no token).
+      (state) => broadcastToRenderers(IPC_EVENTS.authStateChanged, state),
+    );
+  }
+  return authManager;
 }
 
 /** The version strings shown on the About page. */

@@ -25,6 +25,14 @@ export const IPC_CHANNELS = {
 
   // App info. Version strings for the About page / diagnostics footer.
   appGetVersions: 'app:get-versions',
+
+  // Auth. The renderer drives login/logout and reads the SAFE session state
+  // (status + non-secret user identity). The session TOKEN is minted and stored
+  // in main only — no channel ever returns it to the renderer. See
+  // credentials-and-local-storage.md.
+  authGetState: 'auth:get-state',
+  authLogin: 'auth:login',
+  authLogout: 'auth:logout',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -54,6 +62,12 @@ export const IPC_EVENTS = {
    * command against the allowlist before acting.
    */
   menuCommand: 'app:menu-command',
+  /**
+   * The auth session changed; payload is the SAFE `AuthState` (status + user
+   * identity, never a token). Pushed after login / logout / startup restore so
+   * every window mirrors the current session.
+   */
+  authStateChanged: 'auth:state-changed',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -117,6 +131,31 @@ export interface AppVersionsResult {
   node: string;
 }
 
+// --- Auth wire contract ---------------------------------------------------
+//
+// The renderer only ever sees these SAFE shapes. The session token is a secret
+// that lives in the main-side secret store and never crosses IPC.
+
+export type AuthStatus = 'signed-out' | 'signed-in';
+
+/** Non-secret identity safe to show in the UI and broadcast to every window. */
+export interface AuthUser {
+  id: string;
+  displayName: string;
+}
+
+/** The renderer-visible session state. Deliberately carries NO token. */
+export interface AuthState {
+  status: AuthStatus;
+  user: AuthUser | null;
+}
+
+/** Login credentials collected by the renderer and handed to main to exchange. */
+export interface AuthLoginRequest {
+  username: string;
+  password: string;
+}
+
 export interface IpcContract {
   [IPC_CHANNELS.ping]: { request: PingRequest; result: PingResult };
   [IPC_CHANNELS.configGetAll]: { request: void; result: PreferencesShape };
@@ -126,4 +165,7 @@ export interface IpcContract {
   [IPC_CHANNELS.secretHas]: { request: SecretKeyRequest; result: SecretHasResult };
   [IPC_CHANNELS.secretDelete]: { request: SecretKeyRequest; result: Record<string, never> };
   [IPC_CHANNELS.appGetVersions]: { request: void; result: AppVersionsResult };
+  [IPC_CHANNELS.authGetState]: { request: void; result: AuthState };
+  [IPC_CHANNELS.authLogin]: { request: AuthLoginRequest; result: AuthState };
+  [IPC_CHANNELS.authLogout]: { request: void; result: AuthState };
 }

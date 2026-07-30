@@ -12,6 +12,7 @@ import {
   IPC_EVENTS,
   IPC_SYNC_CHANNELS,
   type AppVersionsResult,
+  type AuthState,
   type PreferencesShape,
   type ThemePreference,
 } from '../shared/ipc-channels';
@@ -85,6 +86,21 @@ const api = {
   /** Theme preference: read the initial value synchronously; write via config.set. */
   theme: {
     getInitial: (): ThemePreference => initialThemePreference(),
+  },
+
+  /**
+   * Auth session. The renderer drives login/logout and observes the SAFE state
+   * (status + user identity) — the session token stays in main and is never
+   * returned here.
+   */
+  auth: {
+    getState: (): Promise<AuthState> => ipcRenderer.invoke(IPC_CHANNELS.authGetState),
+    login: (username: string, password: string): Promise<AuthState> =>
+      ipcRenderer.invoke(IPC_CHANNELS.authLogin, { username, password }),
+    logout: (): Promise<AuthState> => ipcRenderer.invoke(IPC_CHANNELS.authLogout),
+    /** Subscribe to session changes pushed from main; returns an unsubscribe fn. */
+    onStateChanged: (callback: (state: AuthState) => void): (() => void) =>
+      subscribe(IPC_EVENTS.authStateChanged, callback),
   },
 
   /** Read the app/runtime version strings for the About page. */
