@@ -1,0 +1,36 @@
+{
+  "app": {
+    "tagline": "The security boundary is wired. Build your app inside it."
+  },
+  "nav": {
+    "settings": "Settings",
+    "home": "Home"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "sections": {
+      "appearance": "Appearance",
+      "account": "Account",
+      "shortcuts": "Keyboard Shortcuts",
+      "updates": "Updates",
+      "about": "About"
+    }
+  },
+  "appearance": {
+    "title": "Appearance",
+    "theme": "Theme",
+    "themeHelp": "Choose how the app looks. System follows your operating system.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "about": {
+    "title": "About",
+    "appVersion": "App version",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "Loading…"
+  }
+}

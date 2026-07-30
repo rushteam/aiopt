@@ -10,10 +10,34 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   IPC_CHANNELS,
   IPC_EVENTS,
+  IPC_SYNC_CHANNELS,
   type AppVersionsResult,
   type PreferencesShape,
+  type ThemePreference,
 } from '../shared/ipc-channels';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
+import { applyThemeVariables } from '../renderer/themes/tokens';
+
+/** Read the stored theme preference synchronously (used for first-paint only). */
+function initialThemePreference(): ThemePreference {
+  const value = ipcRenderer.sendSync(IPC_SYNC_CHANNELS.themeGet);
+  return value === 'light' || value === 'dark' || value === 'system' ? value : 'system';
+}
+
+// Anti-flash: before the document paints, apply the stored theme's token values
+// (resolving `system` against the OS) via the CSSOM. The renderer's ThemeProvider
+// takes over reactively once React mounts.
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    const pref = initialThemePreference();
+    const prefersDark =
+      typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = pref === 'dark' || (pref === 'system' && prefersDark) ? 'dark' : 'light';
+    applyThemeVariables(resolved);
+  } catch {
+    // Leave the CSS default in place if the read fails.
+  }
+});
 
 /** Subscribe to a push channel, stripping the Electron event; returns an unsubscribe fn. */
 function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
@@ -56,6 +80,11 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.secretHas, { key }),
     delete: (key: string): Promise<Record<string, never>> =>
       ipcRenderer.invoke(IPC_CHANNELS.secretDelete, { key }),
+  },
+
+  /** Theme preference: read the initial value synchronously; write via config.set. */
+  theme: {
+    getInitial: (): ThemePreference => initialThemePreference(),
   },
 
   /** Read the app/runtime version strings for the About page. */

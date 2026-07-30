@@ -30,6 +30,16 @@ export const IPC_CHANNELS = {
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 
 /**
+ * Synchronous channels (renderer → main, blocking `sendSync`). Used ONLY for the
+ * tiny, must-happen-before-first-paint theme read — a blocking round-trip is the
+ * price of preventing a wrong-theme flash. Everything else is async `invoke`.
+ */
+export const IPC_SYNC_CHANNELS = {
+  /** Read the stored theme preference synchronously for the first paint. */
+  themeGet: 'config:get-theme-sync',
+} as const;
+
+/**
  * Push channels (main → renderer). These are one-way notifications; the renderer
  * subscribes via a named preload method and never invokes them. Payloads must
  * carry NO secret material — they may reach any window.

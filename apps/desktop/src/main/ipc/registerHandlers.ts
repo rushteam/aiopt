@@ -11,6 +11,7 @@ import { broadcastToRenderers } from './broadcast';
 import { registerConfigIpc } from '../config/configIpc';
 import { registerSecretIpc } from '../secrets/secretIpc';
 import { registerAppInfoIpc } from '../app/appInfoIpc';
+import { installThemeSyncChannel } from '../config/themeSyncChannel';
 import { getAppVersions, getConfigStore, getSecretStore } from '../services';
 
 export function registerHandlers(): void {
@@ -18,4 +19,6 @@ export function registerHandlers(): void {
   registerConfigIpc(registry, getConfigStore(), broadcastToRenderers);
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);
+  // Synchronous first-paint theme read (its own ipcMain.on, not registry-based).
+  installThemeSyncChannel();
 }

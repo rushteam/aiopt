@@ -1,0 +1,36 @@
+{
+  "app": {
+    "tagline": "安全边界已就位，在它之内构建你的应用。"
+  },
+  "nav": {
+    "settings": "设置",
+    "home": "主页"
+  },
+  "settings": {
+    "title": "设置",
+    "close": "关闭",
+    "sections": {
+      "appearance": "外观",
+      "account": "账户",
+      "shortcuts": "快捷键",
+      "updates": "更新",
+      "about": "关于"
+    }
+  },
+  "appearance": {
+    "title": "外观",
+    "theme": "主题",
+    "themeHelp": "选择应用的外观。「跟随系统」将跟随操作系统设置。",
+    "system": "跟随系统",
+    "light": "浅色",
+    "dark": "深色"
+  },
+  "about": {
+    "title": "关于",
+    "appVersion": "应用版本",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "加载中…"
+  }
+}

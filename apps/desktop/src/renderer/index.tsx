@@ -1,7 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ThemeProvider } from './themes/ThemeProvider';
+import { I18nProvider } from './i18n';
 
+// Token values are applied to <html> via the CSSOM: the preload bootstrap sets
+// them before first paint (anti-flash), and ThemeProvider keeps them in sync.
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('root container missing');
@@ -9,6 +13,10 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <I18nProvider>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </I18nProvider>
   </StrictMode>,
 );
