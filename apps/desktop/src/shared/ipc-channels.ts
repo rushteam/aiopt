@@ -33,6 +33,12 @@ export const IPC_CHANNELS = {
   authGetState: 'auth:get-state',
   authLogin: 'auth:login',
   authLogout: 'auth:logout',
+
+  // Updates. The renderer can read the current status and request a check; the
+  // framework ships a local stub that always reports up-to-date. A REAL update
+  // feed is a high-risk change gated by docs/dev-rules/updater.md.
+  updateGetStatus: 'update:get-status',
+  updateCheck: 'update:check',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -68,6 +74,8 @@ export const IPC_EVENTS = {
    * every window mirrors the current session.
    */
   authStateChanged: 'auth:state-changed',
+  /** The update status changed (idle → checking → result); payload is `UpdateStatus`. */
+  updateStatusChanged: 'update:status-changed',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -156,6 +164,22 @@ export interface AuthLoginRequest {
   password: string;
 }
 
+// --- Update wire contract -------------------------------------------------
+
+export type UpdateState =
+  | 'idle' // no check has run yet
+  | 'checking' // a check is in flight
+  | 'up-to-date'
+  | 'update-available'
+  | 'error';
+
+/** The renderer-visible update status. `nextVersion` is set only when available. */
+export interface UpdateStatus {
+  state: UpdateState;
+  currentVersion: string;
+  nextVersion?: string;
+}
+
 export interface IpcContract {
   [IPC_CHANNELS.ping]: { request: PingRequest; result: PingResult };
   [IPC_CHANNELS.configGetAll]: { request: void; result: PreferencesShape };
@@ -168,4 +192,6 @@ export interface IpcContract {
   [IPC_CHANNELS.authGetState]: { request: void; result: AuthState };
   [IPC_CHANNELS.authLogin]: { request: AuthLoginRequest; result: AuthState };
   [IPC_CHANNELS.authLogout]: { request: void; result: AuthState };
+  [IPC_CHANNELS.updateGetStatus]: { request: void; result: UpdateStatus };
+  [IPC_CHANNELS.updateCheck]: { request: void; result: UpdateStatus };
 }

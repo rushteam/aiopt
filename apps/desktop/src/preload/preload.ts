@@ -15,6 +15,7 @@ import {
   type AuthState,
   type PreferencesShape,
   type ThemePreference,
+  type UpdateStatus,
 } from '../shared/ipc-channels';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
 import { applyThemeVariables } from '../renderer/themes/tokens';
@@ -101,6 +102,18 @@ const api = {
     /** Subscribe to session changes pushed from main; returns an unsubscribe fn. */
     onStateChanged: (callback: (state: AuthState) => void): (() => void) =>
       subscribe(IPC_EVENTS.authStateChanged, callback),
+  },
+
+  /**
+   * App updates. The bundled stub always reports up-to-date; a real feed is a
+   * gated, high-risk change (see docs/dev-rules/updater.md).
+   */
+  update: {
+    getStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke(IPC_CHANNELS.updateGetStatus),
+    check: (): Promise<UpdateStatus> => ipcRenderer.invoke(IPC_CHANNELS.updateCheck),
+    /** Subscribe to status changes pushed from main; returns an unsubscribe fn. */
+    onStatusChanged: (callback: (status: UpdateStatus) => void): (() => void) =>
+      subscribe(IPC_EVENTS.updateStatusChanged, callback),
   },
 
   /** Read the app/runtime version strings for the About page. */

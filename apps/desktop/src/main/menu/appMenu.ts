@@ -11,6 +11,7 @@
 
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 import { MENU_COMMANDS, type MenuCommand } from '../../shared/menuCommands';
+import { SHORTCUTS } from '../../shared/shortcuts';
 import { IPC_EVENTS } from '../../shared/ipc-channels';
 import { MENU_LABELS, resolveMenuLocale, type MenuLabels } from './menuLabels';
 import { logger } from '../logger';
@@ -31,13 +32,16 @@ function dispatchToRenderer(command: MenuCommand): void {
 function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
   const isMac = process.platform === 'darwin';
 
+  // Accelerators come from the shared shortcut registry, so the menu binding and
+  // the renderer's Shortcuts page can never drift.
   const settingsItem: MenuItemConstructorOptions = {
     label: labels.settings,
-    accelerator: 'CmdOrCtrl+,',
+    accelerator: SHORTCUTS.openSettings.accelerator,
     click: () => dispatchToRenderer(MENU_COMMANDS.openSettings),
   };
   const updatesItem: MenuItemConstructorOptions = {
     label: labels.checkForUpdates,
+    accelerator: SHORTCUTS.checkForUpdates.accelerator,
     click: () => dispatchToRenderer(MENU_COMMANDS.checkForUpdates),
   };
   const aboutItem: MenuItemConstructorOptions = {

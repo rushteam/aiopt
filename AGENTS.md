@@ -37,6 +37,10 @@
   `docs/dev-rules/credentials-and-local-storage.md`.
 - Before changing the SQLite schema, a migration, or runtime DB access: read
   `docs/dev-rules/database-and-migrations.md`.
+- Before touching the update provider / service, or wiring any real update feed, downloader,
+  or installer: read `docs/dev-rules/updater.md`. **The updater is a high-risk module**; a real
+  update path is a gated change requiring the gatekeeper's explicit sign-off (not judged by diff
+  size or author).
 - Before changing package dependency direction, how the main process loads modules, or the
   main layout tree structure: read `docs/dev-rules/architecture-invariants.md`.
 - Before adding/altering Settings UI, config files, local preferences, or runtime profiles:

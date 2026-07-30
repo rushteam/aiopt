@@ -12,8 +12,15 @@ import { registerConfigIpc } from '../config/configIpc';
 import { registerSecretIpc } from '../secrets/secretIpc';
 import { registerAppInfoIpc } from '../app/appInfoIpc';
 import { registerAuthIpc } from '../auth/authIpc';
+import { registerUpdateIpc } from '../update/updateIpc';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
-import { getAppVersions, getAuthManager, getConfigStore, getSecretStore } from '../services';
+import {
+  getAppVersions,
+  getAuthManager,
+  getConfigStore,
+  getSecretStore,
+  getUpdateService,
+} from '../services';
 
 export function registerHandlers(): void {
   const registry = createElectronIpcRegistry(ipcMain);
@@ -21,6 +28,7 @@ export function registerHandlers(): void {
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());
+  registerUpdateIpc(registry, getUpdateService());
   // Synchronous first-paint theme read (its own ipcMain.on, not registry-based).
   installThemeSyncChannel();
   // Restore any persisted session in the background; the state-change broadcast

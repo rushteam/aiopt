@@ -18,6 +18,7 @@ export function App() {
     () =>
       window.hearth.onMenuCommand((command) => {
         if (command === MENU_COMMANDS.openSettings) setView({ name: 'settings', section: 'appearance' });
+        else if (command === MENU_COMMANDS.checkForUpdates) setView({ name: 'settings', section: 'updates' });
         else if (command === MENU_COMMANDS.showAbout) setView({ name: 'settings', section: 'about' });
       }),
     [],

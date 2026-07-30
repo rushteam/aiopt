@@ -10,9 +10,11 @@ import { token } from '../../themes/tokens';
 import { useT } from '../../i18n';
 import { AppearanceSection } from './AppearanceSection';
 import { AccountSection } from './AccountSection';
+import { ShortcutsSection } from './ShortcutsSection';
+import { UpdateSection } from './UpdateSection';
 import { AboutSection } from './AboutSection';
 
-export type SettingsSectionId = 'appearance' | 'account' | 'about';
+export type SettingsSectionId = 'appearance' | 'account' | 'shortcuts' | 'updates' | 'about';
 
 interface SectionDef {
   id: SettingsSectionId;
@@ -24,6 +26,8 @@ interface SectionDef {
 const SECTIONS = [
   { id: 'appearance', labelKey: 'appearance', Component: AppearanceSection },
   { id: 'account', labelKey: 'account', Component: AccountSection },
+  { id: 'shortcuts', labelKey: 'shortcuts', Component: ShortcutsSection },
+  { id: 'updates', labelKey: 'updates', Component: UpdateSection },
   { id: 'about', labelKey: 'about', Component: AboutSection },
 ] as const satisfies readonly SectionDef[];
 

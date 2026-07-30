@@ -36,6 +36,26 @@
     "logOut": "Log out",
     "error": "Sign-in failed. Check your details and try again."
   },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "items": {
+      "openSettings": "Open Settings",
+      "checkForUpdates": "Check for Updates"
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "currentVersion": "Current version",
+    "check": "Check for updates",
+    "checking": "Checking…",
+    "state": {
+      "idle": "Check to see if a newer version is available.",
+      "checking": "Checking for updates…",
+      "up-to-date": "You're up to date.",
+      "update-available": "An update is available.",
+      "error": "Couldn't check for updates. Try again later."
+    }
+  },
   "about": {
     "title": "About",
     "appVersion": "App version",

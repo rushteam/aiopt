@@ -14,6 +14,8 @@ import {
 import { createSecretStore, type SecretCryptor, type SecretStore } from './secrets/secretStore';
 import { createAuthManager, type AuthManager } from './auth/authManager';
 import { createLocalStubAuthProvider } from './auth/localStubAuthProvider';
+import { createUpdateService, type UpdateService } from './update/updateService';
+import { createLocalStubUpdateProvider } from './update/localStubUpdateProvider';
 import { broadcastToRenderers } from './ipc/broadcast';
 import { preferencesFilePath, secretsDir } from './paths';
 import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
@@ -21,6 +23,7 @@ import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 let configStore: ConfigStore | null = null;
 let secretStore: SecretStore | null = null;
 let authManager: AuthManager | null = null;
+let updateService: UpdateService | null = null;
 
 export function getConfigStore(): ConfigStore {
   if (!configStore) {
@@ -53,6 +56,17 @@ export function getAuthManager(): AuthManager {
     );
   }
   return authManager;
+}
+
+export function getUpdateService(): UpdateService {
+  if (!updateService) {
+    updateService = createUpdateService(
+      createLocalStubUpdateProvider(),
+      () => app.getVersion(),
+      (status) => broadcastToRenderers(IPC_EVENTS.updateStatusChanged, status),
+    );
+  }
+  return updateService;
 }
 
 /** The version strings shown on the About page. */
