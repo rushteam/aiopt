@@ -2,7 +2,7 @@
 // set EXPLICITLY here — we never rely on Electron defaults. See
 // docs/dev-rules/electron-security-and-process-boundaries.md §3.
 
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installNavigationGuards } from '../security/navigation';
@@ -13,14 +13,27 @@ const log = logger.child('window');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function createMainWindow(): BrowserWindow {
+  const isMac = process.platform === 'darwin';
   const win = new BrowserWindow({
     width: 1024,
     height: 720,
     show: false,
+    // Chrome: on macOS hide the native title bar but keep the (inset) traffic-light
+    // controls, so app content reaches the top edge — the renderer supplies a
+    // draggable strip (see App's TitleBar). Elsewhere we keep the native frame for
+    // now; a custom cross-platform title bar with its own min/max/close controls is
+    // separate work. None of this touches the §3 hardening options below.
+    ...(isMac ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 16 } } : {}),
     webPreferences: {
       // Preload is emitted next to the main bundle by plugin-vite.
       preload: path.join(__dirname, 'preload.js'),
       // Hardening — do not loosen any of these (§3).
+      // DevTools is a development-only affordance: disabled entirely in packaged
+      // builds so end users can't open it (via menu, accelerator, programmatic
+      // openDevTools, or any built-in shortcut). The View menu also drops the
+      // DevTools/reload items in packaged builds (see menu/viewMenu.ts); this is
+      // the hard backstop behind that.
+      devTools: !app.isPackaged,
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,

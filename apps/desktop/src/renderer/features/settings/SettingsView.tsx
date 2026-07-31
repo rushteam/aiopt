@@ -49,7 +49,7 @@ export function SettingsView({
       style={{
         display: 'grid',
         gridTemplateColumns: '200px 1fr',
-        height: '100vh',
+        height: '100%',
         background: token('bg'),
         color: token('text'),
       }}

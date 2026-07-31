@@ -67,6 +67,13 @@ Electron defaults:
 - do not set `enableBlinkFeatures`
 - `plugins: false`
 - `navigateOnDragDrop: false`
+- `devTools: !app.isPackaged` — DevTools is a development-only affordance. Disable it entirely in
+  packaged builds; with `devTools: false` it cannot be opened at all — not via the menu, a
+  keyboard shortcut, a built-in Chromium shortcut, or a programmatic `openDevTools()`. This is the
+  hard backstop. The native menu is the visible half: build a custom View submenu (not
+  `role: 'viewMenu'`) that drops `reload` / `forceReload` / `toggleDevTools` in packaged builds, so
+  those items — and their default accelerators (⌘R / ⇧⌘R / ⌥⌘I) — never reach end users. See
+  `main/window/mainWindow.ts` and `main/menu/viewMenu.ts`.
 
 A window may add a preload, partition, or throttling config, but must not override any field
 above with a looser value. `webviewTag` is off by default; a scaffold has no WebView by design.

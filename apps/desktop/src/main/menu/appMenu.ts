@@ -25,6 +25,7 @@ import {
 } from '../../shared/appShortcuts';
 import { IPC_EVENTS } from '../../shared/ipc-channels';
 import { MENU_LABELS, resolveMenuLocale, type MenuLabels } from './menuLabels';
+import { buildViewSubmenu } from './viewMenu';
 import { getAppShortcutStore } from '../services';
 import {
   isAppShortcutRecordingActive,
@@ -109,7 +110,9 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
   });
 
   template.push({ label: labels.edit, role: 'editMenu' });
-  template.push({ label: labels.view, role: 'viewMenu' });
+  // Custom View menu (not `role: 'viewMenu'`) so packaged builds can drop the
+  // reload / DevTools items — see buildViewSubmenu.
+  template.push(buildViewSubmenu(labels.view, app.isPackaged));
   template.push({ label: labels.window, role: 'windowMenu' });
 
   template.push({

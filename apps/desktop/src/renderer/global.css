@@ -1,0 +1,25 @@
+/* Global reset + document surface.
+ *
+ * Bundled by Vite, so in production it loads as a same-origin <link> and satisfies
+ * `style-src 'self'` (no CSP relaxation needed). Theme colors come from the
+ * `--color-*` custom properties that `applyThemeVariables` writes onto <html>;
+ * <body> inherits them, so the ENTIRE document surface is themed — without this,
+ * the UA's default 8px body margin left an unthemed band around the app (a visible
+ * "border", most obvious in dark mode). */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, sans-serif;
+}

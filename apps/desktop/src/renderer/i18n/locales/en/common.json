@@ -6,6 +6,14 @@
     "settings": "Settings",
     "home": "Home"
   },
+  "titleBar": {
+    "menu": "Menu",
+    "menuItems": {
+      "settings": "Settings",
+      "checkForUpdates": "Check for Updates",
+      "about": "About"
+    }
+  },
   "settings": {
     "title": "Settings",
     "close": "Close",
