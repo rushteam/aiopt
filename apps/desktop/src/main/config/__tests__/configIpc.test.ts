@@ -46,7 +46,7 @@ describe('config IPC', () => {
   it('get-all returns the effective snapshot for a trusted sender', async () => {
     const { reg } = harness({ theme: 'dark' });
     const result = (await reg.invoke(IPC_CHANNELS.configGetAll, undefined, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'dark' });
+    expect(result).toEqual({ theme: 'dark', skillsLibrary: 'app' });
   });
 
   it('set persists the override and broadcasts the new snapshot', async () => {
@@ -56,15 +56,20 @@ describe('config IPC', () => {
       { key: 'theme', value: 'light' },
       trusted,
     )) as PreferencesShape;
-    expect(result).toEqual({ theme: 'light' });
-    expect(broadcasts).toEqual([{ channel: IPC_EVENTS.configChanged, payload: { theme: 'light' } }]);
+    expect(result).toEqual({ theme: 'light', skillsLibrary: 'app' });
+    expect(broadcasts).toEqual([
+      { channel: IPC_EVENTS.configChanged, payload: { theme: 'light', skillsLibrary: 'app' } },
+    ]);
   });
 
   it('reset restores the default and broadcasts', async () => {
     const { reg, broadcasts } = harness({ theme: 'light' });
     const result = (await reg.invoke(IPC_CHANNELS.configReset, { key: 'theme' }, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'system' });
-    expect(broadcasts.at(-1)).toEqual({ channel: IPC_EVENTS.configChanged, payload: { theme: 'system' } });
+    expect(result).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(broadcasts.at(-1)).toEqual({
+      channel: IPC_EVENTS.configChanged,
+      payload: { theme: 'system', skillsLibrary: 'app' },
+    });
   });
 
   it('rejects an untrusted sender with PERMISSION_DENIED and does not broadcast', async () => {

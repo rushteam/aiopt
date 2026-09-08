@@ -6,7 +6,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { token } from '../../themes/tokens';
+import { token, fontSize, radius, space } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
 export function AccountSection() {
@@ -34,12 +35,17 @@ export function AccountSection() {
   if (state.status === 'signed-in') {
     return (
       <section>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>{t('account.title')}</h2>
-        <p style={{ margin: '0 0 16px', fontSize: 14 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: fontSize['2xl'] }}>{t('account.title')}</h2>
+        <p style={{ margin: '0 0 16px', fontSize: fontSize.md }}>
           {t('account.signedInAs')}{' '}
           <strong>{state.user?.displayName}</strong>
         </p>
-        <button type="button" onClick={() => void logout()} style={buttonStyle('danger')}>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={buttonStyle('danger')}
+        >
           {t('account.logOut')}
         </button>
       </section>
@@ -48,11 +54,11 @@ export function AccountSection() {
 
   return (
     <section>
-      <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>{t('account.title')}</h2>
-      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: 13 }}>
+      <h2 style={{ margin: '0 0 4px', fontSize: fontSize['2xl'] }}>{t('account.title')}</h2>
+      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: fontSize.base }}>
         {t('account.signedOutHelp')}
       </p>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320 }}>
+      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: space.lg, maxWidth: 320 }}>
         <label style={fieldStyle}>
           {t('account.username')}
           <input
@@ -74,14 +80,18 @@ export function AccountSection() {
           />
         </label>
         {failed && (
-          <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: 13 }}>
+          <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
             {t('account.error')}
           </p>
         )}
         <button
           type="submit"
           disabled={busy || username.trim() === '' || password.trim() === ''}
-          style={buttonStyle('accent')}
+          {...hoverBackground(token('accent'), token('accentHover'))}
+          style={{
+            ...buttonStyle('accent'),
+            opacity: busy || username.trim() === '' || password.trim() === '' ? 0.5 : 1,
+          }}
         >
           {busy ? t('account.loggingIn') : t('account.logIn')}
         </button>
@@ -93,29 +103,29 @@ export function AccountSection() {
 const fieldStyle = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
-  fontSize: 13,
+  gap: space.xs,
+  fontSize: fontSize.base,
   color: token('textMuted'),
 } as const;
 
 const inputStyle = {
   padding: '8px 10px',
-  borderRadius: 6,
+  borderRadius: radius.sm,
   border: `1px solid ${token('border')}`,
-  background: token('bg'),
+  background: token('surface'),
   color: token('text'),
-  fontSize: 14,
+  fontSize: fontSize.md,
 } as const;
 
 function buttonStyle(kind: 'accent' | 'danger') {
   return {
     padding: '8px 16px',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${token(kind)}`,
     background: kind === 'accent' ? token('accent') : 'transparent',
     color: kind === 'accent' ? token('accentText') : token('danger'),
     cursor: 'pointer',
-    fontSize: 14,
+    fontSize: fontSize.md,
     alignSelf: 'flex-start',
   } as const;
 }

@@ -18,10 +18,26 @@ import {
   type AppVersionsResult,
   type AuthState,
   type PreferencesShape,
+  type ProviderAddRequest,
+  type ProviderFetchModelsRequest,
+  type ProviderFetchModelsResult,
+  type ProviderRevealKeyResult,
+  type ProviderUpdateRequest,
+  type ProvidersSnapshot,
+  type SkillsImportResult,
   type ThemePreference,
   type UpdateStatus,
 } from '../shared/ipc-channels';
+import type {
+  SkillDiffResult,
+  SkillFileContent,
+  SkillRevealRef,
+  SkillScope,
+  SkillsSnapshot,
+} from '../shared/skills';
+import type { UsageSnapshot } from '../shared/usageStats';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
+import type { AgentId } from '../shared/aiProviders';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
 import { applyThemeVariables } from '../renderer/themes/tokens';
 
@@ -155,6 +171,99 @@ const api = {
     /** Subscribe to override changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (event: AppShortcutsChangedEvent) => void): (() => void) =>
       subscribe(IPC_EVENTS.appShortcutsChanged, callback),
+  },
+
+  /**
+   * AI providers. Manage the global provider pool and bind each agent to a
+   * provider+model. An API key can be SENT here (add/update) to be stored
+   * encrypted main-side, but is NEVER returned — reads carry only `hasKey`.
+   */
+  providers: {
+    list: (): Promise<ProvidersSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.providersList),
+    add: (input: ProviderAddRequest): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersAdd, input),
+    update: (input: ProviderUpdateRequest): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersUpdate, input),
+    remove: (id: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRemove, { id }),
+    setBinding: (agentId: AgentId, providerId: string, modelId: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersSetBinding, { agentId, providerId, modelId }),
+    clearBinding: (agentId: AgentId): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersClearBinding, { agentId }),
+    /** Undo an agent's takeover: restore its native config to pre-AiOpt and clear the binding. */
+    restoreDefault: (agentId: AgentId): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRestoreDefault, { agentId }),
+    /**
+     * Ask a provider's API for its available models. The key is resolved main-side
+     * (from the request or an existing provider) and never returned — only models.
+     */
+    fetchModels: (input: ProviderFetchModelsRequest): Promise<ProviderFetchModelsResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersFetchModels, input),
+    /**
+     * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Unlike every
+     * sibling here, this returns the secret (see the channel note). Callers must hold
+     * it transiently — never persist or log it.
+     */
+    revealKey: (providerId: string): Promise<ProviderRevealKeyResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRevealKey, { providerId }),
+    /** Subscribe to pool/binding changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (snapshot: ProvidersSnapshot) => void): (() => void) =>
+      subscribe(IPC_EVENTS.providersChanged, callback),
+  },
+
+  /**
+   * Usage statistics of proxied cross-format traffic. Read the aggregated snapshot,
+   * clear the history, or subscribe to live changes. Carries only counts + identifiers
+   * — never content, keys, or token plaintext.
+   */
+  usage: {
+    get: (): Promise<UsageSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.usageGet),
+    clear: (): Promise<UsageSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.usageClear),
+    /** Subscribe to usage changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (snapshot: UsageSnapshot) => void): (() => void) =>
+      subscribe(IPC_EVENTS.usageChanged, callback),
+  },
+
+  /**
+   * Skills sync. AiOpt is the central library; these methods discover skills across
+   * each agent's global skills dir and move them in/out. A skill is named ONLY by
+   * symbolic coordinates (agentId + validated name) — never a path. `import` opens a
+   * folder picker in MAIN (the source path is never supplied here); `reveal` opens a
+   * store-resolved, allowlisted directory in the OS file manager.
+   */
+  skills: {
+    get: (): Promise<SkillsSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.skillsGet),
+    /** Pull an agent's copy into the central library (agent → central). */
+    pull: (agentId: AgentId, name: string): Promise<SkillsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsPull, { agentId, name }),
+    /** Push the central copy out to one or more agents (central → agents). */
+    push: (name: string, agentIds: AgentId[]): Promise<SkillsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsPush, { name, agentIds }),
+    /** Import a folder (chosen via a main-side picker) as a skill into the central library. */
+    import: (): Promise<SkillsImportResult> => ipcRenderer.invoke(IPC_CHANNELS.skillsImport),
+    /** Delete a skill from the central library (destructive; the caller confirms first). */
+    delete: (name: string): Promise<SkillsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsDelete, { name }),
+    /** Per-file diff of an agent's copy against the central copy (metadata only). */
+    diff: (agentId: AgentId, name: string): Promise<SkillDiffResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsDiff, { agentId, name }),
+    /** Read one differing file's content (from a side) for the diff preview; text/size-capped. */
+    fileContent: (
+      agentId: AgentId,
+      name: string,
+      side: SkillScope,
+      relPath: string,
+    ): Promise<SkillFileContent> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsFileContent, { agentId, name, side, relPath }),
+    /** Merge a differing skill back into the central library, taking the picked files from the agent. */
+    merge: (agentId: AgentId, name: string, agentPicks: string[]): Promise<SkillsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsMerge, { agentId, name, agentPicks }),
+    /** Open a skills location (central library or an agent dir, optionally one skill) in the file manager. */
+    reveal: (ref: SkillRevealRef): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsReveal, ref),
+    /** Subscribe to sync-matrix changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (snapshot: SkillsSnapshot) => void): (() => void) =>
+      subscribe(IPC_EVENTS.skillsChanged, callback),
   },
 
   /** Read the app/runtime version strings for the About page. */

@@ -10,6 +10,8 @@
     "menu": "菜单",
     "menuItems": {
       "settings": "设置",
+      "usage": "统计",
+      "skills": "技能",
       "checkForUpdates": "检查更新",
       "about": "关于"
     }
@@ -94,5 +96,214 @@
     "chrome": "Chrome",
     "node": "Node",
     "loading": "加载中…"
+  },
+  "providers": {
+    "title": "供应商",
+    "subtitle": "供应商只需录入一次，再为每个 Agent 指定要使用的供应商与模型。",
+    "addProvider": "添加供应商",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "Agent"
+    },
+    "pool": {
+      "heading": "供应商池",
+      "empty": "还没有供应商，添加一个开始使用。"
+    },
+    "fields": {
+      "name": "名称",
+      "apiFormat": "接口格式",
+      "baseUrl": "Base URL",
+      "apiKey": "API 密钥",
+      "models": "模型",
+      "modelId": "模型 ID",
+      "modelAlias": "别名",
+      "notes": "备注"
+    },
+    "form": {
+      "addTitle": "添加供应商",
+      "editTitle": "编辑供应商",
+      "preset": "预设",
+      "presetNone": "自定义…",
+      "apiKeyKeep": "留空则保留已存储的密钥",
+      "addModel": "添加模型",
+      "removeModel": "移除该模型",
+      "modelIdPlaceholder": "模型 ID",
+      "modelAliasPlaceholder": "别名（可选）",
+      "aliasHint": "别名：写入 Agent 的对外模型名——比模型 ID 更短或与 Agent 侧一致的名字（如把过长的 ID 起个短名、或网关自定义名）。留空则用模型 ID。",
+      "loadModels": "加载模型",
+      "loadingModels": "加载中…",
+      "loadModelsEmpty": "该供应商没有返回任何模型。",
+      "cancel": "取消",
+      "close": "关闭",
+      "save": "保存",
+      "saving": "保存中…",
+      "showKey": "显示",
+      "hideKey": "隐藏",
+      "keySavedHidden": "已保存密钥 · 出于安全不显示。留空保持不变，输入则替换。"
+    },
+    "card": {
+      "models": "模型",
+      "keySet": "已存密钥",
+      "keyMissing": "无密钥",
+      "edit": "编辑",
+      "delete": "删除",
+      "confirmDelete": "确定删除该供应商？",
+      "confirmYes": "确认删除"
+    },
+    "agent": {
+      "installed": "已安装",
+      "notInstalled": "未检测到",
+      "unbound": "未配置",
+      "change": "更改",
+      "restoreDefault": "恢复默认",
+      "restoreConfirm": "恢复该 Agent 到 AiOpt 接管前的配置？"
+    },
+    "binding": {
+      "title": "选择供应商",
+      "help": "选好供应商与模型，点「应用」生效。",
+      "noProviders": "请先添加一个供应商。",
+      "needsProxy": "需代理",
+      "modelHint": "模型（可选，默认取第一个，可随时更改）",
+      "useDefault": "选用默认",
+      "selectProviderHint": "从左侧选择一个供应商查看模型。",
+      "searchModels": "搜索模型…",
+      "noModelMatch": "没有匹配的模型。",
+      "bound": "当前绑定",
+      "apply": "应用",
+      "restoreDefaultRow": "默认"
+    },
+    "errors": {
+      "INVALID_PARAMS": "部分信息无效，请检查后重试。",
+      "NOT_FOUND": "该供应商或模型已不存在。",
+      "ALREADY_EXISTS": "已存在相同 id 的供应商。",
+      "PRECONDITION_FAILED": "该供应商的格式需要代理才能用于此 Agent（后续支持）。",
+      "PERMISSION_DENIED": "该操作不被允许。",
+      "UNSUPPORTED_CAPABILITY": "该 Agent 暂不支持配置。",
+      "UNAUTHORIZED": "供应商拒绝了该 API 密钥，请检查密钥后重试。",
+      "UPSTREAM_ERROR": "无法从供应商加载模型，请检查 Base URL 后重试。",
+      "INTERNAL": "出错了，请重试。"
+    }
+  },
+  "usage": {
+    "title": "统计",
+    "subtitle": "AiOpt 经翻译代理转发的流量的 Token 与请求数统计。",
+    "scopeNote": "只有跨格式绑定会经过代理，因此仅统计这些流量——同格式直连绑定不经过 AiOpt，无法计入。历史保留 90 天（UTC）。",
+    "close": "关闭",
+    "empty": "还没有用量记录。把某个 Agent 绑定到不同接口格式的供应商并发起一次请求即可——同格式直连绑定不经过代理，无法统计。",
+    "totals": {
+      "requests": "请求数",
+      "successRate": "成功率",
+      "inputTokens": "输入 Token",
+      "outputTokens": "输出 Token",
+      "totalTokens": "合计 Token"
+    },
+    "chart": {
+      "title": "每日 Token",
+      "empty": "暂无每日数据。"
+    },
+    "breakdown": {
+      "byProvider": "按供应商",
+      "byAgent": "按 Agent",
+      "byModel": "按模型"
+    },
+    "table": {
+      "name": "名称",
+      "requests": "请求数",
+      "inputTokens": "输入",
+      "outputTokens": "输出",
+      "totalTokens": "合计"
+    },
+    "clear": "清除统计",
+    "clearConfirm": "确定清除所有用量记录？",
+    "clearConfirmYes": "清除",
+    "clearCancel": "取消"
+  },
+  "skills": {
+    "title": "技能",
+    "subtitle": "把各 Agent 家目录中的技能收集到一个中央库，再同步回各处。",
+    "close": "关闭",
+    "skill": "技能",
+    "central": "中央库",
+    "empty": "尚未发现任何技能。",
+    "emptyHint": "从文件夹导入一个技能，或把某个 Agent 已有的技能拉取到中央库。",
+    "library": {
+      "label": "中央库",
+      "app": "应用内",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "个文件"
+    },
+    "time": {
+      "library": "中央库:",
+      "agent": "Agent:"
+    },
+    "newer": {
+      "central": "中央库较新",
+      "agent": "Agent 副本较新"
+    },
+    "state": {
+      "same": "已同步",
+      "centralOnly": "仅中央库",
+      "agentOnly": "仅 Agent",
+      "differs": "有差异",
+      "inLibrary": "在中央库"
+    },
+    "actions": {
+      "reveal": "在文件管理器中显示",
+      "import": "从文件夹导入…",
+      "rescan": "重新扫描",
+      "pull": "拉取 ←",
+      "push": "推送 →",
+      "pushAll": "推送到全部 Agent",
+      "diff": "对比",
+      "delete": "从中央库删除"
+    },
+    "detail": {
+      "noDescription": "暂无描述。"
+    },
+    "confirm": {
+      "pushAll": "用中央库的副本覆盖每个 Agent 中的该技能？",
+      "delete": "从中央库删除该技能？各 Agent 的副本不受影响。",
+      "overwriteAgent": "用中央库的副本覆盖该 Agent 的副本？",
+      "overwriteLibrary": "用该 Agent 的副本覆盖中央库的副本？",
+      "merge": "将挑选的 Agent 文件应用到中央库副本？该 Agent 的副本不受影响。",
+      "cancel": "取消"
+    },
+    "diff": {
+      "title": "变更",
+      "close": "关闭",
+      "empty": "没有文件级差异。",
+      "added": "新增",
+      "modified": "修改",
+      "deleted": "删除",
+      "binary": "二进制",
+      "expand": "查看文件内容",
+      "collapse": "收起文件内容",
+      "library": "中央库",
+      "agent": "Agent",
+      "useLibrary": "用中央库",
+      "useAgent": "用 Agent",
+      "merge": "应用合并",
+      "mergeHint": "标为「用 Agent」的文件会写入中央库；其余保留中央库版本。",
+      "previewAbsent": "该侧不存在此文件。",
+      "previewBinary": "二进制文件 —— 无法预览。",
+      "previewLoading": "加载中……",
+      "previewError": "无法加载预览。",
+      "previewTruncated": "预览已截断（文件较大）。"
+    },
+    "errors": {
+      "INVALID_PARAMS": "部分信息无效，请重试。",
+      "NOT_FOUND": "该技能已不存在。",
+      "PERMISSION_DENIED": "该操作不被允许，或该技能包含无法安全同步的文件。",
+      "PRECONDITION_FAILED": "该技能过大，无法同步。",
+      "UNSUPPORTED_CAPABILITY": "该 Agent 没有已知的技能目录。",
+      "INTERNAL": "出了点问题，请重试。"
+    }
   }
 }

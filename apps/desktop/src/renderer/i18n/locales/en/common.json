@@ -10,6 +10,8 @@
     "menu": "Menu",
     "menuItems": {
       "settings": "Settings",
+      "usage": "Usage",
+      "skills": "Skills",
       "checkForUpdates": "Check for Updates",
       "about": "About"
     }
@@ -94,5 +96,214 @@
     "chrome": "Chrome",
     "node": "Node",
     "loading": "Loading…"
+  },
+  "providers": {
+    "title": "Providers",
+    "subtitle": "Add a provider once, then point each agent at the provider and model it should use.",
+    "addProvider": "Add provider",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "Agents"
+    },
+    "pool": {
+      "heading": "Provider pool",
+      "empty": "No providers yet. Add one to get started."
+    },
+    "fields": {
+      "name": "Name",
+      "apiFormat": "API format",
+      "baseUrl": "Base URL",
+      "apiKey": "API key",
+      "models": "Models",
+      "modelId": "Model ID",
+      "modelAlias": "Alias",
+      "notes": "Notes"
+    },
+    "form": {
+      "addTitle": "Add provider",
+      "editTitle": "Edit provider",
+      "preset": "Preset",
+      "presetNone": "Custom…",
+      "apiKeyKeep": "Leave blank to keep the stored key",
+      "addModel": "Add model",
+      "removeModel": "Remove model",
+      "modelIdPlaceholder": "model-id",
+      "modelAliasPlaceholder": "Alias (optional)",
+      "aliasHint": "Alias: a shorter or agent-consistent name written to the agent instead of the model ID (e.g. a long id shortened, or a gateway's custom name). Falls back to the model ID when blank.",
+      "loadModels": "Load models",
+      "loadingModels": "Loading…",
+      "loadModelsEmpty": "The provider returned no models.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "showKey": "Show",
+      "hideKey": "Hide",
+      "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace."
+    },
+    "card": {
+      "models": "Models",
+      "keySet": "Key stored",
+      "keyMissing": "No key",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete this provider?",
+      "confirmYes": "Delete"
+    },
+    "agent": {
+      "installed": "Installed",
+      "notInstalled": "Not detected",
+      "unbound": "Not configured",
+      "change": "Change",
+      "restoreDefault": "Restore default",
+      "restoreConfirm": "Restore this agent's config to before AiOpt?"
+    },
+    "binding": {
+      "title": "Choose provider",
+      "help": "Pick a provider and model, then Apply.",
+      "noProviders": "Add a provider first.",
+      "needsProxy": "Needs proxy",
+      "modelHint": "Model (optional — defaults to the first, change anytime)",
+      "useDefault": "Use default",
+      "selectProviderHint": "Select a provider on the left to see its models.",
+      "searchModels": "Search models…",
+      "noModelMatch": "No models match.",
+      "bound": "Currently bound",
+      "apply": "Apply",
+      "restoreDefaultRow": "Default"
+    },
+    "errors": {
+      "INVALID_PARAMS": "Some details are invalid. Check the fields and try again.",
+      "NOT_FOUND": "That provider or model no longer exists.",
+      "ALREADY_EXISTS": "A provider with that id already exists.",
+      "PRECONDITION_FAILED": "This provider's format needs a proxy for this agent (coming later).",
+      "PERMISSION_DENIED": "That action isn't permitted.",
+      "UNSUPPORTED_CAPABILITY": "This agent can't be configured yet.",
+      "UNAUTHORIZED": "The provider rejected the API key. Check the key and try again.",
+      "UPSTREAM_ERROR": "Couldn't load models from the provider. Check the Base URL and try again.",
+      "INTERNAL": "Something went wrong. Try again."
+    }
+  },
+  "usage": {
+    "title": "Usage",
+    "subtitle": "Token and request counts for traffic AiOpt routed through the translation proxy.",
+    "scopeNote": "Only cross-format bindings run through the proxy, so only they are measured — same-format direct bindings bypass AiOpt and aren't counted. History is kept for 90 days (UTC).",
+    "close": "Close",
+    "empty": "No usage recorded yet. Bind an agent to a provider of a different API format and run a request — same-format direct bindings bypass the proxy and aren't measured.",
+    "totals": {
+      "requests": "Requests",
+      "successRate": "Success rate",
+      "inputTokens": "Input tokens",
+      "outputTokens": "Output tokens",
+      "totalTokens": "Total tokens"
+    },
+    "chart": {
+      "title": "Daily tokens",
+      "empty": "No daily data."
+    },
+    "breakdown": {
+      "byProvider": "By provider",
+      "byAgent": "By agent",
+      "byModel": "By model"
+    },
+    "table": {
+      "name": "Name",
+      "requests": "Requests",
+      "inputTokens": "Input",
+      "outputTokens": "Output",
+      "totalTokens": "Total"
+    },
+    "clear": "Clear usage",
+    "clearConfirm": "Clear all recorded usage?",
+    "clearConfirmYes": "Clear",
+    "clearCancel": "Cancel"
+  },
+  "skills": {
+    "title": "Skills",
+    "subtitle": "Collect skills from each agent's home directory into one central library, then sync them back out.",
+    "close": "Close",
+    "skill": "Skill",
+    "central": "Library",
+    "empty": "No skills found yet.",
+    "emptyHint": "Import a skill folder, or pull one an agent already has into the library.",
+    "library": {
+      "label": "Central library",
+      "app": "In app",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "files"
+    },
+    "time": {
+      "library": "Library:",
+      "agent": "Agent:"
+    },
+    "newer": {
+      "central": "Library is newer",
+      "agent": "Agent copy is newer"
+    },
+    "state": {
+      "same": "In sync",
+      "centralOnly": "Library only",
+      "agentOnly": "Agent only",
+      "differs": "Differs",
+      "inLibrary": "In library"
+    },
+    "actions": {
+      "reveal": "Reveal in file manager",
+      "import": "Import from folder…",
+      "rescan": "Rescan",
+      "pull": "Pull ←",
+      "push": "Push →",
+      "pushAll": "Push to all agents",
+      "diff": "Diff",
+      "delete": "Delete from library"
+    },
+    "detail": {
+      "noDescription": "No description."
+    },
+    "confirm": {
+      "pushAll": "Overwrite this skill in every agent with the library copy?",
+      "delete": "Delete this skill from the central library? Agent copies are left untouched.",
+      "overwriteAgent": "Overwrite the agent's copy with the library copy?",
+      "overwriteLibrary": "Overwrite the library copy with the agent's copy?",
+      "merge": "Apply the picked agent files to the library copy? The agent's copy is left untouched.",
+      "cancel": "Cancel"
+    },
+    "diff": {
+      "title": "Changes",
+      "close": "Close",
+      "empty": "No file-level differences.",
+      "added": "Added",
+      "modified": "Modified",
+      "deleted": "Deleted",
+      "binary": "binary",
+      "expand": "Show file contents",
+      "collapse": "Hide file contents",
+      "library": "Library",
+      "agent": "Agent",
+      "useLibrary": "Use library",
+      "useAgent": "Use agent",
+      "merge": "Apply merge",
+      "mergeHint": "Files set to “Use agent” are written to the library; the rest keep the library version.",
+      "previewAbsent": "Not present on this side.",
+      "previewBinary": "Binary file — preview unavailable.",
+      "previewLoading": "Loading…",
+      "previewError": "Couldn't load the preview.",
+      "previewTruncated": "Preview truncated (file is large)."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Some details are invalid. Try again.",
+      "NOT_FOUND": "That skill no longer exists.",
+      "PERMISSION_DENIED": "That action isn't permitted, or the skill contains files that can't be synced safely.",
+      "PRECONDITION_FAILED": "That skill is too large to sync.",
+      "UNSUPPORTED_CAPABILITY": "This agent has no known skills directory.",
+      "INTERNAL": "Something went wrong. Try again."
+    }
   }
 }

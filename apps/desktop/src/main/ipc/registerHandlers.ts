@@ -5,7 +5,7 @@
 // `register*Ipc(registry, …)`; the trusted-sender check + error sanitization
 // live in the Electron adapter (ipc/registry.ts).
 
-import { ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { createElectronIpcRegistry } from './registry';
 import { broadcastToRenderers } from './broadcast';
 import { registerConfigIpc } from '../config/configIpc';
@@ -13,6 +13,9 @@ import { registerSecretIpc } from '../secrets/secretIpc';
 import { registerAppInfoIpc } from '../app/appInfoIpc';
 import { registerAuthIpc } from '../auth/authIpc';
 import { registerUpdateIpc } from '../update/updateIpc';
+import { registerProviderIpc } from '../providers/providerIpc';
+import { registerUsageIpc } from '../usage/usageIpc';
+import { registerSkillsIpc } from '../skills/skillsIpc';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
 import {
   registerAppShortcutIpc,
@@ -23,8 +26,11 @@ import {
   getAppVersions,
   getAuthManager,
   getConfigStore,
+  getProviderManager,
   getSecretStore,
+  getSkillsStore,
   getUpdateService,
+  getUsageStore,
 } from '../services';
 
 export function registerHandlers(): void {
@@ -34,6 +40,24 @@ export function registerHandlers(): void {
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());
   registerUpdateIpc(registry, getUpdateService());
+  registerProviderIpc(registry, getProviderManager());
+  registerUsageIpc(registry, getUsageStore());
+  registerSkillsIpc(registry, getSkillsStore(), {
+    // The import SOURCE is chosen here in main via a native picker — never supplied
+    // by the renderer. A single directory; treated as one skill by the store.
+    pickImportDir: async () => {
+      const parent = BrowserWindow.getFocusedWindow() ?? undefined;
+      const result = parent
+        ? await dialog.showOpenDialog(parent, { properties: ['openDirectory'] })
+        : await dialog.showOpenDialog({ properties: ['openDirectory'] });
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0] ?? null;
+    },
+    // `dir` is resolved main-side by the store to a contained skills/library dir.
+    openPath: async (dir: string) => {
+      await shell.openPath(dir);
+    },
+  });
   const appShortcutStore = getAppShortcutStore();
   registerAppShortcutIpc(registry, appShortcutStore);
   // Synchronous first-paint theme read (its own ipcMain.on, not registry-based).

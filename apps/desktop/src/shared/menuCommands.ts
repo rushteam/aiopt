@@ -5,12 +5,15 @@
 //     never smuggle an arbitrary string past the bridge,
 //   • the renderer switches on the command to drive the UI.
 //
-// Only menu items that need the RENDERER to react live here (open Settings, run
-// an update check, show About). Pure-native items (Quit, copy/paste, window
-// roles) are handled by Electron roles and never cross to the renderer.
+// Only menu items that need the RENDERER to react live here (open Settings, show
+// the Usage view, run an update check, show About). Pure-native items (Quit,
+// copy/paste, window roles) are handled by Electron roles and never cross to the
+// renderer.
 
 export const MENU_COMMANDS = {
   openSettings: 'open-settings',
+  showUsage: 'show-usage',
+  showSkills: 'show-skills',
   checkForUpdates: 'check-for-updates',
   showAbout: 'show-about',
 } as const;

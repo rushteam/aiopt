@@ -16,6 +16,8 @@ export interface MenuLabels {
   help: string;
   /** Command items that dispatch to the renderer. */
   settings: string;
+  usage: string;
+  skills: string;
   checkForUpdates: string;
   about: string;
   /** Native role items whose label we localize. */
@@ -30,6 +32,8 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     window: 'Window',
     help: 'Help',
     settings: 'Settings…',
+    usage: 'Usage',
+    skills: 'Skills',
     checkForUpdates: 'Check for Updates…',
     about: 'About',
     quit: 'Quit',
@@ -41,6 +45,8 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     window: '窗口',
     help: '帮助',
     settings: '设置…',
+    usage: '统计',
+    skills: '技能',
     checkForUpdates: '检查更新…',
     about: '关于',
     quit: '退出',

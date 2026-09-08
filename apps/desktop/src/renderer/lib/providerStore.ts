@@ -1,0 +1,118 @@
+// Renderer-side provider store — the single copy of the pool + agent bindings the
+// whole renderer reads.
+//
+// Unlike the app-shortcut store (seeded synchronously), the snapshot is fetched
+// asynchronously via `providers.list()` on first use, then kept in step by the
+// `providers:changed` push. Writes go through main (which re-validates and applies
+// the binding to the agent's config); the returned snapshot is applied immediately,
+// and the broadcast echo re-applies it (idempotent) for other windows.
+
+import type {
+  ProviderAddRequest,
+  ProviderFetchModelsRequest,
+  ProviderUpdateRequest,
+  ProvidersSnapshot,
+} from '../../shared/ipc-channels';
+import type { AgentId, ProviderModel } from '../../shared/aiProviders';
+
+type Listener = () => void;
+
+const EMPTY: ProvidersSnapshot = { providers: [], agents: [] };
+
+let snapshot: ProvidersSnapshot = EMPTY;
+let version = 0;
+let initialized = false;
+const listeners = new Set<Listener>();
+
+function applySnapshot(next: ProvidersSnapshot): void {
+  snapshot = next;
+  version += 1;
+  listeners.forEach((listener) => listener());
+}
+
+function ensureInitialized(): void {
+  if (initialized) return;
+  initialized = true;
+  // Track pool/binding changes from any window (including our own writes' echo).
+  window.hearth.providers.onChanged(applySnapshot);
+  void window.hearth.providers.list().then(applySnapshot);
+}
+
+/** Subscribe to store changes; returns an unsubscribe fn. */
+export function subscribeProviderStore(listener: Listener): () => void {
+  ensureInitialized();
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** Monotonic version for `useSyncExternalStore` getSnapshot — bumps on every change. */
+export function getProviderStoreVersion(): number {
+  ensureInitialized();
+  return version;
+}
+
+export function getProvidersSnapshot(): ProvidersSnapshot {
+  ensureInitialized();
+  return snapshot;
+}
+
+export async function addProvider(input: ProviderAddRequest): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.add(input));
+}
+
+export async function updateProvider(input: ProviderUpdateRequest): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.update(input));
+}
+
+export async function removeProvider(id: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.remove(id));
+}
+
+export async function setAgentBinding(
+  agentId: AgentId,
+  providerId: string,
+  modelId: string,
+): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.setBinding(agentId, providerId, modelId));
+}
+
+export async function clearAgentBinding(agentId: AgentId): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.clearBinding(agentId));
+}
+
+/**
+ * Undo AiOpt's takeover of an agent: restore its native config to the pre-AiOpt
+ * state and clear the binding. Its stored API keys are untouched.
+ */
+export async function restoreAgentDefault(agentId: AgentId): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.hearth.providers.restoreDefault(agentId));
+}
+
+/**
+ * Fetch a provider's models from its API. Read-only — it discovers models for the
+ * add/edit form and does NOT mutate the pool, so it never applies a snapshot.
+ */
+export async function fetchProviderModels(
+  input: ProviderFetchModelsRequest,
+): Promise<ProviderModel[]> {
+  ensureInitialized();
+  const { models } = await window.hearth.providers.fetchModels(input);
+  return models;
+}
+
+/**
+ * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Read-only, does not
+ * touch the pool. The caller must hold the returned value transiently only — never
+ * persist or log it. Null when the provider has no key stored.
+ */
+export async function revealProviderKey(providerId: string): Promise<string | null> {
+  ensureInitialized();
+  const { key } = await window.hearth.providers.revealKey(providerId);
+  return key;
+}

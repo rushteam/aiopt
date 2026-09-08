@@ -33,7 +33,8 @@ import {
   setAppShortcutOverride,
   subscribeAppShortcutStore,
 } from '../../lib/appShortcutStore';
-import { token } from '../../themes/tokens';
+import { token, fontSize, radius, space } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
 
 function platformFamily(platform: string): 'mac' | 'windows' | 'other' {
@@ -131,7 +132,7 @@ export function ShortcutsSection() {
           margin: '0 0 16px',
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 18 }}>{t('shortcuts.title')}</h2>
+        <h2 style={{ margin: 0, fontSize: fontSize['2xl'] }}>{t('shortcuts.title')}</h2>
         {hasOverrides && (
           <button
             type="button"
@@ -139,6 +140,7 @@ export function ShortcutsSection() {
               setError(null);
               void resetAllAppShortcuts().catch(() => setError('shortcuts.errors.saveFailed'));
             }}
+            {...hoverBackground('transparent', token('surfaceHover'))}
             style={ghostButtonStyle()}
           >
             {t('shortcuts.resetAll')}
@@ -146,7 +148,7 @@ export function ShortcutsSection() {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: space.md }}>
         {definitions.map((def) => (
           <ShortcutRow
             key={def.id}
@@ -197,24 +199,26 @@ function ShortcutRow({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
+        gap: space.xl,
         padding: '10px 12px',
-        borderRadius: 8,
+        borderRadius: radius.md,
         border: `1px solid ${token('border')}`,
         background: token('surface'),
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14 }}>{t(def.labelKey)}</div>
-        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>{t(def.descriptionKey)}</div>
+        <div style={{ fontSize: fontSize.md }}>{t(def.labelKey)}</div>
+        <div style={{ fontSize: fontSize.sm, color: token('textMuted'), marginTop: 2 }}>
+          {t(def.descriptionKey)}
+        </div>
         {recording && (
-          <div style={{ fontSize: 12, marginTop: 4, color: token('accent') }}>
+          <div style={{ fontSize: fontSize.sm, marginTop: 4, color: error ? token('danger') : token('accent') }}>
             {error ? t(error) : t('shortcuts.recording')}
           </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
         {recording ? (
           <kbd style={comboStyle()}>{t('shortcuts.recordingHint')}</kbd>
         ) : combos.length > 0 ? (
@@ -224,21 +228,36 @@ function ShortcutRow({
             </kbd>
           ))
         ) : (
-          <span style={{ fontSize: 13, opacity: 0.5 }}>{t('shortcuts.none')}</span>
+          <span style={{ fontSize: fontSize.base, color: token('textMuted') }}>{t('shortcuts.none')}</span>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" onClick={onRecord} style={ghostButtonStyle()}>
+      <div style={{ display: 'flex', gap: space.sm }}>
+        <button
+          type="button"
+          onClick={onRecord}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={ghostButtonStyle()}
+        >
           {t('shortcuts.edit')}
         </button>
         {combos.length > 0 && (
-          <button type="button" onClick={onDisable} style={ghostButtonStyle()}>
+          <button
+            type="button"
+            onClick={onDisable}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={ghostButtonStyle()}
+          >
             {t('shortcuts.disable')}
           </button>
         )}
         {overridden && (
-          <button type="button" onClick={onReset} style={ghostButtonStyle()}>
+          <button
+            type="button"
+            onClick={onReset}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={ghostButtonStyle()}
+          >
             {t('shortcuts.reset')}
           </button>
         )}
@@ -250,9 +269,9 @@ function ShortcutRow({
 function comboStyle(): CSSProperties {
   return {
     fontFamily: 'ui-monospace, monospace',
-    fontSize: 13,
+    fontSize: fontSize.base,
     padding: '2px 8px',
-    borderRadius: 6,
+    borderRadius: radius.sm,
     border: `1px solid ${token('border')}`,
     background: token('bg'),
     color: token('text'),
@@ -263,12 +282,12 @@ function comboStyle(): CSSProperties {
 function ghostButtonStyle(): CSSProperties {
   return {
     padding: '4px 10px',
-    borderRadius: 6,
+    borderRadius: radius.sm,
     border: `1px solid ${token('border')}`,
     background: 'transparent',
     color: token('text'),
     cursor: 'pointer',
-    fontSize: 13,
+    fontSize: fontSize.base,
     whiteSpace: 'nowrap',
   };
 }

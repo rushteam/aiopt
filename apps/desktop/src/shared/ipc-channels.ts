@@ -10,6 +10,16 @@ import type {
   AppShortcutId,
   AppShortcutOverrides,
 } from './appShortcuts';
+import type { AgentId, ApiFormat, AgentBinding, ProviderModel } from './aiProviders';
+import type { UsageSnapshot } from './usageStats';
+import type {
+  SkillDiffResult,
+  SkillFileContent,
+  SkillRevealRef,
+  SkillScope,
+  SkillsLibraryLocation,
+  SkillsSnapshot,
+} from './skills';
 
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
@@ -53,6 +63,53 @@ export const IPC_CHANNELS = {
   appShortcutsSetOverride: 'app-shortcuts:set-override',
   appShortcutsClearOverride: 'app-shortcuts:clear-override',
   appShortcutsResetAll: 'app-shortcuts:reset-all',
+
+  // AI providers. The renderer manages the global provider pool and binds each
+  // agent to a provider+model. An API key may be SENT here to be stored (encrypted,
+  // main-only), but NO channel ever returns key plaintext — reads carry only the
+  // derived `hasKey` flag. See credentials-and-local-storage.md.
+  providersList: 'providers:list',
+  providersAdd: 'providers:add',
+  providersUpdate: 'providers:update',
+  providersRemove: 'providers:remove',
+  providersSetBinding: 'providers:set-binding',
+  providersClearBinding: 'providers:clear-binding',
+  // Undo AiOpt's takeover of one agent: restore its native config file(s) to the
+  // pre-AiOpt state and clear the binding. Touches config files on disk (guarded by
+  // the agent-config allowlist) — never the stored key.
+  providersRestoreDefault: 'providers:restore-default',
+  // Fetch the model catalog from a provider's own API (main-side outbound call).
+  // A key may be SENT (or resolved main-side from an existing provider), but the
+  // result carries ONLY the model list — never the key. See modelCatalog.ts.
+  providersFetchModels: 'providers:fetch-models',
+  // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
+  // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
+  // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
+  // §1 otherwise forbids; it exists only because the user asked to view saved keys.
+  // The renderer must hold the returned value transiently and never persist/log it.
+  providersRevealKey: 'providers:reveal-key',
+
+  // Usage statistics. Read the aggregated snapshot of proxied traffic, or clear the
+  // history. The recorded events carry only counts + identifiers (never content, keys,
+  // or token plaintext) — see shared/usageStats.ts.
+  usageGet: 'usage:get',
+  usageClear: 'usage:clear',
+
+  // Skills. AiOpt is the central library; these channels discover skills across each
+  // agent's global skills dir and sync them. The renderer refers to a skill only by
+  // SYMBOLIC coordinates (agentId + validated name) — NEVER an absolute path; main
+  // resolves the real path from base dirs it holds (see main/skills/skillsPaths.ts).
+  // `import` opens a folder picker in MAIN (the source path never comes from the
+  // renderer); `reveal` opens a strictly-allowlisted dir in the OS file manager.
+  skillsGet: 'skills:get',
+  skillsPull: 'skills:pull',
+  skillsPush: 'skills:push',
+  skillsImport: 'skills:import',
+  skillsDelete: 'skills:delete',
+  skillsDiff: 'skills:diff',
+  skillsFileContent: 'skills:file-content',
+  skillsMerge: 'skills:merge',
+  skillsReveal: 'skills:reveal',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -120,6 +177,24 @@ export const IPC_EVENTS = {
    * with the native menu.
    */
   appShortcutsChanged: 'app-shortcuts:changed',
+  /**
+   * The provider pool or an agent binding changed; payload is `ProvidersSnapshot`
+   * (safe — providers carry only `hasKey`, never the key plaintext). Pushed after
+   * any add/update/remove/bind so every window mirrors the pool.
+   */
+  providersChanged: 'providers:changed',
+  /**
+   * The usage-statistics snapshot changed; payload is `UsageSnapshot` (counts +
+   * identifiers only, no content/keys/tokens). Pushed (throttled) after usage is
+   * recorded or cleared so an open statistics view stays live.
+   */
+  usageChanged: 'usage:changed',
+  /**
+   * The skills sync matrix changed; payload is `SkillsSnapshot` (skill names, sizes,
+   * and sync states — no file contents). Pushed (throttled) after any pull/push/
+   * import/delete so an open Skills view rescans without polling.
+   */
+  skillsChanged: 'skills:changed',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -138,6 +213,12 @@ export type ThemePreference = 'system' | 'light' | 'dark';
  */
 export interface PreferencesShape {
   theme: ThemePreference;
+  /**
+   * Where the central Skills library lives. `'app'` = inside userData; `'home'` =
+   * an independent `~/.aiopt/skills`. This is an ENUM, not a path: the renderer
+   * never supplies an absolute path — main resolves it (see main/paths.ts).
+   */
+  skillsLibrary: SkillsLibraryLocation;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry
@@ -262,6 +343,163 @@ export interface AppShortcutsChangedEvent {
   overrides: AppShortcutOverrides;
 }
 
+// --- AI provider wire contract --------------------------------------------
+//
+// The renderer never sees a key's plaintext. A Provider is surfaced as a
+// `ProviderSummary` that swaps the (absent) key for a derived `hasKey` flag; keys
+// are only SENT (add/update) to be stored encrypted main-side.
+
+/** A pool provider as the renderer sees it: no key, just whether one is stored. */
+export interface ProviderSummary {
+  id: string;
+  name: string;
+  apiFormat: ApiFormat;
+  baseUrl: string;
+  models: ProviderModel[];
+  notes?: string;
+  createdAt: number;
+  hasKey: boolean;
+}
+
+/** A target agent as the renderer sees it: its definition plus live status. */
+export interface AgentSummary {
+  id: AgentId;
+  name: string;
+  acceptedFormats: ApiFormat[];
+  mode: 'exclusive' | 'additive';
+  installed: boolean;
+  binding: AgentBinding | null;
+}
+
+/** The full renderer-visible view of the pool + agents. */
+export interface ProvidersSnapshot {
+  providers: ProviderSummary[];
+  agents: AgentSummary[];
+}
+
+/** Create a provider. `apiKey` (if present) is stored encrypted main-side, never echoed back. */
+export interface ProviderAddRequest {
+  name: string;
+  apiFormat: ApiFormat;
+  baseUrl: string;
+  models: ProviderModel[];
+  notes?: string;
+  apiKey?: string;
+}
+
+/**
+ * Update a provider. Omitted fields are unchanged. `apiKey`: a string replaces the
+ * stored key, `null` clears it, `undefined` (omitted) leaves it as-is.
+ */
+export interface ProviderUpdateRequest {
+  id: string;
+  name?: string;
+  apiFormat?: ApiFormat;
+  baseUrl?: string;
+  models?: ProviderModel[];
+  notes?: string;
+  apiKey?: string | null;
+}
+
+export interface ProviderRemoveRequest {
+  id: string;
+}
+
+/** Point an agent at a provider+model. Rejected (PRECONDITION_FAILED) if formats are incompatible. */
+export interface ProviderSetBindingRequest {
+  agentId: AgentId;
+  providerId: string;
+  modelId: string;
+}
+
+export interface ProviderClearBindingRequest {
+  agentId: AgentId;
+}
+
+/** Restore one agent's native config to its pre-AiOpt state and clear its binding. */
+export interface ProviderRestoreDefaultRequest {
+  agentId: AgentId;
+}
+
+/**
+ * Fetch a provider's available models from its own API. The key is resolved
+ * main-side: a non-empty `apiKey` (freshly typed) takes priority; otherwise, if
+ * `providerId` names an existing provider, its stored key is used. The key is
+ * never echoed back — only the discovered models are returned.
+ */
+export interface ProviderFetchModelsRequest {
+  apiFormat: ApiFormat;
+  baseUrl: string;
+  apiKey?: string;
+  providerId?: string;
+}
+
+export interface ProviderFetchModelsResult {
+  models: ProviderModel[];
+}
+
+/**
+ * GATED: reveal a provider's stored key in plaintext to the renderer. Unlike every
+ * other provider channel, the result DOES carry the key — this is the whole point,
+ * and it knowingly crosses the boundary credentials-and-local-storage.md §1 forbids.
+ * `key` is null when the provider has none stored.
+ */
+export interface ProviderRevealKeyRequest {
+  providerId: string;
+}
+
+export interface ProviderRevealKeyResult {
+  key: string | null;
+}
+
+// --- Skills wire contract -------------------------------------------------
+//
+// The renderer names a skill by (agentId, name) only — never a path. Mutations
+// return the fresh `SkillsSnapshot` so the caller updates in one round-trip (the
+// throttled `skillsChanged` push keeps OTHER windows in step).
+
+/** Pull an agent's copy of a skill into the central library (agent → central). */
+export interface SkillsPullRequest {
+  agentId: AgentId;
+  name: string;
+}
+
+/** Push the central copy of a skill out to one or more agents (central → agents). */
+export interface SkillsPushRequest {
+  name: string;
+  agentIds: AgentId[];
+}
+
+export interface SkillsDeleteRequest {
+  name: string;
+}
+
+export interface SkillsDiffRequest {
+  agentId: AgentId;
+  name: string;
+}
+
+/** Read one differing file's content (from `side`) for the diff preview. */
+export interface SkillsFileContentRequest {
+  agentId: AgentId;
+  name: string;
+  side: SkillScope;
+  relPath: string;
+}
+
+/** Merge a differing skill back into the central library, taking `agentPicks` from the agent. */
+export interface SkillsMergeRequest {
+  agentId: AgentId;
+  name: string;
+  agentPicks: string[];
+}
+
+/** Result of an import: the fresh snapshot plus the imported skill name (null if cancelled). */
+export interface SkillsImportResult {
+  snapshot: SkillsSnapshot;
+  imported: string | null;
+}
+
 export interface IpcContract {
   [IPC_CHANNELS.ping]: { request: PingRequest; result: PingResult };
   [IPC_CHANNELS.configGetAll]: { request: void; result: PreferencesShape };
@@ -288,4 +526,39 @@ export interface IpcContract {
     request: void;
     result: AppShortcutsMutationResult;
   };
+  [IPC_CHANNELS.providersList]: { request: void; result: ProvidersSnapshot };
+  [IPC_CHANNELS.providersAdd]: { request: ProviderAddRequest; result: ProvidersSnapshot };
+  [IPC_CHANNELS.providersUpdate]: { request: ProviderUpdateRequest; result: ProvidersSnapshot };
+  [IPC_CHANNELS.providersRemove]: { request: ProviderRemoveRequest; result: ProvidersSnapshot };
+  [IPC_CHANNELS.providersSetBinding]: {
+    request: ProviderSetBindingRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersClearBinding]: {
+    request: ProviderClearBindingRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersRestoreDefault]: {
+    request: ProviderRestoreDefaultRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersFetchModels]: {
+    request: ProviderFetchModelsRequest;
+    result: ProviderFetchModelsResult;
+  };
+  [IPC_CHANNELS.providersRevealKey]: {
+    request: ProviderRevealKeyRequest;
+    result: ProviderRevealKeyResult;
+  };
+  [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
+  [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };
+  [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsImport]: { request: void; result: SkillsImportResult };
+  [IPC_CHANNELS.skillsDelete]: { request: SkillsDeleteRequest; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsDiff]: { request: SkillsDiffRequest; result: SkillDiffResult };
+  [IPC_CHANNELS.skillsFileContent]: { request: SkillsFileContentRequest; result: SkillFileContent };
+  [IPC_CHANNELS.skillsMerge]: { request: SkillsMergeRequest; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsReveal]: { request: SkillRevealRef; result: Record<string, never> };
 }

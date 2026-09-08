@@ -6,7 +6,8 @@
 // the About section).
 
 import { useState, type ComponentType } from 'react';
-import { token } from '../../themes/tokens';
+import { token, fontSize, radius, space } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { AppearanceSection } from './AppearanceSection';
 import { AccountSection } from './AccountSection';
@@ -58,24 +59,32 @@ export function SettingsView({
         style={{
           borderRight: `1px solid ${token('border')}`,
           background: token('surface'),
-          padding: 12,
+          padding: space.lg,
           display: 'flex',
           flexDirection: 'column',
-          gap: 4,
+          gap: space.xs,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <strong style={{ fontSize: 13, color: token('textMuted') }}>{t('settings.title')}</strong>
+          <strong style={{ fontSize: fontSize.base, color: token('textMuted') }}>{t('settings.title')}</strong>
           <button
             type="button"
             onClick={onClose}
             aria-label={t('settings.close')}
+            {...hoverBackground('transparent', token('surfaceHover'))}
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              padding: 0,
+              borderRadius: radius.sm,
               border: 'none',
               background: 'transparent',
               color: token('textMuted'),
               cursor: 'pointer',
-              fontSize: 16,
+              fontSize: fontSize.xl,
               lineHeight: 1,
             }}
           >
@@ -89,14 +98,19 @@ export function SettingsView({
               key={section.id}
               type="button"
               onClick={() => setActive(section.id)}
+              {...hoverBackground(
+                selected ? token('surfaceHover') : 'transparent',
+                token('surfaceHover'),
+              )}
               style={{
                 textAlign: 'left',
                 padding: '8px 10px',
-                borderRadius: 6,
+                borderRadius: radius.sm,
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: 14,
-                color: token('text'),
+                fontSize: fontSize.md,
+                fontWeight: selected ? 600 : 400,
+                color: selected ? token('accent') : token('text'),
                 background: selected ? token('surfaceHover') : 'transparent',
               }}
             >
@@ -105,7 +119,7 @@ export function SettingsView({
           );
         })}
       </nav>
-      <div style={{ padding: 24, overflowY: 'auto' }}>
+      <div style={{ padding: space['2xl'], overflowY: 'auto' }}>
         <ActivePanel />
       </div>
     </div>

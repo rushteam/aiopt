@@ -5,7 +5,8 @@
 
 import { useEffect, useState } from 'react';
 import type { UpdateStatus } from '../../../shared/ipc-channels';
-import { token } from '../../themes/tokens';
+import { token, fontSize, radius } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
 export function UpdateSection() {
@@ -28,14 +29,14 @@ export function UpdateSection() {
 
   return (
     <section>
-      <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>{t('updates.title')}</h2>
-      <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+      <h2 style={{ margin: '0 0 16px', fontSize: fontSize['2xl'] }}>{t('updates.title')}</h2>
+      <p style={{ margin: '0 0 8px', fontSize: fontSize.md }}>
         {t('updates.currentVersion')}{' '}
         <strong style={{ fontFamily: 'ui-monospace, monospace' }}>
           {status?.currentVersion ?? '…'}
         </strong>
       </p>
-      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: 13 }}>
+      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: fontSize.base }}>
         {t(`updates.state.${status?.state ?? 'idle'}`)}
         {status?.state === 'update-available' && status.nextVersion
           ? ` (${status.nextVersion})`
@@ -45,14 +46,16 @@ export function UpdateSection() {
         type="button"
         onClick={() => void window.hearth.update.check()}
         disabled={checking}
+        {...hoverBackground(token('surface'), token('surfaceHover'))}
         style={{
           padding: '8px 16px',
-          borderRadius: 8,
+          borderRadius: radius.md,
           border: `1px solid ${token('border')}`,
           background: token('surface'),
           color: token('text'),
           cursor: checking ? 'default' : 'pointer',
-          fontSize: 14,
+          opacity: checking ? 0.5 : 1,
+          fontSize: fontSize.md,
         }}
       >
         {checking ? t('updates.checking') : t('updates.check')}

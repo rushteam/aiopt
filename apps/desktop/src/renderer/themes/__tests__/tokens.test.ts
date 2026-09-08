@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { TOKENS, applyThemeVariables, cssVarName, type StyleTarget, type TokenName } from '../tokens';
+import {
+  ELEVATION,
+  TOKENS,
+  applyThemeVariables,
+  cssVarName,
+  elevationVarName,
+  type ElevationName,
+  type StyleTarget,
+  type TokenName,
+} from '../tokens';
 import { resolveTheme } from '../resolveTheme';
 
 /** A CSSOM-shaped fake so applyThemeVariables tests without a DOM. */
@@ -45,6 +54,27 @@ describe('design tokens (dual-mode gate)', () => {
     expect(target.props[cssVarName('bg')]).toBe(TOKENS.bg.light);
     applyThemeVariables('dark', target);
     expect(target.props[cssVarName('bg')]).toBe(TOKENS.bg.dark);
+  });
+});
+
+describe('elevation (mode-aware depth)', () => {
+  it('every elevation defines a distinct light and dark shadow', () => {
+    for (const name of Object.keys(ELEVATION) as ElevationName[]) {
+      const value = ELEVATION[name];
+      expect(value.light, `${name}.light`).toMatch(/\S/);
+      expect(value.dark, `${name}.dark`).toMatch(/\S/);
+      // A dark page needs a heavier cast than a light one; identical values almost
+      // always mean the dark tuning was forgotten.
+      expect(value.light, `${name} light === dark`).not.toBe(value.dark);
+    }
+  });
+
+  it('applies elevations via the CSSOM alongside the color tokens', () => {
+    const target = fakeTarget();
+    applyThemeVariables('dark', target);
+    for (const name of Object.keys(ELEVATION) as ElevationName[]) {
+      expect(target.props[elevationVarName(name)]).toBe(ELEVATION[name].dark);
+    }
   });
 });
 

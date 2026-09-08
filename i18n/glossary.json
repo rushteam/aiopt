@@ -34,6 +34,62 @@
       "note": "An IPC event whose origin is verified to be the app's own top-level renderer, using only fields taken from event.sender / event.senderFrame — never renderer-reported values. Term still under discussion.",
       "translations": { "zh-CN": "可信发送方" },
       "forbidden": {}
+    },
+    {
+      "id": "provider",
+      "en": "Provider",
+      "status": "proposed",
+      "note": "An AI model source entered once into the global pool: a name, an API format, a base URL, an API key, and a model list. Reused across agents rather than re-entered per agent. Not 'vendor' or 'service' in UI copy.",
+      "translations": { "zh-CN": "供应商" },
+      "forbidden": { "zh-CN": ["厂商", "服务商"] }
+    },
+    {
+      "id": "official-provider",
+      "en": "Official provider",
+      "status": "proposed",
+      "note": "A provider AiOpt ships preconfigured (Anthropic, OpenAI, etc.), seeded into the pool on first launch. Its shipped config can be restored to factory values after edits. Recognized by a stable id, distinct from a user-added custom provider. Prefer 'Official', not 'default', 'native', or 'built-in' in UI copy.",
+      "translations": { "zh-CN": "官方供应商" },
+      "forbidden": { "zh-CN": ["默认供应商", "内置供应商", "原生供应商"] }
+    },
+    {
+      "id": "target-agent",
+      "en": "Agent",
+      "status": "proposed",
+      "note": "A target AI coding tool that AiOpt configures (Claude Code, Codex, Gemini CLI, Grok, OpenCode, pi). Each agent binds to one provider+model from the pool. Kept as 'Agent' in UI, not 'client' or 'tool'.",
+      "translations": { "zh-CN": "Agent" },
+      "forbidden": { "zh-CN": ["客户端"] }
+    },
+    {
+      "id": "api-format",
+      "en": "API format",
+      "status": "proposed",
+      "note": "The wire protocol a provider speaks and an agent accepts — one of anthropic, openai (Chat Completions), openai-responses (OpenAI Responses), gemini. Direct binding requires the provider's format to be in the agent's accepted set; cross-format is routed through the translation proxy. Not 'protocol' or 'interface type' in UI copy.",
+      "translations": { "zh-CN": "接口格式" },
+      "forbidden": {}
+    },
+    {
+      "id": "openai-responses-format",
+      "en": "OpenAI Responses",
+      "status": "proposed",
+      "note": "The OpenAI Responses API dialect (/responses, input/output items, reasoning items) — distinct from the older OpenAI Chat Completions dialect (labeled just 'OpenAI'). Agents that natively speak Responses (Codex, Grok) accept this format. Keep the two OpenAI dialects labeled distinctly in UI copy; do not collapse both to 'OpenAI'.",
+      "translations": { "zh-CN": "OpenAI Responses" },
+      "forbidden": {}
+    },
+    {
+      "id": "skill",
+      "en": "Skill",
+      "status": "proposed",
+      "note": "A reusable unit of agent capability, stored as a directory containing a SKILL.md (name + description). AiOpt keeps a central library of skills and syncs them with each agent's home skills directory. Term still under discussion.",
+      "translations": { "zh-CN": "技能" },
+      "forbidden": {}
+    },
+    {
+      "id": "merge",
+      "en": "Merge",
+      "status": "proposed",
+      "note": "Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.",
+      "translations": { "zh-CN": "合并" },
+      "forbidden": {}
     }
   ]
 }

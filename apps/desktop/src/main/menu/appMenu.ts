@@ -69,6 +69,14 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
     registerAccelerator,
     click: () => dispatchToRenderer(MENU_COMMANDS.openSettings),
   };
+  const usageItem: MenuItemConstructorOptions = {
+    label: labels.usage,
+    click: () => dispatchToRenderer(MENU_COMMANDS.showUsage),
+  };
+  const skillsItem: MenuItemConstructorOptions = {
+    label: labels.skills,
+    click: () => dispatchToRenderer(MENU_COMMANDS.showSkills),
+  };
   const updatesItem: MenuItemConstructorOptions = {
     label: labels.checkForUpdates,
     accelerator: acceleratorFor('check-for-updates'),
@@ -89,6 +97,8 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
         aboutItem,
         { type: 'separator' },
         settingsItem,
+        usageItem,
+        skillsItem,
         updatesItem,
         { type: 'separator' },
         { role: 'services' },
@@ -106,7 +116,7 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
     label: labels.file,
     submenu: isMac
       ? [{ role: 'close' }]
-      : [settingsItem, { type: 'separator' }, { label: labels.quit, role: 'quit' }],
+      : [settingsItem, usageItem, skillsItem, { type: 'separator' }, { label: labels.quit, role: 'quit' }],
   });
 
   template.push({ label: labels.edit, role: 'editMenu' });

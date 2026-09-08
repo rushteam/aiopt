@@ -11,7 +11,12 @@ export type IpcErrorCode =
   | 'ALREADY_EXISTS'
   | 'PRECONDITION_FAILED'
   | 'PERMISSION_DENIED'
-  | 'UNSUPPORTED_CAPABILITY';
+  | 'UNSUPPORTED_CAPABILITY'
+  // A call to an external upstream service failed. `UNAUTHORIZED`: the upstream
+  // rejected our credential (401/403). `UPSTREAM_ERROR`: it was unreachable or
+  // returned an error/unreadable response. Both are generic and reusable.
+  | 'UNAUTHORIZED'
+  | 'UPSTREAM_ERROR';
 
 /** The serializable error shape that crosses the IPC boundary to the renderer. */
 export interface IpcError {
@@ -27,6 +32,8 @@ const IPC_ERROR_CODES: ReadonlySet<IpcErrorCode> = new Set<IpcErrorCode>([
   'PRECONDITION_FAILED',
   'PERMISSION_DENIED',
   'UNSUPPORTED_CAPABILITY',
+  'UNAUTHORIZED',
+  'UPSTREAM_ERROR',
 ]);
 
 export function isIpcErrorCode(code: unknown): code is IpcErrorCode {

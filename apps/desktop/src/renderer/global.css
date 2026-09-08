@@ -23,3 +23,35 @@ body {
   color: var(--color-text);
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+/* Keyboard-focus affordance (WCAG 2.4.7). The app's controls are custom-styled
+ * <button>s on themed backgrounds, where the UA default outline is low-contrast or
+ * detached; this gives every focusable element ONE consistent ring driven by the
+ * `focusRing` token (so it re-themes with the document). :focus-visible fires only
+ * for keyboard/programmatic focus, so mouse clicks don't show a ring. Inline styles
+ * can't express :focus-visible, so it lives here — a same-origin bundled sheet that
+ * satisfies `style-src 'self'` with no CSP relaxation. */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Visually-hidden but screen-reader-available text. The standard clip pattern —
+ * used to voice state that is otherwise conveyed only by a visual cue (e.g. the
+ * "currently bound" status dot). Can't be expressed by inline style, so it lives
+ * here alongside the other cross-cutting a11y rules. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

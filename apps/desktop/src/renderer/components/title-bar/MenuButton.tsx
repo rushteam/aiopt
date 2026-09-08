@@ -8,14 +8,23 @@
 // its own always-visible entry point for these commands. It is interactive, so it
 // opts out of the window drag region (`no-drag`) inside the draggable strip.
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { token } from '../../themes/tokens';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
+import { elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { MENU_COMMANDS, type MenuCommand } from '../../../shared/menuCommands';
 
-// Ordered to mirror the native App menu: Settings, Check for Updates, About.
+// Ordered to mirror the native App menu: Settings, Usage, Skills, Check for Updates, About.
 const ITEMS: ReadonlyArray<{ command: MenuCommand; labelKey: string }> = [
   { command: MENU_COMMANDS.openSettings, labelKey: 'titleBar.menuItems.settings' },
+  { command: MENU_COMMANDS.showUsage, labelKey: 'titleBar.menuItems.usage' },
+  { command: MENU_COMMANDS.showSkills, labelKey: 'titleBar.menuItems.skills' },
   { command: MENU_COMMANDS.checkForUpdates, labelKey: 'titleBar.menuItems.checkForUpdates' },
   { command: MENU_COMMANDS.showAbout, labelKey: 'titleBar.menuItems.about' },
 ];
@@ -24,6 +33,7 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
   const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // While open, dismiss on an outside pointer-down or Escape.
   useEffect(() => {
@@ -42,9 +52,36 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
     };
   }, [open]);
 
+  // On open, move focus into the menu (first item) so it's operable by keyboard
+  // without a manual Tab — the expected behavior for an aria menu.
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+  }, [open]);
+
   const select = (command: MenuCommand) => {
     setOpen(false);
     onCommand(command);
+  };
+
+  // Roving focus: Arrow keys cycle through the items, Home/End jump to the ends.
+  // Enter/Space activate natively (they're <button>s); Escape closes via the
+  // document handler above.
+  const onMenuKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    );
+    if (items.length === 0) return;
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    let next: number;
+    if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = items.length - 1;
+    else if (e.key === 'ArrowDown') next = current < 0 ? 0 : (current + 1) % items.length;
+    else next = current <= 0 ? items.length - 1 : current - 1;
+    items[next]?.focus();
   };
 
   return (
@@ -55,13 +92,14 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
+        {...hoverBackground(open ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           height: 28,
           width: 28,
-          borderRadius: 6,
+          borderRadius: radius.sm,
           border: 'none',
           background: open ? token('surfaceHover') : 'transparent',
           color: token('textMuted'),
@@ -73,7 +111,9 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
       </button>
       {open && (
         <div
+          ref={menuRef}
           role="menu"
+          onKeyDown={onMenuKeyDown}
           style={{
             position: 'absolute',
             top: 34,
@@ -81,9 +121,9 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
             minWidth: 180,
             background: token('surface'),
             border: `1px solid ${token('border')}`,
-            borderRadius: 8,
-            padding: 4,
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
+            borderRadius: radius.md,
+            padding: space.xs,
+            boxShadow: elevation('menu'),
             zIndex: 50,
           }}
         >
@@ -93,23 +133,18 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
               type="button"
               role="menuitem"
               onClick={() => select(command)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = token('surfaceHover');
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+              {...hoverBackground('transparent', token('surfaceHover'))}
               style={{
                 display: 'block',
                 width: '100%',
                 textAlign: 'left',
                 padding: '8px 10px',
-                borderRadius: 6,
+                borderRadius: radius.sm,
                 border: 'none',
                 background: 'transparent',
                 color: token('text'),
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: fontSize.md,
               }}
             >
               {t(labelKey)}

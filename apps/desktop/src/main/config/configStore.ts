@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { PreferencesShape, ThemePreference } from '../../shared/ipc-channels';
+import type { SkillsLibraryLocation } from '../../shared/skills';
 import { throwIpcError } from '../ipc/validate';
 
 interface PreferenceDef<K extends keyof PreferencesShape> {
@@ -23,6 +24,7 @@ interface PreferenceDef<K extends keyof PreferencesShape> {
 }
 
 const THEME_VALUES: readonly ThemePreference[] = ['system', 'light', 'dark'];
+const SKILLS_LIBRARY_VALUES: readonly SkillsLibraryLocation[] = ['app', 'home'];
 
 /** The known preferences: default + runtime validator for each. */
 export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = {
@@ -33,6 +35,15 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
         throwIpcError('INVALID_PARAMS', 'theme must be one of: system | light | dark');
       }
       return raw as ThemePreference;
+    },
+  },
+  skillsLibrary: {
+    default: 'app',
+    validate(raw) {
+      if (typeof raw !== 'string' || !SKILLS_LIBRARY_VALUES.includes(raw as SkillsLibraryLocation)) {
+        throwIpcError('INVALID_PARAMS', 'skillsLibrary must be one of: app | home');
+      }
+      return raw as SkillsLibraryLocation;
     },
   },
 };

@@ -4,7 +4,8 @@
 
 import type { ThemePreference } from '../../../shared/ipc-channels';
 import { useTheme } from '../../themes/ThemeProvider';
-import { token } from '../../themes/tokens';
+import { token, fontSize, radius, space } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
 const OPTIONS: ThemePreference[] = ['system', 'light', 'dark'];
@@ -15,11 +16,11 @@ export function AppearanceSection() {
 
   return (
     <section>
-      <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>{t('appearance.title')}</h2>
-      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: 13 }}>
+      <h2 style={{ margin: '0 0 4px', fontSize: fontSize['2xl'] }}>{t('appearance.title')}</h2>
+      <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: fontSize.base }}>
         {t('appearance.themeHelp')}
       </p>
-      <div role="radiogroup" aria-label={t('appearance.theme')} style={{ display: 'flex', gap: 8 }}>
+      <div role="radiogroup" aria-label={t('appearance.theme')} style={{ display: 'flex', gap: space.md }}>
         {OPTIONS.map((option) => {
           const selected = preference === option;
           return (
@@ -29,12 +30,16 @@ export function AppearanceSection() {
               role="radio"
               aria-checked={selected}
               onClick={() => setPreference(option)}
+              {...hoverBackground(
+                selected ? token('accent') : token('surface'),
+                selected ? token('accent') : token('surfaceHover'),
+              )}
               style={{
                 flex: 1,
                 padding: '10px 12px',
-                borderRadius: 8,
+                borderRadius: radius.md,
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: fontSize.md,
                 color: selected ? token('accentText') : token('text'),
                 background: selected ? token('accent') : token('surface'),
                 border: `1px solid ${selected ? token('accent') : token('border')}`,
