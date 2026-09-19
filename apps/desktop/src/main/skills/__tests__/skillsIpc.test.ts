@@ -91,6 +91,7 @@ describe('skills IPC — authorization', () => {
       [IPC_CHANNELS.skillsPush, { name: 'foo', agentIds: ['codex'] }],
       [IPC_CHANNELS.skillsImport, undefined],
       [IPC_CHANNELS.skillsDelete, { name: 'foo' }],
+      [IPC_CHANNELS.skillsDeleteAgent, { agentId: 'claude', name: 'foo' }],
       [IPC_CHANNELS.skillsDiff, { agentId: 'claude', name: 'foo' }],
       [IPC_CHANNELS.skillsFileContent, { agentId: 'claude', name: 'foo', side: 'central', relPath: 'a.txt' }],
       [IPC_CHANNELS.skillsMerge, { agentId: 'claude', name: 'foo', agentPicks: [] }],
@@ -133,6 +134,22 @@ describe('skills IPC — get / pull / push', () => {
     expect(fs.existsSync(path.join(agentSkillsDir('codex'), 'bar', 'y.md'))).toBe(true);
     expect(fs.existsSync(path.join(agentSkillsDir('gemini'), 'bar', 'y.md'))).toBe(true);
   });
+
+  it('deleteAgent removes the agent copy and returns the fresh snapshot', async () => {
+    writeSkill(central, 'foo', '---\nname: foo\n---\n');
+    writeSkill(agentSkillsDir('claude'), 'foo', '---\nname: foo\n---\n');
+    const snap = (await reg.invoke(
+      IPC_CHANNELS.skillsDeleteAgent,
+      { agentId: 'claude', name: 'foo' },
+      trusted,
+    )) as SkillsSnapshot;
+    expect(fs.existsSync(path.join(agentSkillsDir('claude'), 'foo'))).toBe(false);
+    expect(fs.existsSync(path.join(central, 'foo'))).toBe(true);
+    // central still has it → the row remains; the claude cell now reads central-only.
+    const row = snap.rows.find((r) => r.name === 'foo');
+    expect(row?.agents.claude?.state).toBe('central-only');
+    expect(row?.agents.claude?.entry).toBeNull();
+  });
 });
 
 describe('skills IPC — payload validation', () => {
@@ -143,6 +160,12 @@ describe('skills IPC — payload validation', () => {
     expect(await codeOfInvoke(IPC_CHANNELS.skillsDelete, { name: 'a/b' }, trusted)).toBe(
       'INVALID_PARAMS',
     );
+    expect(
+      await codeOfInvoke(IPC_CHANNELS.skillsDeleteAgent, { agentId: 'claude', name: '../escape' }, trusted),
+    ).toBe('INVALID_PARAMS');
+    expect(
+      await codeOfInvoke(IPC_CHANNELS.skillsDeleteAgent, { agentId: 'bogus', name: 'foo' }, trusted),
+    ).toBe('INVALID_PARAMS');
   });
 
   it('rejects an unknown agentId with INVALID_PARAMS', async () => {

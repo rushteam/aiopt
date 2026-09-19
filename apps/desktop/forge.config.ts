@@ -15,6 +15,9 @@ const config: ForgeConfig = {
     name: 'AiOpt',
     executableName: 'AiOpt',
     appBundleId: 'dev.aiopt.app',
+    // Extensionless: electron-packager appends `.icns` (macOS) / `.ico` (Windows).
+    // Regenerate both from the master SVGs with `bash assets/generate-icons.sh`.
+    icon: 'assets/icon',
     asar: true,
   },
   rebuildConfig: {},

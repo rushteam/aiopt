@@ -24,7 +24,8 @@
       "account": "账户",
       "shortcuts": "快捷键",
       "updates": "更新",
-      "about": "关于"
+      "about": "关于",
+      "general": "通用"
     }
   },
   "appearance": {
@@ -34,6 +35,12 @@
     "system": "跟随系统",
     "light": "浅色",
     "dark": "深色"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "代理模式",
+      "help": "关闭（默认）：同格式绑定直连供应商，用量不计入。开启：经 AiOpt 代理转发，用量计入。"
+    }
   },
   "account": {
     "title": "账户",
@@ -110,6 +117,13 @@
     "agents": {
       "heading": "Agent"
     },
+    "proxy": {
+      "label": "本地代理",
+      "refresh": "刷新端口",
+      "refreshing": "刷新中…",
+      "refreshed": "已刷新",
+      "stopped": "未运行"
+    },
     "pool": {
       "heading": "供应商池",
       "empty": "还没有供应商，添加一个开始使用。"
@@ -160,6 +174,8 @@
       "notInstalled": "未检测到",
       "unbound": "未配置",
       "change": "更改",
+      "copyProxyConfig": "复制代理配置",
+      "copied": "已复制",
       "restoreDefault": "恢复默认",
       "restoreConfirm": "恢复该 Agent 到 AiOpt 接管前的配置？"
     },
@@ -192,9 +208,9 @@
   "usage": {
     "title": "统计",
     "subtitle": "AiOpt 经翻译代理转发的流量的 Token 与请求数统计。",
-    "scopeNote": "只有跨格式绑定会经过代理，因此仅统计这些流量——同格式直连绑定不经过 AiOpt，无法计入。历史保留 90 天（UTC）。",
+    "scopeNote": "流量经代理转发时才会计入。开启代理模式后所有绑定都经代理，因此均会统计。默认（代理模式关闭）下同格式绑定直连、不计入；Gemini 绑定始终直连且不计入。",
     "close": "关闭",
-    "empty": "还没有用量记录。把某个 Agent 绑定到不同接口格式的供应商并发起一次请求即可——同格式直连绑定不经过代理，无法统计。",
+    "empty": "还没有用量记录。开启代理模式、把某个 Agent 绑定到供应商并发起一次请求即可。默认（代理模式关闭）下同格式绑定不经代理、无法统计；Gemini 绑定始终不计入。",
     "totals": {
       "requests": "请求数",
       "successRate": "成功率",
@@ -262,7 +278,8 @@
       "push": "推送 →",
       "pushAll": "推送到全部 Agent",
       "diff": "对比",
-      "delete": "从中央库删除"
+      "delete": "从中央库删除",
+      "deleteAgent": "从该 Agent 删除"
     },
     "detail": {
       "noDescription": "暂无描述。"
@@ -270,6 +287,8 @@
     "confirm": {
       "pushAll": "用中央库的副本覆盖每个 Agent 中的该技能？",
       "delete": "从中央库删除该技能？各 Agent 的副本不受影响。",
+      "deleteAgent": "从该 Agent 删除这份技能副本？中央库及其它 Agent 的副本不受影响。",
+      "deleteAgentLast": "这是该技能唯一的副本——中央库和其它 Agent 都没有。删除后将无法恢复。确定删除？",
       "overwriteAgent": "用中央库的副本覆盖该 Agent 的副本？",
       "overwriteLibrary": "用该 Agent 的副本覆盖中央库的副本？",
       "merge": "将挑选的 Agent 文件应用到中央库副本？该 Agent 的副本不受影响。",

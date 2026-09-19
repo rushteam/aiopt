@@ -13,7 +13,7 @@
 
 import os from 'node:os';
 import path from 'node:path';
-import type { AgentId } from '../../shared/aiProviders';
+import { AGENT_SPECS, type AgentId, type AgentSpec } from '../../shared/aiProviders';
 
 /**
  * The home directory agent configs live under. `AIOPT_AGENT_HOME` (dev/test
@@ -24,38 +24,34 @@ export function agentHome(): string {
   return override && override.trim() !== '' ? override : os.homedir();
 }
 
-/**
- * The config files each agent reads, relative to the home dir, named per file so
- * adapters can reference them by role rather than by array index. This map doubles
- * as the write allowlist: only the exact paths declared here may be written, and
- * only for agents that appear. Agents land here as their adapters are implemented.
- *
- * Note the non-uniform layouts: pi keeps three files under `.pi/agent`, and
- * OpenCode lives under `.config/opencode` — so the install dir is tracked
- * separately (AGENT_INSTALL_DIRS) rather than assumed to be `.${id}`.
- */
-export const AGENT_FILES = {
-  claude: { settings: '.claude/settings.json' },
-  codex: { auth: '.codex/auth.json', config: '.codex/config.toml' },
-  gemini: { env: '.gemini/.env', settings: '.gemini/settings.json' },
-  grok: { config: '.grok/config.toml' },
-  opencode: { config: '.config/opencode/opencode.json' },
-  pi: {
-    auth: '.pi/agent/auth.json',
-    models: '.pi/agent/models.json',
-    settings: '.pi/agent/settings.json',
-  },
-} as const satisfies Partial<Record<AgentId, Readonly<Record<string, string>>>>;
+/** Agent ids whose spec declares a binding (its config files exist). */
+type BindableAgentId = {
+  [K in keyof typeof AGENT_SPECS]: (typeof AGENT_SPECS)[K]['binding'] extends null ? never : K;
+}[keyof typeof AGENT_SPECS];
 
-/** The directory whose existence signals an agent is installed. */
-const AGENT_INSTALL_DIRS: Partial<Record<AgentId, string>> = {
-  claude: '.claude',
-  codex: '.codex',
-  gemini: '.gemini',
-  grok: '.grok',
-  opencode: '.config/opencode',
-  pi: '.pi',
-};
+/**
+ * The write allowlist, DERIVED from {@link AGENT_SPECS}: each bindable agent's `files`
+ * map (role → path relative to home), so adapters reference config by role
+ * (`AGENT_FILES.dsh.settings`) rather than by array index. This map doubles as the write
+ * allowlist — only the exact paths declared here may be written, and only for agents with
+ * a binding. The mapped type below preserves each agent's LITERAL file paths, so those
+ * per-role accesses keep their precise types.
+ *
+ * Note the non-uniform layouts (declared in the specs): pi keeps three files under
+ * `.pi/agent`, OpenCode lives under `.config/opencode`.
+ */
+export const AGENT_FILES = Object.fromEntries(
+  (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][])
+    .filter(([, spec]) => spec.binding !== null)
+    .map(([id, spec]) => [id, spec.binding!.files]),
+) as { [K in BindableAgentId]: (typeof AGENT_SPECS)[K]['binding'] extends { files: infer F } ? F : never };
+
+/** The directory whose existence signals an agent is installed — derived from {@link AGENT_SPECS}. */
+const AGENT_INSTALL_DIRS: Partial<Record<AgentId, string>> = Object.fromEntries(
+  (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][])
+    .filter(([, spec]) => spec.binding !== null)
+    .map(([id, spec]) => [id, spec.binding!.installDir]),
+);
 
 /** Resolve one relative config file (from AGENT_FILES) to an absolute path under home. */
 export function resolveAgentFile(relativePath: string): string {

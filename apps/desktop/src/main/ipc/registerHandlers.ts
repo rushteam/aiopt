@@ -35,7 +35,11 @@ import {
 
 export function registerHandlers(): void {
   const registry = createElectronIpcRegistry(ipcMain);
-  registerConfigIpc(registry, getConfigStore(), broadcastToRenderers);
+  registerConfigIpc(registry, getConfigStore(), broadcastToRenderers, {
+    // Flipping proxy mode re-applies every binding so each moves between its direct
+    // config and the loopback route (the change broadcast already refreshed the UI).
+    onProxyModeChange: () => getProviderManager().rebuildProxyRoutes(),
+  });
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());

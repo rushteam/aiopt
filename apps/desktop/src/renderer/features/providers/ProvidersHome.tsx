@@ -12,6 +12,7 @@ import { useT } from '../../i18n';
 import { useProviders } from '../../hooks/useProviders';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
 import { AgentCard } from './AgentCard';
+import { ProxyControlBar } from './ProxyControlBar';
 import { ProviderCard } from './ProviderCard';
 import { BindingPicker } from './BindingPicker';
 import { ProviderFormDialog } from './ProviderFormDialog';
@@ -24,9 +25,18 @@ type Dialog =
 
 export function ProvidersHome() {
   const t = useT();
-  const { providers, agents } = useProviders();
+  const { providers, agents, proxyPort } = useProviders();
   const [dialog, setDialog] = useState<Dialog>({ kind: 'none' });
   const close = () => setDialog({ kind: 'none' });
+
+  // Proxy mode is a routing decision, so its control lives here at the top of the Agents
+  // section rather than in Settings. The control ALWAYS renders (it's the on/off switch);
+  // its inner status/address row appears when the switch is on OR any binding is actually
+  // proxied. `anyProxied` covers cross-format bindings, which route through the proxy even
+  // with the switch off — that failure/liveness is exactly what a user needs to SEE.
+  // `proxyPort !== null` reflects the live server (port and server are set/cleared together
+  // in translationProxy), so it drives the running indicator inside the bar.
+  const anyProxied = agents.some((a) => a.proxied);
 
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
@@ -38,6 +48,7 @@ export function ProvidersHome() {
 
         <section style={{ marginBottom: 32 }}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
+          <ProxyControlBar proxyPort={proxyPort} anyProxied={anyProxied} />
           <div style={gridStyle}>
             {agents.map((agent) => (
               <AgentCard

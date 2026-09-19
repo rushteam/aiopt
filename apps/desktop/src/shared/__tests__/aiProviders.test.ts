@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENTS,
   AGENT_IDS,
+  AGENT_NAMES,
+  AGENT_SPECS,
   API_FORMATS,
   OFFICIAL_PROVIDERS,
   OFFICIAL_PROVIDER_ID_PREFIX,
   getAgentDef,
   isFormatCompatible,
   translationSupported,
+  type AgentId,
   type Provider,
 } from '../aiProviders';
 
@@ -22,10 +25,56 @@ function providerWithFormat(apiFormat: Provider['apiFormat']): Provider {
   };
 }
 
+describe('AGENT_SPECS derivation', () => {
+  // These lock the single-source-of-truth invariants: everything is derived from
+  // AGENT_SPECS, so a mistake in one derivation is caught here rather than silently.
+  it('AGENT_IDS is exactly the keys of AGENT_SPECS, in table order', () => {
+    expect(AGENT_IDS).toEqual(Object.keys(AGENT_SPECS));
+  });
+
+  it('AGENT_NAMES maps each id to its spec name', () => {
+    for (const id of AGENT_IDS) {
+      expect(AGENT_NAMES[id]).toBe(AGENT_SPECS[id].name);
+    }
+  });
+
+  it('AGENTS is exactly the specs with a non-null binding, carrying their formats/mode', () => {
+    const bindable = (Object.keys(AGENT_SPECS) as AgentId[]).filter((id) => AGENT_SPECS[id].binding !== null);
+    expect(AGENTS.map((a) => a.id)).toEqual(bindable);
+    for (const agent of AGENTS) {
+      const binding = AGENT_SPECS[agent.id].binding!;
+      expect(agent.name).toBe(AGENT_SPECS[agent.id].name);
+      expect(agent.acceptedFormats).toEqual([...binding.acceptedFormats]);
+      expect(agent.mode).toBe(binding.mode);
+    }
+  });
+
+  it('a skills-only agent (cursor) has a null binding and is absent from AGENTS', () => {
+    expect(AGENT_SPECS.cursor.binding).toBeNull();
+    expect(AGENTS.some((a) => a.id === 'cursor')).toBe(false);
+  });
+});
+
 describe('aiProviders registry', () => {
-  it('every AGENT_IDS entry has exactly one definition, and vice versa', () => {
-    expect(AGENTS.map((a) => a.id).sort()).toEqual([...AGENT_IDS].sort());
-    for (const id of AGENT_IDS) expect(getAgentDef(id)?.id).toBe(id);
+  it('the binding registry (AGENTS) is a subset of AGENT_IDS with unique, resolvable ids', () => {
+    const bindingIds = AGENTS.map((a) => a.id);
+    expect(new Set(bindingIds).size).toBe(bindingIds.length); // no duplicates
+    for (const id of bindingIds) {
+      expect(AGENT_IDS).toContain(id);
+      expect(getAgentDef(id)?.id).toBe(id);
+    }
+  });
+
+  it('AGENT_NAMES has a non-empty display name for every known agent id', () => {
+    for (const id of AGENT_IDS) expect((AGENT_NAMES[id] ?? '').length).toBeGreaterThan(0);
+  });
+
+  it('cursor is known but skills-only (deliberately absent from the binding registry)', () => {
+    // Cursor CLI has no bring-your-own-endpoint surface, so it can't bind a pool provider
+    // and must never surface in Providers — but it is still a valid agent id (for Skills).
+    expect(AGENT_IDS).toContain('cursor');
+    expect(getAgentDef('cursor')).toBeUndefined();
+    expect(AGENTS.some((a) => a.id === 'cursor')).toBe(false);
   });
 
   it('every agent accepts only known API formats', () => {
@@ -92,8 +141,10 @@ describe('translationSupported', () => {
     expect(translationSupported('openai', 'openai-responses')).toBe(false);
   });
 
-  it('rejects same-format pairs (that is a direct binding, not translation)', () => {
-    for (const f of API_FORMATS) expect(translationSupported(f, f)).toBe(false);
+  it('supports same-format pairs as passthrough (identity + usage sniff), except gemini', () => {
+    for (const f of API_FORMATS) {
+      expect(translationSupported(f, f)).toBe(f !== 'gemini');
+    }
   });
 
   it('rejects any pairing involving gemini', () => {

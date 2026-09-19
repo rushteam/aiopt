@@ -63,6 +63,13 @@ An AI model source entered once into the global pool: a name, an API format, a b
 - **zh-CN**: 供应商
   - forbidden: `厂商`, `服务商`
 
+### Proxy mode (`proxy-mode`)
+
+A global setting. Off (default) writes same-format bindings as a direct provider connection (one less hop, and they keep working when AiOpt isn't running) whose usage is not counted. On routes every translatable binding — same-format ones included — through the translation proxy so all token usage is counted; cross-format bindings always route through the proxy regardless. Not 'turbo', 'fast mode', or 'proxy server mode' in UI copy.
+
+- **zh-CN**: 代理模式
+  - forbidden: `极速模式`, `代理服务器模式`, `加速模式`
+
 ### Skill (`skill`)
 
 A reusable unit of agent capability, stored as a directory containing a SKILL.md (name + description). AiOpt keeps a central library of skills and syncs them with each agent's home skills directory. Term still under discussion.
@@ -71,7 +78,7 @@ A reusable unit of agent capability, stored as a directory containing a SKILL.md
 
 ### Agent (`target-agent`)
 
-A target AI coding tool that AiOpt configures (Claude Code, Codex, Gemini CLI, Grok, OpenCode, pi). Each agent binds to one provider+model from the pool. Kept as 'Agent' in UI, not 'client' or 'tool'.
+A target AI coding tool that AiOpt configures (Claude Code, Codex, Cursor, Gemini CLI, Grok, OpenCode, pi). Most agents bind to one provider+model from the pool; some (e.g. Cursor, which only talks to its own backend) can't bind a provider and participate only in Skills sync. Kept as 'Agent' in UI, not 'client' or 'tool'.
 
 - **zh-CN**: Agent
   - forbidden: `客户端`

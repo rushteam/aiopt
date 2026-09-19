@@ -14,11 +14,32 @@ import { PREFERENCE_KEYS } from './configStore';
 /** Push the new effective preferences to renderers after a change. */
 export type BroadcastFn = (channel: string, payload: unknown) => void;
 
+/** Side effects a preference change may require beyond persisting + broadcasting. */
+export interface ConfigIpcHooks {
+  /**
+   * Called after `proxyMode` is set or reset, with its new effective value. The provider
+   * manager re-applies every binding so each moves between its direct config and the
+   * loopback route. Best-effort: a failure here must not fail the preference write.
+   */
+  onProxyModeChange?: (proxyMode: boolean) => void;
+}
+
 export function registerConfigIpc(
   registry: IpcHandlerRegistry,
   store: ConfigStore,
   broadcast: BroadcastFn,
+  hooks: ConfigIpcHooks = {},
 ): void {
+  // After a write that changed `proxyMode`, run its side effect (rebind all agents).
+  const reactToProxyMode = (next: PreferencesShape): void => {
+    if (!hooks.onProxyModeChange) return;
+    try {
+      hooks.onProxyModeChange(next.proxyMode);
+    } catch {
+      // Rebinding is best-effort; the preference is already persisted and broadcast.
+    }
+  };
+
   registry.register(IPC_CHANNELS.configGetAll, (_payload, meta) => {
     meta.assertTrustedSender();
     return store.getEffective();
@@ -31,6 +52,7 @@ export function registerConfigIpc(
     // Value validation is delegated to the store's per-key validator.
     const next: PreferencesShape = store.set(key, obj.value);
     broadcast(IPC_EVENTS.configChanged, next);
+    if (key === 'proxyMode') reactToProxyMode(next);
     return next;
   });
 
@@ -40,6 +62,7 @@ export function registerConfigIpc(
     const key = requireEnum(obj.key, PREFERENCE_KEYS, 'key');
     const next: PreferencesShape = store.reset(key);
     broadcast(IPC_EVENTS.configChanged, next);
+    if (key === 'proxyMode') reactToProxyMode(next);
     return next;
   });
 }

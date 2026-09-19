@@ -16,6 +16,7 @@ import { useT, type TranslateFn } from '../../i18n';
 import { useUsage } from '../../hooks/useUsage';
 import { useProviders } from '../../hooks/useProviders';
 import { clearUsage } from '../../lib/usageStore';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { AGENTS } from '../../../shared/aiProviders';
 import type { UsageBucket, UsageDailyPoint } from '../../../shared/usageStats';
 
@@ -24,7 +25,7 @@ function fmt(n: number): string {
   return numberFormat.format(n);
 }
 
-export function UsageHome({ onClose }: { onClose: () => void }) {
+export function UsageHome() {
   const t = useT();
   const usage = useUsage();
   const { providers } = useProviders();
@@ -41,23 +42,10 @@ export function UsageHome({ onClose }: { onClose: () => void }) {
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('usage.title')}</h1>
-            <p style={{ margin: '0 0 4px', color: token('textMuted'), fontSize: fontSize.md }}>
-              {t('usage.subtitle')}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('usage.close')}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={closeStyle}
-          >
-            ×
-          </button>
-        </div>
+        <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('usage.title')}</h1>
+        <p style={{ margin: '0 0 4px', color: token('textMuted'), fontSize: fontSize.md }}>
+          {t('usage.subtitle')}
+        </p>
         <p style={{ margin: '0 0 24px', color: token('textMuted'), fontSize: fontSize.sm }}>
           {t('usage.scopeNote')}
         </p>
@@ -103,42 +91,30 @@ export function UsageHome({ onClose }: { onClose: () => void }) {
         )}
 
         <section style={{ marginTop: 32, display: 'flex', alignItems: 'center', gap: space.md }}>
-          {confirmClear ? (
-            <>
-              <span style={{ fontSize: fontSize.md }}>{t('usage.clearConfirm')}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmClear(false);
-                  void clearUsage();
-                }}
-                {...hoverBackground(token('danger'), token('dangerHover'))}
-                style={dangerStyle}
-              >
-                {t('usage.clearConfirmYes')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmClear(false)}
-                {...hoverBackground('transparent', token('surfaceHover'))}
-                style={ghostStyle}
-              >
-                {t('usage.clearCancel')}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmClear(true)}
-              disabled={usage.eventCount === 0}
-              {...hoverBackground('transparent', token('surfaceHover'))}
-              style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? 0.5 : 1 }}
-            >
-              {t('usage.clear')}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            disabled={usage.eventCount === 0}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? 0.5 : 1 }}
+          >
+            {t('usage.clear')}
+          </button>
         </section>
       </div>
+      {confirmClear && (
+        <ConfirmDialog
+          title={t('usage.clearConfirm')}
+          confirmLabel={t('usage.clearConfirmYes')}
+          cancelLabel={t('usage.clearCancel')}
+          danger
+          onConfirm={() => {
+            setConfirmClear(false);
+            void clearUsage();
+          }}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
     </div>
   );
 }
@@ -256,32 +232,6 @@ const cardGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
   gap: space.lg,
-} as const;
-
-const closeStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  padding: 0,
-  borderRadius: radius.sm,
-  border: 'none',
-  background: 'transparent',
-  color: token('textMuted'),
-  cursor: 'pointer',
-  fontSize: fontSize.xl,
-  lineHeight: 1,
-} as const;
-
-const dangerStyle = {
-  padding: '8px 16px',
-  borderRadius: radius.md,
-  border: `1px solid ${token('danger')}`,
-  background: token('danger'),
-  color: token('accentText'),
-  cursor: 'pointer',
-  fontSize: fontSize.md,
 } as const;
 
 const ghostStyle = {

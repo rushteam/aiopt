@@ -39,12 +39,18 @@ export function backupOnce(target: string): void {
   }
 }
 
-/** Atomic write: mkdir -p, write a temp file, then rename over the target. */
-export function atomicWriteFile(target: string, contents: string): void {
+/**
+ * Atomic write: mkdir -p, write a temp file, then rename over the target. When `mode`
+ * is given (e.g. 0o600 for a secret file some agents refuse to load if group/other-
+ * readable), it is applied to the containing dir (0o700) and to the file itself —
+ * chmod'd explicitly after write so a pre-existing temp file's looser mode can't leak.
+ */
+export function atomicWriteFile(target: string, contents: string, mode?: number): void {
   const tmp = `${target}.tmp`;
-  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.mkdirSync(path.dirname(target), mode === undefined ? { recursive: true } : { recursive: true, mode: 0o700 });
   try {
-    fs.writeFileSync(tmp, contents, 'utf-8');
+    fs.writeFileSync(tmp, contents, mode === undefined ? 'utf-8' : { encoding: 'utf-8', mode });
+    if (mode !== undefined) fs.chmodSync(tmp, mode);
     fs.renameSync(tmp, target);
   } catch (err) {
     try {
@@ -56,11 +62,14 @@ export function atomicWriteFile(target: string, contents: string): void {
   }
 }
 
-/** allowlist → backup → atomic write. The single entry point adapters use. */
-export function writeAgentConfigFile(target: string, contents: string): void {
+/**
+ * allowlist → backup → atomic write. The single entry point adapters use. Pass `mode`
+ * (e.g. 0o600) for a secret file that must stay owner-only on disk.
+ */
+export function writeAgentConfigFile(target: string, contents: string, mode?: number): void {
   assertAgentConfigPath(target);
   backupOnce(target);
-  atomicWriteFile(target, contents);
+  atomicWriteFile(target, contents, mode);
 }
 
 /**
@@ -77,7 +86,10 @@ export function restoreAgentConfigFile(target: string): void {
   assertAgentConfigPath(target);
   const backup = `${target}${AGENT_BACKUP_SUFFIX}`;
   if (fs.existsSync(backup)) {
-    atomicWriteFile(target, fs.readFileSync(backup, 'utf-8'));
+    // Preserve the original's permission bits (backupOnce's copyFileSync kept them), so
+    // restoring an owner-only secret file hands it back at 0600 rather than the umask.
+    const originalMode = fs.statSync(backup).mode & 0o777;
+    atomicWriteFile(target, fs.readFileSync(backup, 'utf-8'), originalMode);
     fs.rmSync(backup, { force: true });
     return;
   }

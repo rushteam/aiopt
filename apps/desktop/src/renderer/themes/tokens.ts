@@ -30,6 +30,9 @@ export const TOKENS = {
   danger: { light: '#c8362f', dark: '#f06962' },
   // Hover state for a filled danger control (same move-away logic as accentHover).
   dangerHover: { light: '#ad2b25', dark: '#f4837d' },
+  // Positive / healthy state — the running-proxy status dot. Slightly brighter in
+  // dark mode so the small dot reads against the darker surface.
+  success: { light: '#2ea043', dark: '#3fb950' },
   focusRing: { light: '#2f6bff', dark: '#5b8bff' },
   // Modal scrim. A dark panel on a dark page needs a heavier scrim to separate
   // from the surface behind it, so dark is deeper than light.

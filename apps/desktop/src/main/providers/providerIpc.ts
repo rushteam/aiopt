@@ -112,4 +112,21 @@ export function registerProviderIpc(registry: IpcHandlerRegistry, manager: Provi
     const obj = requireObject(payload);
     return { key: manager.revealKey(requireString(obj.providerId, 'providerId')) };
   });
+
+  // Copy a proxied binding's loopback config to the clipboard. Unlike revealKey the token
+  // never returns to the renderer — the manager writes the clipboard main-side and hands
+  // back only a flag. Authorize + validate the agent id first.
+  registry.register(IPC_CHANNELS.providersCopyProxyConfig, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return manager.copyProxyConfig(requireEnum(obj.agentId, AGENT_IDS, 'agentId'));
+  });
+
+  // Move the loopback proxy to a fresh port and re-sync every proxied agent to it. No payload
+  // to validate; authorize the sender, then the manager rebinds + replays every binding. The
+  // manager broadcasts the fresh snapshot (via onChange); this returns only the new port.
+  registry.register(IPC_CHANNELS.providersRefreshProxyPort, (_payload, meta) => {
+    meta.assertTrustedSender();
+    return manager.refreshProxyPort();
+  });
 }

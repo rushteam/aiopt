@@ -20,6 +20,8 @@ import {
   type PreferencesShape,
   type ProviderAddRequest,
   type ProviderFetchModelsRequest,
+  type ProviderCopyProxyConfigResult,
+  type ProviderRefreshProxyPortResult,
   type ProviderFetchModelsResult,
   type ProviderRevealKeyResult,
   type ProviderUpdateRequest,
@@ -206,6 +208,20 @@ const api = {
      */
     revealKey: (providerId: string): Promise<ProviderRevealKeyResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersRevealKey, { providerId }),
+    /**
+     * Copy a proxied agent's loopback config (OpenAI/Anthropic-compatible base URL + token)
+     * to the clipboard. The token is written to the clipboard main-side and NEVER returned
+     * here — the result carries only whether a live route existed to copy.
+     */
+    copyProxyConfig: (agentId: AgentId): Promise<ProviderCopyProxyConfigResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersCopyProxyConfig, { agentId }),
+    /**
+     * Move the loopback proxy to a fresh port and re-sync every proxied agent's on-disk
+     * config to it (the escape hatch for a port collision). Returns the new port; the fresh
+     * snapshot arrives via the `providers:changed` push.
+     */
+    refreshProxyPort: (): Promise<ProviderRefreshProxyPortResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRefreshProxyPort),
     /** Subscribe to pool/binding changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: ProvidersSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.providersChanged, callback),
@@ -244,6 +260,9 @@ const api = {
     /** Delete a skill from the central library (destructive; the caller confirms first). */
     delete: (name: string): Promise<SkillsSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.skillsDelete, { name }),
+    /** Delete an agent's own copy of a skill (destructive; the caller confirms first). */
+    deleteAgent: (agentId: AgentId, name: string): Promise<SkillsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.skillsDeleteAgent, { agentId, name }),
     /** Per-file diff of an agent's copy against the central copy (metadata only). */
     diff: (agentId: AgentId, name: string): Promise<SkillDiffResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.skillsDiff, { agentId, name }),

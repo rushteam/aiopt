@@ -20,11 +20,11 @@ import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { MENU_COMMANDS, type MenuCommand } from '../../../shared/menuCommands';
 
-// Ordered to mirror the native App menu: Settings, Usage, Skills, Check for Updates, About.
+// Omit anything that's already a tab: Usage and Skills are tabs, so they're
+// dropped here to avoid a duplicate path. Settings (also reachable via the gear),
+// Check for Updates, and About stay — they're not tabs.
 const ITEMS: ReadonlyArray<{ command: MenuCommand; labelKey: string }> = [
   { command: MENU_COMMANDS.openSettings, labelKey: 'titleBar.menuItems.settings' },
-  { command: MENU_COMMANDS.showUsage, labelKey: 'titleBar.menuItems.usage' },
-  { command: MENU_COMMANDS.showSkills, labelKey: 'titleBar.menuItems.skills' },
   { command: MENU_COMMANDS.checkForUpdates, labelKey: 'titleBar.menuItems.checkForUpdates' },
   { command: MENU_COMMANDS.showAbout, labelKey: 'titleBar.menuItems.about' },
 ];

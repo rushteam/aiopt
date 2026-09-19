@@ -4,18 +4,27 @@
 // updates) add an entry without touching the layout. The active section can be
 // driven externally (e.g. the native menu's "About" command opens this view on
 // the About section).
+//
+// Unlike the three peer tabs (Providers / Skills / Usage), Settings is an
+// overlay opened from the hamburger menu — it covers the active tab rather than
+// being one. So it carries a close affordance (the tabs don't need one: you
+// leave a tab by selecting another). The `×` sits top-right, the conventional
+// "dismiss this overlay" position, and returns you to whatever tab was open.
 
 import { useState, type ComponentType } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
-import { AppearanceSection } from './AppearanceSection';
-import { AccountSection } from './AccountSection';
+import { GeneralSection } from './GeneralSection';
 import { ShortcutsSection } from './ShortcutsSection';
 import { UpdateSection } from './UpdateSection';
 import { AboutSection } from './AboutSection';
 
-export type SettingsSectionId = 'appearance' | 'account' | 'shortcuts' | 'updates' | 'about';
+// NOTE: `AppearanceSection` (now folded into General) and `AccountSection` are
+// intentionally not wired up yet — appearance lives under General, and Account is
+// hidden until the sign-in feature ships. Both components are kept on disk so the
+// entries can be restored without rebuilding them.
+export type SettingsSectionId = 'general' | 'shortcuts' | 'updates' | 'about';
 
 interface SectionDef {
   id: SettingsSectionId;
@@ -25,8 +34,7 @@ interface SectionDef {
 }
 
 const SECTIONS = [
-  { id: 'appearance', labelKey: 'appearance', Component: AppearanceSection },
-  { id: 'account', labelKey: 'account', Component: AccountSection },
+  { id: 'general', labelKey: 'general', Component: GeneralSection },
   { id: 'shortcuts', labelKey: 'shortcuts', Component: ShortcutsSection },
   { id: 'updates', labelKey: 'updates', Component: UpdateSection },
   { id: 'about', labelKey: 'about', Component: AboutSection },
@@ -35,7 +43,7 @@ const SECTIONS = [
 const DEFAULT_SECTION = SECTIONS[0];
 
 export function SettingsView({
-  initialSection = 'appearance',
+  initialSection = 'general',
   onClose,
 }: {
   initialSection?: SettingsSectionId;
@@ -48,6 +56,7 @@ export function SettingsView({
   return (
     <div
       style={{
+        position: 'relative',
         display: 'grid',
         gridTemplateColumns: '200px 1fr',
         height: '100%',
@@ -55,6 +64,33 @@ export function SettingsView({
         color: token('text'),
       }}
     >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t('settings.close')}
+        {...hoverBackground('transparent', token('surfaceHover'))}
+        style={{
+          position: 'absolute',
+          top: space.md,
+          right: space.md,
+          zIndex: 1,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 28,
+          height: 28,
+          padding: 0,
+          borderRadius: radius.sm,
+          border: 'none',
+          background: 'transparent',
+          color: token('textMuted'),
+          cursor: 'pointer',
+          fontSize: fontSize.xl,
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
       <nav
         style={{
           borderRight: `1px solid ${token('border')}`,
@@ -65,31 +101,8 @@ export function SettingsView({
           gap: space.xs,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <strong style={{ fontSize: fontSize.base, color: token('textMuted') }}>{t('settings.title')}</strong>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('settings.close')}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 28,
-              padding: 0,
-              borderRadius: radius.sm,
-              border: 'none',
-              background: 'transparent',
-              color: token('textMuted'),
-              cursor: 'pointer',
-              fontSize: fontSize.xl,
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
         </div>
         {SECTIONS.map((section) => {
           const selected = section.id === active;

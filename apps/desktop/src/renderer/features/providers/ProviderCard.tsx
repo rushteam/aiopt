@@ -2,7 +2,8 @@
 // model count, and edit / delete actions.
 //
 // Delete is a destructive, hard-to-reverse action (it drops the stored key too), so
-// it takes a second, inline confirmation rather than firing on the first click.
+// it takes a second confirmation in a modal dialog rather than firing on the first
+// click.
 
 import { useState } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
@@ -10,6 +11,7 @@ import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
 import { removeProvider } from '../../lib/providerStore';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { providerErrorMessage } from './errors';
 
 export function ProviderCard({
@@ -38,6 +40,18 @@ export function ProviderCard({
     }
   }
 
+  const confirmDialog = confirming ? (
+    <ConfirmDialog
+      title={t('providers.card.confirmDelete')}
+      confirmLabel={t('providers.card.confirmYes')}
+      cancelLabel={t('providers.form.cancel')}
+      danger
+      busy={busy}
+      onConfirm={() => void onDelete()}
+      onCancel={() => setConfirming(false)}
+    />
+  ) : null;
+
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
@@ -55,54 +69,29 @@ export function ProviderCard({
         </p>
       )}
 
-      {confirming ? (
-        <div style={confirmRowStyle}>
-          <span style={{ fontSize: fontSize.base, color: token('danger'), marginRight: 'auto' }}>
-            {t('providers.card.confirmDelete')}
-          </span>
-          <button
-            type="button"
-            onClick={() => void onDelete()}
-            disabled={busy}
-            {...hoverBackground(token('danger'), token('dangerHover'))}
-            style={dangerSolidStyle}
-          >
-            {t('providers.card.confirmYes')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            disabled={busy}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={actionStyle('ghost')}
-          >
-            {t('providers.form.cancel')}
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: space.md, marginTop: 4 }}>
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={busy}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={actionStyle('ghost')}
-          >
-            {t('providers.card.edit')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            disabled={busy}
-            onMouseEnter={() => setHoverDelete(true)}
-            onMouseLeave={() => setHoverDelete(false)}
-            style={deleteButtonStyle(hoverDelete)}
-          >
-            <TrashIcon />
-            {t('providers.card.delete')}
-          </button>
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: space.md, marginTop: 4 }}>
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={busy}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={actionStyle('ghost')}
+        >
+          {t('providers.card.edit')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          disabled={busy}
+          onMouseEnter={() => setHoverDelete(true)}
+          onMouseLeave={() => setHoverDelete(false)}
+          style={deleteButtonStyle(hoverDelete)}
+        >
+          <TrashIcon />
+          {t('providers.card.delete')}
+        </button>
+      </div>
+      {confirmDialog}
     </div>
   );
 }
@@ -127,13 +116,8 @@ const badgeStyle = {
 
 const metaStyle = { margin: 0, fontSize: fontSize.base, color: token('textMuted') } as const;
 
-const confirmRowStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: space.md,
-  marginTop: 4,
-} as const;
-
+// Only the ghost variant is used now (Edit); the danger variant is kept for a
+// consistent call site should another inline action need it.
 function actionStyle(kind: 'ghost' | 'danger') {
   return {
     padding: '5px 12px',
@@ -183,13 +167,3 @@ function TrashIcon() {
     </svg>
   );
 }
-
-const dangerSolidStyle = {
-  padding: '5px 12px',
-  borderRadius: radius.sm,
-  border: `1px solid ${token('danger')}`,
-  background: token('danger'),
-  color: token('accentText'),
-  cursor: 'pointer',
-  fontSize: fontSize.base,
-} as const;

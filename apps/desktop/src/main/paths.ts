@@ -35,6 +35,18 @@ export function usageHistoryFilePath(): string {
 }
 
 /**
+ * The translation proxy's persisted identity: the fixed loopback port and the per-binding
+ * path tokens, so a restart reuses the same `http://127.0.0.1:<port>/<token>` an agent already
+ * cached instead of minting a fresh one it would then 401 against. Tokens are class-secret but
+ * NOT the real provider key (that stays in the secret store); they are already written in
+ * plaintext into each agent's own config, so persisting them here does not widen exposure. See
+ * docs/dev-rules/credentials-and-local-storage.md.
+ */
+export function proxyStateFilePath(): string {
+  return path.join(app.getPath('userData'), 'proxy.json');
+}
+
+/**
  * The central Skills library directory, resolved from the enum preference. `'app'` keeps it
  * inside `userData` (managed with the rest of the app's data); `'home'` places it in an
  * independent `~/.aiopt/skills`. The renderer never supplies this path — main computes it here

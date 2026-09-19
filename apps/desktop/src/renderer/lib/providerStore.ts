@@ -17,7 +17,7 @@ import type { AgentId, ProviderModel } from '../../shared/aiProviders';
 
 type Listener = () => void;
 
-const EMPTY: ProvidersSnapshot = { providers: [], agents: [] };
+const EMPTY: ProvidersSnapshot = { providers: [], agents: [], proxyPort: null };
 
 let snapshot: ProvidersSnapshot = EMPTY;
 let version = 0;
@@ -115,4 +115,26 @@ export async function revealProviderKey(providerId: string): Promise<string | nu
   ensureInitialized();
   const { key } = await window.aiopt.providers.revealKey(providerId);
   return key;
+}
+
+/**
+ * Copy a proxied agent's loopback config to the clipboard. The token is written to the
+ * clipboard main-side and never reaches the renderer — this returns only whether a live
+ * route existed to copy. Read-only w.r.t. the pool.
+ */
+export async function copyProxyConfig(agentId: AgentId): Promise<boolean> {
+  ensureInitialized();
+  const { copied } = await window.aiopt.providers.copyProxyConfig(agentId);
+  return copied;
+}
+
+/**
+ * Move the loopback proxy to a fresh port and re-sync every proxied agent to it. The updated
+ * snapshot (with the new port) arrives via the `providers:changed` push, so this doesn't apply
+ * one itself — it just returns the new port for immediate feedback.
+ */
+export async function refreshProxyPort(): Promise<number> {
+  ensureInitialized();
+  const { port } = await window.aiopt.providers.refreshProxyPort();
+  return port;
 }

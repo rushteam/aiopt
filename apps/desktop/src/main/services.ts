@@ -5,7 +5,7 @@
 // Electron is touched ONLY here (paths + safeStorage); the stores themselves are
 // Electron-free and unit-tested with injected adapters.
 
-import { app, net, safeStorage } from 'electron';
+import { app, clipboard, net, safeStorage } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -26,6 +26,7 @@ import {
 import { createProviderManager, type ProviderManager } from './providers/providerManager';
 import { createAdapterRegistry } from './providers/adapters/registry';
 import { createTranslationProxy, type TranslationProxy } from './proxy/translationProxy';
+import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/proxyStore';
 import type { ProxyFetch } from './proxy/upstream';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
@@ -34,6 +35,7 @@ import {
   appShortcutsFilePath,
   preferencesFilePath,
   providersFilePath,
+  proxyStateFilePath,
   secretsDir,
   skillsLibraryPath,
   usageHistoryFilePath,
@@ -147,8 +149,14 @@ export function getProviderManager(): ProviderManager {
       // Lazy thunk to the translation proxy for cross-format bindings (breaks the
       // manager⇄proxy construction cycle; resolved via the singleton below).
       () => getTranslationProxy(),
+      // Read the live "proxy mode" preference at each (re)bind: off (default) writes
+      // same-format bindings direct; on routes them through the proxy for usage counting.
+      () => getConfigStore().get('proxyMode'),
       // Model discovery uses Electron's net stack (honors system proxy / certs).
       (url, init) => net.fetch(url, init),
+      // Copy-proxy-config writes the (token-bearing) snippet straight to the OS clipboard,
+      // main-side, so the token never crosses IPC back to the renderer.
+      (text) => clipboard.writeText(text),
     );
   }
   return providerManager;
@@ -158,7 +166,9 @@ export function getProviderManager(): ProviderManager {
  * The cross-format translation proxy — a loopback HTTP server that lets an agent
  * speaking one wire format bind to a provider speaking another. Its outbound transport
  * is Electron's `net.fetch` (streaming; honors system proxy / certs); its key resolver
- * routes through providerManager so the plaintext key is read in exactly one place.
+ * routes through providerManager so the plaintext key is read in exactly one place. Its
+ * identity (fixed port + per-binding tokens) is persisted under `userData/proxy.json` so
+ * a restart reuses the loopback address a running agent already cached.
  */
 export function getTranslationProxy(): TranslationProxy {
   if (!translationProxy) {
@@ -170,6 +180,8 @@ export function getTranslationProxy(): TranslationProxy {
       getKey: (providerId) => getProviderManager().resolveUpstreamKey(providerId),
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
+      // Persist the port + route tokens so they survive a restart (see proxyStore.ts).
+      persistence: createProxyStateStore(createFileProxyStatePersistence(proxyStateFilePath())),
     });
   }
   return translationProxy;

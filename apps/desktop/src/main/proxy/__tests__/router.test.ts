@@ -48,13 +48,21 @@ describe('ProxyRouter', () => {
     expect(r.has('claude')).toBe(true);
   });
 
-  it('rotates the token on re-register and invalidates the old one', () => {
+  it('rotates the token when re-registered with a DIFFERENT target', () => {
     const r = new ProxyRouter();
     const first = r.register(spec());
     const second = r.register(spec({ modelId: 'deepseek-reasoner' }));
     expect(second).not.toBe(first);
     expect(r.resolve(first)).toBeUndefined();
     expect(r.resolve(second)?.modelId).toBe('deepseek-reasoner');
+  });
+
+  it('REUSES the token when re-registered with an identical spec (idempotent replay)', () => {
+    const r = new ProxyRouter();
+    const first = r.register(spec());
+    const again = r.register(spec());
+    expect(again).toBe(first);
+    expect(r.resolve(first)?.modelId).toBe('deepseek-chat');
   });
 
   it('unregister removes the route and its token', () => {
@@ -81,6 +89,42 @@ describe('ProxyRouter', () => {
     r.unregister('claude');
     expect(r.resolve(b)?.agentId).toBe('opencode');
   });
+
+  it('hydrates from persisted routes so the same token still resolves', () => {
+    const r = new ProxyRouter([{ token: 'persisted-tok', spec: spec() }]);
+    expect(r.resolve('persisted-tok')?.modelId).toBe('deepseek-chat');
+    expect(r.has('claude')).toBe(true);
+    // A re-register with the identical spec keeps the persisted token (self-heal).
+    expect(r.register(spec())).toBe('persisted-tok');
+  });
+
+  it('hydration skips a duplicate token or a second route for one agent', () => {
+    const r = new ProxyRouter([
+      { token: 'a', spec: spec() },
+      { token: 'a', spec: spec({ modelId: 'x' }) }, // dup token
+      { token: 'b', spec: spec({ modelId: 'y' }) }, // second claude route
+    ]);
+    expect(r.snapshot()).toEqual([{ token: 'a', spec: spec() }]);
+    expect(r.resolve('b')).toBeUndefined();
+  });
+
+  it('snapshot returns every live token+spec', () => {
+    const r = new ProxyRouter();
+    r.register(spec({ agentId: 'claude' }));
+    r.register(spec({ agentId: 'codex', inboundFormat: 'openai-responses' }));
+    const snap = r.snapshot();
+    expect(snap.map((s) => s.spec.agentId).sort()).toEqual(['claude', 'codex']);
+    expect(snap.every((s) => typeof s.token === 'string' && s.token !== '')).toBe(true);
+  });
+
+  it('routeFor returns the live token+spec, or undefined when absent', () => {
+    const r = new ProxyRouter();
+    const token = r.register(spec());
+    expect(r.routeFor('claude')).toEqual({ token, spec: spec() });
+    expect(r.routeFor('codex')).toBeUndefined();
+    r.unregister('claude');
+    expect(r.routeFor('claude')).toBeUndefined();
+  });
 });
 
 describe('assertInboundPath', () => {
@@ -89,6 +133,21 @@ describe('assertInboundPath', () => {
     expect(() =>
       assertInboundPath(spec({ inboundFormat: 'openai' }), '/v1/chat/completions'),
     ).not.toThrow();
+  });
+
+  it('accepts an OpenAI client at both /chat/completions and /v1/chat/completions', () => {
+    // pi's openai-completions adapter treats the loopback base URL as the API root and
+    // POSTs the bare `/chat/completions` (no `/v1`); other SDKs prefix `/v1`. Both are valid.
+    const openai = spec({ inboundFormat: 'openai' });
+    expect(() => assertInboundPath(openai, '/chat/completions')).not.toThrow();
+    expect(() => assertInboundPath(openai, '/v1/chat/completions')).not.toThrow();
+    expect(() => assertInboundPath(openai, '/chat/completions?stream=true')).not.toThrow();
+  });
+
+  it('accepts an Anthropic client at both /messages and /v1/messages', () => {
+    const anthropic = spec({ inboundFormat: 'anthropic' });
+    expect(() => assertInboundPath(anthropic, '/messages')).not.toThrow();
+    expect(() => assertInboundPath(anthropic, '/v1/messages')).not.toThrow();
   });
 
   it('rejects a suffix that does not match the inbound format', () => {

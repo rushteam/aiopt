@@ -69,6 +69,8 @@ describe('snapshot', () => {
     expect(snap.agents.map((a) => a.id).sort()).toEqual([...AGENT_IDS].sort());
     expect(snap.agents.find((a) => a.id === 'grok')?.available).toBe(false);
     expect(snap.agents.find((a) => a.id === 'claude')?.available).toBe(true);
+    // The skills-only agent `cursor` is enumerated here even though it can't bind a provider.
+    expect(snap.agents.find((a) => a.id === 'cursor')?.available).toBe(true);
   });
 
   it('classifies an agent-only skill', () => {
@@ -110,16 +112,29 @@ describe('pull / push / delete', () => {
     expect(fs.existsSync(path.join(central, 'bar'))).toBe(false);
   });
 
+  it('deleteAgent removes the agent copy only, leaving central and other agents intact', () => {
+    writeSkill(central, 'foo', '---\nname: foo\n---\n');
+    writeSkill(agentSkillsDir('claude'), 'foo', '---\nname: foo\n---\n');
+    writeSkill(agentSkillsDir('codex'), 'foo', '---\nname: foo\n---\n');
+    store.deleteAgent('claude', 'foo');
+    expect(fs.existsSync(path.join(agentSkillsDir('claude'), 'foo'))).toBe(false);
+    expect(fs.existsSync(path.join(central, 'foo'))).toBe(true);
+    expect(fs.existsSync(path.join(agentSkillsDir('codex'), 'foo'))).toBe(true);
+  });
+
   it('reports NOT_FOUND when the source is absent', () => {
     expect(codeOf(() => store.pull('claude', 'ghost'))).toBe('NOT_FOUND');
     expect(codeOf(() => store.push('ghost', 'claude'))).toBe('NOT_FOUND');
     expect(codeOf(() => store.deleteCentral('ghost'))).toBe('NOT_FOUND');
+    expect(codeOf(() => store.deleteAgent('claude', 'ghost'))).toBe('NOT_FOUND');
   });
 
   it('rejects a bad name and an unknown/unsupported agent', () => {
     expect(codeOf(() => store.pull('claude', '../escape'))).toBe('INVALID_PARAMS');
     expect(codeOf(() => store.pull('bogus' as AgentId, 'foo'))).toBe('INVALID_PARAMS');
     expect(codeOf(() => store.pull('grok', 'foo'))).toBe('UNSUPPORTED_CAPABILITY');
+    expect(codeOf(() => store.deleteAgent('claude', '../escape'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => store.deleteAgent('grok', 'foo'))).toBe('UNSUPPORTED_CAPABILITY');
   });
 });
 

@@ -3,11 +3,16 @@
 //
 // SECURITY (see docs/dev-rules/electron-security-and-process-boundaries.md and
 // credentials-and-local-storage.md):
-//   - Binds ONLY 127.0.0.1 on an ephemeral port (never 0.0.0.0/::).
+//   - Binds ONLY 127.0.0.1 on a fixed loopback port (never 0.0.0.0/::). The port is
+//     persisted (proxyStore.ts) and reused across restarts so an agent's cached loopback
+//     address keeps resolving; the OS-assigned fallback is used only when it is taken.
 //   - The agent's config holds a per-binding loopback TOKEN, never the real key. The
 //     real provider key is resolved here at request time via the injected `getKey`
 //     thunk (which routes through providerManager, preserving the "only providerManager
 //     reads plaintext keys" invariant) and placed into the OUTBOUND headers only.
+//   - Tokens are persisted alongside the port so they survive a restart (see proxyStore.ts
+//     for why that does not widen exposure). They are class-secret and, like keys, never
+//     reach a log or an IPC error.
 //   - Logs record method / de-tokenized path / upstream status / byte count ONLY —
 //     never the body, auth headers, token, or key. Upstream error bodies are NOT
 //     forwarded (they can echo the key); the client sees a generic coded envelope.
@@ -18,7 +23,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { ApiFormat } from '../../shared/aiProviders';
+import type { AgentId, ApiFormat } from '../../shared/aiProviders';
 import { decodeIpcError, encodeIpcError, type IpcErrorCode } from '../../shared/ipc-errors';
 import { logger } from '../logger';
 import {
@@ -27,8 +32,9 @@ import {
   parseTokenFromPath,
   type RouteSpec,
 } from './router';
+import type { ProxyStateStore } from './proxyStore';
 import { outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
-import { SseDecoder, type SseEvent } from './translate/streaming';
+import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage } from './usageSniffer';
 import type { UsageEventInput } from '../../shared/usageStats';
 import {
@@ -63,23 +69,50 @@ export interface TranslationProxyDeps {
    * request path — the proxy wraps every call in a guard.
    */
   recordUsage?: (event: UsageEventInput) => void;
+  /**
+   * Persisted proxy identity — the fixed port + the live route tokens. Optional so
+   * existing constructors/tests need not supply it; when absent the proxy behaves as
+   * before (OS-assigned port, in-memory-only tokens that die on restart).
+   */
+  persistence?: ProxyStateStore;
 }
 
 export interface TranslationProxy {
   start(): Promise<void>;
   stop(): Promise<void>;
-  /** Ephemeral listen port; -1 before start. */
+  /** The live listen port; -1 before start. Fixed across restarts when persisted. */
   getPort(): number;
   /**
-   * Register (or rotate) a route. Returns the loopback base URL to write as the
-   * agent's baseUrl AND the per-binding token to write into its key slot (in place
-   * of the real key). The token also lives in the base URL's path — that path token
-   * is what actually authenticates the request; the key-slot copy just gives the
-   * agent a non-empty, non-secret credential to send.
+   * Rebind the loopback server to a FRESH OS-assigned port (always free at that instant) and
+   * persist it, WITHOUT dropping any routes — the per-binding tokens are stable identity and
+   * survive the move. The new server is bound before the old one is closed, so there is no
+   * downtime window. Returns the new port. Caller (providerManager.refreshProxyPort) then
+   * replays every binding so each agent's on-disk baseUrl points at the new port. This is the
+   * user's manual escape hatch when the persisted port collides with another process.
+   */
+  rebindPort(): Promise<number>;
+  /**
+   * Register a route. Returns the loopback base URL to write as the agent's baseUrl AND
+   * the per-binding token to write into its key slot (in place of the real key). The token
+   * also lives in the base URL's path — that path token is what actually authenticates the
+   * request; the key-slot copy just gives the agent a non-empty, non-secret credential to
+   * send. The token is STABLE while the binding's target is unchanged (reused, not rotated),
+   * so a restart's idempotent replay hands back the address the agent already cached.
    */
   registerRoute(spec: RouteSpec): { baseUrl: string; token: string };
   /** Drop the route for an agent (binding cleared / restored / provider removed). */
   unregisterRoute(spec: Pick<RouteSpec, 'agentId'>): void;
+  /** Whether a live route exists for this agent (drives the snapshot `proxied` flag). */
+  isRouted(agentId: AgentId): boolean;
+  /**
+   * The live loopback endpoint for an agent, or null when it has no route. The token is a
+   * secret-class value — callers must keep it main-side (never cross it back over IPC to the
+   * renderer). `inboundFormat` is the dialect the endpoint speaks, so a copied config can be
+   * labeled honestly.
+   */
+  endpointFor(
+    agentId: AgentId,
+  ): { baseUrl: string; token: string; modelId: string; inboundFormat: ApiFormat } | null;
 }
 
 /** The set of transforms for one route direction. */
@@ -89,8 +122,22 @@ interface DirectionTransforms {
   makeStreamTransform: () => (event: SseEvent) => string[];
 }
 
+/**
+ * Identity transforms for a same-format passthrough route. The proxy forwards the
+ * request and response byte-for-byte (re-serialized through the shared codec) and only
+ * SNIFFS token usage — it never rewrites the body, and it does NOT force the bound model
+ * onto the request, so a same-format binding keeps the agent's freedom to switch models.
+ */
+const IDENTITY_TRANSFORMS: DirectionTransforms = {
+  translateRequest: (body) => body,
+  translateResponse: (upstream) => upstream,
+  makeStreamTransform: () => (event) => [serializeSse(event)],
+};
+
 /** Pick transforms by the route's directed (inbound → outbound) format pair. */
 function transformsFor(spec: RouteSpec): DirectionTransforms {
+  // Same-format route: identity passthrough (usage still sniffed). Gemini never routes.
+  if (spec.inboundFormat === spec.outboundFormat) return IDENTITY_TRANSFORMS;
   const pair = `${spec.inboundFormat}>${spec.outboundFormat}`;
   switch (pair) {
     // Enabled: claude (Anthropic) → OpenAI Chat Completions provider.
@@ -193,7 +240,8 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 export function createTranslationProxy(deps: TranslationProxyDeps): TranslationProxy {
-  const router = new ProxyRouter();
+  // Rehydrate any persisted routes so a restart resolves the tokens agents already cached.
+  const router = new ProxyRouter(deps.persistence?.loadRoutes());
   let server: Server | null = null;
   let port = -1;
 
@@ -357,22 +405,64 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
     }
   }
 
-  return {
-    start() {
-      if (server) return Promise.resolve();
-      return new Promise<void>((resolve, reject) => {
+  // Bind a NEW loopback server on `wanted` (0 = OS-assigned). On EADDRINUSE/EACCES with
+  // allowFallback, retry once on an OS-assigned port. Resolves with the freshly bound server
+  // WITHOUT installing it as the live one — the caller decides when to swap `server`/`port`
+  // (so a rebind can bind-before-close for zero downtime). Loopback only — never 0.0.0.0/::.
+  function bind(wanted: number, allowFallback: boolean): Promise<Server> {
+    return new Promise<Server>((resolve, reject) => {
+      const attempt = (target: number, retry: boolean): void => {
         const srv = createServer((req, res) => {
           void handle(req, res);
         });
-        srv.on('error', reject);
-        // 127.0.0.1 + port 0 → OS-assigned ephemeral port, loopback only.
-        srv.listen(0, '127.0.0.1', () => {
-          server = srv;
-          port = (srv.address() as AddressInfo).port;
-          logger.info('proxy.start', { port });
-          resolve();
+        const onError = (err: NodeJS.ErrnoException): void => {
+          srv.removeListener('error', onError);
+          if (retry && (err.code === 'EADDRINUSE' || err.code === 'EACCES')) {
+            logger.warn('proxy.port_unavailable', { wanted: target, code: err.code });
+            attempt(0, false); // OS-assigned fallback; do not recurse again
+          } else {
+            reject(err);
+          }
+        };
+        srv.on('error', onError);
+        srv.listen(target, '127.0.0.1', () => {
+          srv.removeListener('error', onError);
+          resolve(srv);
         });
-      });
+      };
+      attempt(wanted, allowFallback);
+    });
+  }
+
+  return {
+    async start() {
+      if (server) return;
+      const persistedPort = deps.persistence?.loadPort() ?? null;
+      // A valid persisted port → try it with a fallback; none → straight to OS-assigned.
+      const srv = persistedPort !== null ? await bind(persistedPort, true) : await bind(0, false);
+      server = srv;
+      port = (srv.address() as AddressInfo).port;
+      // Record the port we actually bound so the next launch reuses it.
+      deps.persistence?.savePort(port);
+      logger.info('proxy.start', { port });
+    },
+
+    async rebindPort() {
+      if (!server) {
+        throw new Error(encodeIpcError('INTERNAL', 'translation proxy is not started'));
+      }
+      // Bind the replacement on a fresh OS-assigned port BEFORE tearing the old one down, so
+      // in-flight requests on the old listener are never refused mid-swap. Routes/tokens are
+      // untouched — only the port moves.
+      const next = await bind(0, false);
+      const previous = server;
+      server = next;
+      port = (next.address() as AddressInfo).port;
+      deps.persistence?.savePort(port);
+      logger.info('proxy.rebind', { port });
+      // Close the old listener; it stops accepting new sockets and drains existing ones.
+      previous.close();
+      return port;
     },
 
     stop() {
@@ -398,11 +488,30 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         throw new Error(encodeIpcError('INTERNAL', 'translation proxy is not started'));
       }
       const token = router.register(spec);
+      // Persist the updated route set so a restart rehydrates the same token.
+      deps.persistence?.saveRoutes(router.snapshot());
       return { baseUrl: `http://127.0.0.1:${port}/${token}`, token };
     },
 
     unregisterRoute(spec) {
       router.unregister(spec.agentId);
+      deps.persistence?.saveRoutes(router.snapshot());
+    },
+
+    isRouted(agentId) {
+      return router.has(agentId);
+    },
+
+    endpointFor(agentId) {
+      if (port < 0) return null;
+      const route = router.routeFor(agentId);
+      if (!route) return null;
+      return {
+        baseUrl: `http://127.0.0.1:${port}/${route.token}`,
+        token: route.token,
+        modelId: route.spec.modelId,
+        inboundFormat: route.spec.inboundFormat,
+      };
     },
   };
 }

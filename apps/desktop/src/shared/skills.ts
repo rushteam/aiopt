@@ -13,25 +13,21 @@
 //
 // No I/O, no Electron here.
 
-import type { AgentId } from './aiProviders';
+import { AGENT_SPECS, type AgentId, type AgentSpec } from './aiProviders';
 
 /** Where a skill lives. v1 covers the central library and each agent's GLOBAL (home) skills dir. */
 export type SkillScope = 'central' | 'agent';
 
 /**
- * Each agent's global skills directory, relative to the user's home directory. Taken from
- * skills-cli's default agent map. `null` means AiOpt has no well-known skills dir for that
- * agent (e.g. grok) — its column is shown as "unknown" and it does not participate in sync.
- * Main joins the non-null value onto `app.getPath('home')`; the renderer only reads it for display.
+ * Each agent's global skills directory, relative to the user's home directory — DERIVED
+ * from {@link AGENT_SPECS} (its `skillsDir`), so it can never drift from the agent catalogue.
+ * `null` means AiOpt has no well-known skills dir for that agent (e.g. grok) — its column is
+ * shown as "unknown" and it does not participate in sync. Main joins the non-null value onto
+ * `app.getPath('home')`; the renderer only reads it for display.
  */
-export const AGENT_SKILL_DIRS: Record<AgentId, string | null> = {
-  claude: '.claude/skills',
-  codex: '.codex/skills',
-  gemini: '.gemini/skills',
-  grok: null,
-  opencode: '.config/opencode/skills',
-  pi: '.pi/agent/skills',
-};
+export const AGENT_SKILL_DIRS: Record<AgentId, string | null> = Object.fromEntries(
+  (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][]).map(([id, spec]) => [id, spec.skillsDir]),
+) as Record<AgentId, string | null>;
 
 /** Parsed `SKILL.md` frontmatter. `null` meta means the dir had no readable name (still a skill dir). */
 export interface SkillMeta {

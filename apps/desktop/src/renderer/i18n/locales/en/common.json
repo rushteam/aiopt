@@ -24,7 +24,8 @@
       "account": "Account",
       "shortcuts": "Keyboard Shortcuts",
       "updates": "Updates",
-      "about": "About"
+      "about": "About",
+      "general": "General"
     }
   },
   "appearance": {
@@ -34,6 +35,12 @@
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "Proxy mode",
+      "help": "Off (default): same-format bindings connect directly; usage isn’t counted. On: routed through AiOpt’s proxy; usage is counted."
+    }
   },
   "account": {
     "title": "Account",
@@ -110,6 +117,13 @@
     "agents": {
       "heading": "Agents"
     },
+    "proxy": {
+      "label": "Local proxy",
+      "refresh": "Refresh port",
+      "refreshing": "Refreshing…",
+      "refreshed": "Refreshed",
+      "stopped": "Not running"
+    },
     "pool": {
       "heading": "Provider pool",
       "empty": "No providers yet. Add one to get started."
@@ -160,6 +174,8 @@
       "notInstalled": "Not detected",
       "unbound": "Not configured",
       "change": "Change",
+      "copyProxyConfig": "Copy proxy config",
+      "copied": "Copied",
       "restoreDefault": "Restore default",
       "restoreConfirm": "Restore this agent's config to before AiOpt?"
     },
@@ -192,9 +208,9 @@
   "usage": {
     "title": "Usage",
     "subtitle": "Token and request counts for traffic AiOpt routed through the translation proxy.",
-    "scopeNote": "Only cross-format bindings run through the proxy, so only they are measured — same-format direct bindings bypass AiOpt and aren't counted. History is kept for 90 days (UTC).",
+    "scopeNote": "Traffic is counted when it runs through the proxy. With proxy mode on, every binding does, so usage is measured. By default (proxy mode off) same-format bindings connect directly and aren’t counted; Gemini bindings are always direct and never counted.",
     "close": "Close",
-    "empty": "No usage recorded yet. Bind an agent to a provider of a different API format and run a request — same-format direct bindings bypass the proxy and aren't measured.",
+    "empty": "No usage recorded yet. Turn on proxy mode, bind an agent to a provider, and run a request. By default (proxy mode off) same-format bindings bypass the proxy and aren’t measured; Gemini bindings are never measured.",
     "totals": {
       "requests": "Requests",
       "successRate": "Success rate",
@@ -262,7 +278,8 @@
       "push": "Push →",
       "pushAll": "Push to all agents",
       "diff": "Diff",
-      "delete": "Delete from library"
+      "delete": "Delete from library",
+      "deleteAgent": "Delete from agent"
     },
     "detail": {
       "noDescription": "No description."
@@ -270,6 +287,8 @@
     "confirm": {
       "pushAll": "Overwrite this skill in every agent with the library copy?",
       "delete": "Delete this skill from the central library? Agent copies are left untouched.",
+      "deleteAgent": "Delete this agent's copy of the skill? The library and other agents' copies are left untouched.",
+      "deleteAgentLast": "This is the only copy of this skill — the library and every other agent are without it. Deleting it can't be undone. Delete anyway?",
       "overwriteAgent": "Overwrite the agent's copy with the library copy?",
       "overwriteLibrary": "Overwrite the library copy with the agent's copy?",
       "merge": "Apply the picked agent files to the library copy? The agent's copy is left untouched.",

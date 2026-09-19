@@ -97,6 +97,12 @@ export async function deleteSkill(name: string): Promise<void> {
   applySnapshot(await window.aiopt.skills.delete(name));
 }
 
+/** Delete an agent's own copy of a skill (destructive; the caller confirms first). */
+export async function deleteAgentSkill(agentId: AgentId, name: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.skills.deleteAgent(agentId, name));
+}
+
 /** Per-file diff of an agent's copy against the central copy (metadata only). */
 export function diffSkill(agentId: AgentId, name: string): Promise<SkillDiffResult> {
   ensureInitialized();

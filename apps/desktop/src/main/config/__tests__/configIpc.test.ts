@@ -20,16 +20,20 @@ function memoryPersistence(seed: Record<string, unknown> = {}): PreferencePersis
   return { load: () => ({ ...store }), save: (o) => { store = { ...o }; } };
 }
 
-/** Register config IPC over a fresh in-memory registry; capture broadcasts. */
+/** Register config IPC over a fresh in-memory registry; capture broadcasts + proxy-mode hook calls. */
 function harness(seed: Record<string, unknown> = {}): {
   reg: InMemoryIpcRegistry;
   broadcasts: Array<{ channel: string; payload: unknown }>;
+  proxyModeCalls: boolean[];
 } {
   const reg = createInMemoryRegistry();
   const broadcasts: Array<{ channel: string; payload: unknown }> = [];
   const broadcast: BroadcastFn = (channel, payload) => broadcasts.push({ channel, payload });
-  registerConfigIpc(reg, createConfigStore(memoryPersistence(seed)), broadcast);
-  return { reg, broadcasts };
+  const proxyModeCalls: boolean[] = [];
+  registerConfigIpc(reg, createConfigStore(memoryPersistence(seed)), broadcast, {
+    onProxyModeChange: (v) => proxyModeCalls.push(v),
+  });
+  return { reg, broadcasts, proxyModeCalls };
 }
 
 async function codeOf(fn: () => Promise<unknown>): Promise<IpcErrorCode> {
@@ -46,7 +50,7 @@ describe('config IPC', () => {
   it('get-all returns the effective snapshot for a trusted sender', async () => {
     const { reg } = harness({ theme: 'dark' });
     const result = (await reg.invoke(IPC_CHANNELS.configGetAll, undefined, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'dark', skillsLibrary: 'app' });
+    expect(result).toEqual({ theme: 'dark', skillsLibrary: 'app', proxyMode: false });
   });
 
   it('set persists the override and broadcasts the new snapshot', async () => {
@@ -56,20 +60,52 @@ describe('config IPC', () => {
       { key: 'theme', value: 'light' },
       trusted,
     )) as PreferencesShape;
-    expect(result).toEqual({ theme: 'light', skillsLibrary: 'app' });
+    expect(result).toEqual({ theme: 'light', skillsLibrary: 'app', proxyMode: false });
     expect(broadcasts).toEqual([
-      { channel: IPC_EVENTS.configChanged, payload: { theme: 'light', skillsLibrary: 'app' } },
+      { channel: IPC_EVENTS.configChanged, payload: { theme: 'light', skillsLibrary: 'app', proxyMode: false } },
     ]);
   });
 
   it('reset restores the default and broadcasts', async () => {
     const { reg, broadcasts } = harness({ theme: 'light' });
     const result = (await reg.invoke(IPC_CHANNELS.configReset, { key: 'theme' }, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(result).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: false });
     expect(broadcasts.at(-1)).toEqual({
       channel: IPC_EVENTS.configChanged,
-      payload: { theme: 'system', skillsLibrary: 'app' },
+      payload: { theme: 'system', skillsLibrary: 'app', proxyMode: false },
     });
+  });
+
+  it('setting proxyMode broadcasts and runs the onProxyModeChange hook with the new value', async () => {
+    const { reg, broadcasts, proxyModeCalls } = harness();
+    const result = (await reg.invoke(
+      IPC_CHANNELS.configSet,
+      { key: 'proxyMode', value: true },
+      trusted,
+    )) as PreferencesShape;
+    expect(result.proxyMode).toBe(true);
+    expect(broadcasts.at(-1)!.payload).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: true });
+    expect(proxyModeCalls).toEqual([true]);
+  });
+
+  it('resetting proxyMode runs the hook with the restored default', async () => {
+    const { reg, proxyModeCalls } = harness({ proxyMode: true });
+    await reg.invoke(IPC_CHANNELS.configReset, { key: 'proxyMode' }, trusted);
+    expect(proxyModeCalls).toEqual([false]);
+  });
+
+  it('changing a non-proxyMode preference does not run the proxy-mode hook', async () => {
+    const { reg, proxyModeCalls } = harness();
+    await reg.invoke(IPC_CHANNELS.configSet, { key: 'theme', value: 'dark' }, trusted);
+    expect(proxyModeCalls).toEqual([]);
+  });
+
+  it('rejects a non-boolean proxyMode with INVALID_PARAMS', async () => {
+    const { reg, proxyModeCalls } = harness();
+    expect(await codeOf(() => reg.invoke(IPC_CHANNELS.configSet, { key: 'proxyMode', value: 'yes' }, trusted))).toBe(
+      'INVALID_PARAMS',
+    );
+    expect(proxyModeCalls).toEqual([]);
   });
 
   it('rejects an untrusted sender with PERMISSION_DENIED and does not broadcast', async () => {

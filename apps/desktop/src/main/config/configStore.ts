@@ -46,6 +46,18 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
       return raw as SkillsLibraryLocation;
     },
   },
+  proxyMode: {
+    // Off by default: same-format bindings connect directly to the provider, so they
+    // keep working when AiOpt isn't running (their usage is not counted). On routes
+    // every translatable binding through the proxy for usage counting.
+    default: false,
+    validate(raw) {
+      if (typeof raw !== 'boolean') {
+        throwIpcError('INVALID_PARAMS', 'proxyMode must be a boolean');
+      }
+      return raw;
+    },
+  },
 };
 
 export const PREFERENCE_KEYS = Object.keys(PREFERENCES) as (keyof PreferencesShape)[];

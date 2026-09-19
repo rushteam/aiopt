@@ -88,6 +88,16 @@ export const IPC_CHANNELS = {
   // §1 otherwise forbids; it exists only because the user asked to view saved keys.
   // The renderer must hold the returned value transiently and never persist/log it.
   providersRevealKey: 'providers:reveal-key',
+  // Copy a proxied binding's loopback endpoint (base URL + token as an OpenAI-compatible
+  // config) to the clipboard so another tool can reuse the local proxy. Deliberately MORE
+  // conservative than revealKey: main assembles the snippet and writes the clipboard itself,
+  // so the token NEVER crosses IPC back to the renderer — the result carries only a flag.
+  providersCopyProxyConfig: 'providers:copy-proxy-config',
+  // Move the loopback proxy to a fresh OS-assigned port and re-sync every proxied agent's
+  // on-disk config to it. The user's manual escape hatch when the persisted port collides
+  // with another process. The port is not a secret (it already sits in each agent's config);
+  // the result carries only the new port, and the fresh snapshot arrives via providersChanged.
+  providersRefreshProxyPort: 'providers:refresh-proxy-port',
 
   // Usage statistics. Read the aggregated snapshot of proxied traffic, or clear the
   // history. The recorded events carry only counts + identifiers (never content, keys,
@@ -106,6 +116,7 @@ export const IPC_CHANNELS = {
   skillsPush: 'skills:push',
   skillsImport: 'skills:import',
   skillsDelete: 'skills:delete',
+  skillsDeleteAgent: 'skills:delete-agent',
   skillsDiff: 'skills:diff',
   skillsFileContent: 'skills:file-content',
   skillsMerge: 'skills:merge',
@@ -219,6 +230,18 @@ export interface PreferencesShape {
    * never supplies an absolute path — main resolves it (see main/paths.ts).
    */
   skillsLibrary: SkillsLibraryLocation;
+  /**
+   * Proxy mode. When `false` (default) a same-format binding is written to talk to
+   * the provider DIRECTLY (real key on disk, one less hop, lower latency) — so it
+   * keeps working even when AiOpt is not running, at the cost of NOT being counted.
+   * When `true`, EVERY translatable binding — including a same-format one — is routed
+   * through the loopback translation proxy, so its token usage is counted and its real
+   * key stays off disk (the agent config holds a loopback token; the key is resolved
+   * main-side per request). A cross-format binding always routes through the proxy
+   * regardless — it cannot be expressed as a direct config. Gemini is never proxy-able
+   * and stays direct in either mode.
+   */
+  proxyMode: boolean;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry
@@ -369,12 +392,24 @@ export interface AgentSummary {
   mode: 'exclusive' | 'additive';
   installed: boolean;
   binding: AgentBinding | null;
+  /**
+   * Whether this agent's binding is currently served through the loopback proxy (vs. a
+   * direct config). True only when a live route exists — the renderer uses it to offer
+   * "copy proxy config". Never carries the token itself.
+   */
+  proxied: boolean;
 }
 
 /** The full renderer-visible view of the pool + agents. */
 export interface ProvidersSnapshot {
   providers: ProviderSummary[];
   agents: AgentSummary[];
+  /**
+   * The live loopback port the translation proxy is bound to, or null before it has bound.
+   * NOT a secret — it already sits plaintext in each proxied agent's on-disk baseUrl. The
+   * renderer displays it and offers "refresh port"; the per-binding token is never included.
+   */
+  proxyPort: number | null;
 }
 
 /** Create a provider. `apiKey` (if present) is stored encrypted main-side, never echoed back. */
@@ -452,6 +487,28 @@ export interface ProviderRevealKeyResult {
   key: string | null;
 }
 
+/** Copy a proxied agent's loopback endpoint config to the clipboard (token stays main-side). */
+export interface ProviderCopyProxyConfigRequest {
+  agentId: AgentId;
+}
+
+/**
+ * Result of the copy: `copied` is true when a live proxy route existed and the snippet was
+ * written to the clipboard. Deliberately carries NO endpoint data — the token never returns
+ * to the renderer (main did the clipboard write).
+ */
+export interface ProviderCopyProxyConfigResult {
+  copied: boolean;
+}
+
+/**
+ * Result of a port refresh: the new loopback port the proxy rebound to. The fresh
+ * `ProvidersSnapshot` (with the same port) is broadcast separately via `providersChanged`.
+ */
+export interface ProviderRefreshProxyPortResult {
+  port: number;
+}
+
 // --- Skills wire contract -------------------------------------------------
 //
 // The renderer names a skill by (agentId, name) only — never a path. Mutations
@@ -471,6 +528,12 @@ export interface SkillsPushRequest {
 }
 
 export interface SkillsDeleteRequest {
+  name: string;
+}
+
+/** Delete an agent's own copy of a skill (destructive; the caller confirms first). */
+export interface SkillsDeleteAgentRequest {
+  agentId: AgentId;
   name: string;
 }
 
@@ -550,6 +613,14 @@ export interface IpcContract {
     request: ProviderRevealKeyRequest;
     result: ProviderRevealKeyResult;
   };
+  [IPC_CHANNELS.providersCopyProxyConfig]: {
+    request: ProviderCopyProxyConfigRequest;
+    result: ProviderCopyProxyConfigResult;
+  };
+  [IPC_CHANNELS.providersRefreshProxyPort]: {
+    request: void;
+    result: ProviderRefreshProxyPortResult;
+  };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
@@ -557,6 +628,7 @@ export interface IpcContract {
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsImport]: { request: void; result: SkillsImportResult };
   [IPC_CHANNELS.skillsDelete]: { request: SkillsDeleteRequest; result: SkillsSnapshot };
+  [IPC_CHANNELS.skillsDeleteAgent]: { request: SkillsDeleteAgentRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsDiff]: { request: SkillsDiffRequest; result: SkillDiffResult };
   [IPC_CHANNELS.skillsFileContent]: { request: SkillsFileContentRequest; result: SkillFileContent };
   [IPC_CHANNELS.skillsMerge]: { request: SkillsMergeRequest; result: SkillsSnapshot };

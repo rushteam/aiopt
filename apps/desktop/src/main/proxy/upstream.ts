@@ -46,8 +46,11 @@ export function outboundUrl(outboundFormat: ApiFormat, baseUrl: string): string 
       return endsWithVersion(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
     case 'anthropic':
       return endsWithVersion(base) ? `${base}/messages` : `${base}/v1/messages`;
+    case 'openai-responses':
+      // Only reached by a same-format passthrough route (Responses → Responses).
+      return endsWithVersion(base) ? `${base}/responses` : `${base}/v1/responses`;
     default:
-      // gemini is not a translation target; routes never carry it.
+      // gemini is not a proxy target; routes never carry it.
       throw new Error(`unsupported outbound format: ${outboundFormat}`);
   }
 }
@@ -66,6 +69,8 @@ export function outboundHeaders(
   };
   switch (outboundFormat) {
     case 'openai':
+    case 'openai-responses':
+      // Both OpenAI dialects authenticate with a bearer token.
       if (apiKey) headers.authorization = `Bearer ${apiKey}`;
       break;
     case 'anthropic':

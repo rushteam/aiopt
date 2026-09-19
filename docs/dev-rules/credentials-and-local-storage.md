@@ -27,6 +27,7 @@ Electron's `app.getPath(...)`:
 | Data | Location | Lifecycle |
 | --- | --- | --- |
 | App config / user preferences | `app.getPath('userData')` | Survives restart & update; user-owned. |
+| Proxy identity (`proxy.json`: loopback port + per-binding route tokens) | `app.getPath('userData')` | Survives restart so a running agent's cached loopback config keeps working; user-owned. Route tokens are secret-class loopback credentials (NOT the real provider key, which stays in the OS secret store) — never log them; rotated only on rebind/clear. |
 | Local database | `app.getPath('userData')` | Long-lived; migrated, never silently reset. |
 | Secrets | OS secret store, keyed under `userData` | Long-lived; encrypted at rest. |
 | Caches / rebuildable artifacts | `app.getPath('cache')` | Disposable; must be safe to delete. |

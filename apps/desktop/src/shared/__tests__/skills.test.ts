@@ -71,6 +71,10 @@ describe('AGENT_SKILL_DIRS', () => {
     }
     expect(AGENT_SKILL_DIRS.grok).toBeNull();
   });
+
+  it('maps the skills-only agent cursor to ~/.cursor/skills', () => {
+    expect(AGENT_SKILL_DIRS.cursor).toBe('.cursor/skills');
+  });
 });
 
 describe('newerSkillSide', () => {

@@ -29,10 +29,12 @@ export function readResponseUsage(outboundFormat: ApiFormat, json: Record<string
   const usage = json.usage;
   if (!usage || typeof usage !== 'object') return { ...ZERO };
   const u = usage as Record<string, unknown>;
-  if (outboundFormat === 'anthropic') {
+  if (outboundFormat === 'anthropic' || outboundFormat === 'openai-responses') {
+    // Anthropic Messages and the OpenAI Responses API both name their counts
+    // `input_tokens` / `output_tokens`.
     return { inputTokens: num(u.input_tokens), outputTokens: num(u.output_tokens) };
   }
-  // openai (Chat Completions) — also the shape gemini/openai-responses upstreams echo.
+  // openai (Chat Completions) — also the shape gemini upstreams echo.
   return { inputTokens: num(u.prompt_tokens), outputTokens: num(u.completion_tokens) };
 }
 
@@ -81,7 +83,19 @@ export function createUsageSniffer(outboundFormat: ApiFormat): UsageSniffer {
         return;
       }
 
-      // openai / gemini / openai-responses: the terminal chunk carries a full usage object.
+      if (outboundFormat === 'openai-responses') {
+        // Responses streams usage nested under the `response` object on its terminal
+        // `response.completed` (and echoes it on `response.incomplete`); named
+        // `input_tokens` / `output_tokens`, not the Chat Completions spelling.
+        const resp = (payload.response ?? {}) as { usage?: { input_tokens?: unknown; output_tokens?: unknown } };
+        if (resp.usage) {
+          inputTokens = num(resp.usage.input_tokens);
+          outputTokens = num(resp.usage.output_tokens);
+        }
+        return;
+      }
+
+      // openai (Chat Completions) / gemini: the terminal chunk carries a full usage object.
       const usage = payload.usage;
       if (usage && typeof usage === 'object') {
         const u = usage as { prompt_tokens?: unknown; completion_tokens?: unknown };

@@ -16,6 +16,7 @@ import { hoverBackground } from '../../lib/hover';
 import { useI18n, type Locale, type TranslateFn } from '../../i18n';
 import { useSkills } from '../../hooks/useSkills';
 import {
+  deleteAgentSkill,
   deleteSkill,
   diffSkill,
   importSkill,
@@ -28,7 +29,7 @@ import {
   skillFileContent,
 } from '../../lib/skillsStore';
 import { skillsErrorMessage } from './errors';
-import { AGENTS } from '../../../shared/aiProviders';
+import { AGENT_NAMES } from '../../../shared/aiProviders';
 import type { AgentId } from '../../../shared/aiProviders';
 import { newerSkillSide } from '../../../shared/skills';
 import type {
@@ -82,7 +83,7 @@ interface Confirm {
   run: () => Promise<void>;
 }
 
-export function SkillsHome({ onClose }: { onClose: () => void }) {
+export function SkillsHome() {
   const { t, locale } = useI18n();
   const snapshot = useSkills();
   const [selected, setSelected] = useState<string | null>(null);
@@ -109,7 +110,7 @@ export function SkillsHome({ onClose }: { onClose: () => void }) {
   }, [selected]);
 
   const selectedRow = selected ? snapshot.rows.find((r) => r.name === selected) ?? null : null;
-  const agentName = (id: AgentId): string => AGENTS.find((a) => a.id === id)?.name ?? id;
+  const agentName = (id: AgentId): string => AGENT_NAMES[id] ?? id;
 
   /** Run a mutating action with a shared busy/error guard, clearing any confirm. */
   async function act(fn: () => Promise<void>): Promise<void> {
@@ -153,23 +154,10 @@ export function SkillsHome({ onClose }: { onClose: () => void }) {
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 24px 48px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('skills.title')}</h1>
-            <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.md }}>
-              {t('skills.subtitle')}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('skills.close')}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={closeStyle}
-          >
-            ×
-          </button>
-        </div>
+        <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('skills.title')}</h1>
+        <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.md }}>
+          {t('skills.subtitle')}
+        </p>
 
         {/* Toolbar: central library path + location toggle + import + rescan. */}
         <section style={toolbarStyle}>
@@ -263,6 +251,7 @@ export function SkillsHome({ onClose }: { onClose: () => void }) {
               void act(() => mergeSkill(agentId, selectedRow.name, agentPicks).then(() => setDiff(null)))
             }
             onDelete={() => void act(() => deleteSkill(selectedRow.name))}
+            onDeleteAgent={(agentId) => void act(() => deleteAgentSkill(agentId, selectedRow.name))}
             onReveal={(ref) => void revealSkill(ref)}
             t={t}
             locale={locale}
@@ -399,6 +388,7 @@ function DetailPanel({
   onPushAll,
   onMerge,
   onDelete,
+  onDeleteAgent,
   onReveal,
   t,
   locale,
@@ -417,12 +407,19 @@ function DetailPanel({
   onPushAll: () => void;
   onMerge: (agentId: AgentId, agentPicks: string[]) => void;
   onDelete: () => void;
+  onDeleteAgent: (agentId: AgentId) => void;
   onReveal: (ref: { scope: 'central' | 'agent'; agentId?: AgentId; name?: string }) => void;
   t: TranslateFn;
   locale: Locale;
 }) {
   const hasCentral = row.central !== null;
   const description = row.central?.meta?.description;
+
+  // How many copies of this skill exist anywhere (library + each agent that has it).
+  // When deleting an agent copy would drop the count to zero, it's the LAST copy —
+  // the confirmation escalates to an unrecoverable-loss warning.
+  const copyCount =
+    (hasCentral ? 1 : 0) + agents.filter((a) => row.agents[a.id]?.entry != null).length;
 
   return (
     <section style={detailStyle}>
@@ -580,6 +577,26 @@ function DetailPanel({
               )}
               {state === 'same' && (
                 <ActionButton label={t('skills.actions.diff')} disabled={busy} onClick={() => onLoadDiff(a.id)} />
+              )}
+              {/* Delete the agent's own copy — available whenever the agent HAS a copy.
+                  Second confirmation; when this is the last copy anywhere, the confirm
+                  text escalates to the unrecoverable-loss warning. */}
+              {cell?.entry != null && (
+                <ActionButton
+                  label={t('skills.actions.deleteAgent')}
+                  danger
+                  disabled={busy}
+                  onClick={() =>
+                    setConfirm({
+                      text:
+                        copyCount <= 1
+                          ? t('skills.confirm.deleteAgentLast')
+                          : t('skills.confirm.deleteAgent'),
+                      confirmLabel: t('skills.actions.delete'),
+                      run: async () => onDeleteAgent(a.id),
+                    })
+                  }
+                />
               )}
             </div>
           );
@@ -866,14 +883,24 @@ function PreviewBody({
   );
 }
 
-function ActionButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
+function ActionButton({
+  label,
+  disabled,
+  onClick,
+  danger = false,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  danger?: boolean;
+}) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
       {...hoverBackground('transparent', token('surfaceHover'))}
-      style={actionButtonStyle}
+      style={danger ? dangerActionButtonStyle : actionButtonStyle}
     >
       {label}
     </button>
@@ -978,22 +1005,6 @@ function diffColor(status: SkillDiffResult['files'][number]['status']): string {
 
 // ─── styles ───────────────────────────────────────────────────────────────────
 
-const closeStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  padding: 0,
-  borderRadius: radius.sm,
-  border: 'none',
-  background: 'transparent',
-  color: token('textMuted'),
-  cursor: 'pointer',
-  fontSize: fontSize.xl,
-  lineHeight: 1,
-} as const;
-
 const toolbarStyle = {
   display: 'flex',
   alignItems: 'flex-end',
@@ -1070,6 +1081,13 @@ const actionButtonStyle = {
   cursor: 'pointer',
   fontSize: fontSize.sm,
   whiteSpace: 'nowrap',
+} as const;
+
+// Subtle danger variant for the agent-copy delete: danger-colored text on a plain
+// border, matching ProviderCard's ghost-danger action — reads as "careful", not "shout".
+const dangerActionButtonStyle = {
+  ...actionButtonStyle,
+  color: token('danger'),
 } as const;
 
 const dangerStyle = {

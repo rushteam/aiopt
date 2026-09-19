@@ -55,7 +55,7 @@
       "id": "target-agent",
       "en": "Agent",
       "status": "proposed",
-      "note": "A target AI coding tool that AiOpt configures (Claude Code, Codex, Gemini CLI, Grok, OpenCode, pi). Each agent binds to one provider+model from the pool. Kept as 'Agent' in UI, not 'client' or 'tool'.",
+      "note": "A target AI coding tool that AiOpt configures (Claude Code, Codex, Cursor, Gemini CLI, Grok, OpenCode, pi). Most agents bind to one provider+model from the pool; some (e.g. Cursor, which only talks to its own backend) can't bind a provider and participate only in Skills sync. Kept as 'Agent' in UI, not 'client' or 'tool'.",
       "translations": { "zh-CN": "Agent" },
       "forbidden": { "zh-CN": ["客户端"] }
     },
@@ -90,6 +90,14 @@
       "note": "Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.",
       "translations": { "zh-CN": "合并" },
       "forbidden": {}
+    },
+    {
+      "id": "proxy-mode",
+      "en": "Proxy mode",
+      "status": "proposed",
+      "note": "A global setting. Off (default) writes same-format bindings as a direct provider connection (one less hop, and they keep working when AiOpt isn't running) whose usage is not counted. On routes every translatable binding — same-format ones included — through the translation proxy so all token usage is counted; cross-format bindings always route through the proxy regardless. Not 'turbo', 'fast mode', or 'proxy server mode' in UI copy.",
+      "translations": { "zh-CN": "代理模式" },
+      "forbidden": { "zh-CN": ["极速模式", "代理服务器模式", "加速模式"] }
     }
   ]
 }

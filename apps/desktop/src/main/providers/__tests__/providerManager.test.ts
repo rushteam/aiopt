@@ -58,22 +58,43 @@ function codeOf(fn: () => void): string {
 function fakeProxy() {
   const registered: RouteSpec[] = [];
   const unregistered: AgentId[] = [];
+  // Track the live route per agent so isRouted/endpointFor mirror the real proxy.
+  const live = new Map<AgentId, ReturnType<TranslationProxy['endpointFor']>>();
   let counter = 0;
+  // A mutable port so rebindPort can move it and the snapshot's proxyPort reflects the change.
+  let port = 4567;
   const proxy: TranslationProxy = {
     start: () => Promise.resolve(),
     stop: () => Promise.resolve(),
-    getPort: () => 4567,
+    getPort: () => port,
+    rebindPort: () => {
+      // Real proxy binds a fresh OS-assigned port but keeps every route/token intact — only
+      // the port segment of each live baseUrl moves. Mirror the port move; the subsequent
+      // rebuildRoutes replay re-registers each binding against the new port.
+      port += 1;
+      return Promise.resolve(port);
+    },
     registerRoute: (spec) => {
       registered.push(spec);
       const token = `tok-${++counter}`;
-      return { baseUrl: `http://127.0.0.1:4567/${token}`, token };
+      const baseUrl = `http://127.0.0.1:${port}/${token}`;
+      live.set(spec.agentId, { baseUrl, token, modelId: spec.modelId, inboundFormat: spec.inboundFormat });
+      return { baseUrl, token };
     },
-    unregisterRoute: ({ agentId }) => void unregistered.push(agentId),
+    unregisterRoute: ({ agentId }) => {
+      unregistered.push(agentId);
+      live.delete(agentId);
+    },
+    isRouted: (agentId) => live.has(agentId),
+    endpointFor: (agentId) => live.get(agentId) ?? null,
   };
   return { proxy, registered, unregistered };
 }
 
-function harness(installedAgents: AgentId[] = ['claude'], fetchImpl?: FetchLike) {
+function harness(
+  installedAgents: AgentId[] = ['claude'],
+  opts: { fetchImpl?: FetchLike; proxyMode?: boolean } = {},
+) {
   const store = createProviderStore({ load: () => ({}), save: () => {} });
   const secrets = memorySecrets();
   const adapters = new Map<AgentId, AgentAdapter>();
@@ -87,8 +108,22 @@ function harness(installedAgents: AgentId[] = ['claude'], fetchImpl?: FetchLike)
   }
   const onChange = vi.fn<(snapshot: ProvidersSnapshot) => void>();
   const { proxy, registered, unregistered } = fakeProxy();
-  const manager = createProviderManager(store, secrets, adapters, onChange, () => proxy, fetchImpl);
-  return { store, secrets, adapters, calls, restoreCounts, onChange, manager, registered, unregistered };
+  // Records every string handed to the injected clipboard so copyProxyConfig tests can
+  // assert what was written — the real one is Electron's clipboard (main-only).
+  const clipboard: string[] = [];
+  // Default proxy mode OFF — the product default: same-format bindings connect direct.
+  // Tests that exercise the proxied passthrough path pass `{ proxyMode: true }`.
+  const manager = createProviderManager(
+    store,
+    secrets,
+    adapters,
+    onChange,
+    () => proxy,
+    () => opts.proxyMode ?? false,
+    opts.fetchImpl,
+    (text) => clipboard.push(text),
+  );
+  return { store, secrets, adapters, calls, restoreCounts, onChange, manager, registered, unregistered, clipboard };
 }
 
 /** A fake transport that records request headers and returns one openai model. */
@@ -192,7 +227,7 @@ describe('provider manager — snapshot agents', () => {
 });
 
 describe('provider manager — setBinding (the apply flow)', () => {
-  it('writes the provider into the agent config with the plaintext key', () => {
+  it('default (proxy mode off): writes the provider into the agent config with the plaintext key (direct)', () => {
     const { manager, calls } = harness(['claude']);
     const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk-live', modelId: 'm1' });
     manager.setBinding('claude', id, 'm1');
@@ -207,7 +242,7 @@ describe('provider manager — setBinding (the apply flow)', () => {
     });
   });
 
-  it('writes a model alias (not the id) to the agent, but keeps the id in the binding', () => {
+  it('default (proxy mode off): writes a model alias (not the id) to the agent, but keeps the id in the binding', () => {
     const { manager, calls } = harness(['claude']);
     const snap = manager.addProvider({
       name: 'Gateway',
@@ -229,7 +264,7 @@ describe('provider manager — setBinding (the apply flow)', () => {
     });
   });
 
-  it('passes a null key through when the provider has none stored', () => {
+  it('default (proxy mode off): passes a null key through when the provider has none stored', () => {
     const { manager, calls } = harness(['claude']);
     const id = addProvider(manager, { apiFormat: 'anthropic', modelId: 'm1' });
     manager.setBinding('claude', id, 'm1');
@@ -260,11 +295,41 @@ describe('provider manager — setBinding (the apply flow)', () => {
     expect(calls.claude!).toHaveLength(1); // only the setBinding write, none on clear
   });
 
-  it('same-format binding registers NO route (direct connection)', () => {
+  it('default (proxy mode off): a same-format binding registers NO route (direct connection)', () => {
     const { manager, registered } = harness(['claude']);
     const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk-live', modelId: 'm1' });
     manager.setBinding('claude', id, 'm1');
     expect(registered).toHaveLength(0);
+  });
+
+  it('proxy mode: a same-format binding routes through the proxy (passthrough) and hides the key', () => {
+    const { manager, registered, calls } = harness(['claude'], { proxyMode: true });
+    const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk-REAL-secret', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+
+    // A same-format identity route: inbound === outbound.
+    expect(registered).toHaveLength(1);
+    expect(registered[0]!).toMatchObject({
+      agentId: 'claude',
+      inboundFormat: 'anthropic',
+      outboundFormat: 'anthropic',
+      upstreamBaseUrl: 'https://api.example.com',
+      modelId: 'm1',
+    });
+    // The agent config gets the loopback token, never the real key.
+    const write = calls.claude![0]!;
+    expect(write.provider.baseUrl).toBe('http://127.0.0.1:4567/tok-1');
+    expect(write.apiKey).toBe('tok-1');
+    expect(JSON.stringify(write)).not.toContain('sk-REAL-secret');
+  });
+
+  it('proxy mode: a same-format GEMINI binding stays direct (no proxy dialect for gemini)', () => {
+    const { manager, registered, calls } = harness(['gemini'], { proxyMode: true });
+    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk-gem', modelId: 'm1' });
+    manager.setBinding('gemini', id, 'm1');
+    // Gemini can't be proxied, so even with proxy mode on it is written direct.
+    expect(registered).toHaveLength(0);
+    expect(calls.gemini![0]!.apiKey).toBe('sk-gem');
   });
 });
 
@@ -367,6 +432,115 @@ describe('provider manager — setBinding cross-format (translation proxy)', () 
   });
 });
 
+describe('provider manager — copyProxyConfig', () => {
+  it('rejects an unknown agent id with INVALID_PARAMS', () => {
+    const { manager } = harness(['claude']);
+    expect(codeOf(() => manager.copyProxyConfig('nope' as AgentId))).toBe('INVALID_PARAMS');
+  });
+
+  it('returns { copied: false } and writes nothing when the agent has no live route', () => {
+    const { manager, clipboard } = harness(['claude']);
+    // A direct (same-format, proxy mode off) binding registers no route.
+    const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(manager.copyProxyConfig('claude')).toEqual({ copied: false });
+    expect(clipboard).toHaveLength(0);
+  });
+
+  it('writes an anthropic-dialect snippet (base URL + token + model) for a proxied claude route', () => {
+    const { manager, clipboard } = harness(['claude']);
+    // Claude (anthropic inbound) bound to an OpenAI provider → a live translation route.
+    const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'sk-REAL-secret', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+
+    expect(manager.copyProxyConfig('claude')).toEqual({ copied: true });
+    expect(clipboard).toHaveLength(1);
+    const snippet = clipboard[0]!;
+    expect(snippet).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4567/tok-1');
+    expect(snippet).toContain('ANTHROPIC_API_KEY=tok-1');
+    expect(snippet).toContain('MODEL=m1');
+    // The upstream provider's real key must never appear in the copied snippet.
+    expect(snippet).not.toContain('sk-REAL-secret');
+  });
+
+  it('uses OpenAI env var names for an openai-inbound route', () => {
+    const { manager, clipboard } = harness(['codex']);
+    // Codex (openai-responses inbound) → Anthropic provider serves the OpenAI Responses path.
+    const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('codex', id, 'm1');
+
+    expect(manager.copyProxyConfig('codex')).toEqual({ copied: true });
+    expect(clipboard[0]!).toContain('OPENAI_BASE_URL=');
+    expect(clipboard[0]!).toContain('OPENAI_API_KEY=tok-1');
+  });
+});
+
+describe('provider manager — snapshot proxied flag', () => {
+  it('tracks the live route state of each agent', () => {
+    const { manager } = harness(['claude']);
+    const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'sk', modelId: 'm1' });
+
+    const before = manager.getSnapshot().agents.find((a) => a.id === 'claude')!;
+    expect(before.proxied).toBe(false);
+
+    manager.setBinding('claude', id, 'm1'); // cross-format → routed
+    expect(manager.getSnapshot().agents.find((a) => a.id === 'claude')!.proxied).toBe(true);
+
+    manager.clearBinding('claude');
+    expect(manager.getSnapshot().agents.find((a) => a.id === 'claude')!.proxied).toBe(false);
+  });
+});
+
+describe('provider manager — refreshProxyPort', () => {
+  it('rebinds to a fresh port and re-syncs every proxied agent to it', async () => {
+    const { manager, calls, registered } = harness(['claude']);
+    // Cross-format binding → a live proxy route on the initial port (4567).
+    const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(1);
+    expect(calls.claude![0]!.provider.baseUrl).toBe('http://127.0.0.1:4567/tok-1');
+
+    const { port } = await manager.refreshProxyPort();
+    // The port moved off the collided one…
+    expect(port).toBe(4568);
+    // …and the binding was replayed, rewriting the on-disk baseUrl to the new port.
+    expect(registered).toHaveLength(2);
+    expect(calls.claude![calls.claude!.length - 1]!.provider.baseUrl).toBe('http://127.0.0.1:4568/tok-2');
+  });
+
+  it('reports the new port in the snapshot and broadcasts it', async () => {
+    const { manager, onChange } = harness(['claude']);
+    const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    onChange.mockClear();
+
+    await manager.refreshProxyPort();
+    expect(manager.getSnapshot().proxyPort).toBe(4568);
+    // The fresh snapshot is pushed to every window.
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0]![0]!.proxyPort).toBe(4568);
+  });
+
+  it('is a no-op replay for a direct binding (nothing to re-sync)', async () => {
+    const { manager, registered } = harness(['claude']);
+    // Same-format, proxy mode off → direct, no route.
+    const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+
+    const { port } = await manager.refreshProxyPort();
+    expect(port).toBe(4568);
+    expect(registered).toHaveLength(0);
+  });
+});
+
+describe('provider manager — snapshot proxyPort', () => {
+  it('surfaces the live loopback port from the proxy', () => {
+    const { manager } = harness(['claude']);
+    // The fake proxy reports 4567 from the start (a real one binds during app start).
+    expect(manager.getSnapshot().proxyPort).toBe(4567);
+  });
+});
+
 describe('provider manager — restoreAgentDefault', () => {
   it('restores the agent config via its adapter and clears the binding', () => {
     const { manager, calls, restoreCounts } = harness(['claude']);
@@ -449,19 +623,30 @@ describe('provider manager — rebuildProxyRoutes (startup route refresh)', () =
     expect(calls.claude![calls.claude!.length - 1]!.apiKey).toBe('tok-2');
   });
 
-  it('skips same-format bindings (no route to rebuild)', () => {
+  it('default (proxy mode off): skips same-format bindings (direct, no route to rebuild)', () => {
     const { manager, registered } = harness(['claude']);
     const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk', modelId: 'm1' });
     manager.setBinding('claude', id, 'm1');
     manager.rebuildProxyRoutes();
     expect(registered).toHaveLength(0);
   });
+
+  it('proxy mode: re-registers a same-format passthrough route with a rotated token', () => {
+    const { manager, registered, calls } = harness(['claude'], { proxyMode: true });
+    const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(1);
+
+    manager.rebuildProxyRoutes();
+    expect(registered).toHaveLength(2); // rotated
+    expect(calls.claude![calls.claude!.length - 1]!.apiKey).toBe('tok-2');
+  });
 });
 
 describe('provider manager — fetchModels (key resolution)', () => {
   it('prefers a freshly-typed key over the stored one', async () => {
     const { fetchImpl, calls } = recordingFetch();
-    const { manager } = harness(['claude'], fetchImpl);
+    const { manager } = harness(['claude'], { fetchImpl });
     const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'stored-key' });
 
     const models = await manager.fetchModels({
@@ -477,7 +662,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
 
   it('falls back to the stored key when the field is blank (edit mode)', async () => {
     const { fetchImpl, calls } = recordingFetch();
-    const { manager } = harness(['claude'], fetchImpl);
+    const { manager } = harness(['claude'], { fetchImpl });
     const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'stored-key' });
 
     await manager.fetchModels({
@@ -491,7 +676,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
 
   it('sends no key when neither a typed key nor a stored provider key exists', async () => {
     const { fetchImpl, calls } = recordingFetch();
-    const { manager } = harness(['claude'], fetchImpl);
+    const { manager } = harness(['claude'], { fetchImpl });
 
     await manager.fetchModels({ apiFormat: 'openai', baseUrl: 'https://api.example.com/v1' });
 

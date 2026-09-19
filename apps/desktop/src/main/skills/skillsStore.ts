@@ -13,7 +13,9 @@
 // renderer), and it is still copied through the same symlink/size-guarded `replaceDir`.
 
 import type { AgentId } from '../../shared/aiProviders';
-import { AGENTS } from '../../shared/aiProviders';
+// Skills enumerates ALL known agents (AGENT_IDS), not the binding registry (AGENTS):
+// a skills-only agent like `cursor` participates in sync but is absent from AGENTS.
+import { AGENT_IDS, AGENT_NAMES } from '../../shared/aiProviders';
 import {
   computeSyncState,
   SKILL_PREVIEW_MAX_BYTES,
@@ -57,6 +59,8 @@ export interface SkillsStore {
   importFromDir(srcAbsPath: string): string;
   /** Delete a skill from the central library (destructive; the IPC layer confirms first). */
   deleteCentral(name: string): void;
+  /** Delete an agent's own copy of a skill (destructive; the IPC layer confirms first). */
+  deleteAgent(agentId: AgentId, name: string): void;
   /** Per-file diff of an agent's copy against the central copy of one skill. */
   diff(agentId: AgentId, name: string): SkillDiffResult;
   /** Read one differing file's content (from `side`) for the diff preview. Text/size-capped. */
@@ -114,16 +118,16 @@ export function createSkillsStore(deps: SkillsStoreDeps): SkillsStore {
       // Columns + per-agent name sets, in registry order.
       const columns: SkillAgentColumn[] = [];
       const agentNames = new Map<AgentId, Set<string>>();
-      for (const agent of AGENTS) {
-        const dir = paths.agentDir(agent.id);
+      for (const id of AGENT_IDS) {
+        const dir = paths.agentDir(id);
         const available = dir !== null;
         columns.push({
-          id: agent.id,
-          name: agent.name,
+          id,
+          name: AGENT_NAMES[id],
           dir: dir === null ? null : displayPath(dir),
           available,
         });
-        agentNames.set(agent.id, new Set(available ? fs.listSkillNames(dir) : []));
+        agentNames.set(id, new Set(available ? fs.listSkillNames(dir) : []));
       }
 
       // Union of every skill name across central + agents → one row each.
@@ -135,15 +139,15 @@ export function createSkillsStore(deps: SkillsStoreDeps): SkillsStore {
         const hasCentral = centralNames.has(name);
         const central = hasCentral ? entryFor(name, paths.centralSkillPath(name)) : null;
         const row: SkillMatrixRow = { name, central, agents: {} };
-        for (const agent of AGENTS) {
-          if (paths.agentDir(agent.id) === null) continue; // unavailable agent — no cell
-          const hasAgent = agentNames.get(agent.id)?.has(name) ?? false;
+        for (const id of AGENT_IDS) {
+          if (paths.agentDir(id) === null) continue; // unavailable agent — no cell
+          const hasAgent = agentNames.get(id)?.has(name) ?? false;
           if (!hasCentral && !hasAgent) continue; // no chip for an agent unrelated to this row
-          const agentSkillDir = paths.agentSkillPath(agent.id, name);
+          const agentSkillDir = paths.agentSkillPath(id, name);
           const entry = hasAgent ? entryFor(name, agentSkillDir) : null;
           const differs =
             hasCentral && hasAgent ? fs.differs(paths.centralSkillPath(name), agentSkillDir) : false;
-          row.agents[agent.id] = { entry, state: computeSyncState(hasCentral, hasAgent, differs) };
+          row.agents[id] = { entry, state: computeSyncState(hasCentral, hasAgent, differs) };
         }
         rows.push(row);
       }
@@ -197,6 +201,16 @@ export function createSkillsStore(deps: SkillsStoreDeps): SkillsStore {
       const { paths } = currentPaths();
       const dir = paths.centralSkillPath(name);
       if (!fs.isSkillDir(dir)) throwIpcError('NOT_FOUND', `central skill not found: ${name}`);
+      fs.removeDir(dir);
+      notify();
+    },
+
+    deleteAgent(agentId, name) {
+      const { paths } = currentPaths();
+      // agentSkillPath re-validates the name and enforces base containment; a bad name or an
+      // agent with no known skills dir is refused before any path is touched.
+      const dir = paths.agentSkillPath(agentId, name);
+      if (!fs.isSkillDir(dir)) throwIpcError('NOT_FOUND', `agent skill not found: ${name}`);
       fs.removeDir(dir);
       notify();
     },

@@ -61,10 +61,15 @@ function harness(fetchImpl?: FetchLike): {
     start: () => Promise.resolve(),
     stop: () => Promise.resolve(),
     getPort: () => 4567,
+    rebindPort: () => Promise.resolve(4568),
     registerRoute: () => ({ baseUrl: 'http://127.0.0.1:4567/tok', token: 'tok' }),
     unregisterRoute: () => {},
+    isRouted: () => false,
+    endpointFor: () => null,
   };
-  const manager = createProviderManager(store, secrets, adapters, () => {}, () => proxy, fetchImpl);
+  // Proxy mode off (the default): these tests exercise same-format bindings and assume a
+  // direct config (the proxy stub above is never asked to register a route).
+  const manager = createProviderManager(store, secrets, adapters, () => {}, () => proxy, () => false, fetchImpl);
   registerProviderIpc(reg, manager);
   return { reg, secrets };
 }
@@ -217,6 +222,57 @@ describe('provider IPC — revealKey (gated: returns plaintext by design)', () =
       trusted,
     )) as { key: string | null };
     expect(result.key).toBe('sk-secret');
+  });
+});
+
+describe('provider IPC — copyProxyConfig', () => {
+  it('rejects an untrusted call with PERMISSION_DENIED', async () => {
+    const { reg } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersCopyProxyConfig, { agentId: 'claude' }, untrusted),
+      ),
+    ).toBe('PERMISSION_DENIED');
+  });
+
+  it('rejects a bad agentId with INVALID_PARAMS', async () => {
+    const { reg } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersCopyProxyConfig, { agentId: 'nope' }, trusted),
+      ),
+    ).toBe('INVALID_PARAMS');
+  });
+
+  it('returns { copied: false } for a trusted call when the agent has no live route', async () => {
+    const { reg } = harness();
+    // The harness proxy stub reports no route (endpointFor → null).
+    const result = await reg.invoke(
+      IPC_CHANNELS.providersCopyProxyConfig,
+      { agentId: 'claude' },
+      trusted,
+    );
+    expect(result).toEqual({ copied: false });
+  });
+});
+
+describe('provider IPC — refreshProxyPort', () => {
+  it('rejects an untrusted call with PERMISSION_DENIED', async () => {
+    const { reg } = harness();
+    expect(
+      await codeOf(() => reg.invoke(IPC_CHANNELS.providersRefreshProxyPort, undefined, untrusted)),
+    ).toBe('PERMISSION_DENIED');
+  });
+
+  it('returns the fresh port for a trusted call', async () => {
+    const { reg } = harness();
+    // The harness proxy stub rebinds to 4568.
+    const result = (await reg.invoke(
+      IPC_CHANNELS.providersRefreshProxyPort,
+      undefined,
+      trusted,
+    )) as { port: number };
+    expect(result.port).toBe(4568);
   });
 });
 

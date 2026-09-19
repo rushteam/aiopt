@@ -1,12 +1,16 @@
 // Pure route table + token logic for the translation proxy.
 //
-// The proxy runs ONE http.Server on one ephemeral port. Each cross-format binding is
-// addressed by a per-binding path token: the agent's config points at
-// `http://127.0.0.1:<port>/<token>` and appends its native suffix (claude →
-// `/v1/messages`). The server strips the leading token segment, looks the route up
-// here, and the route's spec — not any sniffing of the body — decides the translation
-// direction. Tokens are minted per binding and rotate on every re-register, so an old
-// token dies the instant a binding is re-pointed, cleared, or the app restarts.
+// The proxy runs ONE http.Server on a fixed loopback port. Each binding is addressed by
+// a per-binding path token: the agent's config points at `http://127.0.0.1:<port>/<token>`
+// and appends its native suffix (claude → `/v1/messages`). The server strips the leading
+// token segment, looks the route up here, and the route's spec — not any sniffing of the
+// body — decides the translation direction. A token is STABLE for as long as its binding
+// points at the same target: `register` REUSES the existing token when the new spec is
+// identical to the live one, and only mints a fresh one (rotating away the old) when the
+// binding is re-pointed to a different provider/model/format. It dies when the binding is
+// cleared or its provider removed. The port + tokens are persisted (see proxyStore.ts) so a
+// restart rehydrates the same identity a running agent already cached, rather than 401ing
+// it — that persistence is orchestrated by translationProxy; this table stays pure.
 //
 // No Node http, no Electron: fully unit-testable. The one impure dependency is
 // `randomUUID` (same primitive providerStore already uses to mint ids) and the coded
@@ -14,6 +18,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { AgentId, ApiFormat } from '../../shared/aiProviders';
+import type { PersistedRoute } from './proxyStore';
 import { throwIpcError } from '../ipc/validate';
 
 /** One cross-format route: which binding, which direction, and where to forward. */
@@ -60,11 +65,40 @@ export class ProxyRouter {
   private byToken = new Map<string, RouteSpec>();
   private tokenByAgent = new Map<AgentId, string>();
 
-  /** Register (or rotate) the route for a binding; returns the fresh token. */
+  /**
+   * Rebuild the table from persisted routes (see proxyStore.ts). Skips a duplicate token
+   * or a second route for the same agent — the persistence layer already dedupes, so this
+   * is only a defensive floor keeping the one-token-per-agent invariant.
+   */
+  constructor(initial?: PersistedRoute[]) {
+    if (!initial) return;
+    for (const { token, spec } of initial) {
+      if (this.byToken.has(token) || this.tokenByAgent.has(spec.agentId)) continue;
+      this.byToken.set(token, spec);
+      this.tokenByAgent.set(spec.agentId, token);
+    }
+  }
+
+  /**
+   * Register the route for a binding; returns the token to write into the agent's config.
+   * REUSES the existing token when the new spec is identical to the live one (so a restart's
+   * idempotent replay, or a no-op rebind, keeps the address the agent already cached). Mints
+   * a fresh token — rotating the old one away — only when the binding's target actually
+   * changed (different provider/model/format/upstream).
+   */
   register(spec: RouteSpec): string {
-    // Rotate: drop any previous token for this agent so it dies immediately.
     const prev = this.tokenByAgent.get(spec.agentId);
-    if (prev !== undefined) this.byToken.delete(prev);
+    if (prev !== undefined) {
+      const prevSpec = this.byToken.get(prev);
+      if (prevSpec && sameSpec(prevSpec, spec)) {
+        // Same target: keep the token, refresh the stored spec (identical, but keep the
+        // map authoritative) and hand back the address the agent already holds.
+        this.byToken.set(prev, spec);
+        return prev;
+      }
+      // Re-pointed: drop the old token so it dies immediately.
+      this.byToken.delete(prev);
+    }
     const token = randomUUID();
     this.byToken.set(token, spec);
     this.tokenByAgent.set(spec.agentId, token);
@@ -88,11 +122,41 @@ export class ProxyRouter {
     return this.tokenByAgent.has(agentId);
   }
 
-  /** Remove every route (e.g. proxy stop). */
+  /** The live token+spec for an agent, or undefined when it has no route. */
+  routeFor(agentId: AgentId): PersistedRoute | undefined {
+    const token = this.tokenByAgent.get(agentId);
+    if (token === undefined) return undefined;
+    const spec = this.byToken.get(token);
+    return spec ? { token, spec } : undefined;
+  }
+
+  /** Every live route (token+spec), for persisting the proxy identity. */
+  snapshot(): PersistedRoute[] {
+    const out: PersistedRoute[] = [];
+    for (const [agentId, token] of this.tokenByAgent) {
+      const spec = this.byToken.get(token);
+      if (spec) out.push({ token, spec });
+      else void agentId; // token/agent maps drifted — skip (should never happen)
+    }
+    return out;
+  }
+
+  /** Drop every route from MEMORY (e.g. proxy stop). Does not touch persistence. */
   clear(): void {
     this.byToken.clear();
     this.tokenByAgent.clear();
   }
+}
+
+/** Whether two specs point at the same target (so a re-register can keep the token). */
+function sameSpec(a: RouteSpec, b: RouteSpec): boolean {
+  return (
+    a.providerId === b.providerId &&
+    a.inboundFormat === b.inboundFormat &&
+    a.outboundFormat === b.outboundFormat &&
+    a.upstreamBaseUrl === b.upstreamBaseUrl &&
+    a.modelId === b.modelId
+  );
 }
 
 /**
@@ -100,16 +164,27 @@ export class ProxyRouter {
  * token already fixed the binding identity; this guards a client hitting the wrong
  * native suffix (e.g. an anthropic route receiving something other than /v1/messages).
  * Throws a coded error rather than guessing.
+ *
+ * Clients disagree on the `/v1` version segment: some SDKs already prefix it before the
+ * native suffix, others treat the whole loopback base URL as the API root and POST the
+ * bare endpoint (pi's openai-completions adapter sends `/chat/completions`, not
+ * `/v1/chat/completions`). Since the outbound URL is rebuilt independently
+ * (see `outboundUrl`) and never derived from this suffix, we accept the endpoint with OR
+ * without a leading `/v1` for every format — the version segment carries no routing
+ * meaning here, only the endpoint does.
  */
 export function assertInboundPath(spec: RouteSpec, rest: string): void {
   const expected = INBOUND_PATH[spec.inboundFormat];
   // Compare the path prefix so trailing slashes / query already stripped upstream.
   const restPath = rest.split('?')[0] ?? '';
-  // Responses clients may or may not prefix `/v1` before `/responses`; accept both.
+  // The native suffix already carries its own `/v1` (e.g. `/v1/messages`); also accept the
+  // bare endpoint with the version segment stripped, and the endpoint re-prefixed with `/v1`.
+  const bare = expected.replace(/^\/v1(?=\/)/, '');
   const ok =
     expected !== '' &&
     (restPath.startsWith(expected) ||
-      (spec.inboundFormat === 'openai-responses' && restPath.startsWith(`/v1${expected}`)));
+      restPath.startsWith(bare) ||
+      restPath.startsWith(`/v1${bare}`));
   if (!ok) {
     throwIpcError(
       'INVALID_PARAMS',

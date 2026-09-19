@@ -24,6 +24,13 @@ describe('readResponseUsage (non-streaming)', () => {
     });
   });
 
+  it('reads OpenAI Responses input/output tokens', () => {
+    expect(readResponseUsage('openai-responses', { usage: { input_tokens: 11, output_tokens: 4 } })).toEqual({
+      inputTokens: 11,
+      outputTokens: 4,
+    });
+  });
+
   it('returns zeros when usage is missing or malformed', () => {
     expect(readResponseUsage('openai', {})).toEqual({ inputTokens: 0, outputTokens: 0 });
     expect(readResponseUsage('anthropic', { usage: null as unknown as Record<string, unknown> })).toEqual({
@@ -43,6 +50,25 @@ describe('createUsageSniffer — anthropic stream', () => {
     s.observe(anthropicEvent('message_delta', { usage: { output_tokens: 30 } }));
     s.observe(anthropicEvent('message_stop', {}));
     expect(s.result()).toEqual({ inputTokens: 12, outputTokens: 30 });
+  });
+});
+
+describe('createUsageSniffer — openai-responses stream', () => {
+  it('reads usage nested under `response` on the terminal event', () => {
+    const s = createUsageSniffer('openai-responses');
+    s.observe({ event: 'response.created', data: JSON.stringify({ response: {} }) });
+    s.observe({ event: 'response.output_text.delta', data: JSON.stringify({ delta: 'hi' }) });
+    s.observe({
+      event: 'response.completed',
+      data: JSON.stringify({ response: { usage: { input_tokens: 20, output_tokens: 6 } } }),
+    });
+    expect(s.result()).toEqual({ inputTokens: 20, outputTokens: 6 });
+  });
+
+  it('stays at zero when no terminal usage arrives', () => {
+    const s = createUsageSniffer('openai-responses');
+    s.observe({ event: 'response.output_text.delta', data: JSON.stringify({ delta: 'hi' }) });
+    expect(s.result()).toEqual({ inputTokens: 0, outputTokens: 0 });
   });
 });
 

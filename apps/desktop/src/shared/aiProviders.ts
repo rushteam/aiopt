@@ -24,8 +24,165 @@
  */
 export type ApiFormat = 'anthropic' | 'openai' | 'openai-responses' | 'gemini';
 
-/** The AI coding agents AiOpt can configure. */
-export type AgentId = 'claude' | 'codex' | 'gemini' | 'grok' | 'opencode' | 'pi';
+/**
+ * Everything one agent's native config surface needs, when a pool provider CAN be
+ * pointed at it. `null` binding marks a skills-only agent (see {@link AgentSpec}).
+ */
+export interface AgentBindingSpec {
+  /** Provider formats this agent can consume (the binding compatibility gate). */
+  acceptedFormats: readonly ApiFormat[];
+  /**
+   * How the agent's native config is rewritten: `exclusive` overwrites the active
+   * provider, `additive` keeps every provider and only moves the default pointer.
+   */
+  mode: 'exclusive' | 'additive';
+  /** Directory (relative to home) whose existence signals the agent is installed. */
+  installDir: string;
+  /**
+   * The config files this agent reads, keyed by role, relative to home. This map is
+   * the sole source of the write allowlist (see agentPaths.AGENT_FILES): only the exact
+   * paths declared here may ever be written. Layouts are non-uniform on purpose — pi
+   * keeps three files under `.pi/agent`, OpenCode lives under `.config/opencode`.
+   */
+  files: Readonly<Record<string, string>>;
+}
+
+/**
+ * The single source of truth for one AI coding agent AiOpt knows about. Adding an
+ * agent is one record here (+ its adapter + a line in adapters/registry.ts); the id
+ * union, the runtime id list, display names, the binding registry, the skills map,
+ * and the write allowlist are all DERIVED from this table below.
+ */
+export interface AgentSpec {
+  /** Canonical display name (the one label used everywhere). */
+  name: string;
+  /**
+   * The agent's global skills dir, relative to home, or `null` when AiOpt has no
+   * well-known one (grok) — then it does not participate in Skills sync.
+   */
+  skillsDir: string | null;
+  /**
+   * Binding capability, or `null` for a skills-only agent. Not every agent can be
+   * POINTED AT A POOL PROVIDER: it must expose a bring-your-own-endpoint surface (a
+   * custom base URL + key it will honour). `cursor` is the exception — the Cursor CLI
+   * only talks to Cursor's own backend (account login / `CURSOR_API_KEY`, Cursor-hosted
+   * models), with no base-URL override — so its `binding` is `null`: it never appears in
+   * the binding registry {@link AGENTS} or in Providers, but still joins Skills sync.
+   */
+  binding: AgentBindingSpec | null;
+}
+
+/**
+ * The agent catalogue. Keep entries alphabetical by id — {@link AGENT_IDS} and
+ * {@link AGENTS} preserve this order. `acceptedFormats` reflects each agent's native
+ * config surface; revisit against upstream docs when wiring its adapter.
+ */
+export const AGENT_SPECS = {
+  claude: {
+    name: 'Claude Code',
+    skillsDir: '.claude/skills',
+    binding: {
+      acceptedFormats: ['anthropic'],
+      mode: 'exclusive',
+      installDir: '.claude',
+      files: { settings: '.claude/settings.json' },
+    },
+  },
+  // codex/grok speak the OpenAI *Responses* API, not Chat Completions — see ApiFormat.
+  codex: {
+    name: 'Codex',
+    skillsDir: '.codex/skills',
+    binding: {
+      acceptedFormats: ['openai-responses'],
+      mode: 'exclusive',
+      installDir: '.codex',
+      files: { auth: '.codex/auth.json', config: '.codex/config.toml' },
+    },
+  },
+  // Cursor can't bind a pool provider (no base-URL override), so `binding` is null; its
+  // CLI still keeps skills under ~/.cursor/skills, so it joins the sync matrix.
+  cursor: {
+    name: 'Cursor',
+    skillsDir: '.cursor/skills',
+    binding: null,
+  },
+  // dsh (DeepSeek Harness) speaks three wire protocols per provider via its `api` field
+  // (openai-completions←openai, openai-responses←openai-responses, anthropic-messages←anthropic;
+  // see dshAdapter API_BY_FORMAT). Providers live in a `providers` DICT keyed by id, so like
+  // Hermes/OpenCode it is additive; the secret goes in a separate credentials file (mode 0600).
+  dsh: {
+    name: 'DeepSeek Harness',
+    skillsDir: '.dsh/skills',
+    binding: {
+      acceptedFormats: ['openai', 'openai-responses', 'anthropic'],
+      mode: 'additive',
+      installDir: '.dsh',
+      files: { settings: '.dsh/settings.yaml', credentials: '.dsh/.credentials.yaml' },
+    },
+  },
+  gemini: {
+    name: 'Gemini CLI',
+    skillsDir: '.gemini/skills',
+    binding: {
+      acceptedFormats: ['gemini'],
+      mode: 'exclusive',
+      installDir: '.gemini',
+      files: { env: '.gemini/.env', settings: '.gemini/settings.json' },
+    },
+  },
+  // grok has no well-known skills dir (skillsDir null → absent from Skills sync).
+  grok: {
+    name: 'Grok',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai-responses'],
+      mode: 'exclusive',
+      installDir: '.grok',
+      files: { config: '.grok/config.toml' },
+    },
+  },
+  // Hermes (Nous Research) picks its wire protocol per provider via an `api_mode` field, so it
+  // consumes several formats: chat_completions←openai, anthropic_messages←anthropic,
+  // codex_responses←openai-responses (see hermesAdapter API_MODE_BY_FORMAT). Its config holds a
+  // list of coexisting providers, so like OpenCode it is additive.
+  hermes: {
+    name: 'Hermes',
+    skillsDir: '.hermes/skills',
+    binding: {
+      acceptedFormats: ['openai', 'anthropic', 'openai-responses'],
+      mode: 'additive',
+      installDir: '.hermes',
+      files: { config: '.hermes/config.yaml' },
+    },
+  },
+  opencode: {
+    name: 'OpenCode',
+    skillsDir: '.config/opencode/skills',
+    binding: {
+      acceptedFormats: ['openai', 'anthropic'],
+      mode: 'additive',
+      installDir: '.config/opencode',
+      files: { config: '.config/opencode/opencode.json' },
+    },
+  },
+  pi: {
+    name: 'pi',
+    skillsDir: '.pi/agent/skills',
+    binding: {
+      acceptedFormats: ['anthropic', 'openai', 'gemini'],
+      mode: 'exclusive',
+      installDir: '.pi',
+      files: {
+        auth: '.pi/agent/auth.json',
+        models: '.pi/agent/models.json',
+        settings: '.pi/agent/settings.json',
+      },
+    },
+  },
+} as const satisfies Record<string, AgentSpec>;
+
+/** Every agent id AiOpt knows about — the keys of {@link AGENT_SPECS}. */
+export type AgentId = keyof typeof AGENT_SPECS;
 
 /** Every known API format (runtime allowlist for validation). */
 export const API_FORMATS: readonly ApiFormat[] = [
@@ -35,8 +192,17 @@ export const API_FORMATS: readonly ApiFormat[] = [
   'gemini',
 ];
 
-/** Every known agent id (runtime allowlist for validation). */
-export const AGENT_IDS: readonly AgentId[] = ['claude', 'codex', 'gemini', 'grok', 'opencode', 'pi'];
+/** Every known agent id (runtime allowlist for validation) — derived from {@link AGENT_SPECS}. */
+export const AGENT_IDS: readonly AgentId[] = Object.keys(AGENT_SPECS) as AgentId[];
+
+/**
+ * Canonical display name for every agent — derived from {@link AGENT_SPECS}, so the
+ * binding registry (Providers) and the skills matrix can never drift. Covers all of
+ * {@link AGENT_IDS}, including skills-only agents that are absent from {@link AGENTS}.
+ */
+export const AGENT_NAMES: Record<AgentId, string> = Object.fromEntries(
+  (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][]).map(([id, spec]) => [id, spec.name]),
+) as Record<AgentId, string>;
 
 /**
  * A model a provider offers.
@@ -91,18 +257,22 @@ export interface AgentBinding {
 }
 
 /**
- * The built-in agent registry. `acceptedFormats` here reflects each agent's native
- * config surface; revisit against upstream docs when wiring that agent's adapter.
+ * The BINDING registry: agents a pool provider can be bound to — DERIVED from
+ * {@link AGENT_SPECS} as exactly those with a non-null `binding`, in table order.
+ *
+ * This is a subset of {@link AGENT_IDS}: `cursor` is intentionally absent because the Cursor
+ * CLI has no bring-your-own-endpoint surface to bind a provider into (see {@link AgentSpec}).
+ * Skills enumerates {@link AGENT_IDS} instead, so a skills-only agent still shows up there.
  */
-export const AGENTS: readonly AgentDef[] = [
-  { id: 'claude', name: 'Claude Code', acceptedFormats: ['anthropic'], mode: 'exclusive' },
-  // codex/grok speak the OpenAI *Responses* API, not Chat Completions — see ApiFormat.
-  { id: 'codex', name: 'Codex', acceptedFormats: ['openai-responses'], mode: 'exclusive' },
-  { id: 'gemini', name: 'Gemini CLI', acceptedFormats: ['gemini'], mode: 'exclusive' },
-  { id: 'grok', name: 'Grok', acceptedFormats: ['openai-responses'], mode: 'exclusive' },
-  { id: 'opencode', name: 'OpenCode', acceptedFormats: ['openai', 'anthropic'], mode: 'additive' },
-  { id: 'pi', name: 'pi', acceptedFormats: ['anthropic', 'openai', 'gemini'], mode: 'exclusive' },
-];
+export const AGENTS: readonly AgentDef[] = (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][])
+  .filter(([, spec]) => spec.binding !== null)
+  .map(([id, spec]) => ({
+    id,
+    name: spec.name,
+    // Copy so a caller can never mutate the shared spec's readonly array in place.
+    acceptedFormats: [...spec.binding!.acceptedFormats],
+    mode: spec.binding!.mode,
+  }));
 
 /** Look up an agent definition by id. */
 export function getAgentDef(id: AgentId): AgentDef | undefined {
@@ -115,25 +285,30 @@ export function isFormatCompatible(agent: AgentDef, provider: Provider): boolean
 }
 
 /**
- * Whether the cross-format translation proxy can convert an `inbound` agent format
- * into an `outbound` provider format. `inbound` is the agent's format, `outbound` the
- * provider's; for a cross-format binding they differ. This is a pure predicate about
- * the DIRECTED format pair only — it does not check whether an adapter/route exists.
+ * Whether the loopback proxy can carry an `inbound` agent format to an `outbound`
+ * provider format. `inbound` is the agent's format, `outbound` the provider's. This is
+ * a pure predicate about the DIRECTED format pair only — it does not check whether an
+ * adapter/route exists, nor whether proxy mode would route it (default is direct).
  *
- * Supported (each entry means inbound → outbound is translatable):
- *   - anthropic ⇄ openai (Chat Completions), both directions.
- *   - openai-responses (codex/grok) → openai (Chat Completions).
- *   - openai-responses (codex/grok) → anthropic (with a reasoning bridge).
+ * Two kinds of routes qualify:
+ *   - CROSS-format translation:
+ *       - anthropic ⇄ openai (Chat Completions), both directions.
+ *       - openai-responses (codex/grok) → openai (Chat Completions).
+ *       - openai-responses (codex/grok) → anthropic (with a reasoning bridge).
+ *   - SAME-format passthrough (identity transform, streamed through unchanged) so the
+ *     proxy can still count token usage: anthropic→anthropic, openai→openai,
+ *     openai-responses→openai-responses. This is what makes a same-format binding
+ *     countable when proxy mode is on; the default (off) chooses a direct config instead.
  *
- * NOT supported: any direction whose OUTBOUND is `openai-responses` (no need to emit
- * the Responses API upstream — a Responses-native provider binds same-format), and any
- * pairing involving `gemini`.
+ * NOT supported: any CROSS-format direction whose OUTBOUND is `openai-responses` (no
+ * need to emit the Responses API upstream — a Responses provider is reached by same-
+ * format passthrough), and any pairing involving `gemini` (no proxy dialect for it —
+ * gemini bindings are always direct, in either mode).
  */
 export function translationSupported(inbound: ApiFormat, outbound: ApiFormat): boolean {
-  if (inbound === outbound) return false; // same-format is a direct binding, not translation
-  if (outbound === 'openai-responses' || inbound === 'gemini' || outbound === 'gemini') {
-    return false;
-  }
+  if (inbound === 'gemini' || outbound === 'gemini') return false; // no gemini proxy dialect
+  if (inbound === outbound) return true; // same-format passthrough (identity + usage sniff)
+  if (outbound === 'openai-responses') return false; // never emit Responses upstream via translation
   switch (inbound) {
     case 'anthropic':
       return outbound === 'openai';

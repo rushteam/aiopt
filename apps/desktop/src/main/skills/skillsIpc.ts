@@ -85,6 +85,15 @@ export function registerSkillsIpc(
     return store.snapshot();
   });
 
+  registry.register(IPC_CHANNELS.skillsDeleteAgent, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const agentId = requireEnum(obj.agentId, AGENT_IDS, 'agentId');
+    const name = requireSkillName(obj.name);
+    store.deleteAgent(agentId, name);
+    return store.snapshot();
+  });
+
   registry.register(IPC_CHANNELS.skillsDiff, (payload, meta) => {
     meta.assertTrustedSender();
     const obj = requireObject(payload);

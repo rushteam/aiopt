@@ -40,7 +40,7 @@ describe('config store (layered defaults + overrides)', () => {
   it('reads the default when no override is set', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('theme')).toBe('system');
-    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: false });
     expect(store.getOverrides()).toEqual({});
   });
 
@@ -48,7 +48,7 @@ describe('config store (layered defaults + overrides)', () => {
     const persistence = memoryPersistence();
     const store = createConfigStore(persistence);
     const next = store.set('theme', 'dark');
-    expect(next).toEqual({ theme: 'dark', skillsLibrary: 'app' });
+    expect(next).toEqual({ theme: 'dark', skillsLibrary: 'app', proxyMode: false });
     expect(store.get('theme')).toBe('dark');
     expect(persistence.saved).toEqual({ theme: 'dark' });
   });
@@ -58,7 +58,7 @@ describe('config store (layered defaults + overrides)', () => {
     const store = createConfigStore(persistence);
     expect(store.get('theme')).toBe('light');
     const next = store.reset('theme');
-    expect(next).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(next).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: false });
     // The override key is gone from the persisted blob — not persisted as 'system'.
     expect(persistence.saved).toEqual({});
     expect(store.getOverrides()).toEqual({});
@@ -116,14 +116,14 @@ describe('file preference persistence', () => {
   it('reads a missing file as no overrides', () => {
     const file = path.join(dir, 'does-not-exist.json');
     const store = createConfigStore(createFilePreferencePersistence(file));
-    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: false });
   });
 
   it('reads a corrupt file as no overrides rather than throwing', () => {
     const file = path.join(dir, 'preferences.json');
     fs.writeFileSync(file, '{ this is not json', 'utf8');
     const store = createConfigStore(createFilePreferencePersistence(file));
-    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app' });
+    expect(store.getEffective()).toEqual({ theme: 'system', skillsLibrary: 'app', proxyMode: false });
   });
 });
 
@@ -131,7 +131,7 @@ describe('skillsLibrary preference', () => {
   it('defaults to app and round-trips a valid override', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('skillsLibrary')).toBe('app');
-    expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', skillsLibrary: 'home' });
+    expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', skillsLibrary: 'home', proxyMode: false });
     expect(store.get('skillsLibrary')).toBe('home');
   });
 
