@@ -75,5 +75,43 @@ with open("icon.ico", "wb") as f:
 print(f"  icon.ico written with {count} sizes: {[s for s,_ in pngs]}")
 PY
 
+echo "→ macOS Tray template icon (monochrome black silhouette, base64 → TS const)"
+# The menu-bar icon is a TEMPLATE image: single-colour + alpha, tinted by the OS for
+# light/dark bars — so it drops the brand gradient and fills the mark path black. It's
+# embedded as base64 in src (not a loose file) so it survives asar packaging without a
+# runtime path. Scale 1.35 (vs the app icon's 1.5) leaves a hair of menu-bar padding.
+TRAY_SVG="$(mktemp).svg"
+cat > "$TRAY_SVG" <<'SVG'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <g transform="translate(256,256) scale(1.35)"><path d="M 0 -148 C 42 -14.7, 14.7 -42, 148 0 C 14.7 42, 42 14.7, 0 148 C -42 14.7, -14.7 42, -148 0 C -14.7 -42, -42 -14.7, 0 -148 Z" fill="#000000"/></g>
+</svg>
+SVG
+TRAY_16="$(mktemp).png"; TRAY_32="$(mktemp).png"
+rsvg-convert -w 16 -h 16 "$TRAY_SVG" -o "$TRAY_16"
+rsvg-convert -w 32 -h 32 "$TRAY_SVG" -o "$TRAY_32"
+TRAY_B64_16="$(base64 -i "$TRAY_16" | tr -d '\n')"
+TRAY_B64_32="$(base64 -i "$TRAY_32" | tr -d '\n')"
+cat > ../src/main/tray/trayIconData.ts <<TS
+// GENERATED — do not edit by hand.
+//
+// macOS menu-bar (Tray) template icon: the AiOpt four-pointed sparkle rendered as
+// a monochrome black silhouette + alpha, at @1x (16px) and @2x (32px). A template
+// image (see tray.ts \`setTemplateImage(true)\`) is intentionally single-colour — the
+// OS tints it for light/dark menu bars — so the brand gradient is NOT used here.
+//
+// Regenerate with \`bash apps/desktop/assets/generate-icons.sh\` (the tray step),
+// which renders assets/mark.svg's path as a black fill and base64-encodes the PNGs.
+
+/** 16×16 black template PNG, base64 data URL (@1x). */
+export const TRAY_ICON_16 =
+  'data:image/png;base64,${TRAY_B64_16}';
+
+/** 32×32 black template PNG, base64 data URL (@2x, retina menu bars). */
+export const TRAY_ICON_32 =
+  'data:image/png;base64,${TRAY_B64_32}';
+TS
+rm -f "$TRAY_SVG" "$TRAY_16" "$TRAY_32"
+
 echo "✓ done:"
 ls -la icon.icns icon.ico favicon.svg favicon-16.png favicon-32.png
+ls -la ../src/main/tray/trayIconData.ts

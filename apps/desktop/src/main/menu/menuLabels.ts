@@ -16,6 +16,8 @@ export interface MenuLabels {
   help: string;
   /** Command items that dispatch to the renderer. */
   settings: string;
+  /** Tray item that reveals/focuses the main window (main-side, no renderer command). */
+  showWindow: string;
   usage: string;
   skills: string;
   checkForUpdates: string;
@@ -32,6 +34,7 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     window: 'Window',
     help: 'Help',
     settings: 'Settings…',
+    showWindow: 'Show AiOpt',
     usage: 'Usage',
     skills: 'Skills',
     checkForUpdates: 'Check for Updates…',
@@ -45,6 +48,7 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     window: '窗口',
     help: '帮助',
     settings: '设置…',
+    showWindow: '显示主界面',
     usage: '统计',
     skills: '技能',
     checkForUpdates: '检查更新…',

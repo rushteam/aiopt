@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installNavigationGuards } from '../security/navigation';
 import { APP_PROTOCOL } from '../appProtocol';
+import { isQuitting } from '../tray/tray';
 import { logger } from '../logger';
 
 const log = logger.child('window');
@@ -63,6 +64,17 @@ export function createMainWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     win.show();
     log.info('window.shown');
+  });
+
+  // Closing the window hides it to the menu-bar Tray instead of destroying it, so the
+  // app keeps running (macOS convention). A real quit (⌘Q / menu / Tray Quit) sets the
+  // quit flag first (before-quit), so this guard lets the window close for good then.
+  win.on('close', (event) => {
+    if (!isQuitting()) {
+      event.preventDefault();
+      win.hide();
+      log.info('window.hidden');
+    }
   });
 
   return win;

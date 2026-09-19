@@ -17,34 +17,20 @@
 // Platform shape: on macOS the first submenu is the bold app menu (About /
 // Settings / Check for Updates / Quit); elsewhere those land under File and Help.
 
-import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
-import { MENU_COMMANDS, type MenuCommand } from '../../shared/menuCommands';
+import { app, Menu, type MenuItemConstructorOptions } from 'electron';
+import { MENU_COMMANDS } from '../../shared/menuCommands';
 import {
   comboToElectronAccelerator,
   type AppShortcutId,
 } from '../../shared/appShortcuts';
-import { IPC_EVENTS } from '../../shared/ipc-channels';
 import { MENU_LABELS, resolveMenuLocale, type MenuLabels } from './menuLabels';
+import { dispatchToRenderer } from './dispatchToRenderer';
 import { buildViewSubmenu } from './viewMenu';
 import { getAppShortcutStore } from '../services';
 import {
   isAppShortcutRecordingActive,
   subscribeAppShortcutRecording,
 } from '../app-shortcuts/appShortcutIpc';
-import { logger } from '../logger';
-
-const log = logger.child('menu');
-
-/** Dispatch a menu command to the focused renderer (fall back to the first window). */
-function dispatchToRenderer(command: MenuCommand): void {
-  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
-  if (!win || win.isDestroyed()) {
-    log.warn('menu.command_no_window', { command });
-    return;
-  }
-  win.webContents.send(IPC_EVENTS.menuCommand, command);
-  log.info('menu.command', { command });
-}
 
 /**
  * The Electron accelerator for a menu-backed shortcut, or undefined when it has no
