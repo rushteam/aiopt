@@ -1,0 +1,90 @@
+# Build the desktop app on all three platforms and publish the installers to a
+# GitHub Release.
+#
+# Trigger: pushing a version tag (v*), or a manual run (workflow_dispatch) for a
+# dry build that uploads artifacts to the run without creating a Release.
+#
+# This is a DOWNLOAD channel only — it packages and publishes installers for
+# people to fetch by hand. It is NOT an auto-update feed: the app's in-product
+# "check for updates" is a separate, gated change (see docs/dev-rules/updater.md)
+# and nothing here wires one up.
+#
+# No code signing is configured yet. Unsigned builds still run, but macOS
+# Gatekeeper / Windows SmartScreen will warn on first launch. Signing is a
+# follow-up; when added it plugs into the `package`/`make` step via secrets.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # required to create the Release and upload assets
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # CI is the final authority on the test gate (AGENTS.md). No installers are
+      # built unless every workspace's unit tests pass.
+      - name: Unit test gate
+        run: pnpm test:unit
+
+      - name: Typecheck (desktop)
+        run: pnpm --filter desktop run --if-present typecheck
+
+      # `electron-forge make` builds for the host platform, so each matrix OS
+      # produces its own installers. No signing: disable macOS identity
+      # auto-discovery so an unsigned build doesn't fail looking for a cert.
+      - name: Package installers
+        run: pnpm --filter desktop run build
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload build artifacts to the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: aiopt-${{ matrix.name }}
+          path: apps/desktop/out/make/**/*
+          if-no-files-found: error
+          retention-days: 14
+
+      # Only on a version tag: attach the installers to the GitHub Release.
+      # softprops/action-gh-release creates the Release on first run and appends
+      # assets from each matrix job to the same tag.
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/out/make/**/*
+          fail_on_unmatched_files: true
+          draft: true # review the assets, then publish the Release manually
+          generate_release_notes: true
