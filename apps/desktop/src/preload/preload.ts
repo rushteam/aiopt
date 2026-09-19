@@ -281,6 +281,6 @@ const api = {
     }),
 } as const;
 
-export type HearthBridge = typeof api;
+export type AiOptBridge = typeof api;
 
-contextBridge.exposeInMainWorld('hearth', api);
+contextBridge.exposeInMainWorld('aiopt', api);

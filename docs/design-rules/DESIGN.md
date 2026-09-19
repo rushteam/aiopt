@@ -3,7 +3,7 @@
 > **Status:** authoritative design rule
 > **Read before:** adding/changing any UI, component, layout, style, motion, or UI copy.
 
-Hearth ships the *structure* of a design system — semantic tokens and a dual-mode delivery gate
+AiOpt ships the *structure* of a design system — semantic tokens and a dual-mode delivery gate
 — not a finished brand. Fill in the token values for your product; keep the architecture and the
 gate.
 

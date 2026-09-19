@@ -97,7 +97,7 @@ describe('file preference persistence', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hearth-prefs-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-prefs-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });

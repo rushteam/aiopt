@@ -1,6 +1,6 @@
 // App-shortcut IPC — the write path for user rebinds, plus the recording gate.
 //
-// Faithful port of Cindy's app-shortcut IPC surface, adapted to Hearth's registry
+// Faithful port of Cindy's app-shortcut IPC surface, adapted to AiOpt's registry
 // seam. Three concerns live here:
 //
 //   1. Mutations (rebind / disable / reset) go through the IpcHandlerRegistry so

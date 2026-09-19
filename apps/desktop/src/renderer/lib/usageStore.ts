@@ -44,8 +44,8 @@ function ensureInitialized(): void {
   if (initialized) return;
   initialized = true;
   // Track usage changes pushed from main (throttled snapshots).
-  window.hearth.usage.onChanged(applySnapshot);
-  void window.hearth.usage.get().then(applySnapshot);
+  window.aiopt.usage.onChanged(applySnapshot);
+  void window.aiopt.usage.get().then(applySnapshot);
 }
 
 /** Subscribe to store changes; returns an unsubscribe fn. */
@@ -69,5 +69,5 @@ export function getUsageSnapshot(): UsageSnapshot {
 /** Clear all recorded usage. Applies the emptied snapshot returned by main. */
 export async function clearUsage(): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.usage.clear());
+  applySnapshot(await window.aiopt.usage.clear());
 }

@@ -28,7 +28,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Identifies "this hook was installed by this repo", to decide whether it can be overwritten. Matches the comment in the hook source. */
-export const HOOK_MARKER = 'hearth-dco-signoff-hook';
+export const HOOK_MARKER = 'aiopt-dco-signoff-hook';
 export const HOOK_NAME = 'prepare-commit-msg';
 export const HOOK_SOURCE_PATH = join('.githooks', HOOK_NAME);
 

@@ -9,11 +9,11 @@ import {
 
 const DEV: TrustedRendererLocation = {
   devServerUrl: 'http://localhost:5173',
-  packagedAppUrl: 'hearth://main/index.html',
+  packagedAppUrl: 'aiopt://main/index.html',
 };
 const PACKAGED: TrustedRendererLocation = {
   devServerUrl: null,
-  packagedAppUrl: 'hearth://main/index.html',
+  packagedAppUrl: 'aiopt://main/index.html',
 };
 
 function frame(url: string, parent: TrustedSenderFrameLike | null = null): TrustedSenderFrameLike {
@@ -33,8 +33,8 @@ describe('isTrustedAppRendererUrl', () => {
   });
 
   it('packaged: accepts the exact app URL only', () => {
-    expect(isTrustedAppRendererUrl('hearth://main/index.html', PACKAGED)).toBe(true);
-    expect(isTrustedAppRendererUrl('hearth://main/other.html', PACKAGED)).toBe(false);
+    expect(isTrustedAppRendererUrl('aiopt://main/index.html', PACKAGED)).toBe(true);
+    expect(isTrustedAppRendererUrl('aiopt://main/other.html', PACKAGED)).toBe(false);
     expect(isTrustedAppRendererUrl('file:///etc/passwd', PACKAGED)).toBe(false);
   });
 

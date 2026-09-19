@@ -59,7 +59,7 @@ export function ShortcutsSection() {
     if (!recordingId) return;
     const id = recordingId;
     document.body.dataset.appShortcutRecording = '1';
-    window.hearth.appShortcuts.setRecording(true);
+    window.aiopt.appShortcuts.setRecording(true);
 
     const onKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
@@ -98,7 +98,7 @@ export function ShortcutsSection() {
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
       delete document.body.dataset.appShortcutRecording;
-      window.hearth.appShortcuts.setRecording(false);
+      window.aiopt.appShortcuts.setRecording(false);
     };
   }, [recordingId, platform, overrides]);
 

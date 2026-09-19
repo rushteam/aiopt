@@ -1,9 +1,9 @@
-# Hearth: Agent working entry point
+# AiOpt: Agent working entry point
 
 > This file is the canonical project instruction shared by all coding agents (Codex, Claude
 > Code, etc.). `CLAUDE.md` contains only `@AGENTS.md` — do not duplicate rules in two places.
 >
-> Hearth is a **security-first Electron desktop app framework scaffold**. It ships the
+> AiOpt is a **security-first Electron desktop app framework scaffold**. It ships the
 > primitives — untrusted renderer / minimal preload / privileged main, IPC as the
 > authorization boundary, runtime validation, CSP/Fuses, local DB migrations, layered config,
 > i18n + glossary gate, and DCO + test gates — wired end-to-end through one vertical-slice

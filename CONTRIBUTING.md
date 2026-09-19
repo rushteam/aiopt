@@ -1,4 +1,4 @@
-# Contributing to Hearth
+# Contributing to AiOpt
 
 Thanks for contributing. Two things are non-negotiable: the **security boundary** (see
 `docs/dev-rules/electron-security-and-process-boundaries.md`) and the **DCO sign-off** below.

@@ -27,7 +27,7 @@ describe('isAllowedExternalUrl', () => {
   it('refuses non-http(s) schemes', () => {
     expect(isAllowedExternalUrl('file:///etc/passwd')).toBe(false);
     expect(isAllowedExternalUrl('javascript:alert(1)')).toBe(false);
-    expect(isAllowedExternalUrl('hearth://main/index.html')).toBe(false);
+    expect(isAllowedExternalUrl('aiopt://main/index.html')).toBe(false);
     expect(isAllowedExternalUrl('mailto:a@b.c')).toBe(false);
   });
 

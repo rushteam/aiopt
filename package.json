@@ -1,8 +1,8 @@
 {
-  "name": "hearth",
+  "name": "aiopt",
   "private": true,
   "version": "0.0.0",
-  "description": "Hearth — a security-first Electron desktop app framework scaffold. Untrusted renderer / minimal preload / privileged main, IPC as the authorization boundary.",
+  "description": "AiOpt — a security-first Electron desktop app framework scaffold. Untrusted renderer / minimal preload / privileged main, IPC as the authorization boundary.",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
   "engines": {

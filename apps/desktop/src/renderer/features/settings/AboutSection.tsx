@@ -11,7 +11,7 @@ export function AboutSection() {
 
   useEffect(() => {
     let active = true;
-    void window.hearth.getVersions().then((v) => {
+    void window.aiopt.getVersions().then((v) => {
       if (active) setVersions(v);
     });
     return () => {

@@ -18,7 +18,7 @@ const MAC_TITLEBAR_HEIGHT = 38;
 const MAC_TRAFFIC_LIGHT_INSET = 72;
 
 export function TitleBar({ onCommand }: { onCommand: (command: MenuCommand) => void }) {
-  if (window.hearth.platform !== 'darwin') return null;
+  if (window.aiopt.platform !== 'darwin') return null;
   return (
     <div
       style={

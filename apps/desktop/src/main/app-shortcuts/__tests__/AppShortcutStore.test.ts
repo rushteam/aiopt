@@ -30,7 +30,7 @@ describe('AppShortcutStore (darwin)', () => {
   }
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hearth-shortcuts-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-shortcuts-'));
     file = path.join(dir, 'app-shortcuts.v1.json');
     changes = [];
   });

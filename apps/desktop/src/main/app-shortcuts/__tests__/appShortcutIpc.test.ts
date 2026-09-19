@@ -50,7 +50,7 @@ describe('app-shortcut IPC', () => {
   let store: AppShortcutStore;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hearth-shortcuts-ipc-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-shortcuts-ipc-'));
     store = new AppShortcutStore({
       getFilePath: () => path.join(dir, 'app-shortcuts.v1.json'),
       platform: 'darwin',

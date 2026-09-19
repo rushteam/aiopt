@@ -1,5 +1,5 @@
 #!/bin/sh
-# hearth-dco-signoff-hook: appends the DCO Signed-off-by trailer to local commits.
+# aiopt-dco-signoff-hook: appends the DCO Signed-off-by trailer to local commits.
 # See the DCO file at the repository root for what the trailer certifies.
 #
 # Install with `pnpm dco:install-hook` (copies this file into your hooks directory,

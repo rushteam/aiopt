@@ -2,8 +2,8 @@
   "name": "desktop",
   "version": "0.0.0",
   "private": true,
-  "productName": "Hearth",
-  "description": "Hearth desktop app scaffold",
+  "productName": "AiOpt",
+  "description": "AiOpt desktop app scaffold",
   "main": ".vite/build/index.js",
   "type": "module",
   "scripts": {

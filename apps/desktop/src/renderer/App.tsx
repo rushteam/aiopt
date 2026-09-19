@@ -33,7 +33,7 @@ export function App() {
     else if (command === MENU_COMMANDS.showAbout) setView({ name: 'settings', section: 'about' });
   }, []);
 
-  useEffect(() => window.hearth.onMenuCommand(handleMenuCommand), [handleMenuCommand]);
+  useEffect(() => window.aiopt.onMenuCommand(handleMenuCommand), [handleMenuCommand]);
 
   // The rebindable demo shortcut: flip between light and dark. This proves the
   // renderer `useAppShortcut` path end to end (the menu-backed shortcuts prove the

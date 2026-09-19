@@ -4,7 +4,7 @@
 > **Read when:** first touching this repo, locating where code belongs, or deciding which
 > module a change lands in.
 
-Hearth is a pnpm monorepo. One app (`apps/desktop`) plus shared workspace tooling. The security
+AiOpt is a pnpm monorepo. One app (`apps/desktop`) plus shared workspace tooling. The security
 boundary in `docs/dev-rules/electron-security-and-process-boundaries.md` is the organizing
 principle — the directory split *is* the trust split.
 

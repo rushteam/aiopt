@@ -12,9 +12,9 @@ const isPackaging = process.argv.some((a) => a === 'package' || a === 'make');
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'Hearth',
-    executableName: 'Hearth',
-    appBundleId: 'dev.hearth.app',
+    name: 'AiOpt',
+    executableName: 'AiOpt',
+    appBundleId: 'dev.aiopt.app',
     asar: true,
   },
   rebuildConfig: {},

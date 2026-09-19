@@ -36,12 +36,12 @@ function applyOverrides(next: AppShortcutOverrides): void {
 function ensureInitialized(): void {
   if (initialized) return;
   initialized = true;
-  const state = window.hearth.appShortcuts.getState();
+  const state = window.aiopt.appShortcuts.getState();
   platform = state.platform;
   overrides = state.overrides;
   effective = getEffectiveAppShortcuts(overrides, platform);
   // Track rebinds from any window (including our own writes' echo).
-  window.hearth.appShortcuts.onChanged((event) => applyOverrides(event.overrides));
+  window.aiopt.appShortcuts.onChanged((event) => applyOverrides(event.overrides));
 }
 
 /** Subscribe to store changes; returns an unsubscribe fn. */
@@ -81,18 +81,18 @@ export async function setAppShortcutOverride(
   combo: AppShortcutCombo | null,
 ): Promise<void> {
   ensureInitialized();
-  const result = await window.hearth.appShortcuts.setOverride(id, combo);
+  const result = await window.aiopt.appShortcuts.setOverride(id, combo);
   applyOverrides(result.overrides);
 }
 
 export async function clearAppShortcutOverride(id: AppShortcutId): Promise<void> {
   ensureInitialized();
-  const result = await window.hearth.appShortcuts.clearOverride(id);
+  const result = await window.aiopt.appShortcuts.clearOverride(id);
   applyOverrides(result.overrides);
 }
 
 export async function resetAllAppShortcuts(): Promise<void> {
   ensureInitialized();
-  const result = await window.hearth.appShortcuts.resetAll();
+  const result = await window.aiopt.appShortcuts.resetAll();
   applyOverrides(result.overrides);
 }

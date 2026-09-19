@@ -42,7 +42,7 @@ describe('secret IPC', () => {
   let reg: InMemoryIpcRegistry;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hearth-secret-ipc-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-secret-ipc-'));
     reg = createInMemoryRegistry();
     registerSecretIpc(reg, createSecretStore(dir, fakeCryptor()));
   });

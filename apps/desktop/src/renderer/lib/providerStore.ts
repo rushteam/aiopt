@@ -34,8 +34,8 @@ function ensureInitialized(): void {
   if (initialized) return;
   initialized = true;
   // Track pool/binding changes from any window (including our own writes' echo).
-  window.hearth.providers.onChanged(applySnapshot);
-  void window.hearth.providers.list().then(applySnapshot);
+  window.aiopt.providers.onChanged(applySnapshot);
+  void window.aiopt.providers.list().then(applySnapshot);
 }
 
 /** Subscribe to store changes; returns an unsubscribe fn. */
@@ -58,17 +58,17 @@ export function getProvidersSnapshot(): ProvidersSnapshot {
 
 export async function addProvider(input: ProviderAddRequest): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.add(input));
+  applySnapshot(await window.aiopt.providers.add(input));
 }
 
 export async function updateProvider(input: ProviderUpdateRequest): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.update(input));
+  applySnapshot(await window.aiopt.providers.update(input));
 }
 
 export async function removeProvider(id: string): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.remove(id));
+  applySnapshot(await window.aiopt.providers.remove(id));
 }
 
 export async function setAgentBinding(
@@ -77,12 +77,12 @@ export async function setAgentBinding(
   modelId: string,
 ): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.setBinding(agentId, providerId, modelId));
+  applySnapshot(await window.aiopt.providers.setBinding(agentId, providerId, modelId));
 }
 
 export async function clearAgentBinding(agentId: AgentId): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.clearBinding(agentId));
+  applySnapshot(await window.aiopt.providers.clearBinding(agentId));
 }
 
 /**
@@ -91,7 +91,7 @@ export async function clearAgentBinding(agentId: AgentId): Promise<void> {
  */
 export async function restoreAgentDefault(agentId: AgentId): Promise<void> {
   ensureInitialized();
-  applySnapshot(await window.hearth.providers.restoreDefault(agentId));
+  applySnapshot(await window.aiopt.providers.restoreDefault(agentId));
 }
 
 /**
@@ -102,7 +102,7 @@ export async function fetchProviderModels(
   input: ProviderFetchModelsRequest,
 ): Promise<ProviderModel[]> {
   ensureInitialized();
-  const { models } = await window.hearth.providers.fetchModels(input);
+  const { models } = await window.aiopt.providers.fetchModels(input);
   return models;
 }
 
@@ -113,6 +113,6 @@ export async function fetchProviderModels(
  */
 export async function revealProviderKey(providerId: string): Promise<string | null> {
   ensureInitialized();
-  const { key } = await window.hearth.providers.revealKey(providerId);
+  const { key } = await window.aiopt.providers.revealKey(providerId);
   return key;
 }

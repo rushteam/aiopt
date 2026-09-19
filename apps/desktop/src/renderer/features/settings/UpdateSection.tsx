@@ -15,10 +15,10 @@ export function UpdateSection() {
 
   useEffect(() => {
     let active = true;
-    void window.hearth.update.getStatus().then((s) => {
+    void window.aiopt.update.getStatus().then((s) => {
       if (active) setStatus(s);
     });
-    const unsubscribe = window.hearth.update.onStatusChanged((s) => setStatus(s));
+    const unsubscribe = window.aiopt.update.onStatusChanged((s) => setStatus(s));
     return () => {
       active = false;
       unsubscribe();
@@ -44,7 +44,7 @@ export function UpdateSection() {
       </p>
       <button
         type="button"
-        onClick={() => void window.hearth.update.check()}
+        onClick={() => void window.aiopt.update.check()}
         disabled={checking}
         {...hoverBackground(token('surface'), token('surfaceHover'))}
         style={{

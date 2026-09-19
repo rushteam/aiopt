@@ -1,13 +1,13 @@
-# Hearth
+# AiOpt
 
-A security-first **Electron desktop app framework scaffold**. Hearth is not a product — it is
+A security-first **Electron desktop app framework scaffold**. AiOpt is not a product — it is
 the reusable *primitives* of a mature Electron client, extracted and wired end-to-end so you
 can start a real desktop app on a trustworthy foundation instead of rebuilding the security
 model from scratch.
 
 ## The trust model (the whole point)
 
-Hearth is built around one boundary:
+AiOpt is built around one boundary:
 
 > **Untrusted renderer / minimal preload / privileged main — and IPC is the authorization boundary.**
 
@@ -37,7 +37,7 @@ To add a real feature, copy the shape of that slice. It is also the living examp
 
 ## Base features (batteries included)
 
-Every desktop app needs the same non-business shell, so Hearth ships it — each piece wired to
+Every desktop app needs the same non-business shell, so AiOpt ships it — each piece wired to
 the same trust boundary (trusted sender + runtime validation, fail-closed navigation, secrets
 that never reach the renderer):
 
@@ -60,6 +60,40 @@ that never reach the renderer):
 
 Swap the auth and update providers for ones that talk to your backend; the manager, IPC
 surface, and UI stay unchanged.
+
+## Provider routing — one translation proxy, many routes
+
+Agents disagree on wire format: Claude speaks Anthropic Messages, Codex/Grok speak the OpenAI
+Responses API, others speak OpenAI Chat Completions. AiOpt lets an agent speaking format **X**
+bind to any provider speaking format **Y** — without the agent knowing a translation happened.
+
+> **One loopback HTTP server, on one ephemeral `127.0.0.1` port, translates every cross-format
+> binding. Not one proxy per provider, not one per direction — a single server that routes by a
+> per-binding path token.**
+
+- Each binding (one agent → one provider+model) registers **one route**, addressed by an
+  opaque **token in the URL path**: the agent's config points at `http://127.0.0.1:<port>/<token>`
+  and appends its own native suffix (`/v1/messages`, `/v1/chat/completions`, `/responses`).
+- The server strips the token, looks up the route, and the **route spec — not any sniffing of the
+  request body — decides the translation direction**. So an `A→O` binding and an `O→A` binding
+  coexist on the same port, told apart only by their token.
+- **N providers across any mix of directions ⇒ 1 process, 1 port, N token routes.** The route
+  count tracks how many agents are currently bound — nothing else.
+
+| Inbound (agent speaks) → Outbound (provider speaks) | Status |
+| --- | --- |
+| Anthropic → OpenAI Chat Completions | enabled |
+| OpenAI Responses → OpenAI Chat Completions | enabled |
+| OpenAI Responses → Anthropic (with the reasoning bridge) | enabled |
+| OpenAI Chat Completions → Anthropic | reserved |
+
+This rides the same trust model as everything else. The token authenticates the request and
+**rotates on every re-bind** (an old token dies the instant a binding is re-pointed, cleared, or
+the app restarts); the agent's config holds only that token, never the real provider key. The
+**real key is resolved main-side at request time** and placed into the *outbound* headers only.
+Upstream error bodies are never forwarded (they can echo the key) — the client gets a generic
+coded envelope — and logs record method / de-tokenized path / status / byte count only, never a
+body, header, token, or key.
 
 ## Getting started
 

@@ -32,10 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void window.hearth.auth.getState().then((s) => {
+    void window.aiopt.auth.getState().then((s) => {
       if (active) setState(s);
     });
-    const unsubscribe = window.hearth.auth.onStateChanged((s) => setState(s));
+    const unsubscribe = window.aiopt.auth.onStateChanged((s) => setState(s));
     return () => {
       active = false;
       unsubscribe();
@@ -43,11 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    setState(await window.hearth.auth.login(username, password));
+    setState(await window.aiopt.auth.login(username, password));
   }, []);
 
   const logout = useCallback(async () => {
-    setState(await window.hearth.auth.logout());
+    setState(await window.aiopt.auth.logout());
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({ state, login, logout }), [state, login, logout]);

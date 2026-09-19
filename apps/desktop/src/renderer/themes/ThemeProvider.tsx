@@ -39,7 +39,7 @@ function systemPrefersDark(): boolean {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPref] = useState<ThemePreference>(() => window.hearth.theme.getInitial());
+  const [preference, setPref] = useState<ThemePreference>(() => window.aiopt.theme.getInitial());
   const [systemDark, setSystemDark] = useState<boolean>(systemPrefersDark);
 
   // Track the OS color scheme (only affects the UI while preference is `system`).
@@ -52,7 +52,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Reflect preference changes pushed from main (e.g. another window changed it).
-  useEffect(() => window.hearth.config.onChanged((prefs) => setPref(prefs.theme)), []);
+  useEffect(() => window.aiopt.config.onChanged((prefs) => setPref(prefs.theme)), []);
 
   const resolved = resolveTheme(preference, systemDark);
 
@@ -64,7 +64,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPref(next); // optimistic; the config:changed echo will confirm
-    void window.hearth.config.set('theme', next);
+    void window.aiopt.config.set('theme', next);
   }, []);
 
   const value = useMemo<ThemeContextValue>(

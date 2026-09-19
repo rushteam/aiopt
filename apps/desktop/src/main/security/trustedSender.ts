@@ -70,7 +70,7 @@ function currentLocation(): TrustedRendererLocation {
   return {
     devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL || null,
     // Kept in sync with window/mainWindow.ts packaged load URL.
-    packagedAppUrl: 'hearth://main/index.html',
+    packagedAppUrl: 'aiopt://main/index.html',
   };
 }
 
