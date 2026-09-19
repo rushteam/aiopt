@@ -29,3 +29,16 @@ coverage/
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# Stray build output that lands at the repo root (bundled/hashed chunks).
+# The real build goes to the ignored dirs above; these are not source.
+/index.mjs
+/main.js
+/*-[A-Za-z0-9_]*.js
+/providerDiscovery-*.js
+/model-*.js
+
+# Local agent/skill tooling — not part of the app source.
+.claude/
+.agents/
+skills-lock.json
