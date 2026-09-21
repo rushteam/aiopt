@@ -13,7 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PreferencesShape, ThemePreference } from '../../shared/ipc-channels';
+import type { LanguagePreference, PreferencesShape, ThemePreference } from '../../shared/ipc-channels';
 import type { SkillsLibraryLocation } from '../../shared/skills';
 import { throwIpcError } from '../ipc/validate';
 
@@ -24,6 +24,16 @@ interface PreferenceDef<K extends keyof PreferencesShape> {
 }
 
 const THEME_VALUES: readonly ThemePreference[] = ['system', 'light', 'dark'];
+const LANGUAGE_VALUES: readonly LanguagePreference[] = [
+  'system',
+  'en',
+  'zh-CN',
+  'ja',
+  'ko',
+  'fr',
+  'de',
+  'es',
+];
 const SKILLS_LIBRARY_VALUES: readonly SkillsLibraryLocation[] = ['app', 'home'];
 
 /** The known preferences: default + runtime validator for each. */
@@ -35,6 +45,19 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
         throwIpcError('INVALID_PARAMS', 'theme must be one of: system | light | dark');
       }
       return raw as ThemePreference;
+    },
+  },
+  language: {
+    // Follow the OS locale until the user picks a specific language.
+    default: 'system',
+    validate(raw) {
+      if (typeof raw !== 'string' || !LANGUAGE_VALUES.includes(raw as LanguagePreference)) {
+        throwIpcError(
+          'INVALID_PARAMS',
+          'language must be one of: system | en | zh-CN | ja | ko | fr | de | es',
+        );
+      }
+      return raw as LanguagePreference;
     },
   },
   skillsLibrary: {
@@ -54,6 +77,18 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
     validate(raw) {
       if (typeof raw !== 'boolean') {
         throwIpcError('INVALID_PARAMS', 'proxyMode must be a boolean');
+      }
+      return raw;
+    },
+  },
+  warnOnQuitWithProxy: {
+    // On by default: a real quit with live proxy routes would leave those agents
+    // pointing at a dead loopback listener until AiOpt runs again, so warn first.
+    // The dialog's "don't ask again" writes this false. Gates only the warning.
+    default: true,
+    validate(raw) {
+      if (typeof raw !== 'boolean') {
+        throwIpcError('INVALID_PARAMS', 'warnOnQuitWithProxy must be a boolean');
       }
       return raw;
     },

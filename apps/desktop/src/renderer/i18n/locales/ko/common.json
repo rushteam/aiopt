@@ -1,0 +1,338 @@
+{
+  "app": {
+    "tagline": "보안 경계가 준비되었습니다. 그 안에서 앱을 만드세요."
+  },
+  "nav": {
+    "settings": "설정",
+    "home": "홈"
+  },
+  "titleBar": {
+    "menu": "메뉴",
+    "menuItems": {
+      "settings": "설정",
+      "usage": "사용량",
+      "skills": "스킬",
+      "checkForUpdates": "업데이트 확인",
+      "about": "정보",
+      "quit": "종료"
+    }
+  },
+  "settings": {
+    "title": "설정",
+    "close": "닫기",
+    "sections": {
+      "appearance": "화면",
+      "account": "계정",
+      "shortcuts": "단축키",
+      "updates": "업데이트",
+      "about": "정보",
+      "general": "일반"
+    }
+  },
+  "appearance": {
+    "title": "화면",
+    "theme": "테마",
+    "themeHelp": "앱의 표시 방식을 선택합니다. 시스템은 운영 체제 설정을 따릅니다.",
+    "system": "시스템",
+    "light": "라이트",
+    "dark": "다크"
+  },
+  "language": {
+    "title": "언어",
+    "help": "인터페이스 언어를 선택합니다. 시스템은 운영 체제 설정을 따릅니다.",
+    "system": "시스템"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "프록시 모드",
+      "help": "끄기(기본값): 같은 형식의 바인딩은 직접 연결되며 사용량이 집계되지 않습니다. 켜기: AiOpt 프록시를 통해 전달되며 사용량이 집계됩니다."
+    },
+    "warnOnQuitWithProxy": {
+      "label": "프록시 연결 중 종료 전 경고",
+      "help": "켜기(기본값): 에이전트가 AiOpt 프록시를 통해 연결 중이면 종료 전에 확인합니다——AiOpt를 다시 실행할 때까지 연결할 수 없습니다. 끄기: 묻지 않고 종료합니다."
+    }
+  },
+  "account": {
+    "title": "계정",
+    "signedInAs": "로그인 계정",
+    "signedOutHelp": "로그인하여 이 기기를 연결하세요. 로컬 스텁은 아무 사용자 이름과 비밀번호나 허용합니다.",
+    "username": "사용자 이름",
+    "password": "비밀번호",
+    "logIn": "로그인",
+    "loggingIn": "로그인 중…",
+    "logOut": "로그아웃",
+    "error": "로그인에 실패했습니다. 정보를 확인한 후 다시 시도하세요."
+  },
+  "shortcuts": {
+    "title": "단축키",
+    "recording": "새 단축키를 누르세요… (Esc로 취소)",
+    "recordingHint": "기록 중…",
+    "none": "지정 안 됨",
+    "edit": "편집",
+    "disable": "사용 안 함",
+    "reset": "초기화",
+    "resetAll": "모두 초기화",
+    "items": {
+      "open-settings": {
+        "label": "설정 열기",
+        "description": "설정 창을 엽니다."
+      },
+      "check-for-updates": {
+        "label": "업데이트 확인",
+        "description": "새 버전이 있는지 확인합니다."
+      },
+      "toggle-theme": {
+        "label": "라이트 / 다크 전환",
+        "description": "라이트와 다크 화면을 전환합니다."
+      }
+    },
+    "errors": {
+      "notBindable": "이 키는 단독으로 사용할 수 없습니다. 수정 키를 추가하거나 기능 키를 사용하세요.",
+      "systemReserved": "이 단축키는 운영 체제에 예약되어 있습니다.",
+      "conflict": "이 단축키는 이미 다른 동작에 사용되고 있습니다.",
+      "saveFailed": "단축키를 저장하지 못했습니다. 다시 시도하세요."
+    }
+  },
+  "updates": {
+    "title": "업데이트",
+    "currentVersion": "현재 버전",
+    "check": "업데이트 확인",
+    "checking": "확인 중…",
+    "state": {
+      "idle": "새 버전이 있는지 확인하려면 클릭하세요.",
+      "checking": "업데이트 확인 중…",
+      "up-to-date": "최신 버전입니다.",
+      "update-available": "업데이트가 있습니다.",
+      "error": "업데이트를 확인하지 못했습니다. 나중에 다시 시도하세요."
+    }
+  },
+  "about": {
+    "title": "정보",
+    "appVersion": "앱 버전",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "불러오는 중…"
+  },
+  "providers": {
+    "title": "공급자",
+    "subtitle": "공급자를 한 번 추가한 다음, 각 에이전트가 사용할 공급자와 모델을 지정하세요.",
+    "addProvider": "공급자 추가",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "에이전트"
+    },
+    "proxy": {
+      "label": "로컬 프록시",
+      "refresh": "포트 새로 고침",
+      "refreshing": "새로 고치는 중…",
+      "refreshed": "새로 고침됨",
+      "stopped": "실행 중 아님"
+    },
+    "pool": {
+      "heading": "공급자 풀",
+      "empty": "아직 공급자가 없습니다. 하나를 추가하여 시작하세요."
+    },
+    "fields": {
+      "name": "이름",
+      "apiFormat": "API 형식",
+      "baseUrl": "Base URL",
+      "apiKey": "API 키",
+      "models": "모델",
+      "modelId": "모델 ID",
+      "modelAlias": "별칭",
+      "notes": "메모"
+    },
+    "form": {
+      "addTitle": "공급자 추가",
+      "editTitle": "공급자 편집",
+      "preset": "프리셋",
+      "presetNone": "사용자 지정…",
+      "apiKeyKeep": "비워 두면 저장된 키를 유지합니다",
+      "addModel": "모델 추가",
+      "removeModel": "모델 제거",
+      "modelIdPlaceholder": "model-id",
+      "modelAliasPlaceholder": "별칭 (선택 사항)",
+      "aliasHint": "별칭: 모델 ID 대신 에이전트에 기록되는, 더 짧거나 에이전트와 일관된 이름입니다(예: 긴 ID를 줄이거나 게이트웨이의 사용자 지정 이름). 비워 두면 모델 ID로 대체됩니다.",
+      "loadModels": "모델 불러오기",
+      "loadingModels": "불러오는 중…",
+      "loadModelsEmpty": "공급자가 반환한 모델이 없습니다.",
+      "cancel": "취소",
+      "close": "닫기",
+      "save": "저장",
+      "saving": "저장 중…",
+      "showKey": "표시",
+      "hideKey": "숨기기",
+      "keySavedHidden": "키가 저장됨 · 보안을 위해 숨김. 그대로 두려면 비워 두고, 교체하려면 입력하세요."
+    },
+    "card": {
+      "models": "모델",
+      "keySet": "키 저장됨",
+      "keyMissing": "키 없음",
+      "edit": "편집",
+      "delete": "삭제",
+      "confirmDelete": "이 공급자를 삭제할까요?",
+      "confirmYes": "삭제"
+    },
+    "agent": {
+      "installed": "설치됨",
+      "notInstalled": "감지되지 않음",
+      "unbound": "구성 안 됨",
+      "change": "변경",
+      "copyProxyConfig": "프록시 구성 복사",
+      "copied": "복사됨",
+      "restoreDefault": "기본값 복원",
+      "restoreConfirm": "이 에이전트의 구성을 AiOpt 적용 전으로 복원할까요?"
+    },
+    "binding": {
+      "title": "공급자 선택",
+      "help": "공급자와 모델을 고른 다음 적용하세요.",
+      "noProviders": "먼저 공급자를 추가하세요.",
+      "needsProxy": "프록시 필요",
+      "modelHint": "모델 (선택 사항 — 기본값은 첫 번째이며 언제든지 변경 가능)",
+      "useDefault": "기본값 사용",
+      "selectProviderHint": "왼쪽에서 공급자를 선택하면 해당 모델이 표시됩니다.",
+      "searchModels": "모델 검색…",
+      "noModelMatch": "일치하는 모델이 없습니다.",
+      "bound": "현재 바인딩됨",
+      "apply": "적용",
+      "restoreDefaultRow": "기본값"
+    },
+    "errors": {
+      "INVALID_PARAMS": "일부 정보가 올바르지 않습니다. 필드를 확인한 후 다시 시도하세요.",
+      "NOT_FOUND": "해당 공급자 또는 모델이 더 이상 존재하지 않습니다.",
+      "ALREADY_EXISTS": "같은 id의 공급자가 이미 있습니다.",
+      "PRECONDITION_FAILED": "이 공급자의 형식은 이 에이전트에 프록시가 필요합니다(추후 지원 예정).",
+      "PERMISSION_DENIED": "허용되지 않는 동작입니다.",
+      "UNSUPPORTED_CAPABILITY": "이 에이전트는 아직 구성할 수 없습니다.",
+      "UNAUTHORIZED": "공급자가 API 키를 거부했습니다. 키를 확인한 후 다시 시도하세요.",
+      "UPSTREAM_ERROR": "공급자에서 모델을 불러오지 못했습니다. Base URL을 확인한 후 다시 시도하세요.",
+      "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
+    }
+  },
+  "usage": {
+    "title": "사용량",
+    "subtitle": "AiOpt가 번역 프록시를 통해 전달한 트래픽의 토큰 및 요청 수입니다.",
+    "scopeNote": "트래픽은 프록시를 통해 실행될 때 집계됩니다. 프록시 모드가 켜져 있으면 모든 바인딩이 프록시를 거치므로 사용량이 측정됩니다. 기본값(프록시 모드 꺼짐)에서는 같은 형식의 바인딩이 직접 연결되어 집계되지 않으며, Gemini 바인딩은 항상 직접 연결되어 집계되지 않습니다.",
+    "close": "닫기",
+    "empty": "아직 기록된 사용량이 없습니다. 프록시 모드를 켜고, 에이전트를 공급자에 바인딩한 다음, 요청을 실행하세요. 기본값(프록시 모드 꺼짐)에서는 같은 형식의 바인딩이 프록시를 우회하여 측정되지 않으며, Gemini 바인딩은 절대 측정되지 않습니다.",
+    "totals": {
+      "requests": "요청 수",
+      "successRate": "성공률",
+      "inputTokens": "입력 토큰",
+      "outputTokens": "출력 토큰",
+      "totalTokens": "전체 토큰"
+    },
+    "chart": {
+      "title": "일별 토큰",
+      "empty": "일별 데이터가 없습니다."
+    },
+    "breakdown": {
+      "byProvider": "공급자별",
+      "byAgent": "에이전트별",
+      "byModel": "모델별"
+    },
+    "table": {
+      "name": "이름",
+      "requests": "요청 수",
+      "inputTokens": "입력",
+      "outputTokens": "출력",
+      "totalTokens": "합계"
+    },
+    "clear": "사용량 지우기",
+    "clearConfirm": "기록된 모든 사용량을 지울까요?",
+    "clearConfirmYes": "지우기",
+    "clearCancel": "취소"
+  },
+  "skills": {
+    "title": "스킬",
+    "subtitle": "각 에이전트의 홈 디렉터리에 있는 스킬을 하나의 중앙 라이브러리로 모은 다음 다시 동기화하세요.",
+    "close": "닫기",
+    "skill": "스킬",
+    "central": "라이브러리",
+    "empty": "아직 발견된 스킬이 없습니다.",
+    "emptyHint": "스킬 폴더를 가져오거나, 에이전트가 이미 가진 스킬을 라이브러리로 가져오세요.",
+    "library": {
+      "label": "중앙 라이브러리",
+      "app": "앱 내",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "개 파일"
+    },
+    "time": {
+      "library": "라이브러리:",
+      "agent": "에이전트:"
+    },
+    "newer": {
+      "central": "라이브러리가 더 최신입니다",
+      "agent": "에이전트 사본이 더 최신입니다"
+    },
+    "state": {
+      "same": "동기화됨",
+      "centralOnly": "라이브러리만",
+      "agentOnly": "에이전트만",
+      "differs": "차이 있음",
+      "inLibrary": "라이브러리에 있음"
+    },
+    "actions": {
+      "reveal": "파일 관리자에서 표시",
+      "import": "폴더에서 가져오기…",
+      "rescan": "다시 검색",
+      "pull": "가져오기 ←",
+      "push": "내보내기 →",
+      "pushAll": "모든 에이전트로 내보내기",
+      "diff": "비교",
+      "delete": "라이브러리에서 삭제",
+      "deleteAgent": "에이전트에서 삭제"
+    },
+    "detail": {
+      "noDescription": "설명이 없습니다."
+    },
+    "confirm": {
+      "pushAll": "라이브러리 사본으로 모든 에이전트의 이 스킬을 덮어쓸까요?",
+      "delete": "중앙 라이브러리에서 이 스킬을 삭제할까요? 에이전트 사본은 그대로 유지됩니다.",
+      "deleteAgent": "이 에이전트의 스킬 사본을 삭제할까요? 라이브러리와 다른 에이전트의 사본은 그대로 유지됩니다.",
+      "deleteAgentLast": "이 스킬의 유일한 사본입니다 — 라이브러리와 다른 모든 에이전트에는 없습니다. 삭제하면 되돌릴 수 없습니다. 그래도 삭제할까요?",
+      "overwriteAgent": "라이브러리 사본으로 에이전트 사본을 덮어쓸까요?",
+      "overwriteLibrary": "에이전트 사본으로 라이브러리 사본을 덮어쓸까요?",
+      "merge": "선택한 에이전트 파일을 라이브러리 사본에 적용할까요? 에이전트 사본은 그대로 유지됩니다.",
+      "cancel": "취소"
+    },
+    "diff": {
+      "title": "변경 사항",
+      "close": "닫기",
+      "empty": "파일 수준의 차이가 없습니다.",
+      "added": "추가됨",
+      "modified": "수정됨",
+      "deleted": "삭제됨",
+      "binary": "바이너리",
+      "expand": "파일 내용 표시",
+      "collapse": "파일 내용 숨기기",
+      "library": "라이브러리",
+      "agent": "에이전트",
+      "useLibrary": "라이브러리 사용",
+      "useAgent": "에이전트 사용",
+      "merge": "병합 적용",
+      "mergeHint": "“에이전트 사용”으로 설정된 파일은 라이브러리에 기록되고, 나머지는 라이브러리 버전을 유지합니다.",
+      "previewAbsent": "이쪽에는 존재하지 않습니다.",
+      "previewBinary": "바이너리 파일 — 미리 보기를 사용할 수 없습니다.",
+      "previewLoading": "불러오는 중…",
+      "previewError": "미리 보기를 불러오지 못했습니다.",
+      "previewTruncated": "미리 보기가 잘렸습니다 (파일이 큼)."
+    },
+    "errors": {
+      "INVALID_PARAMS": "일부 정보가 올바르지 않습니다. 다시 시도하세요.",
+      "NOT_FOUND": "해당 스킬이 더 이상 존재하지 않습니다.",
+      "PERMISSION_DENIED": "허용되지 않는 동작이거나, 스킬에 안전하게 동기화할 수 없는 파일이 포함되어 있습니다.",
+      "PRECONDITION_FAILED": "이 스킬은 너무 커서 동기화할 수 없습니다.",
+      "UNSUPPORTED_CAPABILITY": "이 에이전트에는 알려진 스킬 디렉터리가 없습니다.",
+      "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
+    }
+  }
+}

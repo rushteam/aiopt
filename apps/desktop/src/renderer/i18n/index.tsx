@@ -6,17 +6,42 @@
 // resolve dot-path keys, fall back to English. Swap in a full i18n library later
 // without changing call sites (`useT()` / `t('settings.title')`).
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { LanguagePreference } from '../../shared/ipc-channels';
 import en from './locales/en/common.json';
 import zhCN from './locales/zh-CN/common.json';
+import ja from './locales/ja/common.json';
+import ko from './locales/ko/common.json';
+import fr from './locales/fr/common.json';
+import de from './locales/de/common.json';
+import es from './locales/es/common.json';
 
-export type Locale = 'en' | 'zh-CN';
+export type Locale = 'en' | 'zh-CN' | 'ja' | 'ko' | 'fr' | 'de' | 'es';
 
-const MESSAGES: Record<Locale, unknown> = { en, 'zh-CN': zhCN };
+const MESSAGES: Record<Locale, unknown> = { en, 'zh-CN': zhCN, ja, ko, fr, de, es };
 
+// Map a `navigator.language` prefix onto a supported UI locale. Ordered so the
+// only multi-region case (zh) is handled first; the rest match on the 2-letter
+// primary subtag. Anything unmatched falls back to English.
+const LOCALE_BY_PREFIX: ReadonlyArray<readonly [prefix: string, locale: Locale]> = [
+  ['zh', 'zh-CN'],
+  ['ja', 'ja'],
+  ['ko', 'ko'],
+  ['fr', 'fr'],
+  ['de', 'de'],
+  ['es', 'es'],
+  ['en', 'en'],
+];
+
+/** The OS locale, mapped onto a supported UI locale (English is the fallback). */
 export function detectLocale(): Locale {
   const lang = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : 'en';
-  return lang.startsWith('zh') ? 'zh-CN' : 'en';
+  return LOCALE_BY_PREFIX.find(([prefix]) => lang.startsWith(prefix))?.[1] ?? 'en';
+}
+
+/** Resolve a stored preference to a concrete locale; `system` follows the OS. */
+export function resolveLocale(pref: LanguagePreference): Locale {
+  return pref === 'system' ? detectLocale() : pref;
 }
 
 /** Resolve a dot-path (`settings.sections.appearance`) against a messages tree. */
@@ -47,11 +72,35 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({
   children,
-  locale = detectLocale(),
+  locale: fixedLocale,
 }: {
   children: ReactNode;
+  /** Force a locale (tests/Storybook). When omitted, the stored preference drives it. */
   locale?: Locale;
 }) {
+  // First paint uses the OS locale; the stored preference (read async below) then
+  // confirms or overrides it. Language flicker is far less jarring than theme, so we
+  // avoid a synchronous preload bridge for it.
+  const [detected, setDetected] = useState<Locale>(() => fixedLocale ?? detectLocale());
+
+  // Load the persisted preference once, then track live changes via the same
+  // config:changed push the theme uses — so a switch applies without a restart.
+  useEffect(() => {
+    if (fixedLocale) return;
+    let active = true;
+    void window.aiopt.config.getAll().then((prefs) => {
+      if (active) setDetected(resolveLocale(prefs.language));
+    });
+    const unsubscribe = window.aiopt.config.onChanged((prefs) => {
+      setDetected(resolveLocale(prefs.language));
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [fixedLocale]);
+
+  const locale = fixedLocale ?? detected;
   const value = useMemo<I18nContextValue>(() => ({ locale, t: makeTranslate(locale) }), [locale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

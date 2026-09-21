@@ -1,0 +1,338 @@
+{
+  "app": {
+    "tagline": "セキュリティ境界は構築済みです。その中でアプリを作りましょう。"
+  },
+  "nav": {
+    "settings": "設定",
+    "home": "ホーム"
+  },
+  "titleBar": {
+    "menu": "メニュー",
+    "menuItems": {
+      "settings": "設定",
+      "usage": "使用状況",
+      "skills": "スキル",
+      "checkForUpdates": "更新を確認",
+      "about": "このアプリについて",
+      "quit": "終了"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "close": "閉じる",
+    "sections": {
+      "appearance": "外観",
+      "account": "アカウント",
+      "shortcuts": "キーボードショートカット",
+      "updates": "更新",
+      "about": "このアプリについて",
+      "general": "一般"
+    }
+  },
+  "appearance": {
+    "title": "外観",
+    "theme": "テーマ",
+    "themeHelp": "アプリの見た目を選択します。「システム」はお使いのOSの設定に従います。",
+    "system": "システム",
+    "light": "ライト",
+    "dark": "ダーク"
+  },
+  "language": {
+    "title": "言語",
+    "help": "インターフェースの言語を選択します。「システム」はお使いのOSの設定に従います。",
+    "system": "システム"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "プロキシモード",
+      "help": "オフ（既定）：同一フォーマットのバインドは直接接続し、使用量はカウントされません。オン：AiOpt のプロキシ経由でルーティングされ、使用量がカウントされます。"
+    },
+    "warnOnQuitWithProxy": {
+      "label": "プロキシ接続中の終了前に警告",
+      "help": "オン（既定）：エージェントが AiOpt のプロキシ経由で接続している場合、終了前に確認します——AiOpt を再び起動するまで接続できません。オフ：確認せずに終了します。"
+    }
+  },
+  "account": {
+    "title": "アカウント",
+    "signedInAs": "ログイン中",
+    "signedOutHelp": "ログインしてこのデバイスを接続します。ローカルのスタブは任意のユーザー名とパスワードを受け付けます。",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "logIn": "ログイン",
+    "loggingIn": "ログイン中…",
+    "logOut": "ログアウト",
+    "error": "ログインに失敗しました。入力内容を確認してもう一度お試しください。"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "recording": "新しいショートカットを入力…（Esc でキャンセル）",
+    "recordingHint": "記録中…",
+    "none": "未割り当て",
+    "edit": "編集",
+    "disable": "無効化",
+    "reset": "リセット",
+    "resetAll": "すべてリセット",
+    "items": {
+      "open-settings": {
+        "label": "設定を開く",
+        "description": "設定ウィンドウを開きます。"
+      },
+      "check-for-updates": {
+        "label": "更新を確認",
+        "description": "新しいバージョンがあるか確認します。"
+      },
+      "toggle-theme": {
+        "label": "ライト / ダークを切り替え",
+        "description": "ライトとダークの外観を切り替えます。"
+      }
+    },
+    "errors": {
+      "notBindable": "そのキーは単独では使用できません。修飾キーを追加するか、ファンクションキーを使用してください。",
+      "systemReserved": "そのショートカットはOSによって予約されています。",
+      "conflict": "そのショートカットはすでに別の操作で使われています。",
+      "saveFailed": "ショートカットを保存できませんでした。もう一度お試しください。"
+    }
+  },
+  "updates": {
+    "title": "更新",
+    "currentVersion": "現在のバージョン",
+    "check": "更新を確認",
+    "checking": "確認中…",
+    "state": {
+      "idle": "新しいバージョンがあるか確認します。",
+      "checking": "更新を確認中…",
+      "up-to-date": "最新の状態です。",
+      "update-available": "更新が利用できます。",
+      "error": "更新を確認できませんでした。しばらくしてからお試しください。"
+    }
+  },
+  "about": {
+    "title": "このアプリについて",
+    "appVersion": "アプリのバージョン",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "読み込み中…"
+  },
+  "providers": {
+    "title": "プロバイダー",
+    "subtitle": "プロバイダーを一度追加すれば、あとは各エージェントに使用するプロバイダーとモデルを指定するだけです。",
+    "addProvider": "プロバイダーを追加",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "エージェント"
+    },
+    "proxy": {
+      "label": "ローカルプロキシ",
+      "refresh": "ポートを更新",
+      "refreshing": "更新中…",
+      "refreshed": "更新しました",
+      "stopped": "停止中"
+    },
+    "pool": {
+      "heading": "プロバイダープール",
+      "empty": "プロバイダーがまだありません。追加して始めましょう。"
+    },
+    "fields": {
+      "name": "名前",
+      "apiFormat": "API フォーマット",
+      "baseUrl": "Base URL",
+      "apiKey": "API キー",
+      "models": "モデル",
+      "modelId": "モデル ID",
+      "modelAlias": "エイリアス",
+      "notes": "メモ"
+    },
+    "form": {
+      "addTitle": "プロバイダーを追加",
+      "editTitle": "プロバイダーを編集",
+      "preset": "プリセット",
+      "presetNone": "カスタム…",
+      "apiKeyKeep": "空欄のままにすると保存済みのキーを保持します",
+      "addModel": "モデルを追加",
+      "removeModel": "モデルを削除",
+      "modelIdPlaceholder": "model-id",
+      "modelAliasPlaceholder": "エイリアス（任意）",
+      "aliasHint": "エイリアス：モデル ID の代わりにエージェントへ書き込まれる、より短い名前やエージェント側と統一した名前です（長い ID を短縮したもの、ゲートウェイのカスタム名など）。空欄の場合はモデル ID が使われます。",
+      "loadModels": "モデルを読み込む",
+      "loadingModels": "読み込み中…",
+      "loadModelsEmpty": "プロバイダーからモデルが返されませんでした。",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "save": "保存",
+      "saving": "保存中…",
+      "showKey": "表示",
+      "hideKey": "非表示",
+      "keySavedHidden": "キーは保存済み · セキュリティのため非表示です。空欄のままにすると保持し、入力すると置き換えます。"
+    },
+    "card": {
+      "models": "モデル",
+      "keySet": "キー保存済み",
+      "keyMissing": "キーなし",
+      "edit": "編集",
+      "delete": "削除",
+      "confirmDelete": "このプロバイダーを削除しますか？",
+      "confirmYes": "削除"
+    },
+    "agent": {
+      "installed": "インストール済み",
+      "notInstalled": "検出されません",
+      "unbound": "未設定",
+      "change": "変更",
+      "copyProxyConfig": "プロキシ設定をコピー",
+      "copied": "コピーしました",
+      "restoreDefault": "デフォルトに戻す",
+      "restoreConfirm": "このエージェントの設定を AiOpt 導入前の状態に戻しますか？"
+    },
+    "binding": {
+      "title": "プロバイダーを選択",
+      "help": "プロバイダーとモデルを選んで「適用」してください。",
+      "noProviders": "先にプロバイダーを追加してください。",
+      "needsProxy": "プロキシが必要",
+      "modelHint": "モデル（任意 — 既定は先頭のもの、いつでも変更可）",
+      "useDefault": "デフォルトを使用",
+      "selectProviderHint": "左側でプロバイダーを選択するとモデルが表示されます。",
+      "searchModels": "モデルを検索…",
+      "noModelMatch": "一致するモデルがありません。",
+      "bound": "現在のバインド",
+      "apply": "適用",
+      "restoreDefaultRow": "デフォルト"
+    },
+    "errors": {
+      "INVALID_PARAMS": "一部の内容が無効です。項目を確認してもう一度お試しください。",
+      "NOT_FOUND": "そのプロバイダーまたはモデルは存在しません。",
+      "ALREADY_EXISTS": "その id のプロバイダーはすでに存在します。",
+      "PRECONDITION_FAILED": "このプロバイダーのフォーマットは、このエージェントで使用するのにプロキシが必要です（今後対応予定）。",
+      "PERMISSION_DENIED": "その操作は許可されていません。",
+      "UNSUPPORTED_CAPABILITY": "このエージェントはまだ設定できません。",
+      "UNAUTHORIZED": "プロバイダーが API キーを拒否しました。キーを確認してもう一度お試しください。",
+      "UPSTREAM_ERROR": "プロバイダーからモデルを読み込めませんでした。Base URL を確認してもう一度お試しください。",
+      "INTERNAL": "問題が発生しました。もう一度お試しください。"
+    }
+  },
+  "usage": {
+    "title": "使用状況",
+    "subtitle": "AiOpt が翻訳プロキシ経由でルーティングしたトラフィックのトークン数とリクエスト数です。",
+    "scopeNote": "トラフィックはプロキシを経由したときにカウントされます。プロキシモードをオンにすると、すべてのバインドがプロキシを経由するため、使用量が計測されます。既定（プロキシモードオフ）では、同一フォーマットのバインドは直接接続してカウントされません。Gemini のバインドは常に直接接続で、カウントされることはありません。",
+    "close": "閉じる",
+    "empty": "まだ使用量の記録がありません。プロキシモードをオンにし、エージェントをプロバイダーにバインドしてリクエストを実行してください。既定（プロキシモードオフ）では、同一フォーマットのバインドはプロキシを経由せず計測されません。Gemini のバインドは計測されることはありません。",
+    "totals": {
+      "requests": "リクエスト数",
+      "successRate": "成功率",
+      "inputTokens": "入力トークン",
+      "outputTokens": "出力トークン",
+      "totalTokens": "合計トークン"
+    },
+    "chart": {
+      "title": "日別トークン",
+      "empty": "日別データがありません。"
+    },
+    "breakdown": {
+      "byProvider": "プロバイダー別",
+      "byAgent": "エージェント別",
+      "byModel": "モデル別"
+    },
+    "table": {
+      "name": "名前",
+      "requests": "リクエスト数",
+      "inputTokens": "入力",
+      "outputTokens": "出力",
+      "totalTokens": "合計"
+    },
+    "clear": "使用状況をクリア",
+    "clearConfirm": "記録されたすべての使用量をクリアしますか？",
+    "clearConfirmYes": "クリア",
+    "clearCancel": "キャンセル"
+  },
+  "skills": {
+    "title": "スキル",
+    "subtitle": "各エージェントのホームディレクトリからスキルを一つの中央ライブラリに集め、再び各所へ同期します。",
+    "close": "閉じる",
+    "skill": "スキル",
+    "central": "ライブラリ",
+    "empty": "スキルがまだ見つかりません。",
+    "emptyHint": "スキルフォルダをインポートするか、エージェントが持っているスキルをライブラリに取り込みます。",
+    "library": {
+      "label": "中央ライブラリ",
+      "app": "アプリ内",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "ファイル"
+    },
+    "time": {
+      "library": "ライブラリ:",
+      "agent": "エージェント:"
+    },
+    "newer": {
+      "central": "ライブラリが新しい",
+      "agent": "エージェント側が新しい"
+    },
+    "state": {
+      "same": "同期済み",
+      "centralOnly": "ライブラリのみ",
+      "agentOnly": "エージェントのみ",
+      "differs": "差異あり",
+      "inLibrary": "ライブラリ内"
+    },
+    "actions": {
+      "reveal": "ファイルマネージャーで表示",
+      "import": "フォルダからインポート…",
+      "rescan": "再スキャン",
+      "pull": "取り込む ←",
+      "push": "送り出す →",
+      "pushAll": "すべてのエージェントへ送り出す",
+      "diff": "差分",
+      "delete": "ライブラリから削除",
+      "deleteAgent": "エージェントから削除"
+    },
+    "detail": {
+      "noDescription": "説明がありません。"
+    },
+    "confirm": {
+      "pushAll": "このスキルをすべてのエージェントでライブラリの内容に上書きしますか？",
+      "delete": "このスキルを中央ライブラリから削除しますか？エージェント側のコピーはそのまま残ります。",
+      "deleteAgent": "このエージェントのスキルのコピーを削除しますか？ライブラリと他のエージェントのコピーはそのまま残ります。",
+      "deleteAgentLast": "これはこのスキルの唯一のコピーです — ライブラリにも他のどのエージェントにもありません。削除すると元に戻せません。それでも削除しますか？",
+      "overwriteAgent": "エージェントのコピーをライブラリの内容で上書きしますか？",
+      "overwriteLibrary": "ライブラリのコピーをエージェントの内容で上書きしますか？",
+      "merge": "選択したエージェントのファイルをライブラリのコピーに適用しますか？エージェント側のコピーはそのまま残ります。",
+      "cancel": "キャンセル"
+    },
+    "diff": {
+      "title": "変更点",
+      "close": "閉じる",
+      "empty": "ファイル単位の差異はありません。",
+      "added": "追加",
+      "modified": "変更",
+      "deleted": "削除",
+      "binary": "バイナリ",
+      "expand": "ファイルの内容を表示",
+      "collapse": "ファイルの内容を隠す",
+      "library": "ライブラリ",
+      "agent": "エージェント",
+      "useLibrary": "ライブラリを使用",
+      "useAgent": "エージェントを使用",
+      "merge": "マージを適用",
+      "mergeHint": "「エージェントを使用」に設定したファイルはライブラリに書き込まれ、残りはライブラリの内容を保持します。",
+      "previewAbsent": "この側には存在しません。",
+      "previewBinary": "バイナリファイル — プレビューできません。",
+      "previewLoading": "読み込み中…",
+      "previewError": "プレビューを読み込めませんでした。",
+      "previewTruncated": "プレビューは省略されています（ファイルが大きいため）。"
+    },
+    "errors": {
+      "INVALID_PARAMS": "一部の内容が無効です。もう一度お試しください。",
+      "NOT_FOUND": "そのスキルは存在しません。",
+      "PERMISSION_DENIED": "その操作は許可されていないか、そのスキルには安全に同期できないファイルが含まれています。",
+      "PRECONDITION_FAILED": "そのスキルは大きすぎて同期できません。",
+      "UNSUPPORTED_CAPABILITY": "このエージェントには既知のスキルディレクトリがありません。",
+      "INTERNAL": "問題が発生しました。もう一度お試しください。"
+    }
+  }
+}

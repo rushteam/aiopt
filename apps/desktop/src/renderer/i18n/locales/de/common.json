@@ -1,0 +1,338 @@
+{
+  "app": {
+    "tagline": "Die Sicherheitsgrenze ist verdrahtet. Bauen Sie Ihre App darin."
+  },
+  "nav": {
+    "settings": "Einstellungen",
+    "home": "Startseite"
+  },
+  "titleBar": {
+    "menu": "Menü",
+    "menuItems": {
+      "settings": "Einstellungen",
+      "usage": "Nutzung",
+      "skills": "Skills",
+      "checkForUpdates": "Nach Updates suchen",
+      "about": "Über",
+      "quit": "Beenden"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "close": "Schließen",
+    "sections": {
+      "appearance": "Darstellung",
+      "account": "Konto",
+      "shortcuts": "Tastenkürzel",
+      "updates": "Updates",
+      "about": "Über",
+      "general": "Allgemein"
+    }
+  },
+  "appearance": {
+    "title": "Darstellung",
+    "theme": "Design",
+    "themeHelp": "Wählen Sie das Erscheinungsbild der App. „System“ folgt Ihrem Betriebssystem.",
+    "system": "System",
+    "light": "Hell",
+    "dark": "Dunkel"
+  },
+  "language": {
+    "title": "Sprache",
+    "help": "Wählen Sie die Sprache der Benutzeroberfläche. „System“ folgt Ihrem Betriebssystem.",
+    "system": "System"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "Proxy-Modus",
+      "help": "Aus (Standard): Bindungen im selben Format verbinden sich direkt; die Nutzung wird nicht gezählt. An: Weiterleitung über den Proxy von AiOpt; die Nutzung wird gezählt."
+    },
+    "warnOnQuitWithProxy": {
+      "label": "Vor dem Beenden bei aktivem Proxy warnen",
+      "help": "An (Standard): Wenn Agenten über den Proxy von AiOpt laufen, vor dem Beenden bestätigen — sie können sich erst wieder verbinden, wenn AiOpt erneut läuft. Aus: ohne Nachfrage beenden."
+    }
+  },
+  "account": {
+    "title": "Konto",
+    "signedInAs": "Angemeldet als",
+    "signedOutHelp": "Melden Sie sich an, um dieses Gerät zu verbinden. Der lokale Stub akzeptiert jeden Benutzernamen und jedes Passwort.",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "logIn": "Anmelden",
+    "loggingIn": "Anmeldung läuft…",
+    "logOut": "Abmelden",
+    "error": "Anmeldung fehlgeschlagen. Prüfen Sie Ihre Angaben und versuchen Sie es erneut."
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "recording": "Neues Tastenkürzel drücken… (Esc zum Abbrechen)",
+    "recordingHint": "Aufnahme läuft…",
+    "none": "Nicht zugewiesen",
+    "edit": "Bearbeiten",
+    "disable": "Deaktivieren",
+    "reset": "Zurücksetzen",
+    "resetAll": "Alle zurücksetzen",
+    "items": {
+      "open-settings": {
+        "label": "Einstellungen öffnen",
+        "description": "Öffnet das Einstellungsfenster."
+      },
+      "check-for-updates": {
+        "label": "Nach Updates suchen",
+        "description": "Prüft, ob eine neuere Version verfügbar ist."
+      },
+      "toggle-theme": {
+        "label": "Hell / Dunkel umschalten",
+        "description": "Wechselt zwischen hellem und dunklem Erscheinungsbild."
+      }
+    },
+    "errors": {
+      "notBindable": "Diese Taste kann nicht allein verwendet werden. Fügen Sie eine Zusatztaste hinzu oder verwenden Sie eine Funktionstaste.",
+      "systemReserved": "Dieses Tastenkürzel ist vom Betriebssystem reserviert.",
+      "conflict": "Dieses Tastenkürzel wird bereits von einer anderen Aktion verwendet.",
+      "saveFailed": "Das Tastenkürzel konnte nicht gespeichert werden. Versuchen Sie es erneut."
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "currentVersion": "Aktuelle Version",
+    "check": "Nach Updates suchen",
+    "checking": "Suche läuft…",
+    "state": {
+      "idle": "Suchen Sie, ob eine neuere Version verfügbar ist.",
+      "checking": "Suche nach Updates…",
+      "up-to-date": "Sie sind auf dem neuesten Stand.",
+      "update-available": "Ein Update ist verfügbar.",
+      "error": "Die Suche nach Updates ist fehlgeschlagen. Versuchen Sie es später erneut."
+    }
+  },
+  "about": {
+    "title": "Über",
+    "appVersion": "App-Version",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "Wird geladen…"
+  },
+  "providers": {
+    "title": "Anbieter",
+    "subtitle": "Fügen Sie einen Anbieter einmal hinzu und weisen Sie dann jedem Agenten den Anbieter und das Modell zu, das er verwenden soll.",
+    "addProvider": "Anbieter hinzufügen",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "Agenten"
+    },
+    "proxy": {
+      "label": "Lokaler Proxy",
+      "refresh": "Port aktualisieren",
+      "refreshing": "Wird aktualisiert…",
+      "refreshed": "Aktualisiert",
+      "stopped": "Nicht aktiv"
+    },
+    "pool": {
+      "heading": "Anbieter-Pool",
+      "empty": "Noch keine Anbieter. Fügen Sie einen hinzu, um zu beginnen."
+    },
+    "fields": {
+      "name": "Name",
+      "apiFormat": "API-Format",
+      "baseUrl": "Base URL",
+      "apiKey": "API-Schlüssel",
+      "models": "Modelle",
+      "modelId": "Modell-ID",
+      "modelAlias": "Alias",
+      "notes": "Notizen"
+    },
+    "form": {
+      "addTitle": "Anbieter hinzufügen",
+      "editTitle": "Anbieter bearbeiten",
+      "preset": "Vorlage",
+      "presetNone": "Benutzerdefiniert…",
+      "apiKeyKeep": "Leer lassen, um den gespeicherten Schlüssel beizubehalten",
+      "addModel": "Modell hinzufügen",
+      "removeModel": "Modell entfernen",
+      "modelIdPlaceholder": "model-id",
+      "modelAliasPlaceholder": "Alias (optional)",
+      "aliasHint": "Alias: ein kürzerer oder agentenkonformer Name, der anstelle der Modell-ID an den Agenten geschrieben wird (z. B. eine gekürzte lange ID oder der benutzerdefinierte Name eines Gateways). Fällt bei leerem Feld auf die Modell-ID zurück.",
+      "loadModels": "Modelle laden",
+      "loadingModels": "Wird geladen…",
+      "loadModelsEmpty": "Der Anbieter hat keine Modelle zurückgegeben.",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "showKey": "Anzeigen",
+      "hideKey": "Verbergen",
+      "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen."
+    },
+    "card": {
+      "models": "Modelle",
+      "keySet": "Schlüssel gespeichert",
+      "keyMissing": "Kein Schlüssel",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "confirmDelete": "Diesen Anbieter löschen?",
+      "confirmYes": "Löschen"
+    },
+    "agent": {
+      "installed": "Installiert",
+      "notInstalled": "Nicht erkannt",
+      "unbound": "Nicht konfiguriert",
+      "change": "Ändern",
+      "copyProxyConfig": "Proxy-Konfiguration kopieren",
+      "copied": "Kopiert",
+      "restoreDefault": "Standard wiederherstellen",
+      "restoreConfirm": "Die Konfiguration dieses Agenten auf den Stand vor AiOpt zurücksetzen?"
+    },
+    "binding": {
+      "title": "Anbieter auswählen",
+      "help": "Wählen Sie einen Anbieter und ein Modell und klicken Sie dann auf „Anwenden“.",
+      "noProviders": "Fügen Sie zuerst einen Anbieter hinzu.",
+      "needsProxy": "Benötigt Proxy",
+      "modelHint": "Modell (optional – standardmäßig das erste, jederzeit änderbar)",
+      "useDefault": "Standard verwenden",
+      "selectProviderHint": "Wählen Sie links einen Anbieter aus, um seine Modelle zu sehen.",
+      "searchModels": "Modelle suchen…",
+      "noModelMatch": "Keine passenden Modelle.",
+      "bound": "Aktuell gebunden",
+      "apply": "Anwenden",
+      "restoreDefaultRow": "Standard"
+    },
+    "errors": {
+      "INVALID_PARAMS": "Einige Angaben sind ungültig. Prüfen Sie die Felder und versuchen Sie es erneut.",
+      "NOT_FOUND": "Dieser Anbieter oder dieses Modell existiert nicht mehr.",
+      "ALREADY_EXISTS": "Ein Anbieter mit dieser ID existiert bereits.",
+      "PRECONDITION_FAILED": "Das Format dieses Anbieters benötigt für diesen Agenten einen Proxy (folgt später).",
+      "PERMISSION_DENIED": "Diese Aktion ist nicht zulässig.",
+      "UNSUPPORTED_CAPABILITY": "Dieser Agent kann noch nicht konfiguriert werden.",
+      "UNAUTHORIZED": "Der Anbieter hat den API-Schlüssel abgelehnt. Prüfen Sie den Schlüssel und versuchen Sie es erneut.",
+      "UPSTREAM_ERROR": "Die Modelle konnten nicht vom Anbieter geladen werden. Prüfen Sie die Base URL und versuchen Sie es erneut.",
+      "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    }
+  },
+  "usage": {
+    "title": "Nutzung",
+    "subtitle": "Token- und Anfragezahlen für den Datenverkehr, den AiOpt über den Übersetzungs-Proxy geleitet hat.",
+    "scopeNote": "Datenverkehr wird gezählt, wenn er über den Proxy läuft. Bei aktiviertem Proxy-Modus läuft jede Bindung darüber, sodass die Nutzung gemessen wird. Standardmäßig (Proxy-Modus aus) verbinden sich Bindungen im selben Format direkt und werden nicht gezählt; Gemini-Bindungen sind immer direkt und werden nie gezählt.",
+    "close": "Schließen",
+    "empty": "Noch keine Nutzung erfasst. Aktivieren Sie den Proxy-Modus, binden Sie einen Agenten an einen Anbieter und führen Sie eine Anfrage aus. Standardmäßig (Proxy-Modus aus) umgehen Bindungen im selben Format den Proxy und werden nicht gemessen; Gemini-Bindungen werden nie gemessen.",
+    "totals": {
+      "requests": "Anfragen",
+      "successRate": "Erfolgsrate",
+      "inputTokens": "Eingabe-Token",
+      "outputTokens": "Ausgabe-Token",
+      "totalTokens": "Token gesamt"
+    },
+    "chart": {
+      "title": "Tägliche Token",
+      "empty": "Keine täglichen Daten."
+    },
+    "breakdown": {
+      "byProvider": "Nach Anbieter",
+      "byAgent": "Nach Agent",
+      "byModel": "Nach Modell"
+    },
+    "table": {
+      "name": "Name",
+      "requests": "Anfragen",
+      "inputTokens": "Eingabe",
+      "outputTokens": "Ausgabe",
+      "totalTokens": "Gesamt"
+    },
+    "clear": "Nutzung löschen",
+    "clearConfirm": "Alle erfassten Nutzungsdaten löschen?",
+    "clearConfirmYes": "Löschen",
+    "clearCancel": "Abbrechen"
+  },
+  "skills": {
+    "title": "Skills",
+    "subtitle": "Sammeln Sie Skills aus dem Home-Verzeichnis jedes Agenten in einer zentralen Bibliothek und synchronisieren Sie sie dann wieder zurück.",
+    "close": "Schließen",
+    "skill": "Skill",
+    "central": "Bibliothek",
+    "empty": "Noch keine Skills gefunden.",
+    "emptyHint": "Importieren Sie einen Skill-Ordner oder rufen Sie einen bereits vorhandenen Skill eines Agenten in die Bibliothek ab.",
+    "library": {
+      "label": "Zentrale Bibliothek",
+      "app": "In der App",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "Dateien"
+    },
+    "time": {
+      "library": "Bibliothek:",
+      "agent": "Agent:"
+    },
+    "newer": {
+      "central": "Bibliothek ist neuer",
+      "agent": "Agenten-Kopie ist neuer"
+    },
+    "state": {
+      "same": "Synchron",
+      "centralOnly": "Nur Bibliothek",
+      "agentOnly": "Nur Agent",
+      "differs": "Unterschiedlich",
+      "inLibrary": "In der Bibliothek"
+    },
+    "actions": {
+      "reveal": "Im Dateimanager anzeigen",
+      "import": "Aus Ordner importieren…",
+      "rescan": "Erneut scannen",
+      "pull": "Abrufen ←",
+      "push": "Übertragen →",
+      "pushAll": "An alle Agenten übertragen",
+      "diff": "Vergleichen",
+      "delete": "Aus Bibliothek löschen",
+      "deleteAgent": "Vom Agenten löschen"
+    },
+    "detail": {
+      "noDescription": "Keine Beschreibung."
+    },
+    "confirm": {
+      "pushAll": "Diesen Skill in jedem Agenten mit der Bibliothekskopie überschreiben?",
+      "delete": "Diesen Skill aus der zentralen Bibliothek löschen? Die Agenten-Kopien bleiben unberührt.",
+      "deleteAgent": "Die Kopie dieses Skills bei diesem Agenten löschen? Die Bibliothek und die Kopien anderer Agenten bleiben unberührt.",
+      "deleteAgentLast": "Dies ist die einzige Kopie dieses Skills – die Bibliothek und alle anderen Agenten haben ihn nicht. Das Löschen kann nicht rückgängig gemacht werden. Trotzdem löschen?",
+      "overwriteAgent": "Die Kopie des Agenten mit der Bibliothekskopie überschreiben?",
+      "overwriteLibrary": "Die Bibliothekskopie mit der Kopie des Agenten überschreiben?",
+      "merge": "Die ausgewählten Agenten-Dateien auf die Bibliothekskopie anwenden? Die Kopie des Agenten bleibt unberührt.",
+      "cancel": "Abbrechen"
+    },
+    "diff": {
+      "title": "Änderungen",
+      "close": "Schließen",
+      "empty": "Keine Unterschiede auf Dateiebene.",
+      "added": "Hinzugefügt",
+      "modified": "Geändert",
+      "deleted": "Gelöscht",
+      "binary": "binär",
+      "expand": "Dateiinhalt anzeigen",
+      "collapse": "Dateiinhalt ausblenden",
+      "library": "Bibliothek",
+      "agent": "Agent",
+      "useLibrary": "Bibliothek verwenden",
+      "useAgent": "Agent verwenden",
+      "merge": "Zusammenführung anwenden",
+      "mergeHint": "Dateien mit „Agent verwenden“ werden in die Bibliothek geschrieben; die übrigen behalten die Bibliotheksversion.",
+      "previewAbsent": "Auf dieser Seite nicht vorhanden.",
+      "previewBinary": "Binärdatei – Vorschau nicht verfügbar.",
+      "previewLoading": "Wird geladen…",
+      "previewError": "Die Vorschau konnte nicht geladen werden.",
+      "previewTruncated": "Vorschau gekürzt (Datei ist groß)."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Einige Angaben sind ungültig. Versuchen Sie es erneut.",
+      "NOT_FOUND": "Dieser Skill existiert nicht mehr.",
+      "PERMISSION_DENIED": "Diese Aktion ist nicht zulässig, oder der Skill enthält Dateien, die nicht sicher synchronisiert werden können.",
+      "PRECONDITION_FAILED": "Dieser Skill ist zu groß, um synchronisiert zu werden.",
+      "UNSUPPORTED_CAPABILITY": "Dieser Agent hat kein bekanntes Skill-Verzeichnis.",
+      "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    }
+  }
+}

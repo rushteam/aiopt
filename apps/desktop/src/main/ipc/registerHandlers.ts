@@ -17,6 +17,7 @@ import { registerProviderIpc } from '../providers/providerIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
+import { installAppQuitChannel } from '../app/appQuitChannel';
 import {
   registerAppShortcutIpc,
   installAppShortcutSyncChannels,
@@ -66,6 +67,8 @@ export function registerHandlers(): void {
   registerAppShortcutIpc(registry, appShortcutStore);
   // Synchronous first-paint theme read (its own ipcMain.on, not registry-based).
   installThemeSyncChannel();
+  // One-way "quit the app" send for the in-app menu (raw ipcMain.on, sender-checked).
+  installAppQuitChannel();
   // Raw app-shortcut channels: synchronous overrides read + the recording gate.
   installAppShortcutSyncChannels(appShortcutStore, process.platform);
   // Restore any persisted session in the background; the state-change broadcast

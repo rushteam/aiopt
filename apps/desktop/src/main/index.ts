@@ -1,7 +1,7 @@
 // Main process entry — app lifecycle only. Security wiring lives in
 // bootstrap-electron.ts; the window is built in window/mainWindow.ts.
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import started from 'electron-squirrel-startup';
 import {
   acquireSingleInstanceLock,
@@ -12,7 +12,13 @@ import { createMainWindow } from './window/mainWindow';
 import { registerHandlers } from './ipc/registerHandlers';
 import { installAppMenu } from './menu/appMenu';
 import { installTray, markQuitting } from './tray/tray';
-import { getProviderManager, getTranslationProxy } from './services';
+import { getConfigStore, getProviderManager, getTranslationProxy } from './services';
+import {
+  QUIT_DIALOG_LABELS,
+  formatQuitMessage,
+  resolveQuitDialogLocale,
+  shouldWarnBeforeQuit,
+} from './app/quitGuard';
 import { logger } from './logger';
 
 // Windows Squirrel first-run shortcut handling; quits early during install.
@@ -76,9 +82,65 @@ app.whenReady().then(async () => {
   logger.info('app.ready');
 });
 
-// Stop the loopback proxy on quit (this repo's first before-quit handler). macOS keeps
-// the app alive on window-all-closed, so the server rightly outlives closed windows.
-app.on('before-quit', () => {
+// Set once the quit is confirmed (or never needed a warning), so the re-entrant
+// `app.quit()` after the async dialog passes straight through this handler.
+let quitConfirmed = false;
+
+/**
+ * Warn before a REAL quit while proxied bindings are live: quitting stops the loopback
+ * proxy, so every proxied agent can't connect until AiOpt runs again. Covers ⌘Q, the
+ * native menu Quit, the Tray Quit, and the in-app menu's Quit — they all funnel through
+ * before-quit. The dialog only INFORMS; it never rewrites a config or writes a key.
+ */
+async function confirmQuitDespiteProxy(): Promise<void> {
+  const config = getConfigStore();
+  const proxiedCount = getProviderManager()
+    .getSnapshot()
+    .agents.filter((a) => a.proxied).length;
+
+  if (!shouldWarnBeforeQuit(config.get('warnOnQuitWithProxy'), proxiedCount)) {
+    quitConfirmed = true;
+    app.quit();
+    return;
+  }
+
+  const pref = config.get('language');
+  const locale = resolveQuitDialogLocale(pref === 'system' ? app.getLocale() : pref);
+  const labels = QUIT_DIALOG_LABELS[locale];
+  const win = BrowserWindow.getAllWindows()[0];
+  const opts: Electron.MessageBoxOptions = {
+    type: 'warning',
+    buttons: [labels.confirm, labels.cancel],
+    defaultId: 0,
+    cancelId: 1,
+    title: labels.title,
+    message: formatQuitMessage(labels, proxiedCount),
+    detail: labels.detail,
+    checkboxLabel: labels.dontAskAgain,
+    checkboxChecked: false,
+  };
+  const { response, checkboxChecked } =
+    win && !win.isDestroyed()
+      ? await dialog.showMessageBox(win, opts)
+      : await dialog.showMessageBox(opts);
+
+  if (response !== 0) return; // Cancelled: stay running (in the tray on macOS).
+  if (checkboxChecked) config.set('warnOnQuitWithProxy', false);
+  quitConfirmed = true;
+  app.quit();
+}
+
+// macOS keeps the app alive on window-all-closed, so the proxy rightly outlives closed
+// windows; it stops only on a real quit. When proxied routes are live we first confirm
+// (see confirmQuitDespiteProxy) — that path re-issues quit with quitConfirmed set.
+app.on('before-quit', (event) => {
+  // The early squirrel/single-instance quits fire before `ready`; never intercept
+  // those (services aren't built yet, and there's nothing proxied to warn about).
+  if (app.isReady() && !quitConfirmed) {
+    event.preventDefault();
+    void confirmQuitDespiteProxy();
+    return;
+  }
   // From here on the window close handler must let the window close (not hide to tray).
   markQuitting();
   void getTranslationProxy()

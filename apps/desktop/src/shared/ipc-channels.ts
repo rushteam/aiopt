@@ -156,6 +156,17 @@ export const IPC_SEND_CHANNELS = {
    * sending window is destroyed mid-record.
    */
   appShortcutsSetRecording: 'app-shortcuts:set-recording',
+  /**
+   * Quit the whole app on the user's explicit request from the in-app menu.
+   *
+   * Quit is an ACTION main performs, not a `MenuCommand` (those are main → renderer
+   * for the UI to react to) — so it needs its own renderer → main send. On macOS the
+   * red close button only HIDES the window to the tray; this is the in-app path to a
+   * real exit (`app.quit()`, which flips the quit flag via before-quit so the window
+   * actually closes). Main asserts the trusted sender before acting; a clean exit is
+   * the whole effect — no data is destroyed, no secret exposed, no privilege gained.
+   */
+  appQuit: 'app:quit',
 } as const;
 
 /**
@@ -218,12 +229,33 @@ export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 /**
+ * The UI language the user prefers; `system` follows the OS locale (`navigator.language`).
+ * Each non-`system` value is a locale with a complete `common.json` under
+ * renderer/i18n/locales — adding a language means adding both here and that file.
+ */
+export type LanguagePreference =
+  | 'system'
+  | 'en'
+  | 'zh-CN'
+  | 'ja'
+  | 'ko'
+  | 'fr'
+  | 'de'
+  | 'es';
+
+/**
  * The typed set of user preferences. This is the wire contract; the runtime
  * defaults + validators live in main/config/configStore.ts (validation is the
  * privileged process's job — TS types are not runtime validation).
  */
 export interface PreferencesShape {
   theme: ThemePreference;
+  /**
+   * UI language. `system` (default) follows the OS locale via `navigator.language`;
+   * otherwise the chosen locale is used verbatim. The renderer applies changes live
+   * (no restart) by resubscribing to the `config:changed` push, mirroring `theme`.
+   */
+  language: LanguagePreference;
   /**
    * Where the central Skills library lives. `'app'` = inside userData; `'home'` =
    * an independent `~/.aiopt/skills`. This is an ENUM, not a path: the renderer
@@ -242,6 +274,15 @@ export interface PreferencesShape {
    * and stays direct in either mode.
    */
   proxyMode: boolean;
+  /**
+   * Warn before a REAL quit while proxied bindings are live. A proxied agent's config
+   * points at the loopback proxy (127.0.0.1:port); quitting stops that listener, so the
+   * agent can't connect until AiOpt runs again (the port+tokens persist, so a relaunch
+   * self-heals the routes). When `true` (default) the quit path shows a confirmation
+   * naming that consequence; the dialog's "don't ask again" flips this to `false`. It
+   * gates only the warning — it never changes a config or writes a key.
+   */
+  warnOnQuitWithProxy: boolean;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry
