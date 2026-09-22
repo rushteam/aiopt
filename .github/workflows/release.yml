@@ -37,17 +37,21 @@ jobs:
             name: linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.0.0
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
+          # The Node the BUILD runs on (engines: >=20) — unrelated to the Node 24
+          # runtime the actions themselves now use.
           node-version: 20
+          # Explicit, so setup-node v6's "automatic caching is npm-only" change
+          # cannot silently drop the pnpm store cache.
           cache: pnpm
 
       - name: Install dependencies
@@ -70,7 +74,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Upload build artifacts to the run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aiopt-${{ matrix.name }}
           path: apps/desktop/out/make/**/*
@@ -82,7 +86,7 @@ jobs:
       # assets from each matrix job to the same tag.
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: apps/desktop/out/make/**/*
           fail_on_unmatched_files: true
