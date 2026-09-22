@@ -1,0 +1,73 @@
+# The pull-request gate: run the same checks AGENTS.md requires before a commit, so
+# "CI is the final authority" is actually true rather than an honour system.
+#
+# Trigger: every pull request, plus pushes to main (so the trunk is verified even for
+# the maintainer's direct-push exception). `release.yml` is a separate concern — it
+# only packages installers on a version tag and does not gate anything.
+#
+# Deliberately one Linux job, not a three-OS matrix: this tier is the unit tier, and
+# the suite takes platform as an injected value rather than reading `process.platform`
+# ambiently (see main/ipc/registerHandlers.ts), so it is platform-independent. The
+# cross-platform build is already covered by release.yml's matrix. If a test ever
+# genuinely depends on the host OS, add a matrix here rather than weakening it.
+#
+# Reads the repository and the pull-request event payload only — no secrets, no
+# network beyond the package registry, nothing published.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push supersedes the previous run on the same ref; the trunk is never cancelled.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Test gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the DCO check resolves merge-base(base, head) to see exactly
+          # the commits this PR introduces, which a shallow clone cannot do.
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The hard gate from AGENTS.md: all unit tests, every workspace.
+      - name: Unit test gate
+        run: pnpm test:unit
+
+      # Every workspace that declares a typecheck script, not just desktop.
+      - name: Typecheck
+        run: pnpm -r run --if-present typecheck
+
+      - name: i18n glossary gate
+        run: pnpm check:i18n-glossary
+
+      # The local self-check mirroring the DCO App. Pull requests only: the script
+      # derives its range from the pull_request payload, and a push to main has no
+      # such payload (its commits were already checked on the PR that introduced them).
+      - name: DCO sign-off check
+        if: github.event_name == 'pull_request'
+        run: pnpm check:dco
