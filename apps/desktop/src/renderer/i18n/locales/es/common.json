@@ -1,0 +1,338 @@
+{
+  "app": {
+    "tagline": "El límite de seguridad ya está conectado. Crea tu aplicación dentro de él."
+  },
+  "nav": {
+    "settings": "Ajustes",
+    "home": "Inicio"
+  },
+  "titleBar": {
+    "menu": "Menú",
+    "menuItems": {
+      "settings": "Ajustes",
+      "usage": "Uso",
+      "skills": "Habilidades",
+      "checkForUpdates": "Buscar actualizaciones",
+      "about": "Acerca de",
+      "quit": "Salir"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "close": "Cerrar",
+    "sections": {
+      "appearance": "Apariencia",
+      "account": "Cuenta",
+      "shortcuts": "Atajos de teclado",
+      "updates": "Actualizaciones",
+      "about": "Acerca de",
+      "general": "General"
+    }
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "theme": "Tema",
+    "themeHelp": "Elige el aspecto de la aplicación. «Sistema» sigue la configuración de tu sistema operativo.",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro"
+  },
+  "language": {
+    "title": "Idioma",
+    "help": "Elige el idioma de la interfaz. «Sistema» sigue la configuración de tu sistema operativo.",
+    "system": "Sistema"
+  },
+  "general": {
+    "proxyMode": {
+      "label": "Modo proxy",
+      "help": "Desactivado (predeterminado): las vinculaciones del mismo formato se conectan directamente; el uso no se contabiliza. Activado: se enruta a través del proxy de AiOpt; el uso se contabiliza."
+    },
+    "warnOnQuitWithProxy": {
+      "label": "Avisar antes de salir con el proxy activo",
+      "help": "Activado (predeterminado): si hay agentes enrutados a través del proxy de AiOpt, confirmar antes de salir — no podrán conectarse hasta que AiOpt vuelva a ejecutarse. Desactivado: salir sin preguntar."
+    }
+  },
+  "account": {
+    "title": "Cuenta",
+    "signedInAs": "Sesión iniciada como",
+    "signedOutHelp": "Inicia sesión para conectar este dispositivo. El stub local acepta cualquier nombre de usuario y contraseña.",
+    "username": "Nombre de usuario",
+    "password": "Contraseña",
+    "logIn": "Iniciar sesión",
+    "loggingIn": "Iniciando sesión…",
+    "logOut": "Cerrar sesión",
+    "error": "No se pudo iniciar sesión. Comprueba tus datos e inténtalo de nuevo."
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "recording": "Pulsa el nuevo atajo… (Esc para cancelar)",
+    "recordingHint": "Grabando…",
+    "none": "Sin asignar",
+    "edit": "Editar",
+    "disable": "Desactivar",
+    "reset": "Restablecer",
+    "resetAll": "Restablecer todo",
+    "items": {
+      "open-settings": {
+        "label": "Abrir Ajustes",
+        "description": "Abre la ventana de ajustes."
+      },
+      "check-for-updates": {
+        "label": "Buscar actualizaciones",
+        "description": "Comprueba si hay una versión más reciente disponible."
+      },
+      "toggle-theme": {
+        "label": "Alternar claro / oscuro",
+        "description": "Cambia entre la apariencia clara y oscura."
+      }
+    },
+    "errors": {
+      "notBindable": "Esa tecla no puede usarse sola. Añade un modificador o usa una tecla de función.",
+      "systemReserved": "Ese atajo está reservado por el sistema operativo.",
+      "conflict": "Ese atajo ya lo usa otra acción.",
+      "saveFailed": "No se pudo guardar el atajo. Inténtalo de nuevo."
+    }
+  },
+  "updates": {
+    "title": "Actualizaciones",
+    "currentVersion": "Versión actual",
+    "check": "Buscar actualizaciones",
+    "checking": "Comprobando…",
+    "state": {
+      "idle": "Comprueba si hay una versión más reciente disponible.",
+      "checking": "Buscando actualizaciones…",
+      "up-to-date": "Estás al día.",
+      "update-available": "Hay una actualización disponible.",
+      "error": "No se pudieron buscar actualizaciones. Inténtalo más tarde."
+    }
+  },
+  "about": {
+    "title": "Acerca de",
+    "appVersion": "Versión de la aplicación",
+    "electron": "Electron",
+    "chrome": "Chrome",
+    "node": "Node",
+    "loading": "Cargando…"
+  },
+  "providers": {
+    "title": "Proveedores",
+    "subtitle": "Añade un proveedor una vez y luego dirige cada agente al proveedor y al modelo que debe usar.",
+    "addProvider": "Añadir proveedor",
+    "formats": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai-responses": "OpenAI Responses",
+      "gemini": "Gemini"
+    },
+    "agents": {
+      "heading": "Agentes"
+    },
+    "proxy": {
+      "label": "Proxy local",
+      "refresh": "Actualizar puerto",
+      "refreshing": "Actualizando…",
+      "refreshed": "Actualizado",
+      "stopped": "No está en ejecución"
+    },
+    "pool": {
+      "heading": "Grupo de proveedores",
+      "empty": "Aún no hay proveedores. Añade uno para empezar."
+    },
+    "fields": {
+      "name": "Nombre",
+      "apiFormat": "Formato de API",
+      "baseUrl": "URL base",
+      "apiKey": "Clave de API",
+      "models": "Modelos",
+      "modelId": "ID del modelo",
+      "modelAlias": "Alias",
+      "notes": "Notas"
+    },
+    "form": {
+      "addTitle": "Añadir proveedor",
+      "editTitle": "Editar proveedor",
+      "preset": "Preajuste",
+      "presetNone": "Personalizado…",
+      "apiKeyKeep": "Déjalo en blanco para conservar la clave guardada",
+      "addModel": "Añadir modelo",
+      "removeModel": "Quitar modelo",
+      "modelIdPlaceholder": "model-id",
+      "modelAliasPlaceholder": "Alias (opcional)",
+      "aliasHint": "Alias: un nombre más corto o coherente con el agente que se escribe en el agente en lugar del ID del modelo (p. ej. un ID largo abreviado, o el nombre personalizado de una pasarela). Si se deja en blanco, se usa el ID del modelo.",
+      "loadModels": "Cargar modelos",
+      "loadingModels": "Cargando…",
+      "loadModelsEmpty": "El proveedor no devolvió ningún modelo.",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "showKey": "Mostrar",
+      "hideKey": "Ocultar",
+      "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla."
+    },
+    "card": {
+      "models": "Modelos",
+      "keySet": "Clave guardada",
+      "keyMissing": "Sin clave",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar este proveedor?",
+      "confirmYes": "Eliminar"
+    },
+    "agent": {
+      "installed": "Instalado",
+      "notInstalled": "No detectado",
+      "unbound": "Sin configurar",
+      "change": "Cambiar",
+      "copyProxyConfig": "Copiar configuración del proxy",
+      "copied": "Copiado",
+      "restoreDefault": "Restaurar valores predeterminados",
+      "restoreConfirm": "¿Restaurar la configuración de este agente a como estaba antes de AiOpt?"
+    },
+    "binding": {
+      "title": "Elegir proveedor",
+      "help": "Elige un proveedor y un modelo, y luego pulsa Aplicar.",
+      "noProviders": "Añade primero un proveedor.",
+      "needsProxy": "Necesita proxy",
+      "modelHint": "Modelo (opcional: se usa el primero por defecto, puedes cambiarlo cuando quieras)",
+      "useDefault": "Usar predeterminado",
+      "selectProviderHint": "Selecciona un proveedor a la izquierda para ver sus modelos.",
+      "searchModels": "Buscar modelos…",
+      "noModelMatch": "Ningún modelo coincide.",
+      "bound": "Vinculado actualmente",
+      "apply": "Aplicar",
+      "restoreDefaultRow": "Predeterminado"
+    },
+    "errors": {
+      "INVALID_PARAMS": "Algunos datos no son válidos. Comprueba los campos e inténtalo de nuevo.",
+      "NOT_FOUND": "Ese proveedor o modelo ya no existe.",
+      "ALREADY_EXISTS": "Ya existe un proveedor con ese id.",
+      "PRECONDITION_FAILED": "El formato de este proveedor necesita un proxy para este agente (disponible más adelante).",
+      "PERMISSION_DENIED": "Esa acción no está permitida.",
+      "UNSUPPORTED_CAPABILITY": "Este agente aún no se puede configurar.",
+      "UNAUTHORIZED": "El proveedor rechazó la clave de API. Comprueba la clave e inténtalo de nuevo.",
+      "UPSTREAM_ERROR": "No se pudieron cargar los modelos del proveedor. Comprueba la URL base e inténtalo de nuevo.",
+      "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "usage": {
+    "title": "Uso",
+    "subtitle": "Recuentos de tokens y solicitudes del tráfico que AiOpt enrutó a través del proxy de traducción.",
+    "scopeNote": "El tráfico se contabiliza cuando pasa por el proxy. Con el modo proxy activado, todas las vinculaciones lo hacen, por lo que el uso se mide. De forma predeterminada (modo proxy desactivado), las vinculaciones del mismo formato se conectan directamente y no se contabilizan; las vinculaciones de Gemini siempre son directas y nunca se contabilizan.",
+    "close": "Cerrar",
+    "empty": "Aún no hay uso registrado. Activa el modo proxy, vincula un agente a un proveedor y realiza una solicitud. De forma predeterminada (modo proxy desactivado), las vinculaciones del mismo formato omiten el proxy y no se miden; las vinculaciones de Gemini nunca se miden.",
+    "totals": {
+      "requests": "Solicitudes",
+      "successRate": "Tasa de éxito",
+      "inputTokens": "Tokens de entrada",
+      "outputTokens": "Tokens de salida",
+      "totalTokens": "Tokens totales"
+    },
+    "chart": {
+      "title": "Tokens diarios",
+      "empty": "No hay datos diarios."
+    },
+    "breakdown": {
+      "byProvider": "Por proveedor",
+      "byAgent": "Por agente",
+      "byModel": "Por modelo"
+    },
+    "table": {
+      "name": "Nombre",
+      "requests": "Solicitudes",
+      "inputTokens": "Entrada",
+      "outputTokens": "Salida",
+      "totalTokens": "Total"
+    },
+    "clear": "Borrar uso",
+    "clearConfirm": "¿Borrar todo el uso registrado?",
+    "clearConfirmYes": "Borrar",
+    "clearCancel": "Cancelar"
+  },
+  "skills": {
+    "title": "Habilidades",
+    "subtitle": "Reúne las habilidades del directorio de inicio de cada agente en una biblioteca central y luego vuelve a sincronizarlas.",
+    "close": "Cerrar",
+    "skill": "Habilidad",
+    "central": "Biblioteca",
+    "empty": "Aún no se han encontrado habilidades.",
+    "emptyHint": "Importa una carpeta de habilidad, o trae a la biblioteca una que un agente ya tenga.",
+    "library": {
+      "label": "Biblioteca central",
+      "app": "En la aplicación",
+      "home": "~/.aiopt/skills"
+    },
+    "meta": {
+      "files": "archivos"
+    },
+    "time": {
+      "library": "Biblioteca:",
+      "agent": "Agente:"
+    },
+    "newer": {
+      "central": "La biblioteca es más reciente",
+      "agent": "La copia del agente es más reciente"
+    },
+    "state": {
+      "same": "Sincronizado",
+      "centralOnly": "Solo en la biblioteca",
+      "agentOnly": "Solo en el agente",
+      "differs": "Difiere",
+      "inLibrary": "En la biblioteca"
+    },
+    "actions": {
+      "reveal": "Mostrar en el gestor de archivos",
+      "import": "Importar desde carpeta…",
+      "rescan": "Volver a escanear",
+      "pull": "Extraer ←",
+      "push": "Enviar →",
+      "pushAll": "Enviar a todos los agentes",
+      "diff": "Comparar",
+      "delete": "Eliminar de la biblioteca",
+      "deleteAgent": "Eliminar del agente"
+    },
+    "detail": {
+      "noDescription": "Sin descripción."
+    },
+    "confirm": {
+      "pushAll": "¿Sobrescribir esta habilidad en todos los agentes con la copia de la biblioteca?",
+      "delete": "¿Eliminar esta habilidad de la biblioteca central? Las copias de los agentes no se modifican.",
+      "deleteAgent": "¿Eliminar la copia de esta habilidad de este agente? La biblioteca y las copias de otros agentes no se modifican.",
+      "deleteAgentLast": "Esta es la única copia de esta habilidad: ni la biblioteca ni ningún otro agente la tienen. Al eliminarla no podrás deshacerlo. ¿Eliminar de todos modos?",
+      "overwriteAgent": "¿Sobrescribir la copia del agente con la copia de la biblioteca?",
+      "overwriteLibrary": "¿Sobrescribir la copia de la biblioteca con la copia del agente?",
+      "merge": "¿Aplicar los archivos del agente seleccionados a la copia de la biblioteca? La copia del agente no se modifica.",
+      "cancel": "Cancelar"
+    },
+    "diff": {
+      "title": "Cambios",
+      "close": "Cerrar",
+      "empty": "No hay diferencias a nivel de archivo.",
+      "added": "Añadido",
+      "modified": "Modificado",
+      "deleted": "Eliminado",
+      "binary": "binario",
+      "expand": "Mostrar contenido del archivo",
+      "collapse": "Ocultar contenido del archivo",
+      "library": "Biblioteca",
+      "agent": "Agente",
+      "useLibrary": "Usar biblioteca",
+      "useAgent": "Usar agente",
+      "merge": "Aplicar combinación",
+      "mergeHint": "Los archivos marcados como «Usar agente» se escriben en la biblioteca; el resto conserva la versión de la biblioteca.",
+      "previewAbsent": "No está presente en este lado.",
+      "previewBinary": "Archivo binario: no hay vista previa disponible.",
+      "previewLoading": "Cargando…",
+      "previewError": "No se pudo cargar la vista previa.",
+      "previewTruncated": "Vista previa truncada (el archivo es grande)."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Algunos datos no son válidos. Inténtalo de nuevo.",
+      "NOT_FOUND": "Esa habilidad ya no existe.",
+      "PERMISSION_DENIED": "Esa acción no está permitida, o la habilidad contiene archivos que no se pueden sincronizar de forma segura.",
+      "PRECONDITION_FAILED": "Esa habilidad es demasiado grande para sincronizarla.",
+      "UNSUPPORTED_CAPABILITY": "Este agente no tiene un directorio de habilidades conocido.",
+      "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+    }
+  }
+}

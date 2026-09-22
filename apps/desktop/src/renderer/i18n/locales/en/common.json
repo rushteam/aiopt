@@ -13,7 +13,8 @@
       "usage": "Usage",
       "skills": "Skills",
       "checkForUpdates": "Check for Updates",
-      "about": "About"
+      "about": "About",
+      "quit": "Quit"
     }
   },
   "settings": {
@@ -36,10 +37,19 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "language": {
+    "title": "Language",
+    "help": "Choose the interface language. System follows your operating system.",
+    "system": "System"
+  },
   "general": {
     "proxyMode": {
       "label": "Proxy mode",
       "help": "Off (default): same-format bindings connect directly; usage isn’t counted. On: routed through AiOpt’s proxy; usage is counted."
+    },
+    "warnOnQuitWithProxy": {
+      "label": "Warn before quitting with proxy active",
+      "help": "On (default): if agents are routed through AiOpt’s proxy, confirm before quitting — they can’t connect until AiOpt runs again. Off: quit without asking."
     }
   },
   "account": {

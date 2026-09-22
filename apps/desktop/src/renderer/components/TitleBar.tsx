@@ -55,11 +55,13 @@ function BrandMark() {
 
 export function TitleBar({
   onCommand,
+  onQuit,
   tab,
   onSelectTab,
   settingsOpen,
 }: {
   onCommand: (command: MenuCommand) => void;
+  onQuit: () => void;
   tab: AppTab;
   onSelectTab: (tab: AppTab) => void;
   settingsOpen: boolean;
@@ -87,12 +89,13 @@ export function TitleBar({
         } as CSSProperties
       }
     >
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      {/* A little left breathing room so the mark isn't flush against the gutter. */}
+      <div style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
         <BrandMark />
       </div>
       {isMac && (
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <MenuButton onCommand={onCommand} />
+          <MenuButton onCommand={onCommand} onQuit={onQuit} />
         </div>
       )}
       {nav}

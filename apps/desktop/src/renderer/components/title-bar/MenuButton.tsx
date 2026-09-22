@@ -29,7 +29,14 @@ const ITEMS: ReadonlyArray<{ command: MenuCommand; labelKey: string }> = [
   { command: MENU_COMMANDS.showAbout, labelKey: 'titleBar.menuItems.about' },
 ];
 
-export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) => void }) {
+export function MenuButton({
+  onCommand,
+  onQuit,
+}: {
+  onCommand: (command: MenuCommand) => void;
+  /** Quit the whole app. Distinct from a MenuCommand: it's an action main performs. */
+  onQuit: () => void;
+}) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -62,6 +69,25 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
   const select = (command: MenuCommand) => {
     setOpen(false);
     onCommand(command);
+  };
+
+  const selectQuit = () => {
+    setOpen(false);
+    onQuit();
+  };
+
+  // Shared style for every menu row (command items + Quit) so they stay identical.
+  const itemStyle: CSSProperties = {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '8px 10px',
+    borderRadius: radius.sm,
+    border: 'none',
+    background: 'transparent',
+    color: token('text'),
+    cursor: 'pointer',
+    fontSize: fontSize.md,
   };
 
   // Roving focus: Arrow keys cycle through the items, Home/End jump to the ends.
@@ -134,22 +160,29 @@ export function MenuButton({ onCommand }: { onCommand: (command: MenuCommand) =>
               role="menuitem"
               onClick={() => select(command)}
               {...hoverBackground('transparent', token('surfaceHover'))}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 10px',
-                borderRadius: radius.sm,
-                border: 'none',
-                background: 'transparent',
-                color: token('text'),
-                cursor: 'pointer',
-                fontSize: fontSize.md,
-              }}
+              style={itemStyle}
             >
               {t(labelKey)}
             </button>
           ))}
+          {/* Quit sits below a divider — it's an app-level action, not a view command. */}
+          <div
+            role="separator"
+            style={{
+              height: 1,
+              margin: `${space.xs}px ${space.xs}px`,
+              background: token('border'),
+            }}
+          />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={selectQuit}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={itemStyle}
+          >
+            {t('titleBar.menuItems.quit')}
+          </button>
         </div>
       )}
     </div>

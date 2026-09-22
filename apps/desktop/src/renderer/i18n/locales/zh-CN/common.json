@@ -13,7 +13,8 @@
       "usage": "统计",
       "skills": "技能",
       "checkForUpdates": "检查更新",
-      "about": "关于"
+      "about": "关于",
+      "quit": "退出"
     }
   },
   "settings": {
@@ -36,10 +37,19 @@
     "light": "浅色",
     "dark": "深色"
   },
+  "language": {
+    "title": "语言",
+    "help": "选择界面语言。「跟随系统」将跟随操作系统设置。",
+    "system": "跟随系统"
+  },
   "general": {
     "proxyMode": {
       "label": "代理模式",
       "help": "关闭（默认）：同格式绑定直连供应商，用量不计入。开启：经 AiOpt 代理转发，用量计入。"
+    },
+    "warnOnQuitWithProxy": {
+      "label": "有代理连接时退出前提醒",
+      "help": "开启（默认）：若有 agent 正经 AiOpt 代理连接，退出前会先确认——在 AiOpt 再次运行前它们将无法连接。关闭：退出时不再询问。"
     }
   },
   "account": {

@@ -289,6 +289,13 @@ const api = {
   getVersions: (): Promise<AppVersionsResult> => ipcRenderer.invoke(IPC_CHANNELS.appGetVersions),
 
   /**
+   * Quit the whole app (the in-app menu's "Quit"). One-way send; main asserts the
+   * trusted sender, then calls `app.quit()`. Needed because on macOS closing the
+   * window only hides it to the tray — this is the explicit path to a real exit.
+   */
+  quit: (): void => ipcRenderer.send(IPC_SEND_CHANNELS.appQuit),
+
+  /**
    * Subscribe to native application-menu commands. The payload is re-validated
    * against the command allowlist here — a push carrying anything else is
    * dropped, so the renderer only ever sees a known `MenuCommand`. Returns an

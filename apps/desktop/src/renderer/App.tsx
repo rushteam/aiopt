@@ -65,6 +65,7 @@ export function App() {
     >
       <TitleBar
         onCommand={handleMenuCommand}
+        onQuit={() => window.aiopt.quit()}
         tab={tab}
         onSelectTab={(next) => {
           setSettingsSection(null);
