@@ -34,21 +34,25 @@ jobs:
     name: Test gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history: the DCO check resolves merge-base(base, head) to see exactly
           # the commits this PR introduces, which a shallow clone cannot do.
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.0.0
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
+          # The Node the BUILD runs on (engines: >=20) — unrelated to the Node 24
+          # runtime the actions themselves now use.
           node-version: 20
+          # Explicit, so setup-node v6's "automatic caching is npm-only" change
+          # cannot silently drop the pnpm store cache.
           cache: pnpm
 
       - name: Install dependencies
