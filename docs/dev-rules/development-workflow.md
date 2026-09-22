@@ -29,6 +29,14 @@ On top of the gate, add verification proportional to risk — cross-module, high
 infrastructure changes warrant broader runs (`pnpm test:all`), with CI as the final gate. Never
 make the gate pass by skipping, deleting, or weakening tests.
 
+**CI runs the same gate.** `.github/workflows/ci.yml` runs on every pull request (and on pushes
+to `main`) and is the authority: `pnpm test:unit`, `pnpm -r run --if-present typecheck`,
+`pnpm check:i18n-glossary`, and — on pull requests only — `pnpm check:dco`. Running the gate
+locally is still required; CI exists so a forgotten local run cannot land. It is one Linux job,
+not a matrix: this is the unit tier, and the suite takes platform as an injected value rather
+than reading `process.platform` ambiently, so it is platform-independent. Cross-platform builds
+are covered separately by `release.yml` on a version tag.
+
 ## 3. DCO sign-off (hard requirement)
 
 Every commit carries a `Signed-off-by` trailer whose name and email match the commit author (or
