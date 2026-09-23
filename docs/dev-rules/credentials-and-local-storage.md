@@ -34,6 +34,13 @@ Electron's `app.getPath(...)`:
 | Transient scratch | `app.getPath('temp')` | Per-run; clean up on exit. |
 | Logs | `app.getPath('logs')` | Rotating; masked; no secrets. |
 
+- `userData` depends on how the app runs. A packaged build uses Electron's default,
+  `<appData>/AiOpt`. An unpackaged run (`pnpm dev`) uses a sibling, `<appData>/AiOpt-dev`, set by
+  `isolateDevUserData()` as the first statement of `main/index.ts` (`main/userDataDir.ts` decides
+  it). A dev run must never read or write the installed app's secrets, providers, or proxy
+  tokens. Nothing is migrated between the two: a dev run starts empty, and the installed app's
+  data is left alone. Do not add a `getPath('userData')` call that runs at import time, because
+  it would run before the redirect.
 - Rebuildable data goes in a cache/temp location, not next to source-of-truth data, so clearing
   it can never corrupt real state.
 - When adding a new persisted location, decide its lifecycle first, then document it in the

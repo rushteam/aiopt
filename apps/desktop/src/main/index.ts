@@ -6,6 +6,7 @@ import started from 'electron-squirrel-startup';
 import {
   acquireSingleInstanceLock,
   installSessionSecurity,
+  isolateDevUserData,
   registerPrivilegedSchemes,
 } from './bootstrap-electron';
 import { createMainWindow } from './window/mainWindow';
@@ -20,6 +21,9 @@ import {
   shouldWarnBeforeQuit,
 } from './app/quitGuard';
 import { logger } from './logger';
+
+// Before anything touches userData — the single-instance lock below included.
+isolateDevUserData();
 
 // Windows Squirrel first-run shortcut handling; quits early during install.
 if (started) {

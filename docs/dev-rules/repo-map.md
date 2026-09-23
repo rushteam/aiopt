@@ -25,7 +25,8 @@ principle — the directory split *is* the trust split.
 ```
 main/        privileged process — the trust boundary
   index.ts               app lifecycle entry
-  bootstrap-electron.ts  Fuses + custom protocol registration
+  bootstrap-electron.ts  dev userData isolation + custom protocol registration
+  userDataDir.ts         where an unpackaged run keeps userData (Electron-free)
   window/mainWindow.ts   hardened BrowserWindow
   security/csp.ts        single-point CSP injection (dev vs prod)
   security/navigation.ts will-navigate + setWindowOpenHandler + openExternal allowlist (fail-closed)
