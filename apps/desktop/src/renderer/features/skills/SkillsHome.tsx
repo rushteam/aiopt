@@ -154,7 +154,8 @@ export function SkillsHome() {
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 24px 48px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('skills.title')}</h1>
+        {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
+        <h1 className="sr-only">{t('skills.title')}</h1>
         <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.md }}>
           {t('skills.subtitle')}
         </p>

@@ -71,9 +71,13 @@ export const fontSize = {
   base: 13, // default body / help text
   md: 14, // inputs, buttons, list rows
   lg: 15, // card titles (provider / agent names)
-  xl: 16, // section headings
-  '2xl': 18, // modal titles
-  '3xl': 22, // page title
+  xl: 16, // dialog titles, sub-headings
+  '2xl': 18, // section headings
+  // The scale's top step. No screen currently uses it: the per-screen page title is
+  // visually hidden because the tab bar already names the screen, so the largest thing
+  // actually rendered is a section heading. Kept as the step above `2xl` — a type scale
+  // is a scale, not a list of what happens to be on screen today.
+  '3xl': 22,
 } as const;
 
 /** Corner radii (px). `pill` fully rounds a control (badges, "use default"). */

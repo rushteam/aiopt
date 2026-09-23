@@ -49,7 +49,12 @@ export function ProvidersHome() {
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('providers.title')}</h1>
+        {/* The tab above already names this screen, and repeating it ~60px lower said the
+            word twice and spent 47px of vertical space to do it. The h1 stays in the DOM
+            but visually hidden: it is the document's only top-level heading, so removing
+            it outright would leave the page a set of h2s with nothing above them, and a
+            screen reader announcing the region would lose the screen's name. */}
+        <h1 className="sr-only">{t('providers.title')}</h1>
         <p style={{ margin: '0 0 24px', color: token('textMuted'), fontSize: fontSize.md }}>
           {t('providers.subtitle')}
         </p>
@@ -127,7 +132,15 @@ export function ProvidersHome() {
   );
 }
 
-const sectionHeadingStyle = { margin: '0 0 12px', fontSize: fontSize.xl } as const;
+// 18px, not the 16px it was. A section heading has to outrank the card titles beneath it,
+// and at 16px against a bold 15px card name the ratio was 1.07x — below any usable step,
+// while the eight bold card titles out-shouted the one heading by sheer repetition. 18px
+// against 15px is 1.20x, and the explicit 600 keeps it ahead of `<strong>` card names.
+const sectionHeadingStyle = {
+  margin: '0 0 12px',
+  fontSize: fontSize['2xl'],
+  fontWeight: 600,
+} as const;
 
 const gridStyle = {
   display: 'grid',
