@@ -182,6 +182,7 @@
     "agent": {
       "notInstalled": "Not detected",
       "unbound": "Not configured",
+      "configure": "Configure",
       "change": "Change",
       "viewConfig": "View config",
       "copyProxyConfig": "Copy proxy config",

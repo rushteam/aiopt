@@ -40,6 +40,12 @@ export function ProvidersHome() {
   // in translationProxy), so it drives the running indicator inside the bar.
   const anyProxied = agents.some((a) => a.proxied);
 
+  // An empty pool is the one state where adding a provider IS the outstanding action —
+  // nothing can be bound until it happens. It's also what keeps the two emphasis rules
+  // from fighting: AgentCard leaves its button a ghost while the pool is empty, so
+  // exactly one filled accent is ever on this screen.
+  const poolEmpty = providers.length === 0;
+
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
@@ -65,13 +71,25 @@ export function ProvidersHome() {
         </section>
 
         <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          {/* The button sits NEXT TO its heading, not pushed to the far edge. `space-between`
+              on an 832px content column left ~660px of empty space between the two (575px
+              even in German), which is far past the distance at which a control still reads
+              as belonging to the thing it acts on. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
             <h2 style={{ ...sectionHeadingStyle, margin: 0 }}>{t('providers.pool.heading')}</h2>
+            {/* Ghost while the pool has entries: adding another provider is maintenance,
+                not what a user opened this screen to do, and as the page's only filled
+                accent it was drawing the eye to the bottom-right corner while every
+                unconfigured agent above sat silent. It fills in only when the pool is
+                EMPTY — then it genuinely is the one thing to do first, and the agent
+                cards deliberately stay ghosts so this is the single emphasis on screen. */}
             <button
               type="button"
               onClick={() => setDialog({ kind: 'add' })}
-              {...hoverBackground(token('accent'), token('accentHover'))}
-              style={addStyle}
+              {...(poolEmpty
+                ? hoverBackground(token('accent'), token('accentHover'))
+                : hoverBackground('transparent', token('surfaceHover')))}
+              style={poolEmpty ? addPrimaryStyle : addGhostStyle}
             >
               {t('providers.addProvider')}
             </button>
@@ -117,12 +135,27 @@ const gridStyle = {
   gap: space.lg,
 } as const;
 
-const addStyle = {
-  padding: '8px 16px',
-  borderRadius: radius.md,
+// Shared metrics so the button doesn't resize when the pool goes from empty to filled.
+// Deliberately the same metrics as AgentCard's action buttons (5px/12px, 13px, radius.sm)
+// rather than the larger 8px/16px/14px it used to have: one ghost-button size across the
+// screen, and a secondary action shouldn't be the biggest control on the page.
+const addBase = {
+  padding: '5px 12px',
+  borderRadius: radius.sm,
+  cursor: 'pointer',
+  fontSize: fontSize.base,
+} as const;
+
+const addPrimaryStyle = {
+  ...addBase,
   border: `1px solid ${token('accent')}`,
   background: token('accent'),
   color: token('accentText'),
-  cursor: 'pointer',
-  fontSize: fontSize.md,
+} as const;
+
+const addGhostStyle = {
+  ...addBase,
+  border: `1px solid ${token('borderStrong')}`,
+  background: 'transparent',
+  color: token('text'),
 } as const;

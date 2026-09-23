@@ -41,6 +41,9 @@ export function AgentCard({
     ? providers.find((p) => p.id === agent.binding?.providerId)
     : undefined;
 
+  // Is binding this agent the outstanding action? Only when there is something to bind TO.
+  const primary = !agent.binding && providers.length > 0;
+
   async function onCopyProxyConfig(): Promise<void> {
     const ok = await copyProxyConfig(agent.id);
     if (!ok) return; // route vanished (raced a binding change) — leave the label unchanged
@@ -75,13 +78,25 @@ export function AgentCard({
           exceed the card's inner width in EVERY locale (German is ~1.8x it), and a
           flex row without this squeezes them until the text breaks mid-word. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.md }}>
+        {/* The binding action is the only thing on this screen a user comes here to DO, so
+            on an unconfigured agent it wears accent — and only there. It is deliberately
+            self-extinguishing: configure the agent and the button drops back to a ghost,
+            so the accent left on screen always counts what is still outstanding rather
+            than decorating all eight cards forever.
+
+            It stays a ghost while the pool is empty, even though nothing is bound: the
+            picker would open onto "add a provider first", and pointing the eye's one
+            emphasis at a dead end is worse than leaving the card quiet. In that state the
+            pool's own Add button holds the accent instead. */}
         <button
           type="button"
           onClick={onChange}
-          {...hoverBackground('transparent', token('surfaceHover'))}
-          style={actionStyle}
+          {...(primary
+            ? hoverBackground(token('accent'), token('accentHover'))
+            : hoverBackground('transparent', token('surfaceHover')))}
+          style={primary ? primaryActionStyle : actionStyle}
         >
-          {t('providers.agent.change')}
+          {primary ? t('providers.agent.configure') : t('providers.agent.change')}
         </button>
         <button
           type="button"
@@ -130,6 +145,20 @@ const notInstalledBadgeStyle = {
   borderRadius: radius.pill,
   border: `1px solid ${token('border')}`,
   color: token('textMuted'),
+  whiteSpace: 'nowrap',
+} as const;
+
+// The card's primary action: filled accent, so it reads as "do this" at a glance rather
+// than as the first of three equal ghosts. Same metrics as `actionStyle` so promoting a
+// button never changes the row's height or reflows the wrap.
+const primaryActionStyle = {
+  padding: '5px 12px',
+  borderRadius: radius.sm,
+  border: `1px solid ${token('accent')}`,
+  background: token('accent'),
+  color: token('accentText'),
+  cursor: 'pointer',
+  fontSize: fontSize.base,
   whiteSpace: 'nowrap',
 } as const;
 

@@ -182,6 +182,7 @@
     "agent": {
       "notInstalled": "未检测到",
       "unbound": "未配置",
+      "configure": "配置",
       "change": "更改",
       "viewConfig": "查看配置",
       "copyProxyConfig": "复制代理配置",
