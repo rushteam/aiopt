@@ -88,3 +88,10 @@ A target AI coding tool that AiOpt configures (Claude Code, Codex, Cursor, Gemin
 An IPC event whose origin is verified to be the app's own top-level renderer, using only fields taken from event.sender / event.senderFrame — never renderer-reported values. Term still under discussion.
 
 - **zh-CN**: 可信发送方
+
+### Upstream compatibility (`upstream-compatibility`)
+
+A per-provider setting naming the request parameters AiOpt strips from a request before forwarding it to that provider's upstream. It exists for an upstream that REJECTS an unrecognized parameter instead of ignoring it (typically a gateway in front of a strict backend). The choice is per-provider, drawn from a fixed allowlist, and split into parameters whose removal cannot change the reply and parameters whose removal can. Structural capability fields (tools, messages, model) are deliberately absent from the allowlist and must never be added. Not 'drop params', 'compatibility mode', or 'parameter filter' in UI copy. Term still under discussion.
+
+- **zh-CN**: 上游兼容性
+  - forbidden: `兼容模式`, `参数过滤`

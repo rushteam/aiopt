@@ -146,7 +146,8 @@
       "models": "Modelos",
       "modelId": "ID del modelo",
       "modelAlias": "Alias",
-      "notes": "Notas"
+      "notes": "Notas",
+      "dropRequestFields": "Compatibilidad con el upstream"
     },
     "form": {
       "addTitle": "Añadir proveedor",
@@ -168,7 +169,17 @@
       "saving": "Guardando…",
       "showKey": "Mostrar",
       "hideKey": "Ocultar",
-      "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla."
+      "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla.",
+      "dropNone": "No se quita nada",
+      "dropHint": "Algunos upstreams rechazan una solicitud que lleva un parámetro que no reconocen en lugar de ignorarlo; lo habitual es una pasarela delante de un backend estricto. Elige los parámetros que se quitarán antes de que AiOpt envíe una solicitud a este proveedor.",
+      "dropGroup": {
+        "safe": "Se puede quitar sin riesgo",
+        "sensitive": "Cambia la respuesta"
+      },
+      "dropGroupHint": {
+        "safe": "Parámetros de registro y enrutamiento. Quitarlos no cambia la respuesta del modelo.",
+        "sensitive": "Quitarlos cambia lo que se recibe: sin response_format, un JSON garantizado pasa a ser texto libre; sin thinking ni reasoning, el modelo se degrada en silencio. Úsalo solo si el upstream los rechaza."
+      }
     },
     "card": {
       "models": "Modelos",

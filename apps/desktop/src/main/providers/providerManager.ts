@@ -11,6 +11,7 @@ import {
   AGENTS,
   getAgentDef,
   isFormatCompatible,
+  normalizeDropFields,
   translationSupported,
   wireModelName,
   type AgentId,
@@ -38,6 +39,18 @@ import type { TranslationProxy } from '../proxy/translationProxy';
 /** Main-only secret key holding one provider's API key. */
 export function providerSecretKey(providerId: string): string {
   return `${MAIN_ONLY_SECRET_PREFIX}provider_${providerId}_key`;
+}
+
+/**
+ * Normalize an incoming drop-fields list into a spreadable patch: `{ dropRequestFields }`
+ * when something survives the allowlist, or `{}` so the key stays ABSENT rather than set to
+ * an empty array. Keeping "strip nothing" as an absent key (not `[]`) means a provider the
+ * user never configured has a clean record on disk and an unchanged JSON shape.
+ */
+function dropFieldsPatch(raw: readonly string[] | undefined): { dropRequestFields?: string[] } {
+  if (raw === undefined) return {};
+  const fields = normalizeDropFields(raw);
+  return fields.length > 0 ? { dropRequestFields: fields } : {};
 }
 
 export type ProvidersChangeListener = (snapshot: ProvidersSnapshot) => void;
@@ -72,6 +85,13 @@ export interface ProviderManager {
    * a key is read. Null when none is stored.
    */
   resolveUpstreamKey(providerId: string): string | null;
+  /**
+   * Resolve a provider's configured `dropRequestFields` for the translation proxy's OUTBOUND
+   * call. Read live (like {@link resolveUpstreamKey}) so editing a provider affects the next
+   * request without rebinding the agent; undefined when the provider is gone or configures
+   * nothing. Carries no secret — these are API parameter names from a fixed allowlist.
+   */
+  resolveDropFields(providerId: string): readonly string[] | undefined;
   /**
    * Startup helper: re-register a proxy route and refresh the on-disk config for every
    * binding. The port + tokens are now persisted and reused, so this is normally an
@@ -144,6 +164,7 @@ export function createProviderManager(
       notes: provider.notes,
       createdAt: provider.createdAt,
       hasKey: secrets.has(providerSecretKey(provider.id)),
+      dropRequestFields: provider.dropRequestFields,
     };
   }
 
@@ -279,6 +300,7 @@ export function createProviderManager(
         models: input.models,
         notes: input.notes,
         createdAt: Date.now(),
+        ...dropFieldsPatch(input.dropRequestFields),
       };
       store.addProvider(provider);
       if (input.apiKey) secrets.set(providerSecretKey(provider.id), input.apiKey);
@@ -297,6 +319,15 @@ export function createProviderManager(
         models: input.models ?? existing.models,
         notes: input.notes !== undefined ? input.notes : existing.notes,
       };
+      // Drop-fields is a whole-set replace when present (the form sends a checkbox group,
+      // not a patch), so an empty array must CLEAR it rather than read as "unchanged" —
+      // hence deleting the key instead of assigning `undefined`, which would serialize as
+      // an explicit null-ish entry in the persisted JSON.
+      if (input.dropRequestFields !== undefined) {
+        const patch = dropFieldsPatch(input.dropRequestFields);
+        if (patch.dropRequestFields) next.dropRequestFields = patch.dropRequestFields;
+        else delete next.dropRequestFields;
+      }
       store.replaceProvider(next);
 
       // apiKey: string replaces, null clears, undefined leaves alone.
@@ -393,6 +424,13 @@ export function createProviderManager(
       // Main-side-only plaintext read for the proxy's outbound request. Never logged,
       // never returned across IPC (unlike revealKey, whose value reaches the renderer).
       return secrets.get(providerSecretKey(providerId));
+    },
+
+    resolveDropFields(providerId) {
+      // Read from the live record so a provider edit lands on the next request without a
+      // rebind. The store already validated these against the allowlist on load/write, and
+      // the proxy's sanitize step re-validates — neither side trusts the other to have done it.
+      return store.getProvider(providerId)?.dropRequestFields;
     },
 
     rebuildProxyRoutes() {

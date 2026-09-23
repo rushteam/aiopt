@@ -178,6 +178,9 @@ export function getTranslationProxy(): TranslationProxy {
     translationProxy = createTranslationProxy({
       fetchImpl,
       getKey: (providerId) => getProviderManager().resolveUpstreamKey(providerId),
+      // Per-provider fields to strip from the outbound body (see proxy/sanitize.ts) —
+      // resolved live, like the key, so a provider edit needs no rebind.
+      getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).

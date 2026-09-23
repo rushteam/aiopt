@@ -168,3 +168,123 @@ describe('translation proxy — rebindPort', () => {
     await expect(proxy.rebindPort()).rejects.toThrow();
   });
 });
+
+describe('translation proxy — per-provider request sanitizing', () => {
+  const started: TranslationProxy[] = [];
+
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  /** Captures the body the proxy actually put on the wire. */
+  function recordingFetch(): { impl: ProxyFetch; bodies: Record<string, unknown>[] } {
+    const bodies: Record<string, unknown>[] = [];
+    const impl: ProxyFetch = (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        body: null,
+        text: () => Promise.resolve(JSON.stringify({ id: 'x', content: [] })),
+      });
+    };
+    return { impl, bodies };
+  }
+
+  /**
+   * Drive one real request through a started proxy on a SAME-format (identity passthrough)
+   * route — the case that motivated sanitize.ts, since the body is otherwise forwarded
+   * verbatim and a strict upstream rejects the whole call.
+   */
+  async function post(
+    getDropFields: ((providerId: string) => readonly string[] | undefined) | undefined,
+    body: Record<string, unknown>,
+  ): Promise<Record<string, unknown>[]> {
+    const { impl, bodies } = recordingFetch();
+    const proxy = createTranslationProxy({ fetchImpl: impl, getKey: () => 'sk-test', getDropFields });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(spec());
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(200);
+    return bodies;
+  }
+
+  it('strips a configured field from the forwarded body', async () => {
+    const bodies = await post(() => ['store'], {
+      model: 'claude-x',
+      messages: [{ role: 'user', content: 'hi' }],
+      store: true,
+    });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).not.toHaveProperty('store');
+    expect(bodies[0]).toHaveProperty('messages');
+  });
+
+  it('forwards the body unchanged when no fields are configured', async () => {
+    for (const deps of [undefined, () => undefined, () => []] as const) {
+      const bodies = await post(deps, {
+        model: 'claude-x',
+        messages: [{ role: 'user', content: 'hi' }],
+        store: true,
+      });
+      // Unconfigured is the default: a passthrough route must stay byte-faithful.
+      expect(bodies[0]).toHaveProperty('store', true);
+    }
+  });
+
+  it('resolves the field list per provider, at request time', async () => {
+    // Live resolution (like getKey) is what lets a provider edit take effect without
+    // rebinding the agent or rotating its token.
+    const calls: string[] = [];
+    const bodies = await post(
+      (providerId) => {
+        calls.push(providerId);
+        return providerId === 'p1' ? ['store'] : undefined;
+      },
+      { model: 'claude-x', messages: [], store: true },
+    );
+    expect(calls).toEqual(['p1']);
+    expect(bodies[0]).not.toHaveProperty('store');
+  });
+
+  it('never strips a structural field, whatever the resolver returns', async () => {
+    const bodies = await post(() => ['tools', 'messages', 'model'], {
+      model: 'claude-x',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: [{ name: 't' }],
+    });
+    expect(bodies[0]).toHaveProperty('model', 'claude-x');
+    expect(bodies[0]).toHaveProperty('messages');
+    expect(bodies[0]).toHaveProperty('tools');
+  });
+
+  it('fails closed when the resolver throws, rather than forwarding an unsanitized body', async () => {
+    const { impl, bodies } = recordingFetch();
+    const proxy = createTranslationProxy({
+      fetchImpl: impl,
+      getKey: () => 'sk-test',
+      getDropFields: () => {
+        throw new Error('store unavailable');
+      },
+    });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(spec());
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-x', messages: [] }),
+    });
+    // The resolver is a synchronous store lookup, so this is a can't-happen guard — but the
+    // direction matters: on a credentialed path, a body whose sanitizing state is unknown must
+    // not reach the upstream. The throw surfaces as a coded proxy error and nothing is sent.
+    expect(res.status).not.toBe(200);
+    expect(bodies).toHaveLength(0);
+  });
+});

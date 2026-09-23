@@ -432,6 +432,13 @@ export interface ProviderSummary {
   notes?: string;
   createdAt: number;
   hasKey: boolean;
+  /**
+   * Request fields the proxy strips before forwarding to this upstream (see
+   * `Provider.dropRequestFields`). Not secret — it is a list of well-known API parameter
+   * NAMES from a fixed allowlist, carrying no values — so it round-trips to the form like
+   * any other editable field. Absent/empty means strip nothing.
+   */
+  dropRequestFields?: string[];
 }
 
 /**
@@ -502,6 +509,8 @@ export interface ProviderAddRequest {
   models: ProviderModel[];
   notes?: string;
   apiKey?: string;
+  /** Fields the proxy should strip for this upstream; validated against the allowlist. */
+  dropRequestFields?: string[];
 }
 
 /**
@@ -516,6 +525,11 @@ export interface ProviderUpdateRequest {
   models?: ProviderModel[];
   notes?: string;
   apiKey?: string | null;
+  /**
+   * Replaces the whole set when present (it is a checkbox group, not a patch); omitted
+   * leaves it untouched. An empty array clears it.
+   */
+  dropRequestFields?: string[];
 }
 
 export interface ProviderRemoveRequest {

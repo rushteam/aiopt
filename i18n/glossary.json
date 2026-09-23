@@ -98,6 +98,14 @@
       "note": "A global setting. Off (default) writes same-format bindings as a direct provider connection (one less hop, and they keep working when AiOpt isn't running) whose usage is not counted. On routes every translatable binding — same-format ones included — through the translation proxy so all token usage is counted; cross-format bindings always route through the proxy regardless. Not 'turbo', 'fast mode', or 'proxy server mode' in UI copy.",
       "translations": { "zh-CN": "代理模式" },
       "forbidden": { "zh-CN": ["极速模式", "代理服务器模式", "加速模式"] }
+    },
+    {
+      "id": "upstream-compatibility",
+      "en": "Upstream compatibility",
+      "status": "proposed",
+      "note": "A per-provider setting naming the request parameters AiOpt strips from a request before forwarding it to that provider's upstream. It exists for an upstream that REJECTS an unrecognized parameter instead of ignoring it (typically a gateway in front of a strict backend). The choice is per-provider, drawn from a fixed allowlist, and split into parameters whose removal cannot change the reply and parameters whose removal can. Structural capability fields (tools, messages, model) are deliberately absent from the allowlist and must never be added. Not 'drop params', 'compatibility mode', or 'parameter filter' in UI copy. Term still under discussion.",
+      "translations": { "zh-CN": "上游兼容性" },
+      "forbidden": { "zh-CN": ["兼容模式", "参数过滤"] }
     }
   ]
 }

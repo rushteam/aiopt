@@ -16,8 +16,37 @@ import {
   throwIpcError,
 } from '../ipc/validate';
 import { IPC_CHANNELS } from '../../shared/ipc-channels';
-import { AGENT_IDS, API_FORMATS, type ProviderModel } from '../../shared/aiProviders';
+import {
+  AGENT_IDS,
+  API_FORMATS,
+  DROPPABLE_FIELD_NAMES,
+  normalizeDropFields,
+  type ProviderModel,
+} from '../../shared/aiProviders';
 import type { ProviderManager } from './providerManager';
+
+/**
+ * Validate an untrusted drop-fields list: an array of strings, each on the shared
+ * allowlist. An unknown name is REFUSED rather than silently dropped — unlike the store's
+ * load path (which must tolerate a stale file to avoid wedging startup), a live request
+ * carrying a name we do not recognize means the renderer and main disagree about the
+ * allowlist, and the user deserves to know their choice did not take effect. Returns
+ * undefined for an absent field, so an omitted key still means "unchanged" on update.
+ */
+function optionalDropFields(raw: unknown): string[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    throwIpcError('INVALID_PARAMS', 'dropRequestFields must be an array of field names');
+  }
+  const fields = raw.map((entry, i) => requireString(entry, `dropRequestFields[${i}]`).trim());
+  for (const field of fields) {
+    if (!DROPPABLE_FIELD_NAMES.includes(field)) {
+      throwIpcError('INVALID_PARAMS', `"${field}" is not a droppable request field`);
+    }
+  }
+  // Canonical order + de-duped, so the stored value doesn't depend on click order.
+  return normalizeDropFields(fields);
+}
 
 /** Validate an untrusted models array: non-empty, each `{ id, alias? }` well-formed. */
 function requireModels(raw: unknown): ProviderModel[] {
@@ -65,6 +94,7 @@ export function registerProviderIpc(
       models: requireModels(obj.models),
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
       apiKey: typeof obj.apiKey === 'string' && obj.apiKey !== '' ? obj.apiKey : undefined,
+      dropRequestFields: optionalDropFields(obj.dropRequestFields),
     });
   });
 
@@ -80,6 +110,8 @@ export function registerProviderIpc(
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
       // null clears the stored key; a string replaces it; omitted leaves it.
       apiKey: obj.apiKey === null ? null : typeof obj.apiKey === 'string' ? obj.apiKey : undefined,
+      // Present = replace the whole set (an empty array clears it); omitted = unchanged.
+      dropRequestFields: optionalDropFields(obj.dropRequestFields),
     });
   });
 

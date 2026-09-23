@@ -146,7 +146,8 @@
       "models": "Modelle",
       "modelId": "Modell-ID",
       "modelAlias": "Alias",
-      "notes": "Notizen"
+      "notes": "Notizen",
+      "dropRequestFields": "Upstream-Kompatibilität"
     },
     "form": {
       "addTitle": "Anbieter hinzufügen",
@@ -168,7 +169,17 @@
       "saving": "Wird gespeichert…",
       "showKey": "Anzeigen",
       "hideKey": "Verbergen",
-      "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen."
+      "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen.",
+      "dropNone": "Nichts entfernen",
+      "dropHint": "Manche Upstreams lehnen eine Anfrage mit einem unbekannten Parameter ab, statt ihn zu ignorieren — meist ein Gateway vor einem streng prüfenden Backend. Wählen Sie die Parameter, die entfernt werden, bevor AiOpt eine Anfrage an diesen Anbieter weiterleitet.",
+      "dropGroup": {
+        "safe": "Unbedenklich zu entfernen",
+        "sensitive": "Ändert die Antwort"
+      },
+      "dropGroupHint": {
+        "safe": "Parameter für Protokollierung und Routing. Ihr Entfernen ändert die Antwort des Modells nicht.",
+        "sensitive": "Ihr Entfernen ändert, was zurückkommt: ohne response_format wird garantiertes JSON zu freiem Text, ohne thinking oder reasoning wird das Modell still herabgestuft. Nur verwenden, wenn der Upstream sie ausdrücklich ablehnt."
+      }
     },
     "card": {
       "models": "Modelle",

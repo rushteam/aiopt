@@ -146,7 +146,8 @@
       "models": "모델",
       "modelId": "모델 ID",
       "modelAlias": "별칭",
-      "notes": "메모"
+      "notes": "메모",
+      "dropRequestFields": "업스트림 호환성"
     },
     "form": {
       "addTitle": "공급자 추가",
@@ -168,7 +169,17 @@
       "saving": "저장 중…",
       "showKey": "표시",
       "hideKey": "숨기기",
-      "keySavedHidden": "키가 저장됨 · 보안을 위해 숨김. 그대로 두려면 비워 두고, 교체하려면 입력하세요."
+      "keySavedHidden": "키가 저장됨 · 보안을 위해 숨김. 그대로 두려면 비워 두고, 교체하려면 입력하세요.",
+      "dropNone": "제거하지 않음",
+      "dropHint": "일부 업스트림은 인식하지 못하는 매개변수를 무시하지 않고 요청 자체를 거부합니다. 엄격하게 검증하는 백엔드 앞에 게이트웨이가 있을 때 주로 발생합니다. AiOpt가 이 공급자로 요청을 전달하기 전에 제거할 매개변수를 선택하세요.",
+      "dropGroup": {
+        "safe": "안전하게 제거 가능",
+        "sensitive": "응답이 바뀜"
+      },
+      "dropGroupHint": {
+        "safe": "기록 및 라우팅용 매개변수입니다. 제거해도 모델의 응답은 바뀌지 않습니다.",
+        "sensitive": "제거하면 돌아오는 내용이 바뀝니다. response_format이 없으면 보장된 JSON이 자유 텍스트가 되고, thinking이나 reasoning이 없으면 모델이 조용히 downgrade됩니다. 업스트림이 명확히 거부할 때만 사용하세요."
+      }
     },
     "card": {
       "models": "모델",

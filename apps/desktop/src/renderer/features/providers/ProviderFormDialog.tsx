@@ -10,7 +10,13 @@ import { useState, type FormEvent } from 'react';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
-import { API_FORMATS, type ApiFormat, type ProviderModel } from '../../../shared/aiProviders';
+import {
+  API_FORMATS,
+  DROPPABLE_REQUEST_FIELDS,
+  normalizeDropFields,
+  type ApiFormat,
+  type ProviderModel,
+} from '../../../shared/aiProviders';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
 import {
   addProvider,
@@ -70,6 +76,11 @@ export function ProviderFormDialog({
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<ModelRow[]>(toRows(provider?.models ?? []));
   const [notes, setNotes] = useState(provider?.notes ?? '');
+  const [dropFields, setDropFields] = useState<string[]>(provider?.dropRequestFields ?? []);
+  // The compatibility section starts open only when it already has something in it, so a
+  // provider that strips nothing (the default, and the common case) shows a quiet one-line
+  // summary instead of a wall of checkboxes.
+  const [compatOpen, setCompatOpen] = useState((provider?.dropRequestFields?.length ?? 0) > 0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -124,6 +135,16 @@ export function ProviderFormDialog({
     setModels((rows) => rows.filter((_, i) => i !== index));
   }
 
+  // Keep the selection in the shared allowlist's canonical order, so what we send matches
+  // what main stores and the checkbox set never depends on click order.
+  function toggleDropField(field: string): void {
+    setDropFields((current) =>
+      normalizeDropFields(
+        current.includes(field) ? current.filter((f) => f !== field) : [...current, field],
+      ),
+    );
+  }
+
   async function onLoadModels(): Promise<void> {
     setLoadingModels(true);
     setModelsError(null);
@@ -164,6 +185,9 @@ export function ProviderFormDialog({
           notes,
           // Blank field on edit = leave the stored key untouched.
           apiKey: apiKey === '' ? undefined : apiKey,
+          // Always sent: it is a checkbox group, so an empty array must clear the set
+          // rather than read as "unchanged".
+          dropRequestFields: dropFields,
         });
       } else {
         await addProvider({
@@ -173,6 +197,7 @@ export function ProviderFormDialog({
           models: parsedModels,
           notes: notes === '' ? undefined : notes,
           apiKey: apiKey === '' ? undefined : apiKey,
+          dropRequestFields: dropFields.length > 0 ? dropFields : undefined,
         });
       }
       onClose();
@@ -356,6 +381,65 @@ export function ProviderFormDialog({
             {t('providers.fields.notes')}
             <input value={notes} onChange={(e) => setNotes(e.target.value)} style={inputStyle} />
           </label>
+
+          {/* Upstream compatibility — the escape hatch for a gateway that rejects a field
+              it doesn't know. Collapsed by default: most providers need nothing here, and
+              the checkboxes would otherwise dominate a form whose real subject is the
+              endpoint and its models. */}
+          <div style={fieldStyle}>
+            <button
+              type="button"
+              onClick={() => setCompatOpen((v) => !v)}
+              aria-expanded={compatOpen}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={disclosureStyle}
+            >
+              <Chevron open={compatOpen} />
+              <span style={{ color: token('text') }}>{t('providers.fields.dropRequestFields')}</span>
+              <span style={{ marginLeft: 'auto', color: token('textMuted'), fontSize: fontSize.sm }}>
+                {dropFields.length === 0
+                  ? t('providers.form.dropNone')
+                  : dropFields.join(', ')}
+              </span>
+            </button>
+
+            {compatOpen && (
+              <div style={compatBodyStyle}>
+                <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                  {t('providers.form.dropHint')}
+                </span>
+
+                {(['safe', 'sensitive'] as const).map((group) => (
+                  <fieldset key={group} style={groupStyle}>
+                    <legend style={legendStyle}>{t(`providers.form.dropGroup.${group}`)}</legend>
+                    <span
+                      style={{
+                        fontSize: fontSize.sm,
+                        // The sensitive group's caution is the one thing here that can cost
+                        // the user a silently degraded response, so it carries `danger`
+                        // rather than the muted body color the safe group's note uses.
+                        color: group === 'sensitive' ? token('danger') : token('textMuted'),
+                      }}
+                    >
+                      {t(`providers.form.dropGroupHint.${group}`)}
+                    </span>
+                    <div style={checkGridStyle}>
+                      {DROPPABLE_REQUEST_FIELDS[group].map((field) => (
+                        <label key={field} style={checkLabelStyle}>
+                          <input
+                            type="checkbox"
+                            checked={dropFields.includes(field)}
+                            onChange={() => toggleDropField(field)}
+                          />
+                          <code style={codeStyle}>{field}</code>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            )}
+          </div>
           {error && (
             <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
               {error}
@@ -502,6 +586,73 @@ const modelRowStyle = {
   gap: space.sm,
 } as const;
 
+// The compatibility section's disclosure row: a full-width, quiet header that reads as a
+// label with a summary, not as a button competing with the form's real actions.
+const disclosureStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.sm,
+  width: '100%',
+  padding: '6px 8px',
+  borderRadius: radius.sm,
+  // A divider, not a control outline: this row groups the section below it rather than
+  // presenting a clickable boundary (the chevron carries the affordance). See DESIGN §1.1.
+  border: `1px solid ${token('border')}`,
+  background: 'transparent',
+  color: token('textMuted'),
+  cursor: 'pointer',
+  fontSize: fontSize.base,
+  textAlign: 'left',
+} as const;
+
+const compatBodyStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.lg,
+  padding: `${space.md}px 2px 2px`,
+} as const;
+
+// Native <fieldset>/<legend> so each group's name is announced with its checkboxes;
+// the default chrome is stripped in favor of the app's own hairline.
+const groupStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.xs,
+  margin: 0,
+  padding: space.md,
+  borderRadius: radius.sm,
+  border: `1px solid ${token('border')}`,
+} as const;
+
+const legendStyle = {
+  padding: `0 ${space.xs}px`,
+  color: token('text'),
+  fontSize: fontSize.base,
+} as const;
+
+// Wraps to as many columns as fit, so adding a field to the allowlist never overflows.
+const checkGridStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: `${space.xs}px ${space.xl}px`,
+  marginTop: space.xs,
+} as const;
+
+const checkLabelStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: space.sm,
+  color: token('text'),
+  fontSize: fontSize.base,
+  cursor: 'pointer',
+} as const;
+
+// A field name is a literal API parameter, so it is set in mono to separate it from copy.
+const codeStyle = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  fontSize: fontSize.sm,
+} as const;
+
 // A quiet dashed "add" affordance, distinct from the solid form buttons.
 const addRowStyle = {
   alignSelf: 'flex-start',
@@ -532,6 +683,31 @@ function EyeIcon({ off }: { off: boolean }) {
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
       <circle cx="12" cy="12" r="3" />
       {off && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  );
+}
+
+// Disclosure chevron: points right when collapsed, down when open. Rotated rather than
+// swapped so the transition reads as one control changing state.
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        flexShrink: 0,
+        transform: open ? 'rotate(90deg)' : 'none',
+        transition: 'transform 120ms ease',
+      }}
+      aria-hidden
+    >
+      <path d="M9 6l6 6-6 6" />
     </svg>
   );
 }
