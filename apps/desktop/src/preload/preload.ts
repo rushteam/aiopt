@@ -222,6 +222,14 @@ const api = {
      */
     refreshProxyPort: (): Promise<ProviderRefreshProxyPortResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersRefreshProxyPort),
+    /**
+     * Open one of an agent's managed config files in the OS file manager, so the user can
+     * read the RAW file in their own editor. Named by (agentId, role) — NOT a path: main
+     * resolves it through the agent-config allowlist. This is deliberately the only route to
+     * raw config content: those files hold plaintext secrets, which must never cross here.
+     */
+    revealConfig: (agentId: AgentId, role: string): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRevealConfig, { agentId, role }),
     /** Subscribe to pool/binding changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: ProvidersSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.providersChanged, callback),

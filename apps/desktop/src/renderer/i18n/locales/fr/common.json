@@ -184,10 +184,32 @@
       "notInstalled": "Non détecté",
       "unbound": "Non configuré",
       "change": "Modifier",
+      "viewConfig": "Voir la configuration",
+      "hideConfig": "Masquer la configuration",
       "copyProxyConfig": "Copier la config du proxy",
       "copied": "Copié",
       "restoreDefault": "Rétablir les valeurs par défaut",
-      "restoreConfirm": "Rétablir la config de cet agent telle qu’avant AiOpt ?"
+      "restoreConfirm": "Rétablir la config de cet agent telle qu’avant AiOpt ?",
+      "configView": {
+        "installDir": "Répertoire de configuration",
+        "apiFormat": "Format d’API",
+        "mode": "Mode d’écriture",
+        "modes": {
+          "exclusive": "Exclusif — le fournisseur actif est remplacé",
+          "additive": "Additif — les fournisseurs coexistent, seul le défaut change"
+        },
+        "route": "Acheminement",
+        "routes": {
+          "direct": "Direct vers le fournisseur",
+          "proxied": "Via le proxy local",
+          "unbound": "Aucun fournisseur associé"
+        },
+        "files": "Fichiers gérés",
+        "fileMissing": "pas encore créé",
+        "reveal": "Afficher dans le gestionnaire de fichiers",
+        "noFiles": "AiOpt ne gère aucun fichier de configuration pour cet Agent.",
+        "rawHint": "AiOpt montre ce qu’il gère, jamais le contenu des fichiers — certains contiennent une clé d’API en clair. Ouvrez-en un pour le lire dans votre propre éditeur."
+      }
     },
     "binding": {
       "title": "Choisir un fournisseur",

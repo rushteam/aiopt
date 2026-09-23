@@ -184,10 +184,32 @@
       "notInstalled": "検出されません",
       "unbound": "未設定",
       "change": "変更",
+      "viewConfig": "設定を表示",
+      "hideConfig": "設定を隠す",
       "copyProxyConfig": "プロキシ設定をコピー",
       "copied": "コピーしました",
       "restoreDefault": "デフォルトに戻す",
-      "restoreConfirm": "このエージェントの設定を AiOpt 導入前の状態に戻しますか？"
+      "restoreConfirm": "このエージェントの設定を AiOpt 導入前の状態に戻しますか？",
+      "configView": {
+        "installDir": "設定ディレクトリ",
+        "apiFormat": "API 形式",
+        "mode": "書き込み方式",
+        "modes": {
+          "exclusive": "排他——現在有効なプロバイダーを上書き",
+          "additive": "追加——各プロバイダーを保持し、既定のみ切り替え"
+        },
+        "route": "接続経路",
+        "routes": {
+          "direct": "プロバイダーへ直接",
+          "proxied": "ローカルプロキシ経由",
+          "unbound": "プロバイダー未設定"
+        },
+        "files": "管理対象ファイル",
+        "fileMissing": "未作成",
+        "reveal": "ファイルマネージャーで表示",
+        "noFiles": "この Agent に AiOpt が管理する設定ファイルはありません。",
+        "rawHint": "AiOpt は管理対象の情報のみを表示し、ファイルの中身は読み込みません——一部のファイルは API キーを平文で保持しています。中身を見るにはファイルを開き、お使いのエディターで確認してください。"
+      }
     },
     "binding": {
       "title": "プロバイダーを選択",

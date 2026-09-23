@@ -184,10 +184,32 @@
       "notInstalled": "Not detected",
       "unbound": "Not configured",
       "change": "Change",
+      "viewConfig": "View config",
+      "hideConfig": "Hide config",
       "copyProxyConfig": "Copy proxy config",
       "copied": "Copied",
       "restoreDefault": "Restore default",
-      "restoreConfirm": "Restore this agent's config to before AiOpt?"
+      "restoreConfirm": "Restore this agent's config to before AiOpt?",
+      "configView": {
+        "installDir": "Config directory",
+        "apiFormat": "API format",
+        "mode": "Write mode",
+        "modes": {
+          "exclusive": "Exclusive — the active provider is overwritten",
+          "additive": "Additive — providers coexist, only the default moves"
+        },
+        "route": "Route",
+        "routes": {
+          "direct": "Direct to the provider",
+          "proxied": "Through the local proxy",
+          "unbound": "No provider bound"
+        },
+        "files": "Managed files",
+        "fileMissing": "not created yet",
+        "reveal": "Reveal in file manager",
+        "noFiles": "This agent has no config files AiOpt manages.",
+        "rawHint": "AiOpt shows what it manages, never the file contents — some of these files hold an API key in plain text. Open one to read it in your own editor."
+      }
     },
     "binding": {
       "title": "Choose provider",

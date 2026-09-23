@@ -129,6 +129,17 @@ export async function copyProxyConfig(agentId: AgentId): Promise<boolean> {
 }
 
 /**
+ * Open one of an agent's managed config files in the OS file manager. Read-only w.r.t. the
+ * pool, and read-only w.r.t. the FILE: AiOpt hands the path to the OS and never loads the
+ * contents (those files hold plaintext secrets — see the channel note). Named by role, not
+ * by path; main resolves it through the agent-config allowlist.
+ */
+export async function revealAgentConfig(agentId: AgentId, role: string): Promise<void> {
+  ensureInitialized();
+  await window.aiopt.providers.revealConfig(agentId, role);
+}
+
+/**
  * Move the loopback proxy to a fresh port and re-sync every proxied agent to it. The updated
  * snapshot (with the new port) arrives via the `providers:changed` push, so this doesn't apply
  * one itself — it just returns the new port for immediate feedback.

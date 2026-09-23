@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createInMemoryRegistry,
   type InMemoryIpcRegistry,
@@ -50,6 +52,8 @@ function fakeClaudeAdapter() {
 function harness(fetchImpl?: FetchLike): {
   reg: InMemoryIpcRegistry;
   secrets: ReturnType<typeof memorySecrets>;
+  /** Paths handed to the OS file manager, in call order (nothing is ever read). */
+  revealed: string[];
 } {
   const reg = createInMemoryRegistry();
   const secrets = memorySecrets();
@@ -70,8 +74,11 @@ function harness(fetchImpl?: FetchLike): {
   // Proxy mode off (the default): these tests exercise same-format bindings and assume a
   // direct config (the proxy stub above is never asked to register a route).
   const manager = createProviderManager(store, secrets, adapters, () => {}, () => proxy, () => false, fetchImpl);
-  registerProviderIpc(reg, manager);
-  return { reg, secrets };
+  // Reveal is captured rather than performed: the assertion of interest is WHICH path the
+  // manager resolved, and no Electron shell exists in a unit test.
+  const revealed: string[] = [];
+  registerProviderIpc(reg, manager, { revealItem: (file) => void revealed.push(file) });
+  return { reg, secrets, revealed };
 }
 
 async function codeOf(fn: () => Promise<unknown>): Promise<IpcErrorCode> {
@@ -314,5 +321,89 @@ describe('provider IPC — fetchModels', () => {
       trusted,
     )) as { models: { id: string }[] };
     expect(result.models).toEqual([{ id: 'gpt-4o' }]);
+  });
+});
+
+describe('provider IPC — revealConfig (symbolic in, path out; never reads the file)', () => {
+  // A sandbox home so the resolved path is deterministic and no real `~/.claude` is touched.
+  // Nothing is created in it — reveal resolves a path, it does not stat or read.
+  let prevHome: string | undefined;
+  const home = path.join(os.tmpdir(), 'aiopt-reveal-home');
+
+  beforeEach(() => {
+    prevHome = process.env.AIOPT_AGENT_HOME;
+    process.env.AIOPT_AGENT_HOME = home;
+  });
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.AIOPT_AGENT_HOME;
+    else process.env.AIOPT_AGENT_HOME = prevHome;
+  });
+
+  it('rejects an untrusted call with PERMISSION_DENIED and reveals nothing', async () => {
+    const { reg, revealed } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(
+          IPC_CHANNELS.providersRevealConfig,
+          { agentId: 'claude', role: 'settings' },
+          untrusted,
+        ),
+      ),
+    ).toBe('PERMISSION_DENIED');
+    expect(revealed).toEqual([]);
+  });
+
+  it('rejects a bad agentId with INVALID_PARAMS', async () => {
+    const { reg, revealed } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersRevealConfig, { agentId: 'nope', role: 'settings' }, trusted),
+      ),
+    ).toBe('INVALID_PARAMS');
+    expect(revealed).toEqual([]);
+  });
+
+  it('rejects a non-string role with INVALID_PARAMS', async () => {
+    const { reg, revealed } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersRevealConfig, { agentId: 'claude', role: 42 }, trusted),
+      ),
+    ).toBe('INVALID_PARAMS');
+    expect(revealed).toEqual([]);
+  });
+
+  it('reveals the allowlisted path for a declared role', async () => {
+    const { reg, revealed } = harness();
+    const result = await reg.invoke(
+      IPC_CHANNELS.providersRevealConfig,
+      { agentId: 'claude', role: 'settings' },
+      trusted,
+    );
+    expect(result).toEqual({});
+    expect(revealed).toEqual([path.join(home, '.claude/settings.json')]);
+  });
+
+  it('refuses a role the agent does not declare (NOT_FOUND)', async () => {
+    const { reg, revealed } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersRevealConfig, { agentId: 'claude', role: 'auth' }, trusted),
+      ),
+    ).toBe('NOT_FOUND');
+    expect(revealed).toEqual([]);
+  });
+
+  it('refuses an inherited Object.prototype key as a role (NOT_FOUND)', async () => {
+    const { reg, revealed } = harness();
+    // A plain `files[role]` lookup would hand back Object.prototype.toString here.
+    for (const role of ['toString', 'constructor', '__proto__']) {
+      expect(
+        await codeOf(() =>
+          reg.invoke(IPC_CHANNELS.providersRevealConfig, { agentId: 'claude', role }, trusted),
+        ),
+      ).toBe('NOT_FOUND');
+    }
+    expect(revealed).toEqual([]);
   });
 });

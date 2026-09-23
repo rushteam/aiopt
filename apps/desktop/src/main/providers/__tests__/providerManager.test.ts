@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProviderManager, providerSecretKey } from '../providerManager';
 import { createProviderStore } from '../providerStore';
 import type { AgentAdapter, WriteLiveInput } from '../adapters/agentAdapter';
@@ -681,5 +684,56 @@ describe('provider manager — fetchModels (key resolution)', () => {
     await manager.fetchModels({ apiFormat: 'openai', baseUrl: 'https://api.example.com/v1' });
 
     expect(calls[0]!.headers.authorization).toBeUndefined();
+  });
+});
+
+describe('provider manager — snapshot config view', () => {
+  // The panel rides the ordinary snapshot rather than a channel of its own, so these assert
+  // on getSnapshot(). A sandbox home keeps the developer's real `~/.codex` out of it.
+  let home: string;
+  let prevHome: string | undefined;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-snapshot-config-'));
+    prevHome = process.env.AIOPT_AGENT_HOME;
+    process.env.AIOPT_AGENT_HOME = home;
+  });
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.AIOPT_AGENT_HOME;
+    else process.env.AIOPT_AGENT_HOME = prevHome;
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it('carries each agent install dir and managed files as metadata', () => {
+    fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.codex/auth.json'), '{"OPENAI_API_KEY":"sk-snapshot-secret"}');
+    const { manager } = harness(['claude']);
+    const codex = manager.getSnapshot().agents.find((a) => a.id === 'codex')!;
+    expect(codex.installDirDisplay).toBe('~/.codex');
+    expect(codex.configFiles).toEqual([
+      { role: 'auth', displayPath: '~/.codex/auth.json', exists: true },
+      { role: 'config', displayPath: '~/.codex/config.toml', exists: false },
+    ]);
+  });
+
+  it('never carries config file content into the snapshot', () => {
+    fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.codex/auth.json'), '{"OPENAI_API_KEY":"sk-snapshot-secret"}');
+    const { manager } = harness(['claude']);
+    expect(JSON.stringify(manager.getSnapshot())).not.toContain('sk-snapshot-secret');
+  });
+
+  it('resolveConfigRevealPath maps a declared role to its allowlisted path', () => {
+    const { manager } = harness(['claude']);
+    expect(manager.resolveConfigRevealPath('claude', 'settings')).toBe(
+      path.join(home, '.claude/settings.json'),
+    );
+  });
+
+  it('resolveConfigRevealPath refuses an undeclared or inherited role with NOT_FOUND', () => {
+    const { manager } = harness(['claude']);
+    for (const role of ['auth', 'toString', '__proto__']) {
+      expect(codeOf(() => manager.resolveConfigRevealPath('claude', role))).toBe('NOT_FOUND');
+    }
   });
 });
