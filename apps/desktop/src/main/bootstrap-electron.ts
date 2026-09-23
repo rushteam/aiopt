@@ -1,18 +1,40 @@
-// Electron bootstrap: privileged-scheme registration (must run before app ready)
-// and the packaged-asset protocol handler + CSP (after ready). Fuses are applied
-// at package time by FusesPlugin in forge.config.ts, not here.
+// Electron bootstrap: dev userData isolation and privileged-scheme registration (must run
+// before app ready), and the packaged-asset protocol handler + CSP (after ready). Fuses are
+// applied at package time by FusesPlugin in forge.config.ts, not here.
 
 import { app, net, protocol, session } from 'electron';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { APP_PROTOCOL } from './appProtocol';
 import { installCsp } from './security/csp';
+import { devUserDataDir } from './userDataDir';
 import { logger } from './logger';
 
 const log = logger.child('bootstrap');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const isDev = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+
+/**
+ * Point an unpackaged run at its own userData (`AiOpt-dev`), so `pnpm dev` never reads or writes
+ * the installed app's secrets, providers or proxy tokens (see userDataDir.ts). MUST be the first
+ * thing main does: before the single-instance lock (which lives in userData), before `ready`
+ * (Chromium fixes sessionData then), and before any store resolves a path through main/paths.ts.
+ *
+ * Keyed on `app.isPackaged`, not `isDev`: a local unpackaged launch without the Vite dev server is
+ * still not the installed app, and must not touch its data either.
+ */
+export function isolateDevUserData(): void {
+  const dir = devUserDataDir({
+    isPackaged: app.isPackaged,
+    appData: app.getPath('appData'),
+    productName: app.getName(),
+  });
+  if (dir === null) return;
+  app.setPath('userData', dir);
+  // No path in the log (engineering-conventions.md §1); the directory name is the fixed suffix.
+  log.info('user_data.dev_isolated');
+}
 
 /**
  * Register the app's custom scheme as privileged. MUST be called before the app

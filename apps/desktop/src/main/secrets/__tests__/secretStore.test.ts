@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   assertSafeSecretKey,
   createSecretStore,
@@ -107,6 +107,22 @@ describe('secret store', () => {
     const store = createSecretStore(dir, fakeCryptor(false));
     expect(store.isAvailable()).toBe(false);
     expect(codeOf(() => store.set('api_key', 'x'))).toBe('PRECONDITION_FAILED');
+  });
+
+  // An in-place write that dies half-way leaves ciphertext `get()` cannot decrypt, which reads as
+  // "no key" — the stored secret is lost with no error. The rename is the commit point, so failing
+  // it simulates a crash or a full disk after the new bytes were written.
+  it('keeps the previous secret when a write fails before it commits', () => {
+    const store = createSecretStore(dir, fakeCryptor());
+    store.set('api_key', 'original');
+    vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' });
+    });
+    expect(() => store.set('api_key', 'replacement')).toThrow(/ENOSPC/);
+    vi.restoreAllMocks();
+    expect(store.get('api_key')).toBe('original');
+    // No stray temp beside it, and nothing on disk ever held the plaintext.
+    expect(fs.readdirSync(dir)).toEqual(['api_key.enc']);
   });
 
   it('returns null when a stored blob cannot be decrypted', () => {

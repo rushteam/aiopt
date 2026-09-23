@@ -66,7 +66,22 @@ describe('AGENT_FILES write allowlist (derived from AGENT_SPECS)', () => {
     expect(isAllowedAgentConfigPath(resolveAgentFile('.claude/other.json'))).toBe(false);
     expect(isAllowedAgentConfigPath(resolveAgentFile('.cursor/config.json'))).toBe(false); // skills-only agent
     expect(isAllowedAgentConfigPath(path.join(home, '../evil.json'))).toBe(false);
-    expect(isAllowedAgentConfigPath('/etc/passwd')).toBe(false);
+    // Built with path.resolve so this is a real absolute path on Windows too (a bare
+    // '/etc/passwd' would resolve onto the current drive rather than the OS root).
+    expect(isAllowedAgentConfigPath(path.resolve(path.sep, 'etc', 'passwd'))).toBe(false);
+  });
+
+  // NTFS and APFS treat two spellings as one file while `path.resolve` preserves whatever case
+  // it was handed, so on those platforms a case-sensitive compare would refuse a path AiOpt is
+  // willing to write — fail-closed, but surfacing as an unexplainable PERMISSION_DENIED. On
+  // Linux the two spellings really are two files and the refusal is correct. Asserting both
+  // directions pins that the branch is keyed on the platform and not accidentally inverted.
+  it('folds case exactly where the filesystem does', () => {
+    const declared = resolveAgentFile(AGENT_FILES.claude.settings);
+    const upper = declared.toUpperCase();
+    expect(isAllowedAgentConfigPath(declared)).toBe(true);
+    const caseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
+    expect(isAllowedAgentConfigPath(upper)).toBe(caseInsensitive);
   });
 
   it('exposes literal per-role paths for adapters (AGENT_FILES.dsh.settings etc.)', () => {

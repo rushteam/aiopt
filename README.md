@@ -167,6 +167,10 @@ pnpm install
 pnpm dev                # open the app window
 ```
 
+A source run keeps its data apart from an installed copy, in `AiOpt-dev` rather than `AiOpt`
+(under `~/Library/Application Support`, `%APPDATA%`, or `~/.config`). It starts with no providers,
+and it never reads or changes the installed app's keys. The two can also run at the same time.
+
 Contributors want one more step — `pnpm dco:install-hook` adds the DCO sign-off trailer to
 every commit automatically (see **Gates** below).
 

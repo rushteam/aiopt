@@ -14,17 +14,17 @@
 import fs from 'node:fs';
 import type { AgentId } from '../../shared/aiProviders';
 import type { AgentConfigFile } from '../../shared/ipc-channels';
+import { homeRelativeDisplayPath } from '../displayPath';
 import { agentConfigDir, agentConfigFiles, agentHome } from './agentPaths';
 
 /**
  * Shorten a home-rooted absolute path to `~/…` for display, mirroring the skills store's
- * `displayPath`. Shortened against {@link agentHome} (not `os.homedir()`) so a sandboxed
- * `AIOPT_AGENT_HOME` run displays the same way a real one does.
+ * `displayPath` — both now call the same {@link homeRelativeDisplayPath}. Shortened against
+ * {@link agentHome} (not `os.homedir()`) so a sandboxed `AIOPT_AGENT_HOME` run displays the
+ * same way a real one does.
  */
 export function homeShortenedPath(abs: string): string {
-  const home = agentHome();
-  if (abs === home) return '~';
-  return abs.startsWith(`${home}/`) ? `~${abs.slice(home.length)}` : abs;
+  return homeRelativeDisplayPath(abs, agentHome());
 }
 
 /** One agent's config surface as the renderer sees it: where it lives, and which files exist. */

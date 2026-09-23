@@ -10,6 +10,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renameSyncWithRetry } from '../fsRetry';
+import { readUtf8WithoutBom } from '../storeFile';
 
 import {
   comboToElectronAccelerator,
@@ -146,7 +148,7 @@ export class AppShortcutStore {
     if (this.overrides) return this.overrides;
     const filePath = this.options.getFilePath();
     try {
-      const raw = fs.readFileSync(filePath, 'utf-8');
+      const raw = readUtf8WithoutBom(filePath);
       const parsed = JSON.parse(raw) as unknown;
       const overridesRaw =
         parsed && typeof parsed === 'object'
@@ -179,7 +181,7 @@ export class AppShortcutStore {
     try {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(tmp, JSON.stringify({ version: 1, overrides }, null, 2), 'utf-8');
-      fs.renameSync(tmp, filePath);
+      renameSyncWithRetry(tmp, filePath);
     } catch (error) {
       log.warn('overrides_write_failed', {
         reason: error instanceof Error ? error.name : typeof error,

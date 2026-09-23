@@ -150,6 +150,16 @@ describe('file proxy-state persistence', () => {
     expect(store.loadRoutes()).toEqual([]);
   });
 
+  // Losing proxy.json to a BOM means a new port and new route tokens: every proxied agent's
+  // cached loopback config then points at nothing, or gets a 401.
+  it('reads a file with a leading BOM', () => {
+    const file = path.join(dir, 'proxy.json');
+    fs.writeFileSync(file, `\uFEFF${JSON.stringify({ version: 1, port: 51234, routes: [route()] })}`, 'utf8');
+    const store = createProxyStateStore(createFileProxyStatePersistence(file));
+    expect(store.loadPort()).toBe(51234);
+    expect(store.loadRoutes()).toEqual([route()]);
+  });
+
   it('reads a corrupt file as an empty document rather than throwing', () => {
     const file = path.join(dir, 'proxy.json');
     fs.writeFileSync(file, '{ not json', 'utf8');

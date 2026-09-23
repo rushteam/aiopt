@@ -19,6 +19,27 @@ const provider: Provider = {
 // The credential-reference name the adapter derives from the provider id.
 const CRED_REF = 'AIOPT_P1_KEY';
 
+// dsh refuses to load `.credentials.yaml` unless it is owner-only, so the adapter writes it
+// 0600 — but a file mode is NOT ENFORCEABLE ON WINDOWS: Node's `chmod` only manipulates the
+// read-only attribute there, and 0o600 has the write bit set, so the call is a no-op and the
+// file inherits its parent's ACL. Asserting 0600 unconditionally made this suite fail on a
+// Windows runner, which (because release.yml runs the unit gate BEFORE electron-forge make)
+// meant no Windows installer could ever be produced. Both branches live here together, per
+// engineering-conventions.md §3; fsutil logs `config.mode_unenforced` when the bits do not
+// stick, so the platform gap is visible rather than silent.
+const MODE_IS_ENFORCEABLE = process.platform !== 'win32';
+
+function expectOwnerOnly(file: string): void {
+  if (MODE_IS_ENFORCEABLE) {
+    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    return;
+  }
+  // Windows: assert what the platform CAN promise — the file was written and is readable by
+  // its owner. Confidentiality here rests on the `%USERPROFILE%` ACL, not on these bits.
+  expect(fs.existsSync(file)).toBe(true);
+  expect(fs.statSync(file).mode & 0o400).toBe(0o400);
+}
+
 let home: string;
 let prevHome: string | undefined;
 
@@ -86,7 +107,7 @@ describe('dsh adapter — writeLive', () => {
 
   it('writes .credentials.yaml owner-only (0600) so dsh will load it', () => {
     createDshAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-o' });
-    expect(fs.statSync(credsFile()).mode & 0o777).toBe(0o600);
+    expectOwnerOnly(credsFile());
   });
 
   it('maps each accepted apiFormat to the right dsh api', () => {
@@ -158,7 +179,7 @@ describe('dsh adapter — restoreDefault', () => {
     adapter.restoreDefault();
     expect(fs.readFileSync(settingsFile(), 'utf8')).toBe('llm-pi-ai:\n  providers: {}\n');
     expect(fs.readFileSync(credsFile(), 'utf8')).toBe('version: 1\nrefs:\n  KEEP: v\n');
-    expect(fs.statSync(credsFile()).mode & 0o777).toBe(0o600); // owner-only preserved on restore
+    expectOwnerOnly(credsFile()); // owner-only preserved on restore (where the platform can)
     expect(fs.existsSync(settingsFile() + AGENT_BACKUP_SUFFIX)).toBe(false);
     expect(fs.existsSync(credsFile() + AGENT_BACKUP_SUFFIX)).toBe(false);
   });

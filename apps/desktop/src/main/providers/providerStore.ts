@@ -8,6 +8,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renameSyncWithRetry } from '../fsRetry';
+import { readUtf8WithoutBom } from '../storeFile';
 import {
   AGENT_IDS,
   API_FORMATS,
@@ -196,7 +198,7 @@ export function createFileProviderPersistence(filePath: string): ProviderPersist
   return {
     load() {
       try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+        return JSON.parse(readUtf8WithoutBom(filePath)) as unknown;
       } catch {
         return {};
       }
@@ -207,7 +209,7 @@ export function createFileProviderPersistence(filePath: string): ProviderPersist
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       try {
         fs.writeFileSync(tmp, contents, 'utf8');
-        fs.renameSync(tmp, filePath);
+        renameSyncWithRetry(tmp, filePath);
       } catch (err) {
         try {
           fs.unlinkSync(tmp);

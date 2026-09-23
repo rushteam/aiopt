@@ -87,6 +87,28 @@ describe('claude adapter — writeLive', () => {
     });
   });
 
+  // Same assertions as the merge above, with a BOM on the front of the user's file. `JSON.parse`
+  // THROWS on a leading U+FEFF, and readJsonObject fails open to `{}` — so without the strip,
+  // binding an agent replaced the whole file with only AiOpt's keys and said nothing. A BOM is a
+  // routine Windows artifact: PowerShell 5.1's `>`, `Out-File` and `Set-Content` all write one.
+  it('merges into a settings file that carries a BOM, instead of discarding it', () => {
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(
+      settingsFile(),
+      `\uFEFF${JSON.stringify({
+        theme: 'dark',
+        env: { MY_OWN_VAR: 'keep-me' },
+      })}`,
+      'utf8',
+    );
+    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    const settings = readSettings();
+    expect(settings.theme).toBe('dark');
+    expect((settings.env as Record<string, unknown>).MY_OWN_VAR).toBe('keep-me');
+    // And the rewrite does not carry the BOM forward.
+    expect(fs.readFileSync(settingsFile(), 'utf8').startsWith('\uFEFF')).toBe(false);
+  });
+
   it('deletes a stale AUTH_TOKEN when no key is provided', () => {
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
     fs.writeFileSync(

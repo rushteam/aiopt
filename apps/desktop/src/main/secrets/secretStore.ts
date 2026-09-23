@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { throwIpcError } from '../ipc/validate';
+import { writeFileAtomicSync } from '../storeFile';
 
 // Storage keys become `.enc` FILE NAMES, so they must not contain path
 // separators or `.` — a key like `../../evil` would escape the secrets dir.
@@ -69,8 +70,10 @@ export function createSecretStore(dir: string, cryptor: SecretCryptor): SecretSt
       if (!cryptor.isEncryptionAvailable()) {
         throwIpcError('PRECONDITION_FAILED', 'OS secret encryption is unavailable');
       }
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(file, cryptor.encryptString(plaintext));
+      // Atomic: an in-place write interrupted by a crash or a full disk left truncated
+      // ciphertext, which `get()` cannot decrypt and so reports as absent — the key was lost
+      // silently. Encrypt first, so the temp file only ever holds ciphertext.
+      writeFileAtomicSync(file, cryptor.encryptString(plaintext));
     },
 
     get(key) {

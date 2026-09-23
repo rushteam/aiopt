@@ -11,6 +11,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renameSyncWithRetry } from '../fsRetry';
+import { readUtf8WithoutBom } from '../storeFile';
 import { API_FORMATS, type ApiFormat } from '../../shared/aiProviders';
 import {
   aggregateUsage,
@@ -141,7 +143,7 @@ export function createFileUsagePersistence(filePath: string): UsagePersistence {
     load() {
       let text: string;
       try {
-        text = fs.readFileSync(filePath, 'utf8');
+        text = readUtf8WithoutBom(filePath);
       } catch {
         return [];
       }
@@ -166,7 +168,7 @@ export function createFileUsagePersistence(filePath: string): UsagePersistence {
       const contents = events.map((e) => JSON.stringify(e)).join('\n') + (events.length > 0 ? '\n' : '');
       try {
         fs.writeFileSync(tmp, contents, 'utf8');
-        fs.renameSync(tmp, filePath);
+        renameSyncWithRetry(tmp, filePath);
       } catch (err) {
         try {
           fs.unlinkSync(tmp);

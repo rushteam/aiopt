@@ -13,6 +13,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renameSyncWithRetry, rmrfSyncWithRetry } from '../fsRetry';
 import { throwIpcError } from '../ipc/validate';
 import {
   SKILL_MAX_BYTES,
@@ -71,7 +72,7 @@ export interface SkillsFs {
  */
 export function parseSkillFrontmatter(text: string): SkillMeta | null {
   // Normalise newlines; a BOM would break the opening fence match.
-  const src = text.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const src = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
   if (!src.startsWith('---\n')) return null;
   const end = src.indexOf('\n---', 4);
   if (end === -1) return null;
@@ -285,14 +286,14 @@ export function createNodeSkillsFs(): SkillsFs {
       try {
         copyFiles(srcDir, tmp, rels);
         const dstExists = statType(dstDir) !== null;
-        if (dstExists) fs.renameSync(dstDir, old);
+        if (dstExists) renameSyncWithRetry(dstDir, old);
         try {
-          fs.renameSync(tmp, dstDir);
+          renameSyncWithRetry(tmp, dstDir);
         } catch (err) {
           // Roll back: restore the previous dst if we moved it aside.
           if (dstExists && statType(dstDir) === null) {
             try {
-              fs.renameSync(old, dstDir);
+              renameSyncWithRetry(old, dstDir);
             } catch {
               /* best effort */
             }
@@ -335,13 +336,13 @@ export function createNodeSkillsFs(): SkillsFs {
           }
         }
         const dstExists = statType(centralDir) !== null;
-        if (dstExists) fs.renameSync(centralDir, old);
+        if (dstExists) renameSyncWithRetry(centralDir, old);
         try {
-          fs.renameSync(tmp, centralDir);
+          renameSyncWithRetry(tmp, centralDir);
         } catch (err) {
           if (dstExists && statType(centralDir) === null) {
             try {
-              fs.renameSync(old, centralDir);
+              renameSyncWithRetry(old, centralDir);
             } catch {
               /* best effort */
             }
@@ -361,9 +362,15 @@ export function createNodeSkillsFs(): SkillsFs {
   };
 }
 
-/** `rm -rf` that tolerates absence. */
+/**
+ * `rm -rf` that tolerates absence, and retries a directory another process has open — an
+ * Explorer window, an agent CLI, or an antivirus scan, all of which surface as EBUSY/EPERM on
+ * Windows and clear on their own. Without the retry a push/pull/merge could fail at the final
+ * `rmrf(old)` AFTER the swap already succeeded, reporting failure for an operation that worked
+ * and leaving a `.<name>.aiopt-old` directory behind that nothing lists or cleans up.
+ */
 function rmrf(target: string): void {
-  fs.rmSync(target, { recursive: true, force: true });
+  rmrfSyncWithRetry(target);
 }
 
 /**

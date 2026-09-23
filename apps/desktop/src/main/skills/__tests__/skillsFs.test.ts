@@ -40,6 +40,27 @@ function codeOf(fn: () => void): string {
   throw new Error('expected the call to throw a coded error');
 }
 
+// Creating a symlink needs SeCreateSymbolicLinkPrivilege on Windows — an unelevated process
+// without Developer Mode gets EPERM from `fs.symlinkSync` itself. The four tests below exercise
+// real guards (skillsFs REFUSES symlinks rather than following them), so they are kept and the
+// SETUP is probed instead: where the OS will not let the test build its fixture, it says so and
+// skips rather than erroring out. That mattered because release.yml runs the unit gate before
+// `electron-forge make`, so a setup error on the Windows runner blocked the Windows installer.
+const CAN_SYMLINK = ((): boolean => {
+  const probe = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-symlink-probe-'));
+  try {
+    fs.symlinkSync(probe, path.join(probe, 'link'));
+    return true;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(probe, { recursive: true, force: true });
+  }
+})();
+
+/** `it`, unless this host cannot create the symlink the test needs to set itself up. */
+const itWithSymlink = CAN_SYMLINK ? it : it.skip;
+
 describe('parseSkillFrontmatter', () => {
   it('extracts name and description', () => {
     const meta = parseSkillFrontmatter('---\nname: code-review\ndescription: Reviews code\n---\n# body\n');
@@ -117,7 +138,7 @@ describe('measure', () => {
     expect(skfs.measure(dir).modifiedAt).toBe(newer.getTime());
   });
 
-  it('refuses a symlink inside the skill', () => {
+  itWithSymlink('refuses a symlink inside the skill', () => {
     const dir = makeSkill(root, 's', '---\nname: s\n---\n');
     fs.symlinkSync(os.homedir(), path.join(dir, 'link'));
     expect(codeOf(() => skfs.measure(dir))).toBe('PERMISSION_DENIED');
@@ -187,7 +208,28 @@ describe('replaceDir', () => {
     expect(fs.existsSync(path.join(dst, 'old.txt'))).toBe(false); // replaced, not merged
   });
 
-  it('refuses a source containing a symlink and leaves the destination untouched', () => {
+  // Windows MAX_PATH is 260 chars for the ANSI APIs, and `replaceDir` makes the path it writes
+  // through LONGER than the final one: the staging directory is `.<base>.aiopt-tmp`, adding 15
+  // chars to every path beneath it. So a deep tree that fits at its destination can still
+  // overflow while being staged — the copy fails after the source was already validated.
+  //
+  // This asserts the deep-nesting copy works, which is the portable half of the property. It
+  // does NOT prove the Windows limit is respected: this host is macOS/Linux, where PATH_MAX is
+  // 1024+ and the assertion passes for the wrong reason. Node opts into long paths by prefixing
+  // `\\?\` internally, and Windows 10 1607+ with LongPathsEnabled lifts the limit process-wide,
+  // but neither is verified here. Treat a MAX_PATH bug report as still open until run on Windows.
+  it('copies a deeply nested tree, including through the longer staging path', () => {
+    const deepRel = Array.from({ length: 12 }, (_, i) => `nested-segment-${i}`).join('/');
+    const src = makeSkill(root, 'src', '---\nname: s\n---\n', { [`${deepRel}/leaf.txt`]: 'deep' });
+    const dst = path.join(root, 'dest', 's');
+    skfs.replaceDir(src, dst);
+    const leaf = path.join(dst, ...deepRel.split('/'), 'leaf.txt');
+    expect(fs.readFileSync(leaf, 'utf8')).toBe('deep');
+    // The staging and aside directories are cleaned up, not left beside the destination.
+    expect(fs.readdirSync(path.dirname(dst)).filter((n) => n.includes('aiopt-'))).toEqual([]);
+  });
+
+  itWithSymlink('refuses a source containing a symlink and leaves the destination untouched', () => {
     const src = makeSkill(root, 'src', '---\nname: s\n---\n');
     fs.symlinkSync(os.homedir(), path.join(src, 'escape'));
     const dst = makeSkill(root, 'dst', '---\nname: keep\n---\n');
@@ -240,9 +282,14 @@ describe('readTextFile', () => {
     expect(codeOf(() => skfs.readTextFile(dir, '../escape.txt', CAP))).toBe('PERMISSION_DENIED');
   });
 
-  it('refuses a symlinked file', () => {
+  itWithSymlink('refuses a symlinked file', () => {
     const dir = makeSkill(root, 's', '---\nname: s\n---\n');
-    fs.symlinkSync('/etc/hosts', path.join(dir, 'link.txt'));
+    // The target is a file the test creates, not `/etc/hosts`: the guard refuses on the link
+    // itself, so the target only has to exist somewhere outside the skill directory, and a
+    // POSIX system path is not that on Windows.
+    const outside = path.join(root, 'outside.txt');
+    fs.writeFileSync(outside, 'secret');
+    fs.symlinkSync(outside, path.join(dir, 'link.txt'));
     expect(codeOf(() => skfs.readTextFile(dir, 'link.txt', CAP))).toBe('PERMISSION_DENIED');
   });
 });
@@ -278,7 +325,7 @@ describe('mergeInto', () => {
     expect(fs.readFileSync(path.join(central, 'mod.txt'), 'utf8')).toBe('central');
   });
 
-  it('refuses a symlink on the agent side and leaves central intact', () => {
+  itWithSymlink('refuses a symlink on the agent side and leaves central intact', () => {
     const central = makeSkill(root, 'c', '---\nname: x\n---\n', { 'keep.txt': 'K' });
     const agent = makeSkill(root, 'a', '---\nname: x\n---\n', { 'mod.txt': 'agent' });
     fs.symlinkSync(os.homedir(), path.join(agent, 'escape'));

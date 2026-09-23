@@ -11,11 +11,10 @@
 // persistence adapter below takes a plain path, and tests can inject an
 // in-memory adapter instead.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import type { LanguagePreference, PreferencesShape, ThemePreference } from '../../shared/ipc-channels';
 import type { SkillsLibraryLocation } from '../../shared/skills';
 import { throwIpcError } from '../ipc/validate';
+import { readUtf8WithoutBom, writeFileAtomicSync } from '../storeFile';
 
 interface PreferenceDef<K extends keyof PreferencesShape> {
   default: PreferencesShape[K];
@@ -173,14 +172,15 @@ export function createConfigStore(persistence: PreferencePersistence): ConfigSto
 /**
  * File-backed persistence for the overrides blob. Node-only (no Electron), so it
  * is testable against a tmp dir; production points it at
- * `userData/preferences.json` (see main/paths.ts). A missing or corrupt file
- * reads as "no overrides" rather than throwing.
+ * `userData/preferences.json` (see main/paths.ts). Writes are atomic (temp+rename) and
+ * a leading BOM is ignored (see storeFile.ts); a missing or corrupt file reads as "no
+ * overrides" rather than throwing.
  */
 export function createFilePreferencePersistence(filePath: string): PreferencePersistence {
   return {
     load() {
       try {
-        const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const parsed: unknown = JSON.parse(readUtf8WithoutBom(filePath));
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           return parsed as Record<string, unknown>;
         }
@@ -190,8 +190,7 @@ export function createFilePreferencePersistence(filePath: string): PreferencePer
       return {};
     },
     save(overrides) {
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, `${JSON.stringify(overrides, null, 2)}\n`, 'utf8');
+      writeFileAtomicSync(filePath, `${JSON.stringify(overrides, null, 2)}\n`);
     },
   };
 }
