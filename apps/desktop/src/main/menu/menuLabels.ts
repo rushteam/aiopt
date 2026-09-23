@@ -4,8 +4,12 @@
 // table — see __tests__/menuLabels.test.ts). Keep every user-visible menu string
 // here, one entry per supported locale.
 
-/** Locales this menu is translated into. Mirror i18n/glossary.json `locales`. */
-export type MenuLocale = 'en' | 'zh-CN';
+/**
+ * Locales this menu is translated into. Mirrors i18n/glossary.json `locales`, which is
+ * in turn the set the renderer ships — a user who can pick 日本語 in Settings should not
+ * get an English menu bar for it.
+ */
+export type MenuLocale = 'en' | 'zh-CN' | 'ja' | 'ko' | 'fr' | 'de' | 'es';
 
 export interface MenuLabels {
   /** Top-level submenu titles. */
@@ -55,11 +59,107 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     about: '关于',
     quit: '退出',
   },
+  ja: {
+    file: 'ファイル',
+    edit: '編集',
+    view: '表示',
+    window: 'ウインドウ',
+    help: 'ヘルプ',
+    settings: '設定…',
+    showWindow: 'AiOpt を表示',
+    usage: '使用状況',
+    skills: 'スキル',
+    checkForUpdates: '更新を確認…',
+    about: 'このアプリについて',
+    quit: '終了',
+  },
+  ko: {
+    file: '파일',
+    edit: '편집',
+    view: '보기',
+    window: '윈도우',
+    help: '도움말',
+    settings: '설정…',
+    showWindow: 'AiOpt 표시',
+    usage: '사용량',
+    skills: '스킬',
+    checkForUpdates: '업데이트 확인…',
+    about: '정보',
+    quit: '종료',
+  },
+  fr: {
+    file: 'Fichier',
+    edit: 'Édition',
+    view: 'Présentation',
+    window: 'Fenêtre',
+    help: 'Aide',
+    settings: 'Réglages…',
+    showWindow: 'Afficher AiOpt',
+    usage: 'Utilisation',
+    skills: 'Compétences',
+    checkForUpdates: 'Rechercher des mises à jour…',
+    about: 'À propos',
+    quit: 'Quitter',
+  },
+  de: {
+    file: 'Datei',
+    edit: 'Bearbeiten',
+    view: 'Darstellung',
+    window: 'Fenster',
+    help: 'Hilfe',
+    settings: 'Einstellungen…',
+    showWindow: 'AiOpt anzeigen',
+    usage: 'Nutzung',
+    skills: 'Skills',
+    checkForUpdates: 'Nach Updates suchen…',
+    about: 'Über',
+    quit: 'Beenden',
+  },
+  es: {
+    file: 'Archivo',
+    edit: 'Edición',
+    view: 'Visualización',
+    window: 'Ventana',
+    help: 'Ayuda',
+    settings: 'Ajustes…',
+    showWindow: 'Mostrar AiOpt',
+    usage: 'Uso',
+    skills: 'Habilidades',
+    checkForUpdates: 'Buscar actualizaciones…',
+    about: 'Acerca de',
+    quit: 'Salir',
+  },
 };
 
-/** Map an Electron `app.getLocale()` string to a supported menu locale. */
+// Prefix → locale, first match wins. Deliberately the same entries in the same order as
+// the renderer's LOCALE_BY_PREFIX (renderer/i18n/index.tsx), because the menu bar and the
+// window beneath it must not disagree about what a locale string means; keep the two in
+// step when either gains a locale.
+//
+// Every prefix is a bare language subtag, so `zh-Hant` resolves to zh-CN — we ship only
+// Simplified, and a Traditional user is better served by Chinese menus than by English
+// ones. Add a `zh-Hant` entry BEFORE `zh` if that locale is ever added.
+const MENU_LOCALE_BY_PREFIX: ReadonlyArray<readonly [string, MenuLocale]> = [
+  ['zh', 'zh-CN'],
+  ['ja', 'ja'],
+  ['ko', 'ko'],
+  ['fr', 'fr'],
+  ['de', 'de'],
+  ['es', 'es'],
+  ['en', 'en'],
+];
+
+/**
+ * Map an Electron `app.getLocale()` string (or a stored preference) to a supported menu
+ * locale, matching on the language subtag so `de-AT` lands on `de`. Anything unmatched
+ * falls back to `en` — the source locale, and the only safe default for an unknown tag.
+ */
 export function resolveMenuLocale(locale: string): MenuLocale {
-  return locale.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
+  const lower = locale.toLowerCase();
+  for (const [prefix, menuLocale] of MENU_LOCALE_BY_PREFIX) {
+    if (lower.startsWith(prefix)) return menuLocale;
+  }
+  return 'en';
 }
 
 /**
