@@ -185,12 +185,12 @@
       "unbound": "Not configured",
       "change": "Change",
       "viewConfig": "View config",
-      "hideConfig": "Hide config",
       "copyProxyConfig": "Copy proxy config",
       "copied": "Copied",
       "restoreDefault": "Restore default",
       "restoreConfirm": "Restore this agent's config to before AiOpt?",
       "configView": {
+        "title": "Config",
         "installDir": "Config directory",
         "apiFormat": "API format",
         "mode": "Write mode",

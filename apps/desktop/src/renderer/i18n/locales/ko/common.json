@@ -185,12 +185,12 @@
       "unbound": "구성 안 됨",
       "change": "변경",
       "viewConfig": "설정 보기",
-      "hideConfig": "설정 숨기기",
       "copyProxyConfig": "프록시 구성 복사",
       "copied": "복사됨",
       "restoreDefault": "기본값 복원",
       "restoreConfirm": "이 에이전트의 구성을 AiOpt 적용 전으로 복원할까요?",
       "configView": {
+        "title": "설정",
         "installDir": "설정 디렉터리",
         "apiFormat": "API 형식",
         "mode": "쓰기 방식",

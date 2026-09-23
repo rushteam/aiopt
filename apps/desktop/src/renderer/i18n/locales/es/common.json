@@ -185,12 +185,12 @@
       "unbound": "Sin configurar",
       "change": "Cambiar",
       "viewConfig": "Ver configuración",
-      "hideConfig": "Ocultar configuración",
       "copyProxyConfig": "Copiar configuración del proxy",
       "copied": "Copiado",
       "restoreDefault": "Restaurar valores predeterminados",
       "restoreConfirm": "¿Restaurar la configuración de este agente a como estaba antes de AiOpt?",
       "configView": {
+        "title": "Configuración",
         "installDir": "Directorio de configuración",
         "apiFormat": "Formato de API",
         "mode": "Modo de escritura",

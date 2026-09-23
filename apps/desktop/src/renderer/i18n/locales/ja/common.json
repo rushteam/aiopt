@@ -185,12 +185,12 @@
       "unbound": "未設定",
       "change": "変更",
       "viewConfig": "設定を表示",
-      "hideConfig": "設定を隠す",
       "copyProxyConfig": "プロキシ設定をコピー",
       "copied": "コピーしました",
       "restoreDefault": "デフォルトに戻す",
       "restoreConfirm": "このエージェントの設定を AiOpt 導入前の状態に戻しますか？",
       "configView": {
+        "title": "設定",
         "installDir": "設定ディレクトリ",
         "apiFormat": "API 形式",
         "mode": "書き込み方式",

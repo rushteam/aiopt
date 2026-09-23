@@ -15,13 +15,15 @@ import { AgentCard } from './AgentCard';
 import { ProxyControlBar } from './ProxyControlBar';
 import { ProviderCard } from './ProviderCard';
 import { BindingPicker } from './BindingPicker';
+import { AgentConfigDialog } from './AgentConfigDialog';
 import { ProviderFormDialog } from './ProviderFormDialog';
 
 type Dialog =
   | { kind: 'none' }
   | { kind: 'add' }
   | { kind: 'edit'; provider: ProviderSummary }
-  | { kind: 'bind'; agent: AgentSummary };
+  | { kind: 'bind'; agent: AgentSummary }
+  | { kind: 'config'; agent: AgentSummary };
 
 export function ProvidersHome() {
   const t = useT();
@@ -56,6 +58,7 @@ export function ProvidersHome() {
                 agent={agent}
                 providers={providers}
                 onChange={() => setDialog({ kind: 'bind', agent })}
+                onViewConfig={() => setDialog({ kind: 'config', agent })}
               />
             ))}
           </div>
@@ -93,6 +96,14 @@ export function ProvidersHome() {
       {dialog.kind === 'edit' && <ProviderFormDialog provider={dialog.provider} onClose={close} />}
       {dialog.kind === 'bind' && (
         <BindingPicker agent={dialog.agent} providers={providers} onClose={close} />
+      )}
+      {/* Re-read from the live snapshot, not the captured agent: the dialog shows which
+          files exist, and a providersChanged push (a binding write, say) must reach it. */}
+      {dialog.kind === 'config' && (
+        <AgentConfigDialog
+          agent={agents.find((a) => a.id === dialog.agent.id) ?? dialog.agent}
+          onClose={close}
+        />
       )}
     </div>
   );

@@ -185,12 +185,12 @@
       "unbound": "未配置",
       "change": "更改",
       "viewConfig": "查看配置",
-      "hideConfig": "收起配置",
       "copyProxyConfig": "复制代理配置",
       "copied": "已复制",
       "restoreDefault": "恢复默认",
       "restoreConfirm": "恢复该 Agent 到 AiOpt 接管前的配置？",
       "configView": {
+        "title": "配置",
         "installDir": "配置目录",
         "apiFormat": "接口格式",
         "mode": "写入方式",
