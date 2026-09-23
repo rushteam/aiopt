@@ -180,7 +180,6 @@
       "confirmYes": "Eliminar"
     },
     "agent": {
-      "installed": "Instalado",
       "notInstalled": "No detectado",
       "unbound": "Sin configurar",
       "change": "Cambiar",

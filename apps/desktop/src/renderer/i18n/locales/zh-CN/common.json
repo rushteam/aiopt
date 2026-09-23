@@ -180,7 +180,6 @@
       "confirmYes": "确认删除"
     },
     "agent": {
-      "installed": "已安装",
       "notInstalled": "未检测到",
       "unbound": "未配置",
       "change": "更改",

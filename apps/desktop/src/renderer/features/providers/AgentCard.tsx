@@ -53,11 +53,19 @@ export function AgentCard({
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
         <strong style={{ fontSize: fontSize.lg }}>{agent.name}</strong>
-        <span style={{ ...statusBadgeStyle, color: agent.installed ? token('text') : token('textMuted') }}>
-          {agent.installed ? t('providers.agent.installed') : t('providers.agent.notInstalled')}
-        </span>
+        {/* Only the EXCEPTION gets a badge. Installed is the normal case — on a typical
+            machine it was 7 of 8 cards, so badging it spent the row's attention on the
+            unremarkable and left the one not-detected agent needing to be read to be
+            found. No badge now means "fine"; a badge means "look at this". */}
+        {!agent.installed && (
+          <span style={notInstalledBadgeStyle}>{t('providers.agent.notInstalled')}</span>
+        )}
       </div>
-      <p style={metaStyle}>
+      {/* Bound vs unbound is the card's whole point, so the two states are not the same
+          weight: a binding reads at full `text`, while "not configured" stays muted. They
+          were both muted 13px, which rendered the screen's most important distinction as
+          its least visible one. */}
+      <p style={bound ? boundStyle : metaStyle}>
         {bound
           ? `${bound.name} · ${agent.binding?.modelId ?? ''}`
           : t('providers.agent.unbound')}
@@ -110,14 +118,19 @@ const cardStyle = {
 
 const metaStyle = { margin: 0, fontSize: fontSize.base, color: token('textMuted') } as const;
 
-// Install status as a pill, matching ProviderCard's format badge so both cards in the
-// Agents grid speak one status language. Color (not shape) carries the meaning: installed
-// reads at full `text`, not-detected recedes to `textMuted`.
-const statusBadgeStyle = {
+// The bound provider+model — the card's primary content, so full `text` weight.
+const boundStyle = { margin: 0, fontSize: fontSize.base, color: token('text') } as const;
+
+// Shown ONLY when an agent isn't detected. A pill like ProviderCard's format badge so the
+// two cards speak one status language, but `textMuted` on a plain ground: it flags
+// something to notice, not something wrong — the agent may simply not be installed yet.
+const notInstalledBadgeStyle = {
   fontSize: fontSize.xs,
   padding: '2px 8px',
   borderRadius: radius.pill,
   border: `1px solid ${token('border')}`,
+  color: token('textMuted'),
+  whiteSpace: 'nowrap',
 } as const;
 
 const actionStyle = {

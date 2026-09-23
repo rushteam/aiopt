@@ -180,7 +180,6 @@
       "confirmYes": "삭제"
     },
     "agent": {
-      "installed": "설치됨",
       "notInstalled": "감지되지 않음",
       "unbound": "구성 안 됨",
       "change": "변경",

@@ -180,7 +180,6 @@
       "confirmYes": "削除"
     },
     "agent": {
-      "installed": "インストール済み",
       "notInstalled": "検出されません",
       "unbound": "未設定",
       "change": "変更",
