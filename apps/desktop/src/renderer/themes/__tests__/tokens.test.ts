@@ -101,6 +101,33 @@ describe('contrast (WCAG)', () => {
     }
   });
 
+  // `accent` is used BOTH ways — as a fill under `accentText` (primary button, segmented
+  // control, active nav row) and as text itself (active tab, selected settings row) — so
+  // it has to clear 4.5:1 in both directions. It is also the token a "do this" control
+  // wears, which makes a near-miss here the most expensive kind: the one element drawn
+  // to be looked at is the one that fails. Its original #2f6bff sat at 4.50:1 under white
+  // and 4.16:1 as text on a card.
+  it('accent clears 4.5:1 as a fill under accentText AND as text on every ground', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const fill of ['accent', 'accentHover'] as const) {
+        const onFill = contrast(TOKENS.accentText[mode], TOKENS[fill][mode]);
+        expect(onFill, `accentText on ${fill} (${mode}) = ${onFill.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+          const asText = contrast(TOKENS[fill][mode], TOKENS[ground][mode]);
+          expect(asText, `${fill} as text on ${ground} (${mode}) = ${asText.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  // One emphasis hue: a focused control and an active one must not read as two different
+  // blues. Keeping them equal is also why the focus ring inherits accent's contrast proof.
+  it('focusRing is the same hue as accent', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      expect(TOKENS.focusRing[mode], `focusRing (${mode})`).toBe(TOKENS.accent[mode]);
+    }
+  });
+
   // 1.4.3 Contrast (Minimum) for the text tokens actually used as body/secondary copy.
   it('text and textMuted clear 4.5:1 on every surface they are set on', () => {
     for (const mode of ['light', 'dark'] as const) {

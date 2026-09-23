@@ -31,10 +31,17 @@ export const TOKENS = {
   // (light 3.47:1 on surfaceHover, dark 3.28:1), so the ring never drops below the bar
   // in any state. Never use this for a divider; never use `border` on a control.
   borderStrong: { light: '#787d86', dark: '#757b84' },
-  accent: { light: '#2f6bff', dark: '#5b8bff' },
+  // The one emphasis color: a filled primary button, an active tab, a selected nav row.
+  // It has to clear 4.5:1 BOTH WAYS — as a fill under `accentText`, and as text itself on
+  // bg/surface/surfaceHover — because the app uses it for both. The hue is unchanged
+  // (222.7°, the original blue); only its value/saturation came down, because the original
+  // #2f6bff was 4.50:1 under white and 4.16:1 as text on a card — a hair under AA at the
+  // very place the eye is meant to land. Now 5.47:1 filled, 4.58:1 as text at its worst
+  // ground. tokens.test.ts holds both directions.
+  accent: { light: '#295fe3', dark: '#84a5f5' },
   // Hover state for a filled accent control. Darker in light mode, lighter in dark
   // — a hovered control moves AWAY from the page background in either mode.
-  accentHover: { light: '#2559db', dark: '#7aa2ff' },
+  accentHover: { light: '#1f4dc2', dark: '#a8c0fb' },
   accentText: { light: '#ffffff', dark: '#0d1117' },
   danger: { light: '#c8362f', dark: '#f06962' },
   // Hover state for a filled danger control (same move-away logic as accentHover).
@@ -42,7 +49,8 @@ export const TOKENS = {
   // Positive / healthy state — the running-proxy status dot. Slightly brighter in
   // dark mode so the small dot reads against the darker surface.
   success: { light: '#2ea043', dark: '#3fb950' },
-  focusRing: { light: '#2f6bff', dark: '#5b8bff' },
+  // Tracks `accent` — one emphasis hue, so a focused control and an active one agree.
+  focusRing: { light: '#295fe3', dark: '#84a5f5' },
   // Modal scrim. A dark panel on a dark page needs a heavier scrim to separate
   // from the surface behind it, so dark is deeper than light.
   overlay: { light: 'rgba(0,0,0,0.45)', dark: 'rgba(0,0,0,0.6)' },
