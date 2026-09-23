@@ -63,7 +63,10 @@ export function AgentCard({
           : t('providers.agent.unbound')}
       </p>
 
-      <div style={{ display: 'flex', gap: space.md }}>
+      {/* Wraps rather than compressing: with the proxy action present, three labels
+          exceed the card's inner width in EVERY locale (German is ~1.8x it), and a
+          flex row without this squeezes them until the text breaks mid-word. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.md }}>
         <button
           type="button"
           onClick={onChange}
@@ -125,4 +128,7 @@ const actionStyle = {
   color: token('text'),
   cursor: 'pointer',
   fontSize: fontSize.base,
+  // Keep each label on one line: wrapping moves a whole button to the next row,
+  // which is the intent — a button that breaks its own text mid-word is not.
+  whiteSpace: 'nowrap',
 } as const;
