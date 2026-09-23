@@ -147,6 +147,88 @@ describe('provider IPC — payload validation', () => {
   });
 });
 
+describe('provider IPC — dropRequestFields (strict: an unknown name is refused)', () => {
+  // Unlike the store's load path, which tolerates a stale file, a live request naming a
+  // field we do not recognize means the renderer and main disagree about the allowlist. The
+  // user must learn their choice did not land rather than have it silently discarded.
+  it('accepts allowlisted names and stores them in canonical order', async () => {
+    const { reg } = harness();
+    const snap = (await reg.invoke(
+      IPC_CHANNELS.providersAdd,
+      { ...addPayload, dropRequestFields: ['seed', 'store'] },
+      trusted,
+    )) as ProvidersSnapshot;
+    expect(snap.providers[0]!.dropRequestFields).toEqual(['store', 'seed']);
+  });
+
+  it('refuses an unknown field name with INVALID_PARAMS and stores nothing', async () => {
+    const { reg, secrets } = harness();
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersAdd, { ...addPayload, dropRequestFields: ['nope'] }, trusted),
+      ),
+    ).toBe('INVALID_PARAMS');
+    expect(secrets.raw.size).toBe(0);
+  });
+
+  it('refuses a structural capability field even though it is a real request field', async () => {
+    const { reg } = harness();
+    for (const field of ['tools', 'tool_choice', 'messages', 'model']) {
+      expect(
+        await codeOf(() =>
+          reg.invoke(IPC_CHANNELS.providersAdd, { ...addPayload, dropRequestFields: [field] }, trusted),
+        ),
+      ).toBe('INVALID_PARAMS');
+    }
+  });
+
+  it('refuses a non-array and a non-string entry with INVALID_PARAMS', async () => {
+    const { reg } = harness();
+    for (const raw of ['store', 42, {}, ['store', 7], [null]]) {
+      expect(
+        await codeOf(() =>
+          reg.invoke(IPC_CHANNELS.providersAdd, { ...addPayload, dropRequestFields: raw }, trusted),
+        ),
+      ).toBe('INVALID_PARAMS');
+    }
+  });
+
+  it('omitting the key on update leaves the stored set unchanged', async () => {
+    const { reg } = harness();
+    const added = (await reg.invoke(
+      IPC_CHANNELS.providersAdd,
+      { ...addPayload, dropRequestFields: ['store'] },
+      trusted,
+    )) as ProvidersSnapshot;
+    const id = added.providers[0]!.id;
+    const snap = (await reg.invoke(
+      IPC_CHANNELS.providersUpdate,
+      { id, name: 'Renamed' },
+      trusted,
+    )) as ProvidersSnapshot;
+    expect(snap.providers[0]!.name).toBe('Renamed');
+    expect(snap.providers[0]!.dropRequestFields).toEqual(['store']);
+  });
+
+  it('an empty array on update CLEARS the stored set', async () => {
+    const { reg } = harness();
+    const added = (await reg.invoke(
+      IPC_CHANNELS.providersAdd,
+      { ...addPayload, dropRequestFields: ['store'] },
+      trusted,
+    )) as ProvidersSnapshot;
+    const id = added.providers[0]!.id;
+    const snap = (await reg.invoke(
+      IPC_CHANNELS.providersUpdate,
+      { id, dropRequestFields: [] },
+      trusted,
+    )) as ProvidersSnapshot;
+    // Undefined, not []: clearing must reach the same state as never having configured it,
+    // or the UI would show "nothing stripped" while the record still carried a marker.
+    expect(snap.providers[0]!.dropRequestFields).toBeUndefined();
+  });
+});
+
 describe('provider IPC — flows never leak the key', () => {
   it('add returns a snapshot with hasKey and no plaintext', async () => {
     const { reg, secrets } = harness();

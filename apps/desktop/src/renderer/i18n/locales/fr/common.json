@@ -146,7 +146,8 @@
       "models": "Modèles",
       "modelId": "ID du modèle",
       "modelAlias": "Alias",
-      "notes": "Notes"
+      "notes": "Notes",
+      "dropRequestFields": "Compatibilité amont"
     },
     "form": {
       "addTitle": "Ajouter un fournisseur",
@@ -168,7 +169,17 @@
       "saving": "Enregistrement…",
       "showKey": "Afficher",
       "hideKey": "Masquer",
-      "keySavedHidden": "Une clé est enregistrée · masquée par sécurité. Laissez vide pour la conserver, ou saisissez-en une pour la remplacer."
+      "keySavedHidden": "Une clé est enregistrée · masquée par sécurité. Laissez vide pour la conserver, ou saisissez-en une pour la remplacer.",
+      "dropNone": "Aucun paramètre retiré",
+      "dropHint": "Certains services amont rejettent une requête portant un paramètre qu'ils ne reconnaissent pas, au lieu de l'ignorer — en général une passerelle devant un backend strict. Choisissez les paramètres à retirer avant qu'AiOpt ne transmette une requête à ce fournisseur.",
+      "dropGroup": {
+        "safe": "Retrait sans risque",
+        "sensitive": "Modifie la réponse"
+      },
+      "dropGroupHint": {
+        "safe": "Paramètres de suivi et d'acheminement. Les retirer ne change pas la réponse du modèle.",
+        "sensitive": "Les retirer change ce qui revient : sans response_format, un JSON garanti devient du texte libre ; sans thinking ni reasoning, le modèle est discrètement dégradé. À utiliser uniquement si le service amont les refuse."
+      }
     },
     "card": {
       "models": "Modèles",
@@ -180,17 +191,17 @@
       "confirmYes": "Supprimer"
     },
     "agent": {
-      "installed": "Installé",
       "notInstalled": "Non détecté",
       "unbound": "Non configuré",
+      "configure": "Configurer",
       "change": "Modifier",
       "viewConfig": "Voir la configuration",
-      "hideConfig": "Masquer la configuration",
       "copyProxyConfig": "Copier la config du proxy",
       "copied": "Copié",
       "restoreDefault": "Rétablir les valeurs par défaut",
       "restoreConfirm": "Rétablir la config de cet agent telle qu’avant AiOpt ?",
       "configView": {
+        "title": "Configuration",
         "installDir": "Répertoire de configuration",
         "apiFormat": "Format d’API",
         "mode": "Mode d’écriture",

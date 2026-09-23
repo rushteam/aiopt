@@ -180,6 +180,53 @@ describe('provider store — load validation (fail-closed)', () => {
   });
 });
 
+describe('provider store — dropRequestFields on load (tolerant, allowlisted)', () => {
+  // The load path is deliberately TOLERANT where the IPC path is strict: a stale or
+  // hand-edited file must never wedge startup, so a bad entry is discarded rather than
+  // thrown on. What it must not do is widen the allowlist.
+  function withDropFields(raw: unknown) {
+    return createProviderStore(memoryPersistence({ providers: [{ ...sample, dropRequestFields: raw }] }));
+  }
+
+  it('keeps allowlisted names, in canonical order', () => {
+    expect(withDropFields(['seed', 'store']).getProvider('p1')?.dropRequestFields).toEqual([
+      'store',
+      'seed',
+    ]);
+  });
+
+  it('discards a name that is not on the allowlist', () => {
+    // `tools` is absent from the allowlist on purpose — a hand-edited file must not be able
+    // to make the proxy strip an agent's tool definitions.
+    expect(withDropFields(['tools', 'store']).getProvider('p1')?.dropRequestFields).toEqual(['store']);
+  });
+
+  it('omits the key entirely when nothing survives validation', () => {
+    for (const raw of [[], ['tools'], ['', '   '], [1, null, {}], 'store', null]) {
+      const provider = withDropFields(raw).getProvider('p1');
+      // Absent, not an empty array: "nothing to strip" has one representation on disk.
+      expect(provider).not.toBeNull();
+      expect(provider).not.toHaveProperty('dropRequestFields');
+    }
+  });
+
+  it('keeps a string entry while discarding non-string neighbours', () => {
+    expect(withDropFields(['store', 42, null, 'seed']).getProvider('p1')?.dropRequestFields).toEqual([
+      'store',
+      'seed',
+    ]);
+  });
+
+  it('round-trips through persistence unchanged', () => {
+    const persistence = memoryPersistence();
+    const store = createProviderStore(persistence);
+    store.addProvider({ ...sample, dropRequestFields: ['store', 'response_format'] });
+    expect(persistence.saved?.providers[0]?.dropRequestFields).toEqual(['store', 'response_format']);
+    const reopened = createProviderStore(memoryPersistence(persistence.saved));
+    expect(reopened.getProvider('p1')?.dropRequestFields).toEqual(['store', 'response_format']);
+  });
+});
+
 describe('file provider persistence', () => {
   let dir: string;
 

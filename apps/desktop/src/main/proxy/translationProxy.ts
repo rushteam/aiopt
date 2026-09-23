@@ -34,6 +34,7 @@ import {
 } from './router';
 import type { ProxyStateStore } from './proxyStore';
 import { outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
+import { sanitizeOutboundBody } from './sanitize';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage } from './usageSniffer';
 import type { UsageEventInput } from '../../shared/usageStats';
@@ -63,6 +64,14 @@ export interface TranslationProxyDeps {
   fetchImpl: ProxyFetch;
   /** Resolve a provider's real upstream key, main-side, at request time. */
   getKey: (providerId: string) => string | null;
+  /**
+   * Resolve a provider's configured `dropRequestFields` (see sanitize.ts) at request time,
+   * the same way `getKey` resolves its key — read live from the provider record rather than
+   * frozen into the route, so editing a provider takes effect on the NEXT request without
+   * rebinding the agent or rotating its token. Optional: absent (or returning undefined)
+   * means strip nothing, which is the default for every provider.
+   */
+  getDropFields?: (providerId: string) => readonly string[] | undefined;
   /**
    * Record one upstream attempt (counts + identifiers only; the store stamps `ts`).
    * Optional so existing constructors/tests need not supply it. Never throws into the
@@ -295,7 +304,19 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       }
 
       const tf = transformsFor(spec);
-      const outboundBody = tf.translateRequest(parsed, spec.modelId);
+      const translatedRequest = tf.translateRequest(parsed, spec.modelId);
+      // Strip whatever fields THIS provider's upstream is configured to reject (see
+      // sanitize.ts). Runs after translation so a cross-format route sanitizes the body
+      // that actually goes on the wire, and so the translators' explicit refusal of an
+      // untranslatable field still happens first. Field NAMES only in the log — values
+      // can be arbitrary user content.
+      const { body: outboundBody, dropped } = sanitizeOutboundBody(
+        translatedRequest,
+        deps.getDropFields?.(spec.providerId),
+      );
+      if (dropped.length > 0) {
+        logger.info('proxy.request_sanitized', { path: rest, fields: dropped });
+      }
       const wantsStream = (outboundBody as { stream?: unknown }).stream === true;
 
       // OpenAI Chat streaming omits `usage` unless the request opts in. Inject the standard

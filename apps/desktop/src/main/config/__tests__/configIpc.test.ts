@@ -20,20 +20,34 @@ function memoryPersistence(seed: Record<string, unknown> = {}): PreferencePersis
   return { load: () => ({ ...store }), save: (o) => { store = { ...o }; } };
 }
 
-/** Register config IPC over a fresh in-memory registry; capture broadcasts + proxy-mode hook calls. */
+/** Register config IPC over a fresh in-memory registry; capture broadcasts + side-effect hook calls. */
 function harness(seed: Record<string, unknown> = {}): {
   reg: InMemoryIpcRegistry;
   broadcasts: Array<{ channel: string; payload: unknown }>;
   proxyModeCalls: boolean[];
+  languageCalls: number;
 } {
   const reg = createInMemoryRegistry();
   const broadcasts: Array<{ channel: string; payload: unknown }> = [];
   const broadcast: BroadcastFn = (channel, payload) => broadcasts.push({ channel, payload });
   const proxyModeCalls: boolean[] = [];
+  const counters = { languageCalls: 0 };
   registerConfigIpc(reg, createConfigStore(memoryPersistence(seed)), broadcast, {
     onProxyModeChange: (v) => proxyModeCalls.push(v),
+    onLanguageChange: () => {
+      counters.languageCalls += 1;
+    },
   });
-  return { reg, broadcasts, proxyModeCalls };
+  // `languageCalls` is read after the invocation, so expose the live counter via a getter
+  // rather than a snapshot taken before the handler ever ran.
+  return {
+    reg,
+    broadcasts,
+    proxyModeCalls,
+    get languageCalls() {
+      return counters.languageCalls;
+    },
+  };
 }
 
 async function codeOf(fn: () => Promise<unknown>): Promise<IpcErrorCode> {
@@ -98,6 +112,34 @@ describe('config IPC', () => {
     const { reg, proxyModeCalls } = harness();
     await reg.invoke(IPC_CHANNELS.configSet, { key: 'theme', value: 'dark' }, trusted);
     expect(proxyModeCalls).toEqual([]);
+  });
+
+  // The native menu bar and tray are built in main, so they don't see the renderer's
+  // `config:changed`; without this hook they keep the old language until relaunch.
+  it('setting language runs the onLanguageChange hook', async () => {
+    const h = harness();
+    await h.reg.invoke(IPC_CHANNELS.configSet, { key: 'language', value: 'zh-CN' }, trusted);
+    expect(h.languageCalls).toBe(1);
+  });
+
+  it('resetting language runs the onLanguageChange hook', async () => {
+    const h = harness({ language: 'zh-CN' });
+    await h.reg.invoke(IPC_CHANNELS.configReset, { key: 'language' }, trusted);
+    expect(h.languageCalls).toBe(1);
+  });
+
+  it('changing another preference does not run the language hook', async () => {
+    const h = harness();
+    await h.reg.invoke(IPC_CHANNELS.configSet, { key: 'theme', value: 'dark' }, trusted);
+    expect(h.languageCalls).toBe(0);
+  });
+
+  it('rejects an invalid language without running the hook', async () => {
+    const h = harness();
+    expect(
+      await codeOf(() => h.reg.invoke(IPC_CHANNELS.configSet, { key: 'language', value: 'klingon' }, trusted)),
+    ).toBe('INVALID_PARAMS');
+    expect(h.languageCalls).toBe(0);
   });
 
   it('rejects a non-boolean proxyMode with INVALID_PARAMS', async () => {

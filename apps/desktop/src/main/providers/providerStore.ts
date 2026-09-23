@@ -12,6 +12,7 @@ import {
   AGENT_IDS,
   API_FORMATS,
   OFFICIAL_PROVIDER_ID_PREFIX,
+  normalizeDropFields,
   type AgentBinding,
   type AgentId,
   type ApiFormat,
@@ -76,6 +77,14 @@ function validProvider(raw: unknown): Provider | null {
     createdAt: typeof obj.createdAt === 'number' ? obj.createdAt : 0,
   };
   if (typeof obj.notes === 'string' && obj.notes.trim() !== '') provider.notes = obj.notes;
+  // Drop-fields: keep only names on the shared allowlist (normalizeDropFields discards
+  // anything else, so a hand-edited file can't make the proxy strip `tools`), and omit the
+  // key entirely when nothing survives — an empty array and "absent" mean the same thing,
+  // and not writing it keeps untouched providers' records clean.
+  if (Array.isArray(obj.dropRequestFields)) {
+    const fields = normalizeDropFields(obj.dropRequestFields.filter((f): f is string => typeof f === 'string'));
+    if (fields.length > 0) provider.dropRequestFields = fields;
+  }
   return provider;
 }
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceLocale": "en",
-  "locales": ["en", "zh-CN"],
+  "locales": ["en", "zh-CN", "ja", "ko", "fr", "de", "es"],
   "terms": [
     {
       "id": "ipc-boundary",
@@ -40,7 +40,7 @@
       "en": "Provider",
       "status": "proposed",
       "note": "An AI model source entered once into the global pool: a name, an API format, a base URL, an API key, and a model list. Reused across agents rather than re-entered per agent. Not 'vendor' or 'service' in UI copy.",
-      "translations": { "zh-CN": "供应商" },
+      "translations": { "zh-CN": "供应商", "ja": "プロバイダー", "ko": "공급자", "fr": "Fournisseur", "de": "Anbieter", "es": "Proveedor" },
       "forbidden": { "zh-CN": ["厂商", "服务商"] }
     },
     {
@@ -72,7 +72,7 @@
       "en": "OpenAI Responses",
       "status": "proposed",
       "note": "The OpenAI Responses API dialect (/responses, input/output items, reasoning items) — distinct from the older OpenAI Chat Completions dialect (labeled just 'OpenAI'). Agents that natively speak Responses (Codex, Grok) accept this format. Keep the two OpenAI dialects labeled distinctly in UI copy; do not collapse both to 'OpenAI'.",
-      "translations": { "zh-CN": "OpenAI Responses" },
+      "translations": { "zh-CN": "OpenAI Responses", "ja": "OpenAI Responses", "ko": "OpenAI Responses", "fr": "OpenAI Responses", "de": "OpenAI Responses", "es": "OpenAI Responses" },
       "forbidden": {}
     },
     {
@@ -80,7 +80,7 @@
       "en": "Skill",
       "status": "proposed",
       "note": "A reusable unit of agent capability, stored as a directory containing a SKILL.md (name + description). AiOpt keeps a central library of skills and syncs them with each agent's home skills directory. Term still under discussion.",
-      "translations": { "zh-CN": "技能" },
+      "translations": { "zh-CN": "技能", "ja": "スキル", "ko": "스킬", "fr": "Compétence", "de": "Skill", "es": "Habilidad" },
       "forbidden": {}
     },
     {
@@ -88,7 +88,7 @@
       "en": "Merge",
       "status": "proposed",
       "note": "Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.",
-      "translations": { "zh-CN": "合并" },
+      "translations": { "zh-CN": "合并", "ja": "マージ", "ko": "병합", "fr": "fusion", "de": "Zusammenführung", "es": "combinación" },
       "forbidden": {}
     },
     {
@@ -96,8 +96,16 @@
       "en": "Proxy mode",
       "status": "proposed",
       "note": "A global setting. Off (default) writes same-format bindings as a direct provider connection (one less hop, and they keep working when AiOpt isn't running) whose usage is not counted. On routes every translatable binding — same-format ones included — through the translation proxy so all token usage is counted; cross-format bindings always route through the proxy regardless. Not 'turbo', 'fast mode', or 'proxy server mode' in UI copy.",
-      "translations": { "zh-CN": "代理模式" },
+      "translations": { "zh-CN": "代理模式", "ja": "プロキシモード", "ko": "프록시 모드", "fr": "Mode proxy", "de": "Proxy-Modus", "es": "Modo proxy" },
       "forbidden": { "zh-CN": ["极速模式", "代理服务器模式", "加速模式"] }
+    },
+    {
+      "id": "upstream-compatibility",
+      "en": "Upstream compatibility",
+      "status": "proposed",
+      "note": "A per-provider setting naming the request parameters AiOpt strips from a request before forwarding it to that provider's upstream. It exists for an upstream that REJECTS an unrecognized parameter instead of ignoring it (typically a gateway in front of a strict backend). The choice is per-provider, drawn from a fixed allowlist, and split into parameters whose removal cannot change the reply and parameters whose removal can. Structural capability fields (tools, messages, model) are deliberately absent from the allowlist and must never be added. Not 'drop params', 'compatibility mode', or 'parameter filter' in UI copy. Term still under discussion.",
+      "translations": { "zh-CN": "上游兼容性", "ja": "アップストリーム互換性", "ko": "업스트림 호환성", "fr": "Compatibilité amont", "de": "Upstream-Kompatibilität", "es": "Compatibilidad con el upstream" },
+      "forbidden": { "zh-CN": ["兼容模式", "参数过滤"] }
     }
   ]
 }

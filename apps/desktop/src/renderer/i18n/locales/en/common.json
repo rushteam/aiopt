@@ -146,7 +146,8 @@
       "models": "Models",
       "modelId": "Model ID",
       "modelAlias": "Alias",
-      "notes": "Notes"
+      "notes": "Notes",
+      "dropRequestFields": "Upstream compatibility"
     },
     "form": {
       "addTitle": "Add provider",
@@ -168,7 +169,17 @@
       "saving": "Saving…",
       "showKey": "Show",
       "hideKey": "Hide",
-      "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace."
+      "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace.",
+      "dropNone": "Nothing stripped",
+      "dropHint": "Some upstreams reject a request carrying a parameter they don't recognize instead of ignoring it — a gateway in front of a strict backend is the usual cause. Pick the parameters to strip before AiOpt forwards a request to this provider.",
+      "dropGroup": {
+        "safe": "Safe to strip",
+        "sensitive": "Changes the reply"
+      },
+      "dropGroupHint": {
+        "safe": "Bookkeeping and routing hints. Removing these doesn't change the model's reply.",
+        "sensitive": "Removing these changes what comes back: without response_format, guaranteed JSON becomes free text; without thinking or reasoning, the model is quietly downgraded. Use only when the upstream rejects them outright."
+      }
     },
     "card": {
       "models": "Models",
@@ -180,17 +191,17 @@
       "confirmYes": "Delete"
     },
     "agent": {
-      "installed": "Installed",
       "notInstalled": "Not detected",
       "unbound": "Not configured",
+      "configure": "Configure",
       "change": "Change",
       "viewConfig": "View config",
-      "hideConfig": "Hide config",
       "copyProxyConfig": "Copy proxy config",
       "copied": "Copied",
       "restoreDefault": "Restore default",
       "restoreConfirm": "Restore this agent's config to before AiOpt?",
       "configView": {
+        "title": "Config",
         "installDir": "Config directory",
         "apiFormat": "API format",
         "mode": "Write mode",

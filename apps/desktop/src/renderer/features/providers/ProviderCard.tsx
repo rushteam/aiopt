@@ -122,7 +122,7 @@ function actionStyle(kind: 'ghost' | 'danger') {
   return {
     padding: '5px 12px',
     borderRadius: radius.sm,
-    border: `1px solid ${kind === 'danger' ? token('danger') : token('border')}`,
+    border: `1px solid ${kind === 'danger' ? token('danger') : token('borderStrong')}`,
     background: 'transparent',
     color: kind === 'danger' ? token('danger') : token('text'),
     cursor: 'pointer',
@@ -138,7 +138,7 @@ function deleteButtonStyle(hover: boolean) {
     gap: space.sm,
     padding: '5px 12px',
     borderRadius: radius.sm,
-    border: `1px solid ${hover ? token('danger') : token('border')}`,
+    border: `1px solid ${hover ? token('danger') : token('borderStrong')}`,
     background: hover ? token('danger') : 'transparent',
     color: hover ? token('accentText') : token('textMuted'),
     cursor: 'pointer',

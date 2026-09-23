@@ -146,7 +146,8 @@
       "models": "模型",
       "modelId": "模型 ID",
       "modelAlias": "别名",
-      "notes": "备注"
+      "notes": "备注",
+      "dropRequestFields": "上游兼容性"
     },
     "form": {
       "addTitle": "添加供应商",
@@ -168,7 +169,17 @@
       "saving": "保存中…",
       "showKey": "显示",
       "hideKey": "隐藏",
-      "keySavedHidden": "已保存密钥 · 出于安全不显示。留空保持不变，输入则替换。"
+      "keySavedHidden": "已保存密钥 · 出于安全不显示。留空保持不变，输入则替换。",
+      "dropNone": "不剥离任何参数",
+      "dropHint": "有些上游遇到不认识的参数会直接报错，而不是忽略它——通常是网关后面接了一个严格校验的后端。在这里选择 AiOpt 转发请求给该供应商之前需要剥离的参数。",
+      "dropGroup": {
+        "safe": "可安全剥离",
+        "sensitive": "会改变回复"
+      },
+      "dropGroupHint": {
+        "safe": "记账与路由类参数。剥离它们不会改变模型的回复。",
+        "sensitive": "剥离这些会改变返回内容：没有 response_format，原本保证的 JSON 会变成自由文本；没有 thinking 或 reasoning，模型会被悄悄降级。仅在上游明确拒绝时使用。"
+      }
     },
     "card": {
       "models": "模型",
@@ -180,17 +191,17 @@
       "confirmYes": "确认删除"
     },
     "agent": {
-      "installed": "已安装",
       "notInstalled": "未检测到",
       "unbound": "未配置",
+      "configure": "配置",
       "change": "更改",
       "viewConfig": "查看配置",
-      "hideConfig": "收起配置",
       "copyProxyConfig": "复制代理配置",
       "copied": "已复制",
       "restoreDefault": "恢复默认",
       "restoreConfirm": "恢复该 Agent 到 AiOpt 接管前的配置？",
       "configView": {
+        "title": "配置",
         "installDir": "配置目录",
         "apiFormat": "接口格式",
         "mode": "写入方式",

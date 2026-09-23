@@ -42,7 +42,8 @@ export function UsageHome() {
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: fontSize['3xl'] }}>{t('usage.title')}</h1>
+        {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
+        <h1 className="sr-only">{t('usage.title')}</h1>
         <p style={{ margin: '0 0 4px', color: token('textMuted'), fontSize: fontSize.md }}>
           {t('usage.subtitle')}
         </p>
@@ -226,7 +227,12 @@ function BreakdownTable({
   );
 }
 
-const sectionHeadingStyle = { margin: '0 0 12px', fontSize: fontSize.xl } as const;
+// Matches ProvidersHome: 18px/600 so a section heading outranks the content under it.
+const sectionHeadingStyle = {
+  margin: '0 0 12px',
+  fontSize: fontSize['2xl'],
+  fontWeight: 600,
+} as const;
 
 const cardGridStyle = {
   display: 'grid',
@@ -237,7 +243,7 @@ const cardGridStyle = {
 const ghostStyle = {
   padding: '8px 16px',
   borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   cursor: 'pointer',

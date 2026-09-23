@@ -112,7 +112,7 @@ const addressStyle = {
 const refreshStyle = {
   padding: '5px 12px',
   borderRadius: radius.sm,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   fontSize: fontSize.base,

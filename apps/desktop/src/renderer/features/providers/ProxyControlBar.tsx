@@ -15,7 +15,7 @@
 // never merely the switch position.
 
 import { useEffect, useState } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { token, fontSize, space } from '../../themes/tokens';
 import { useT } from '../../i18n';
 import { ProxyStatusBar } from './ProxyStatusBar';
 
@@ -60,7 +60,7 @@ export function ProxyControlBar({
   const showStatus = enabled || anyProxied;
 
   return (
-    <div style={cardStyle}>
+    <div style={barStyle}>
       <div style={rowStyle}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: fontSize.md, fontWeight: 600 }}>{t('general.proxyMode.label')}</div>
@@ -82,7 +82,7 @@ export function ProxyControlBar({
             borderRadius: 999,
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
-            background: enabled ? token('accent') : token('border'),
+            background: enabled ? token('accent') : token('borderStrong'),
             opacity: loading ? 0.5 : 1,
             transition: 'background 120ms ease',
             padding: 0,
@@ -104,8 +104,9 @@ export function ProxyControlBar({
         </button>
       </div>
 
-      {/* Cancel the bar's own bottom margin (meant for the ProvidersHome layout) so it
-          sits flush at the bottom of this card. */}
+      {/* ProxyStatusBar carries its own 12px bottom margin for callers that stack it
+          directly; this bar supplies its own spacing below the hairline, so cancel it
+          rather than let the two double up. */}
       {showStatus && (
         <div style={{ marginBottom: -space.lg }}>
           <ProxyStatusBar port={proxyPort} />
@@ -115,17 +116,32 @@ export function ProxyControlBar({
   );
 }
 
-const cardStyle = {
+// This bar GOVERNS the grid below it, but it used to read as the grid's first card: same
+// `surface` fill, same `border`, radius 8 against the cards' 10 (2px — not perceptible),
+// and a 12px gap below it identical to the grid's own row gap. Four cues said "sibling of
+// the cards" and none said "governs them".
+//
+// So it stops being a card: no fill, no box, just a hairline underneath with the page
+// background showing through, which is how a region header reads rather than an object
+// inside the region. The fill and border were the problem, not the radius.
+const barStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: space.lg,
-  padding: space.lg,
-  marginBottom: space.lg,
-  borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
-  background: token('surface'),
+  paddingBottom: space.lg,
+  // 24px below the hairline, deliberately DOUBLE the grid's 12px row gap: at 12px the
+  // distance from this bar to the first card was exactly the distance between two card
+  // rows, which is one of the cues that made it read as a grid item.
+  marginBottom: space['2xl'],
+  borderBottom: `1px solid ${token('border')}`,
 } as const;
 
+// The switch stays at the row's TRAILING EDGE, which is where every settings pane a user
+// has ever seen puts one. Pulling it in beside the label shortens the label-to-control
+// distance on paper (the column is 832px wide, so the gap is ~700px) and looks worse for
+// it: the text block running the full measure is what visually anchors the switch to the
+// end of its own row, and a switch floating 12px after a short bold label reads as
+// cramped, not as associated. Tried and reverted.
 const rowStyle = {
   display: 'flex',
   alignItems: 'flex-start',

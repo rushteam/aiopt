@@ -57,6 +57,90 @@ describe('design tokens (dual-mode gate)', () => {
   });
 });
 
+/**
+ * Relative luminance / contrast ratio per WCAG 2.x. Small enough to inline, and
+ * inlining it keeps the gate free of a dependency.
+ */
+function luminance(hex: string): number {
+  const h = hex.replace('#', '');
+  const channel = (i: number): number => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+function contrast(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+describe('contrast (WCAG)', () => {
+  // 1.4.11 Non-text Contrast: a UI component's visual boundary needs 3:1 against
+  // its adjacent background. `borderStrong` is the token that carries that job for
+  // every custom <button>/<input>/switch — those have no fill, so the outline IS
+  // the affordance. `border` is exempt: it draws dividers, which are decoration.
+  it('borderStrong clears 3:1 on every background a control can sit on', () => {
+    const grounds = ['bg', 'surface', 'surfaceHover'] as const;
+    for (const mode of ['light', 'dark'] as const) {
+      for (const ground of grounds) {
+        const ratio = contrast(TOKENS.borderStrong[mode], TOKENS[ground][mode]);
+        expect(ratio, `borderStrong on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  // The switch fills its OFF track with borderStrong and its thumb with `bg`, so the
+  // thumb-vs-track edge is what conveys on/off. It is a state indicator, so it needs
+  // the same 3:1.
+  it('the switch thumb clears 3:1 against its off track', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const ratio = contrast(TOKENS.bg[mode], TOKENS.borderStrong[mode]);
+      expect(ratio, `bg on borderStrong (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  // `accent` is used BOTH ways — as a fill under `accentText` (primary button, segmented
+  // control, active nav row) and as text itself (active tab, selected settings row) — so
+  // it has to clear 4.5:1 in both directions. It is also the token a "do this" control
+  // wears, which makes a near-miss here the most expensive kind: the one element drawn
+  // to be looked at is the one that fails. Its original #2f6bff sat at 4.50:1 under white
+  // and 4.16:1 as text on a card.
+  it('accent clears 4.5:1 as a fill under accentText AND as text on every ground', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const fill of ['accent', 'accentHover'] as const) {
+        const onFill = contrast(TOKENS.accentText[mode], TOKENS[fill][mode]);
+        expect(onFill, `accentText on ${fill} (${mode}) = ${onFill.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+          const asText = contrast(TOKENS[fill][mode], TOKENS[ground][mode]);
+          expect(asText, `${fill} as text on ${ground} (${mode}) = ${asText.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  // One emphasis hue: a focused control and an active one must not read as two different
+  // blues. Keeping them equal is also why the focus ring inherits accent's contrast proof.
+  it('focusRing is the same hue as accent', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      expect(TOKENS.focusRing[mode], `focusRing (${mode})`).toBe(TOKENS.accent[mode]);
+    }
+  });
+
+  // 1.4.3 Contrast (Minimum) for the text tokens actually used as body/secondary copy.
+  it('text and textMuted clear 4.5:1 on every surface they are set on', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const fg of ['text', 'textMuted'] as const) {
+        for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+          const ratio = contrast(TOKENS[fg][mode], TOKENS[ground][mode]);
+          expect(ratio, `${fg} on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+});
+
 describe('elevation (mode-aware depth)', () => {
   it('every elevation defines a distinct light and dark shadow', () => {
     for (const name of Object.keys(ELEVATION) as ElevationName[]) {

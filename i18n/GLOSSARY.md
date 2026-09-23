@@ -5,7 +5,7 @@
 
 Product terms with an adjudicated translation. `decided` terms are enforced (a forbidden rendering fails CI); `proposed` terms are under discussion and only warn.
 
-Source locale: `en`. Locales: `en`, `zh-CN`.
+Source locale: `en`. Locales: `en`, `zh-CN`, `ja`, `ko`, `fr`, `de`, `es`.
 
 ## Decided
 
@@ -42,6 +42,11 @@ The wire protocol a provider speaks and an agent accepts — one of anthropic, o
 Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.
 
 - **zh-CN**: 合并
+- **ja**: マージ
+- **ko**: 병합
+- **fr**: fusion
+- **de**: Zusammenführung
+- **es**: combinación
 
 ### Official provider (`official-provider`)
 
@@ -55,6 +60,11 @@ A provider AiOpt ships preconfigured (Anthropic, OpenAI, etc.), seeded into the 
 The OpenAI Responses API dialect (/responses, input/output items, reasoning items) — distinct from the older OpenAI Chat Completions dialect (labeled just 'OpenAI'). Agents that natively speak Responses (Codex, Grok) accept this format. Keep the two OpenAI dialects labeled distinctly in UI copy; do not collapse both to 'OpenAI'.
 
 - **zh-CN**: OpenAI Responses
+- **ja**: OpenAI Responses
+- **ko**: OpenAI Responses
+- **fr**: OpenAI Responses
+- **de**: OpenAI Responses
+- **es**: OpenAI Responses
 
 ### Provider (`provider`)
 
@@ -62,6 +72,11 @@ An AI model source entered once into the global pool: a name, an API format, a b
 
 - **zh-CN**: 供应商
   - forbidden: `厂商`, `服务商`
+- **ja**: プロバイダー
+- **ko**: 공급자
+- **fr**: Fournisseur
+- **de**: Anbieter
+- **es**: Proveedor
 
 ### Proxy mode (`proxy-mode`)
 
@@ -69,12 +84,22 @@ A global setting. Off (default) writes same-format bindings as a direct provider
 
 - **zh-CN**: 代理模式
   - forbidden: `极速模式`, `代理服务器模式`, `加速模式`
+- **ja**: プロキシモード
+- **ko**: 프록시 모드
+- **fr**: Mode proxy
+- **de**: Proxy-Modus
+- **es**: Modo proxy
 
 ### Skill (`skill`)
 
 A reusable unit of agent capability, stored as a directory containing a SKILL.md (name + description). AiOpt keeps a central library of skills and syncs them with each agent's home skills directory. Term still under discussion.
 
 - **zh-CN**: 技能
+- **ja**: スキル
+- **ko**: 스킬
+- **fr**: Compétence
+- **de**: Skill
+- **es**: Habilidad
 
 ### Agent (`target-agent`)
 
@@ -88,3 +113,15 @@ A target AI coding tool that AiOpt configures (Claude Code, Codex, Cursor, Gemin
 An IPC event whose origin is verified to be the app's own top-level renderer, using only fields taken from event.sender / event.senderFrame — never renderer-reported values. Term still under discussion.
 
 - **zh-CN**: 可信发送方
+
+### Upstream compatibility (`upstream-compatibility`)
+
+A per-provider setting naming the request parameters AiOpt strips from a request before forwarding it to that provider's upstream. It exists for an upstream that REJECTS an unrecognized parameter instead of ignoring it (typically a gateway in front of a strict backend). The choice is per-provider, drawn from a fixed allowlist, and split into parameters whose removal cannot change the reply and parameters whose removal can. Structural capability fields (tools, messages, model) are deliberately absent from the allowlist and must never be added. Not 'drop params', 'compatibility mode', or 'parameter filter' in UI copy. Term still under discussion.
+
+- **zh-CN**: 上游兼容性
+  - forbidden: `兼容模式`, `参数过滤`
+- **ja**: アップストリーム互換性
+- **ko**: 업스트림 호환성
+- **fr**: Compatibilité amont
+- **de**: Upstream-Kompatibilität
+- **es**: Compatibilidad con el upstream

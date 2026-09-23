@@ -223,6 +223,62 @@ export function wireModelName(model: ProviderModel): string {
   return model.alias !== undefined && model.alias !== '' ? model.alias : model.id;
 }
 
+// --- upstream compatibility: droppable request fields ----------------------
+//
+// Some upstreams reject a request outright when it carries a field they do not know,
+// instead of ignoring it. The classic case is a gateway (LiteLLM, OpenRouter, a vLLM
+// deployment) in front of a backend that validates strictly: an OpenAI-shaped client
+// sends `store`, the gateway forwards it to a Bedrock backend, and the whole call
+// 400s on a field that never mattered.
+//
+// A SAME-FORMAT proxy route forwards the body unchanged, so there is nothing between
+// the agent and that 400. `dropRequestFields` on a provider is the per-provider escape
+// hatch: name the fields this upstream chokes on and the proxy strips them on the way
+// out. It is deliberately per-provider, not global — "my gateway rejects `store`" is a
+// property of one upstream, and a blanket switch would silently change the semantics of
+// every other binding (see UNSUPPORTED_REQUEST_FIELDS in main/proxy/translate/types.ts,
+// where refusing beats silently dropping).
+
+/**
+ * Request fields a provider may be configured to drop, grouped by what dropping COSTS.
+ * The split exists because "strip a field" is not one action with one risk:
+ *
+ * - `safe` fields carry no model-visible semantics (bookkeeping, routing hints, an
+ *   already-best-effort determinism knob). Dropping one changes nothing the caller can
+ *   observe in the completion, so these are offered plainly.
+ * - `sensitive` fields DO change what comes back. Dropping `response_format` turns a
+ *   guaranteed-JSON contract into free prose, and the agent's parse failure will surface
+ *   far from the cause; dropping `thinking`/`reasoning` silently downgrades the model.
+ *   Still offered — an upstream that rejects them leaves no alternative — but the UI must
+ *   warn, and nothing may enable them implicitly.
+ *
+ * `tools` / `tool_choice` / `messages` / `model` are absent on purpose and must never be
+ * added: dropping a tool definition is a silent capability downgrade with no upper bound
+ * on the damage, and the request is meaningless without the rest.
+ */
+export const DROPPABLE_REQUEST_FIELDS = {
+  safe: ['store', 'user', 'metadata', 'seed', 'logit_bias', 'service_tier', 'prompt_cache_key'],
+  sensitive: ['response_format', 'thinking', 'reasoning', 'reasoning_effort', 'n'],
+} as const;
+
+/** Every field a provider is allowed to drop — the validation allowlist. */
+export const DROPPABLE_FIELD_NAMES: readonly string[] = [
+  ...DROPPABLE_REQUEST_FIELDS.safe,
+  ...DROPPABLE_REQUEST_FIELDS.sensitive,
+];
+
+/**
+ * Normalize an untrusted list of field names against {@link DROPPABLE_FIELD_NAMES}:
+ * trims, drops unknown names and duplicates, and returns them in allowlist order so the
+ * persisted value is canonical regardless of how the caller ordered it. Fail-closed by
+ * construction — an unrecognized name is discarded, never passed through to the strip
+ * step, so a hand-edited providers.json cannot make the proxy strip `tools`.
+ */
+export function normalizeDropFields(raw: readonly string[]): string[] {
+  const wanted = new Set(raw.map((f) => f.trim()).filter((f) => f !== ''));
+  return DROPPABLE_FIELD_NAMES.filter((f) => wanted.has(f));
+}
+
 /**
  * A provider in the global pool. The API key is deliberately absent — it is stored
  * encrypted in the main-only secret store under `main_provider_<id>_key` and never
@@ -236,6 +292,13 @@ export interface Provider {
   models: ProviderModel[];
   notes?: string;
   createdAt: number;
+  /**
+   * Request fields the proxy strips before forwarding to THIS upstream — the escape
+   * hatch for a gateway that 400s on a field it does not recognize. Always a subset of
+   * {@link DROPPABLE_FIELD_NAMES} (validated on every read and write). Absent/empty
+   * means strip nothing, which is the default for every provider.
+   */
+  dropRequestFields?: string[];
 }
 
 /**
