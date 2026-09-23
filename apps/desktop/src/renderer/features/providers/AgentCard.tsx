@@ -4,13 +4,20 @@
 // "Restore default" is no longer a button on the card — it now lives inside the picker
 // as a selectable "system default" entry (pick it, Apply, and AiOpt hands the config
 // back). So the card itself carries no destructive action.
+//
+// "View config" expands a READ-ONLY panel describing what AiOpt manages for this agent:
+// where the config lives, how it is written, and which of its managed files exist. It shows
+// STRUCTURE, never file contents — several of those files hold a plaintext API key, which
+// must not cross into the renderer (credentials-and-local-storage.md §1). Raw content is the
+// OS's job: "Reveal in file manager" hands the file to the file manager, and the renderer
+// names it by role rather than by path, so main resolves it through its own allowlist.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
-import { copyProxyConfig } from '../../lib/providerStore';
-import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
+import { copyProxyConfig, revealAgentConfig } from '../../lib/providerStore';
+import type { AgentConfigFile, AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
 
 export function AgentCard({
   agent,
@@ -23,6 +30,7 @@ export function AgentCard({
 }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clear the pending "Copied" reset on unmount so it never fires on a gone component.
@@ -41,6 +49,10 @@ export function AgentCard({
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
     copiedTimer.current = setTimeout(() => setCopied(false), 1500);
   }
+
+  // Route as the config panel states it: what this agent's requests actually do today.
+  // `proxied` is main's answer (a live route exists), so this only has to pick the wording.
+  const routeKey = !agent.binding ? 'unbound' : agent.proxied ? 'proxied' : 'direct';
 
   return (
     <div style={cardStyle}>
@@ -75,7 +87,85 @@ export function AgentCard({
             {copied ? t('providers.agent.copied') : t('providers.agent.copyProxyConfig')}
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setShowConfig((open) => !open)}
+          aria-expanded={showConfig}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={actionStyle}
+        >
+          {showConfig ? t('providers.agent.hideConfig') : t('providers.agent.viewConfig')}
+        </button>
       </div>
+
+      {showConfig && (
+        <div style={panelStyle}>
+          <ConfigRow label={t('providers.agent.configView.installDir')}>
+            <code style={pathStyle}>{agent.installDirDisplay}</code>
+          </ConfigRow>
+          <ConfigRow label={t('providers.agent.configView.apiFormat')}>
+            {agent.acceptedFormats.map((format) => t(`providers.formats.${format}`)).join(' · ')}
+          </ConfigRow>
+          <ConfigRow label={t('providers.agent.configView.mode')}>
+            {t(`providers.agent.configView.modes.${agent.mode}`)}
+          </ConfigRow>
+          <ConfigRow label={t('providers.agent.configView.route')}>
+            {t(`providers.agent.configView.routes.${routeKey}`)}
+          </ConfigRow>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs }}>
+            <span style={labelStyle}>{t('providers.agent.configView.files')}</span>
+            {agent.configFiles.length === 0 ? (
+              <span style={metaStyle}>{t('providers.agent.configView.noFiles')}</span>
+            ) : (
+              agent.configFiles.map((file) => (
+                <ConfigFileRow key={file.role} agentId={agent.id} file={file} />
+              ))
+            )}
+          </div>
+
+          <p style={hintStyle}>{t('providers.agent.configView.rawHint')}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One label + value line of the config panel. Label recedes; the value reads at full text. */
+function ConfigRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: space.md, alignItems: 'baseline' }}>
+      {/* minWidth, not a fixed width: the rows share a value edge in most locales, and a
+          long label (German "Konfigurationsverzeichnis") pushes it out rather than wrapping. */}
+      <span style={{ ...labelStyle, flex: '0 0 auto', minWidth: 116 }}>{label}</span>
+      <span style={{ fontSize: fontSize.base, color: token('text') }}>{children}</span>
+    </div>
+  );
+}
+
+/**
+ * One managed file: its display path, whether it exists, and a reveal action. Reveal is
+ * named by (agentId, role) — the `displayPath` shown here is never sent back, so a hostile
+ * renderer cannot turn this row into "open an arbitrary file". A missing file has nothing
+ * to reveal, so the action is omitted rather than shown disabled.
+ */
+function ConfigFileRow({ agentId, file }: { agentId: AgentSummary['id']; file: AgentConfigFile }) {
+  const t = useT();
+  return (
+    <div style={{ display: 'flex', gap: space.md, alignItems: 'baseline' }}>
+      <code style={pathStyle}>{file.displayPath}</code>
+      {file.exists ? (
+        <button
+          type="button"
+          onClick={() => void revealAgentConfig(agentId, file.role)}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={revealStyle}
+        >
+          {t('providers.agent.configView.reveal')}
+        </button>
+      ) : (
+        <span style={metaStyle}>{t('providers.agent.configView.fileMissing')}</span>
+      )}
     </div>
   );
 }
@@ -100,6 +190,38 @@ const statusBadgeStyle = {
   padding: '2px 8px',
   borderRadius: radius.pill,
   border: `1px solid ${token('border')}`,
+} as const;
+
+// The expanded panel sits inside the card, set apart by a top rule rather than a nested
+// box — one border is enough to say "detail of the card above" without a card-in-a-card.
+const panelStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.sm,
+  paddingTop: space.sm,
+  borderTop: `1px solid ${token('border')}`,
+} as const;
+
+const labelStyle = { fontSize: fontSize.sm, color: token('textMuted') } as const;
+
+// Monospace for on-disk paths, matching ProxyStatusBar's address: a path is a literal, and
+// a proportional font makes `~/.config/opencode` harder to read back against the real thing.
+const pathStyle = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  fontSize: fontSize.sm,
+  color: token('text'),
+} as const;
+
+const hintStyle = { margin: 0, fontSize: fontSize.sm, color: token('textMuted') } as const;
+
+const revealStyle = {
+  padding: '1px 8px',
+  borderRadius: radius.sm,
+  border: `1px solid ${token('border')}`,
+  background: 'transparent',
+  color: token('text'),
+  cursor: 'pointer',
+  fontSize: fontSize.xs,
 } as const;
 
 const actionStyle = {

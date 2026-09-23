@@ -45,7 +45,12 @@ export function registerHandlers(): void {
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());
   registerUpdateIpc(registry, getUpdateService());
-  registerProviderIpc(registry, getProviderManager());
+  registerProviderIpc(registry, getProviderManager(), {
+    // `file` is resolved MAIN-side by the manager from the agent-config allowlist; the
+    // renderer names the file by (agentId, role) and never supplies a path. showItemInFolder
+    // (not openPath) so the OS selects the file in its folder — AiOpt never reads it.
+    revealItem: (file: string) => shell.showItemInFolder(file),
+  });
   registerUsageIpc(registry, getUsageStore());
   registerSkillsIpc(registry, getSkillsStore(), {
     // The import SOURCE is chosen here in main via a native picker — never supplied

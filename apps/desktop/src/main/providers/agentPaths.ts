@@ -58,17 +58,42 @@ export function resolveAgentFile(relativePath: string): string {
   return path.join(agentHome(), relativePath);
 }
 
-/** Absolute config paths for one agent under the current home (empty if none declared). */
-export function agentConfigPaths(id: AgentId): string[] {
+/**
+ * Role → absolute path for one agent's managed config files, in spec order (empty for an
+ * agent that declares none). The role-keyed primitive {@link agentConfigPaths} and
+ * {@link resolveAgentConfigRole} are both built on: a caller names a file symbolically
+ * rather than by array index, which is what lets the renderer refer to one without a path.
+ */
+export function agentConfigFiles(id: AgentId): { role: string; path: string }[] {
   const files = AGENT_FILES[id as keyof typeof AGENT_FILES] as
     | Readonly<Record<string, string>>
     | undefined;
-  return Object.values(files ?? {}).map((rel) => resolveAgentFile(rel));
+  return Object.entries(files ?? {}).map(([role, rel]) => ({ role, path: resolveAgentFile(rel) }));
+}
+
+/** Absolute config paths for one agent under the current home (empty if none declared). */
+export function agentConfigPaths(id: AgentId): string[] {
+  return agentConfigFiles(id).map(({ path: abs }) => abs);
 }
 
 /** The directory an agent stores its config in (used for install detection). */
 export function agentConfigDir(id: AgentId): string {
   return path.join(agentHome(), AGENT_INSTALL_DIRS[id] ?? `.${id}`);
+}
+
+/**
+ * Resolve an (agentId, role) pair to an absolute config path, or null when the agent
+ * declares no such role. `role` arrives from the renderer, so the lookup is an OWN-property
+ * check: a plain `files[role]` would happily return `Object.prototype.toString` for
+ * `role: 'toString'` and hand a non-path downstream.
+ */
+export function resolveAgentConfigRole(id: AgentId, role: string): string | null {
+  const files = AGENT_FILES[id as keyof typeof AGENT_FILES] as
+    | Readonly<Record<string, string>>
+    | undefined;
+  if (!files || !Object.hasOwn(files, role)) return null;
+  const rel = files[role];
+  return typeof rel === 'string' ? resolveAgentFile(rel) : null;
 }
 
 /** Every allowlisted config path across all declared agents, for the current home. */

@@ -32,7 +32,24 @@ function requireModels(raw: unknown): ProviderModel[] {
   });
 }
 
-export function registerProviderIpc(registry: IpcHandlerRegistry, manager: ProviderManager): void {
+/** Injected boundary-crossing effects, so the handlers unit-test without Electron. */
+export interface ProviderIpcDeps {
+  /**
+   * Show an absolute file in the OS file manager (Electron `shell.showItemInFolder`). The
+   * path is always one the MANAGER resolved from the agent-config allowlist — never a value
+   * the renderer supplied.
+   */
+  revealItem: (file: string) => void;
+}
+
+/** No-op effects, so a caller that doesn't use reveal need not supply one. */
+const NO_DEPS: ProviderIpcDeps = { revealItem: () => {} };
+
+export function registerProviderIpc(
+  registry: IpcHandlerRegistry,
+  manager: ProviderManager,
+  deps: ProviderIpcDeps = NO_DEPS,
+): void {
   registry.register(IPC_CHANNELS.providersList, (_payload, meta) => {
     meta.assertTrustedSender();
     return manager.getSnapshot();
@@ -128,5 +145,19 @@ export function registerProviderIpc(registry: IpcHandlerRegistry, manager: Provi
   registry.register(IPC_CHANNELS.providersRefreshProxyPort, (_payload, meta) => {
     meta.assertTrustedSender();
     return manager.refreshProxyPort();
+  });
+
+  // Open one of an agent's config files in the OS file manager. The renderer sends only
+  // SYMBOLIC coordinates (agentId + role) — no path — and the manager maps them through the
+  // agent-config allowlist, so this cannot be pointed at an arbitrary file. Nothing is read:
+  // those files hold plaintext secrets, and handing raw viewing to the OS is exactly how we
+  // keep them out of the preload and the renderer (credentials-and-local-storage.md §1).
+  registry.register(IPC_CHANNELS.providersRevealConfig, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const agentId = requireEnum(obj.agentId, AGENT_IDS, 'agentId');
+    const role = requireString(obj.role, 'role');
+    deps.revealItem(manager.resolveConfigRevealPath(agentId, role));
+    return {};
   });
 }

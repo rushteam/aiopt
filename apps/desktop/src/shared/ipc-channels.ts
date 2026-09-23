@@ -98,6 +98,15 @@ export const IPC_CHANNELS = {
   // with another process. The port is not a secret (it already sits in each agent's config);
   // the result carries only the new port, and the fresh snapshot arrives via providersChanged.
   providersRefreshProxyPort: 'providers:refresh-proxy-port',
+  // Open one of an agent's managed config files in the OS file manager, so the user can
+  // read the RAW file in their own editor. The renderer names it by SYMBOLIC coordinates
+  // (agentId + role) only — never a path: main resolves the path from the agent-config
+  // allowlist itself and re-checks it before revealing, so a hostile renderer cannot point
+  // this at an arbitrary file. Deliberately the ONLY way to see raw config content: those
+  // files hold plaintext secrets (codex/auth.json, gemini/.env, dsh/.credentials.yaml) and
+  // credentials-and-local-storage.md §1 forbids them transiting the preload or the renderer,
+  // so AiOpt shows STRUCTURE over IPC and hands raw viewing to the OS.
+  providersRevealConfig: 'providers:reveal-config',
 
   // Usage statistics. Read the aggregated snapshot of proxied traffic, or clear the
   // history. The recorded events carry only counts + identifiers (never content, keys,
@@ -425,6 +434,27 @@ export interface ProviderSummary {
   hasKey: boolean;
 }
 
+/**
+ * One managed config file of an agent, as the renderer sees it: METADATA ONLY.
+ *
+ * Deliberately no content field, not even a redacted one. Several of these files hold a
+ * plaintext secret (`codex/auth.json`, `gemini/.env`, `dsh/.credentials.yaml`), and
+ * credentials-and-local-storage.md §1 forbids a secret transiting the preload or the
+ * renderer — a redactor that misses one field leaks a key, so the content simply never
+ * crosses. Raw viewing goes through `providersRevealConfig`, where the OS opens the file.
+ */
+export interface AgentConfigFile {
+  /** The file's role in the agent's spec (`settings`, `auth`, `config`, `credentials`, …). */
+  role: string;
+  /**
+   * Home-shortened path for DISPLAY (`~/.codex/auth.json`). Never sent back to main —
+   * reveal names the file by (agentId, role), so this string is not a capability.
+   */
+  displayPath: string;
+  /** Whether the file exists on disk right now. */
+  exists: boolean;
+}
+
 /** A target agent as the renderer sees it: its definition plus live status. */
 export interface AgentSummary {
   id: AgentId;
@@ -439,6 +469,17 @@ export interface AgentSummary {
    * "copy proxy config". Never carries the token itself.
    */
   proxied: boolean;
+  /**
+   * The directory whose existence signals the agent is installed, home-shortened for
+   * display (`~/.claude`). Display only, like {@link AgentConfigFile.displayPath}.
+   */
+  installDirDisplay: string;
+  /**
+   * The agent's managed config files — metadata only (see {@link AgentConfigFile}). This
+   * is exactly the agent's slice of the write allowlist, so the config view shows the same
+   * files AiOpt is willing to touch, and nothing else.
+   */
+  configFiles: AgentConfigFile[];
 }
 
 /** The full renderer-visible view of the pool + agents. */
@@ -548,6 +589,17 @@ export interface ProviderCopyProxyConfigResult {
  */
 export interface ProviderRefreshProxyPortResult {
   port: number;
+}
+
+/**
+ * Reveal one of an agent's managed config files in the OS file manager. SYMBOLIC
+ * coordinates only: main maps (agentId, role) to a path through the agent-config
+ * allowlist, so the renderer never supplies — and cannot forge — a path.
+ */
+export interface ProviderRevealConfigRequest {
+  agentId: AgentId;
+  /** A role key from the agent's spec `files` map (see `AgentConfigFile.role`). */
+  role: string;
 }
 
 // --- Skills wire contract -------------------------------------------------
@@ -661,6 +713,10 @@ export interface IpcContract {
   [IPC_CHANNELS.providersRefreshProxyPort]: {
     request: void;
     result: ProviderRefreshProxyPortResult;
+  };
+  [IPC_CHANNELS.providersRevealConfig]: {
+    request: ProviderRevealConfigRequest;
+    result: Record<string, never>;
   };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };

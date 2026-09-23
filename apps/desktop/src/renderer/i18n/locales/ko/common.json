@@ -184,10 +184,32 @@
       "notInstalled": "감지되지 않음",
       "unbound": "구성 안 됨",
       "change": "변경",
+      "viewConfig": "설정 보기",
+      "hideConfig": "설정 숨기기",
       "copyProxyConfig": "프록시 구성 복사",
       "copied": "복사됨",
       "restoreDefault": "기본값 복원",
-      "restoreConfirm": "이 에이전트의 구성을 AiOpt 적용 전으로 복원할까요?"
+      "restoreConfirm": "이 에이전트의 구성을 AiOpt 적용 전으로 복원할까요?",
+      "configView": {
+        "installDir": "설정 디렉터리",
+        "apiFormat": "API 형식",
+        "mode": "쓰기 방식",
+        "modes": {
+          "exclusive": "독점 — 현재 활성 공급자를 덮어씀",
+          "additive": "추가 — 공급자를 모두 유지하고 기본값만 변경"
+        },
+        "route": "연결 경로",
+        "routes": {
+          "direct": "공급자에 직접 연결",
+          "proxied": "로컬 프록시 경유",
+          "unbound": "연결된 공급자 없음"
+        },
+        "files": "관리 대상 파일",
+        "fileMissing": "아직 생성되지 않음",
+        "reveal": "파일 관리자에서 보기",
+        "noFiles": "이 Agent에는 AiOpt가 관리하는 설정 파일이 없습니다.",
+        "rawHint": "AiOpt는 관리하는 항목만 보여 주며 파일 내용은 읽지 않습니다 — 일부 파일은 API 키를 평문으로 담고 있습니다. 내용을 보려면 파일을 열어 사용하던 편집기에서 확인하세요."
+      }
     },
     "binding": {
       "title": "공급자 선택",

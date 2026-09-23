@@ -31,6 +31,8 @@ import { logger } from '../logger';
 import type { AgentAdapter } from './adapters/agentAdapter';
 import { fetchProviderModels, type FetchLike } from './modelCatalog';
 import type { ProviderStore } from './providerStore';
+import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
+import { describeAgentConfig } from './agentConfigView';
 import type { TranslationProxy } from '../proxy/translationProxy';
 
 /** Main-only secret key holding one provider's API key. */
@@ -95,6 +97,14 @@ export interface ProviderManager {
    * each agent's config). A copied config for an EXTERNAL tool must be re-copied afterwards.
    */
   refreshProxyPort(): Promise<{ port: number }>;
+  /**
+   * Resolve one of an agent's managed config files to an absolute path, for the CALLER to
+   * open in the OS file manager. Symbolic in, path out: the (agentId, role) pair is mapped
+   * through the agent-config allowlist and re-checked against it, so a role the agent does
+   * not declare — or anything that somehow resolved outside the allowlist — is refused
+   * rather than revealed. Throws NOT_FOUND / PERMISSION_DENIED; never reads the file.
+   */
+  resolveConfigRevealPath(agentId: AgentId, role: string): string;
 }
 
 export function createProviderManager(
@@ -155,6 +165,11 @@ export function createProviderManager(
         // True only when a live loopback route exists (proxied binding), so the renderer
         // can offer "copy proxy config". Never exposes the token itself.
         proxied: getProxy().isRouted(def.id),
+        // Where this agent's config lives + which of its managed files exist. Metadata
+        // only — no file CONTENT crosses IPC, not even redacted (see agentConfigView).
+        // It rides this existing snapshot rather than a channel of its own, so the config
+        // panel refreshes on the same providersChanged push as everything else.
+        ...describeAgentConfig(def.id),
       })),
     };
   }
@@ -418,6 +433,21 @@ export function createProviderManager(
       // Push the new port (and any re-synced state) to every window.
       announce();
       return { port };
+    },
+
+    resolveConfigRevealPath(agentId, role) {
+      // `role` is renderer input, so it is resolved through the allowlist rather than
+      // trusted: an undeclared role has no path at all, and the resolved path is checked
+      // against the allowlist a second time before it leaves this function. Two layers on
+      // purpose — the map lookup is the intent, the allowlist check is the invariant.
+      const target = resolveAgentConfigRole(agentId, role);
+      if (target === null) {
+        throwIpcError('NOT_FOUND', `agent ${agentId} declares no config file for role: ${role}`);
+      }
+      if (!isAllowedAgentConfigPath(target)) {
+        throwIpcError('PERMISSION_DENIED', 'refusing to reveal outside the agent config allowlist');
+      }
+      return target;
     },
   };
 }
