@@ -256,6 +256,15 @@ describe('file provider persistence', () => {
     expect(createProviderStore(createFileProviderPersistence(file)).listProviders()).toEqual([]);
   });
 
+  // A BOM made the load fail open to an empty document: every provider and binding vanished.
+  it('reads a file with a leading BOM', () => {
+    const file = path.join(dir, 'providers.json');
+    const store = createProviderStore(createFileProviderPersistence(file));
+    store.addProvider(sample);
+    fs.writeFileSync(file, `\uFEFF${fs.readFileSync(file, 'utf8')}`, 'utf8');
+    expect(createProviderStore(createFileProviderPersistence(file)).getProvider('p1')).toEqual(sample);
+  });
+
   it('reads a corrupt file as an empty document rather than throwing', () => {
     const file = path.join(dir, 'providers.json');
     fs.writeFileSync(file, '{ not json', 'utf8');

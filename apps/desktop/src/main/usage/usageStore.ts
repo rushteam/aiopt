@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { renameSyncWithRetry } from '../fsRetry';
+import { readUtf8WithoutBom } from '../storeFile';
 import { API_FORMATS, type ApiFormat } from '../../shared/aiProviders';
 import {
   aggregateUsage,
@@ -142,7 +143,7 @@ export function createFileUsagePersistence(filePath: string): UsagePersistence {
     load() {
       let text: string;
       try {
-        text = fs.readFileSync(filePath, 'utf8');
+        text = readUtf8WithoutBom(filePath);
       } catch {
         return [];
       }

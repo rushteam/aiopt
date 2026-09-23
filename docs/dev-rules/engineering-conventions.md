@@ -61,11 +61,17 @@ so a macOS or Linux runner can assert the Windows semantics.
   milliseconds. Use `main/fsRetry.ts` (`renameSyncWithRetry`, `rmrfSyncWithRetry`) rather than a
   bare call — including in a rollback `catch`, which needs it most. `MoveFileEx`'s
   `REPLACE_EXISTING` does not work for **directories**, so a directory swap must move the old one
-  aside first (see `skills/skillsFs.ts` `replaceDir`).
+  aside first (see `skills/skillsFs.ts` `replaceDir`). A new userData file store writes through
+  `main/storeFile.ts` `writeFileAtomicSync`. An in-place `writeFileSync` is never acceptable for
+  source-of-truth data: a crash or a full disk leaves a truncated file, and a store that fails
+  open on a bad read then drops the user's data silently. For `secrets/*.enc`, that data is the
+  provider key.
 - Strip a BOM before `JSON.parse`. It **throws** on a leading U+FEFF, and a config file a user
   edited in a Windows editor can carry one — with a read-modify-write store that means the parse
   failure is treated as "no config" and the user's other settings are overwritten. (`yaml`'s
-  `parseDocument` tolerates a BOM, so the YAML adapters are unaffected.)
+  `parseDocument` tolerates a BOM, so the YAML adapters are unaffected.) userData stores read
+  through `main/storeFile.ts` `readUtf8WithoutBom`; agent config files go through
+  `providers/fsutil.ts` `readJsonObject`.
 - `mode: 0o600` is a **no-op on Windows**. Node's `chmod` only toggles the FAT-era read-only
   attribute, `0o600` has the write bit set, and `mkdir`'s `mode` is ignored outright;
   `statSync().mode & 0o777` reports a synthesised `0o666`. Confidentiality there rests on the

@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { renameSyncWithRetry } from '../fsRetry';
+import { readUtf8WithoutBom } from '../storeFile';
 
 import {
   comboToElectronAccelerator,
@@ -147,7 +148,7 @@ export class AppShortcutStore {
     if (this.overrides) return this.overrides;
     const filePath = this.options.getFilePath();
     try {
-      const raw = fs.readFileSync(filePath, 'utf-8');
+      const raw = readUtf8WithoutBom(filePath);
       const parsed = JSON.parse(raw) as unknown;
       const overridesRaw =
         parsed && typeof parsed === 'object'

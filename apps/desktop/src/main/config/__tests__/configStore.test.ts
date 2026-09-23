@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -117,6 +117,25 @@ describe('file preference persistence', () => {
     const file = path.join(dir, 'does-not-exist.json');
     const store = createConfigStore(createFilePreferencePersistence(file));
     expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+  });
+
+  // A BOM (Notepad, PowerShell 5.1) made JSON.parse throw, so every override silently reset.
+  it('reads a file with a leading BOM', () => {
+    const file = path.join(dir, 'preferences.json');
+    fs.writeFileSync(file, '\uFEFF{"theme":"light"}\n', 'utf8');
+    expect(createConfigStore(createFilePreferencePersistence(file)).get('theme')).toBe('light');
+  });
+
+  it('keeps the previous file when a save fails before it commits', () => {
+    const file = path.join(dir, 'preferences.json');
+    const store = createConfigStore(createFilePreferencePersistence(file));
+    store.set('theme', 'light');
+    vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' });
+    });
+    expect(() => store.set('theme', 'dark')).toThrow(/ENOSPC/);
+    vi.restoreAllMocks();
+    expect(createConfigStore(createFilePreferencePersistence(file)).get('theme')).toBe('light');
   });
 
   it('reads a corrupt file as no overrides rather than throwing', () => {
