@@ -69,6 +69,12 @@ jobs:
       - name: i18n glossary gate
         run: pnpm check:i18n-glossary
 
+      # Keeps the two manifests from drifting apart while nobody is releasing. No tag is in
+      # scope on a PR or a push to main, so this is the manifests-agree half of the gate;
+      # release.yml runs the same script with the tag.
+      - name: Version consistency
+        run: pnpm check:version
+
       # The local self-check mirroring the DCO App. Pull requests only: the script
       # derives its range from the pull_request payload, and a push to main has no
       # such payload (its commits were already checked on the PR that introduced them).

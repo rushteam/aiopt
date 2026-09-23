@@ -63,3 +63,30 @@ Rank findings so attention goes where it matters:
 - **P2 — optional:** style, naming, minor simplification.
 
 Do not report a P0/P1 you haven't actually reproduced or traced; state confidence honestly.
+
+## 6. Releasing (version + tag)
+
+`release.yml` builds installers on all three platforms when a `v*` tag is pushed, and attaches
+them to a **draft** GitHub Release for a human to review and publish. It is a download channel,
+not an auto-update feed — see `updater.md`.
+
+The version lives in two manifests, `package.json` and `apps/desktop/package.json`, and they
+must agree with each other and with the tag. Electron reads the packaged
+`apps/desktop/package.json` for installer filenames and for the `app.getVersion()` the About
+page shows; it never reads the tag. So a tag that disagrees produces a Release whose name and
+whose contents state different versions, and the build itself cannot tell.
+
+`pnpm check:version` enforces this. CI runs it on every PR (manifests agree), and `release.yml`
+runs it before building (tag matches too), so the mismatch fails the run instead of shipping.
+
+To release:
+
+1. Bump the version in both manifests, commit (signed off), and land it through a PR.
+2. `pnpm check:version --tag v<version>` — the same check the release run will do.
+3. Tag the merge commit on `main` and push the tag: `git tag -a v<version> -m '…' && git push
+   origin v<version>`.
+4. Review the draft Release's assets, then publish it.
+
+Builds are **unsigned** — macOS Gatekeeper and Windows SmartScreen warn on first launch. Signing
+is a follow-up that plugs into the `make` step via secrets; until then, say so wherever the
+download is offered.
