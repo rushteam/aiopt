@@ -122,7 +122,7 @@ const actionsStyle: CSSProperties = {
 const ghostStyle: CSSProperties = {
   padding: '6px 14px',
   borderRadius: radius.sm,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   fontSize: fontSize.base,

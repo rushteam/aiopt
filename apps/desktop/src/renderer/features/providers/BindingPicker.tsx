@@ -550,7 +550,7 @@ function modelRowStyle(active: boolean) {
     textAlign: 'left',
     padding: '7px 10px',
     borderRadius: radius.md,
-    border: `1px solid ${active ? token('accent') : token('border')}`,
+    border: `1px solid ${active ? token('accent') : token('borderStrong')}`,
     background: active ? token('accent') : 'transparent',
     color: active ? token('accentText') : token('text'),
     cursor: 'pointer',
@@ -561,7 +561,7 @@ function modelRowStyle(active: boolean) {
 const searchStyle = {
   padding: '6px 10px',
   borderRadius: radius.sm,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: token('surface'),
   color: token('text'),
   fontSize: fontSize.base,
@@ -578,7 +578,7 @@ const badgeStyle = {
 const useDefaultStyle = {
   padding: '4px 12px',
   borderRadius: radius.pill,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   cursor: 'pointer',
@@ -588,7 +588,7 @@ const useDefaultStyle = {
 const closeStyle = {
   padding: '8px 16px',
   borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   cursor: 'pointer',

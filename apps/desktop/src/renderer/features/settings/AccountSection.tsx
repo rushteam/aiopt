@@ -111,7 +111,7 @@ const fieldStyle = {
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: radius.sm,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: token('surface'),
   color: token('text'),
   fontSize: fontSize.md,

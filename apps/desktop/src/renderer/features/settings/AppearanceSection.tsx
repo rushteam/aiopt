@@ -42,7 +42,7 @@ export function AppearanceSection() {
                 fontSize: fontSize.md,
                 color: selected ? token('accentText') : token('text'),
                 background: selected ? token('accent') : token('surface'),
-                border: `1px solid ${selected ? token('accent') : token('border')}`,
+                border: `1px solid ${selected ? token('accent') : token('borderStrong')}`,
               }}
             >
               {t(`appearance.${option}`)}

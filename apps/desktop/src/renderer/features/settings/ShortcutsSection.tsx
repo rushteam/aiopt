@@ -272,7 +272,7 @@ function comboStyle(): CSSProperties {
     fontSize: fontSize.base,
     padding: '2px 8px',
     borderRadius: radius.sm,
-    border: `1px solid ${token('border')}`,
+    border: `1px solid ${token('borderStrong')}`,
     background: token('bg'),
     color: token('text'),
     whiteSpace: 'nowrap',
@@ -283,7 +283,7 @@ function ghostButtonStyle(): CSSProperties {
   return {
     padding: '4px 10px',
     borderRadius: radius.sm,
-    border: `1px solid ${token('border')}`,
+    border: `1px solid ${token('borderStrong')}`,
     background: 'transparent',
     color: token('text'),
     cursor: 'pointer',

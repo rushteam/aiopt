@@ -50,7 +50,7 @@ export function UpdateSection() {
         style={{
           padding: '8px 16px',
           borderRadius: radius.md,
-          border: `1px solid ${token('border')}`,
+          border: `1px solid ${token('borderStrong')}`,
           background: token('surface'),
           color: token('text'),
           cursor: checking ? 'default' : 'pointer',

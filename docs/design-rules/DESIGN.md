@@ -18,6 +18,19 @@ gate.
   **semantic tokens** (what components use). Components touch only the semantic tier, so a
   palette change re-themes the app without touching components.
 
+### 1.1 A control's outline is not a divider
+
+- `border` draws **dividers** — hairlines that group. They are decoration, so WCAG
+  1.4.11 does not apply and they are deliberately low-contrast (~1.3:1).
+- `borderStrong` draws a **control's boundary** — button, input, `<select>`, switch track.
+  WCAG 1.4.11 requires **3:1** against the adjacent background. This app's buttons are
+  custom `<button>`s with no fill and body-colored text, so that outline is the *only*
+  signal the thing is clickable; `border` on a control makes it invisible.
+- The same 3:1 applies to a **state indicator** — the switch thumb against its off track.
+- Both are enforced by `renderer/themes/__tests__/tokens.test.ts`, which computes the
+  ratios against every background a control can sit on (`bg` / `surface` / `surfaceHover`).
+  A new token whose contrast job matters belongs in that test, not only in a comment.
+
 ## 2. Dual-mode is a delivery gate, not a follow-up
 
 - **Every UI change must implement both light and dark.** All colors go through semantic tokens
@@ -45,6 +58,7 @@ gate.
 ## Delivery checklist
 
 1. Does every color/space/radius come from a semantic token (no raw values)?
+   And does every control outline use `borderStrong`, not `border` (§1.1)?
 2. Do both light and dark have a real value for every token this change introduces?
 3. If you couldn't visually check both modes, did you say which one you didn't verify?
 4. Is all new copy i18n'd and glossary-clean?

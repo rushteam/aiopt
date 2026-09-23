@@ -21,7 +21,16 @@ export const TOKENS = {
   surfaceHover: { light: '#e9ebef', dark: '#282c34' },
   text: { light: '#1a1c20', dark: '#e8eaed' },
   textMuted: { light: '#5c6370', dark: '#9aa0aa' },
+  // Separator / divider lines — hairlines whose job is to group, not to be read.
+  // Deliberately low-contrast (~1.3:1); WCAG 1.4.11 does not apply to decoration.
   border: { light: '#d8dbe0', dark: '#2f333b' },
+  // A CONTROL's outline (button, input, switch track). WCAG 1.4.11 requires 3:1 for
+  // the visual boundary of a UI component, and `border` at ~1.28:1 is nowhere near it
+  // — on a custom <button> with no fill and body-colored text, that boundary is the
+  // ONLY signal the thing is clickable. Chosen so even the hovered surface keeps 3:1
+  // (light 3.47:1 on surfaceHover, dark 3.28:1), so the ring never drops below the bar
+  // in any state. Never use this for a divider; never use `border` on a control.
+  borderStrong: { light: '#787d86', dark: '#757b84' },
   accent: { light: '#2f6bff', dark: '#5b8bff' },
   // Hover state for a filled accent control. Darker in light mode, lighter in dark
   // — a hovered control moves AWAY from the page background in either mode.

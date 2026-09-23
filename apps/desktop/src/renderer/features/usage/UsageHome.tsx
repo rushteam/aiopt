@@ -237,7 +237,7 @@ const cardGridStyle = {
 const ghostStyle = {
   padding: '8px 16px',
   borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
+  border: `1px solid ${token('borderStrong')}`,
   background: 'transparent',
   color: token('text'),
   cursor: 'pointer',

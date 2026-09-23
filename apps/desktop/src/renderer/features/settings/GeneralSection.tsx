@@ -142,7 +142,7 @@ function Switch({
             borderRadius: 999,
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
-            background: checked ? token('accent') : token('border'),
+            background: checked ? token('accent') : token('borderStrong'),
             opacity: loading ? 0.5 : 1,
             transition: 'background 120ms ease',
             padding: 0,
@@ -212,7 +212,7 @@ function Choice<T extends string>({
                 fontSize: fontSize.md,
                 color: isSelected ? token('accentText') : token('text'),
                 background: isSelected ? token('accent') : token('surface'),
-                border: `1px solid ${isSelected ? token('accent') : token('border')}`,
+                border: `1px solid ${isSelected ? token('accent') : token('borderStrong')}`,
               }}
             >
               {labelFor(option)}
@@ -257,7 +257,7 @@ function LanguagePicker({
           fontSize: fontSize.md,
           color: token('text'),
           background: token('surface'),
-          border: `1px solid ${token('border')}`,
+          border: `1px solid ${token('borderStrong')}`,
         }}
       >
         {LANGUAGE_MENU.map(({ value, endonym }) => (

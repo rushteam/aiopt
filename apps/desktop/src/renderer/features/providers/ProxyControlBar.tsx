@@ -82,7 +82,7 @@ export function ProxyControlBar({
             borderRadius: 999,
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
-            background: enabled ? token('accent') : token('border'),
+            background: enabled ? token('accent') : token('borderStrong'),
             opacity: loading ? 0.5 : 1,
             transition: 'background 120ms ease',
             padding: 0,
