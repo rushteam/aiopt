@@ -95,13 +95,80 @@ Upstream error bodies are never forwarded (they can echo the key) — the client
 coded envelope — and logs record method / de-tokenized path / status / byte count only, never a
 body, header, token, or key.
 
-## Getting started
+## Install and use
+
+Builds for macOS, Windows and Linux are attached to each [GitHub
+Release](https://github.com/rushteam/aiopt/releases), produced on all three platforms from the
+tagged commit:
+
+| Platform | What you download | How to install |
+| --- | --- | --- |
+| macOS | `.zip` | Unzip, drag **AiOpt.app** into `/Applications`. |
+| Windows | `Setup.exe` | Run it; Squirrel installs per-user, no admin prompt. |
+| Linux | `.zip` | Unzip anywhere and run the `AiOpt` binary. |
+
+> **No release has been published yet** — that page is empty until the first `v*` tag is
+> pushed. Until then, run from source (below).
+
+### The builds are unsigned — read this first
+
+There is no code-signing certificate yet, so **both macOS and Windows will refuse the app on
+first launch.** This is not a warning you can ignore; it is a block you have to step past
+deliberately, once per install:
+
+- **macOS** — the first double-click says AiOpt "cannot be opened because the developer cannot
+  be verified." Dismiss it, then **right-click (or Control-click) the app → Open**, and confirm
+  in the second dialog. Right-click → Open is the part that matters: it is a different code
+  path from double-clicking, and it is what lets you through. If macOS still refuses, open
+  **System Settings → Privacy & Security**, scroll to the message about AiOpt, and click **Open
+  Anyway**.
+- **Windows** — SmartScreen shows a blue "Windows protected your PC" screen. Click **More
+  info**, then **Run anyway**.
+- **Linux** — nothing blocks the app.
+
+Only do this because you trust where the file came from. The same steps are what malware asks
+of you, which is exactly why signing matters and why this section exists instead of a
+reassuring sentence. Signing is planned — see `docs/dev-rules/development-workflow.md` §6.
+
+**macOS builds are Apple Silicon (arm64) only.** The release runner is `macos-latest`, which is
+arm64, so there is no Intel build yet. On an Intel Mac, run from source (below).
+
+### First run
+
+AiOpt is a config manager and translation proxy for agent CLIs — it does not talk to a model on
+its own. The shortest useful path:
+
+1. **Add a provider** — Providers → *Add provider*. Pick a preset or choose Custom, paste the
+   API key, and list the models you want. The key goes into the OS-encrypted secret store and
+   never into a git-tracked file. Reopening the form shows "a key is saved" instead of the key —
+   it comes back in the clear only when you press **Show**, which is a deliberate, gated
+   exception rather than how the app normally reads keys.
+2. **Bind an agent** — each agent card picks a provider and model. AiOpt rewrites that agent's
+   own config file (`~/.claude/settings.json`, `~/.codex/config.toml`, …) to point at the local
+   proxy, so the agent needs no flags and no knowledge that a translation happened.
+3. **Use the agent as you always do.** Requests go through `127.0.0.1`, get translated if the
+   agent and the provider disagree on wire format, and carry the real key only on the outbound
+   leg.
+
+Nine agent CLIs are recognised: Claude Code, Codex, Cursor, DeepSeek Harness, Gemini CLI, Grok,
+Hermes, OpenCode and pi. Eight of them can be bound to a provider — Cursor cannot, because its
+CLI has no base-URL override, so it appears only in the Skills sync.
+
+**AiOpt edits config files that belong to other tools.** It writes only to the known files
+listed per agent in `shared/aiProviders.ts`, but they are the same files you may have set up by
+hand. Look at what an agent card says it will change before you bind it.
+
+### Run from source
+
+Also the route for an Intel Mac, or any platform with no build attached.
 
 ```sh
 pnpm install
-pnpm dco:install-hook   # sign commits off automatically (DCO)
 pnpm dev                # open the app window
 ```
+
+Contributors want one more step — `pnpm dco:install-hook` adds the DCO sign-off trailer to
+every commit automatically (see **Gates** below).
 
 ## Gates
 
@@ -111,6 +178,7 @@ pnpm dev                # open the app window
 | `pnpm -r run --if-present typecheck` | Per-package type checking. |
 | `pnpm check:dco` | Every commit carries a matching DCO sign-off. |
 | `pnpm check:i18n-glossary` | UI copy uses adjudicated product terms; `GLOSSARY.md` is in sync. |
+| `pnpm check:version` | Both manifests state one version, matching the release tag. |
 
 ## Layout
 
