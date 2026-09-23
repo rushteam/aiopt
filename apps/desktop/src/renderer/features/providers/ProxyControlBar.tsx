@@ -15,7 +15,7 @@
 // never merely the switch position.
 
 import { useEffect, useState } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { token, fontSize, space } from '../../themes/tokens';
 import { useT } from '../../i18n';
 import { ProxyStatusBar } from './ProxyStatusBar';
 
@@ -60,52 +60,59 @@ export function ProxyControlBar({
   const showStatus = enabled || anyProxied;
 
   return (
-    <div style={cardStyle}>
-      <div style={rowStyle}>
-        <div style={{ minWidth: 0 }}>
+    <div style={barStyle}>
+      <div>
+        {/* The switch is paired with the label LINE, and the help text sits underneath it
+            rather than beside it. Putting the two in one row with the paragraph did not
+            work: the paragraph's max-content width is wider than the 832px column, so the
+            label block stretched to fill and pushed the switch ~700px away from the words
+            naming it — the control and its label read as unrelated. */}
+        <div style={rowStyle}>
           <div style={{ fontSize: fontSize.md, fontWeight: 600 }}>{t('general.proxyMode.label')}</div>
-          <p style={helpStyle}>{t('general.proxyMode.help')}</p>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            aria-label={t('general.proxyMode.label')}
+            disabled={loading}
+            onClick={toggle}
+            style={{
+              flexShrink: 0,
+              position: 'relative',
+              width: 44,
+              height: 24,
+              borderRadius: 999,
+              border: 'none',
+              cursor: loading ? 'default' : 'pointer',
+              background: enabled ? token('accent') : token('borderStrong'),
+              opacity: loading ? 0.5 : 1,
+              transition: 'background 120ms ease',
+              padding: 0,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 2,
+                left: enabled ? 22 : 2,
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: token('bg'),
+                transition: 'left 120ms ease',
+              }}
+            />
+          </button>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          aria-label={t('general.proxyMode.label')}
-          disabled={loading}
-          onClick={toggle}
-          style={{
-            flexShrink: 0,
-            position: 'relative',
-            width: 44,
-            height: 24,
-            borderRadius: 999,
-            border: 'none',
-            cursor: loading ? 'default' : 'pointer',
-            background: enabled ? token('accent') : token('borderStrong'),
-            opacity: loading ? 0.5 : 1,
-            transition: 'background 120ms ease',
-            padding: 0,
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: 2,
-              left: enabled ? 22 : 2,
-              width: 20,
-              height: 20,
-              borderRadius: '50%',
-              background: token('bg'),
-              transition: 'left 120ms ease',
-            }}
-          />
-        </button>
+        <p style={helpStyle}>{t('general.proxyMode.help')}</p>
       </div>
 
-      {/* Cancel the bar's own bottom margin (meant for the ProvidersHome layout) so it
-          sits flush at the bottom of this card. */}
+      {/* ProxyStatusBar carries its own 12px bottom margin for callers that stack it
+          directly; here this region supplies its own spacing below the hairline, so cancel
+          it rather than let it double up. */}
       {showStatus && (
         <div style={{ marginBottom: -space.lg }}>
           <ProxyStatusBar port={proxyPort} />
@@ -115,21 +122,33 @@ export function ProxyControlBar({
   );
 }
 
-const cardStyle = {
+// This bar GOVERNS the grid below it, but it used to read as the grid's first card: same
+// `surface` fill, same `border`, radius 8 vs the cards' 10 (2px — not perceptible), and a
+// 12px gap below it identical to the grid's own row gap. Four cues said "sibling" and none
+// said "governs".
+//
+// So it stops being a card: no fill, no box, just a hairline underneath and the page
+// background showing through. That reads as a rule over a region rather than an object
+// inside it — and it's why the fill/border matching the cards was the problem, not the
+// radius. The gap below is also widened past the grid's 12px row gap, so the distance to
+// the first card no longer equals the distance between two card rows.
+const barStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: space.lg,
-  padding: space.lg,
-  marginBottom: space.lg,
-  borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
-  background: token('surface'),
+  paddingBottom: space.lg,
+  // 24px below the hairline, deliberately DOUBLE the grid's 12px row gap: the old 12px
+  // made the distance from this bar to the first card identical to the distance between
+  // two card rows, which is one of the four cues that made it read as a grid item.
+  marginBottom: space['2xl'],
+  borderBottom: `1px solid ${token('border')}`,
 } as const;
 
+// Label + switch, both sized to their content and 12px apart — no `space-between`, so the
+// row does not spread to the column's full width.
 const rowStyle = {
   display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'space-between',
+  alignItems: 'center',
   gap: space.lg,
 } as const;
 
