@@ -34,11 +34,30 @@ describe('homeShortenedPath', () => {
   it('shortens a home-rooted path and leaves anything else alone', () => {
     expect(homeShortenedPath(path.join(home, '.codex/auth.json'))).toBe('~/.codex/auth.json');
     expect(homeShortenedPath(home)).toBe('~');
-    expect(homeShortenedPath('/etc/passwd')).toBe('/etc/passwd');
+    // Outside home → unchanged. Built with path.resolve so this is a real absolute path on
+    // Windows too (a bare '/etc/passwd' would resolve onto the current drive).
+    const outside = path.resolve(path.sep, 'etc', 'passwd');
+    expect(homeShortenedPath(outside)).toBe(outside);
   });
 
   it('does not shorten a sibling directory that merely shares the home prefix', () => {
-    expect(homeShortenedPath(`${home}-other/x.json`)).toBe(`${home}-other/x.json`);
+    const sibling = path.join(`${home}-other`, 'x.json');
+    expect(homeShortenedPath(sibling)).toBe(sibling);
+  });
+
+  // The `~/…` form is forward-slashed on EVERY platform: it is a display string, and the `~`
+  // idiom it extends reads as POSIX even on Windows. Asserted explicitly because the bug this
+  // replaced was a hand-built `${home}/` prefix compare that silently stopped shortening on
+  // Windows and leaked the account name to the renderer.
+  it('emits forward slashes regardless of the platform separator', () => {
+    const nested = path.join(home, '.pi', 'agent', 'config.json');
+    expect(homeShortenedPath(nested)).toBe('~/.pi/agent/config.json');
+    expect(homeShortenedPath(nested)).not.toContain('\\');
+  });
+
+  it('does not mistake a dot-leading name inside home for an escape', () => {
+    // A segment-wise check, not startsWith('..'): `..foo` is a legitimate file inside home.
+    expect(homeShortenedPath(path.join(home, '..foo'))).toBe('~/..foo');
   });
 });
 

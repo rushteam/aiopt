@@ -5,11 +5,27 @@
 # the maintainer's direct-push exception). `release.yml` is a separate concern — it
 # only packages installers on a version tag and does not gate anything.
 #
-# Deliberately one Linux job, not a three-OS matrix: this tier is the unit tier, and
-# the suite takes platform as an injected value rather than reading `process.platform`
-# ambiently (see main/ipc/registerHandlers.ts), so it is platform-independent. The
-# cross-platform build is already covered by release.yml's matrix. If a test ever
-# genuinely depends on the host OS, add a matrix here rather than weakening it.
+# One Linux job, not a three-OS matrix. Be precise about what that does and does not
+# buy, because an earlier version of this comment claimed the suite was
+# "platform-independent" and it was not — providers/ and skills/ asserted POSIX paths
+# and POSIX file modes, which no Linux-only run could ever notice. That surfaced as a
+# release bug: release.yml runs this same gate BEFORE `electron-forge make`, so the
+# windows-latest leg died at the tests and produced no installer while mac and linux
+# published normally.
+#
+# What is true now: the platform is an INJECTED value wherever the behaviour under test
+# is path- or platform-shaped — `path.win32` into main/displayPath.ts, `platform` into
+# app-shortcuts, see main/__tests__/displayPath.test.ts — so Windows semantics are
+# asserted here, on Linux, and regress loudly. What remains host-dependent is narrower
+# and branches explicitly rather than assuming POSIX: a 0600 assertion (Windows cannot
+# enforce the bits) and a symlink-fixture probe (Windows needs elevation to create one).
+# Those two are weaker on a non-POSIX host, so the suite is platform-PORTABLE, not
+# platform-independent.
+#
+# Adding a windows-latest leg here is the only thing that closes that last gap. It is
+# not enabled because it roughly doubles PR wall-clock for two assertions; release.yml's
+# matrix does run the full gate on all three platforms at tag time, which is the
+# backstop. Revisit if anything platform-shaped lands in main/ again.
 #
 # Reads the repository and the pull-request event payload only — no secrets, no
 # network beyond the package registry, nothing published.

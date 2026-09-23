@@ -15,6 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renameSyncWithRetry } from '../fsRetry';
 import { AGENT_IDS, API_FORMATS, type ApiFormat } from '../../shared/aiProviders';
 import type { RouteSpec } from './router';
 
@@ -152,7 +153,7 @@ export function createFileProxyStatePersistence(filePath: string): ProxyStatePer
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       try {
         fs.writeFileSync(tmp, contents, 'utf8');
-        fs.renameSync(tmp, filePath);
+        renameSyncWithRetry(tmp, filePath);
       } catch (err) {
         try {
           fs.unlinkSync(tmp);

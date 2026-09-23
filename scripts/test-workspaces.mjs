@@ -67,7 +67,14 @@ function main() {
       continue;
     }
     console.log(`\n▶ ${pkg.name} (${dir})`);
-    const run = spawnSync('pnpm', ['--dir', path.join(ROOT, dir), 'run', 'test'], {
+    // `cwd` rather than `--dir <path>`: on Windows `pnpm` is `pnpm.cmd`, and since Node
+    // 18.20.2 a `.cmd` cannot be spawned without `shell: true` (the batch-injection fix), so
+    // the shell is not optional there — and under a shell every argv entry is re-parsed by
+    // cmd.exe, unquoted. An absolute path in argv therefore split at the first space, which a
+    // Windows checkout easily has (`C:\Users\Ada Lovelace\...`), failing the whole unit gate
+    // with a confusing pnpm usage error. Nothing in argv needs quoting now.
+    const run = spawnSync('pnpm', ['run', 'test'], {
+      cwd: path.join(ROOT, dir),
       stdio: 'inherit',
       shell: process.platform === 'win32',
     });

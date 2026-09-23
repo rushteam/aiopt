@@ -105,12 +105,47 @@ function allAllowedConfigPaths(): string[] {
 }
 
 /**
+ * Whether the host filesystem treats two spellings of a path as the same file. Keyed on the
+ * platform rather than probed, so the check stays a pure comparison with no disk access. Both
+ * branches are here together per engineering-conventions.md §3.
+ *
+ * Not universally true of either platform — macOS can be formatted case-sensitive, and a Windows
+ * volume can have per-directory case sensitivity enabled — but erring toward case-insensitive is
+ * the fail-closed direction: it can only ever ACCEPT a differently-cased spelling of a path that
+ * is already on the allowlist, never a path outside it.
+ */
+const CASE_INSENSITIVE_FS = process.platform === 'win32' || process.platform === 'darwin';
+
+/**
  * Whether `target` is one of the exact allowlisted agent config files. Compared as
  * resolved absolute paths so `..` traversal can never smuggle a path past the list.
+ *
+ * On Windows and macOS the comparison is case-insensitive, because the FILESYSTEM is: NTFS and
+ * APFS both treat `C:\Users\Bob\.claude` and `c:\users\bob\.claude` as one file, while
+ * `path.resolve` preserves whatever case it was handed and does not canonicalize a drive letter.
+ * A case-sensitive compare there is not stricter, only wrong in a different direction — it would
+ * refuse a legitimate path (fail-closed, surfacing as an unexplainable PERMISSION_DENIED) without
+ * ever widening what may be written, since the set of allowed paths is unchanged.
+ *
+ * This deliberately does NOT try to canonicalize further. 8.3 short names (`C:\Users\JOHNSM~1`),
+ * UNC and `\\?\` forms, symlinks and junctions all still compare unequal, and that is the safe
+ * direction: refusing a path AiOpt would have been willing to write costs the user an error
+ * message, whereas accepting an unexpected form could widen the boundary. Resolving those would
+ * mean hitting the filesystem (`fs.realpathSync`) inside a security check, which introduces its
+ * own TOCTOU and error-handling questions — out of scope here.
+ *
+ * Linux stays case-sensitive: ext4 and friends are, so two spellings really are two files.
  */
 export function isAllowedAgentConfigPath(target: string): boolean {
-  const resolved = path.resolve(target);
-  return allAllowedConfigPaths().some((allowed) => path.resolve(allowed) === resolved);
+  const resolved = normalizeForCompare(path.resolve(target));
+  return allAllowedConfigPaths().some(
+    (allowed) => normalizeForCompare(path.resolve(allowed)) === resolved,
+  );
+}
+
+/** Case-fold on the platforms whose filesystem is case-insensitive; identity elsewhere. */
+function normalizeForCompare(resolvedPath: string): string {
+  return CASE_INSENSITIVE_FS ? resolvedPath.toLowerCase() : resolvedPath;
 }
 
 /** Convenience: Claude Code's settings file (`~/.claude/settings.json`). */

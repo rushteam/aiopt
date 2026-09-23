@@ -31,6 +31,7 @@ import type { ProxyFetch } from './proxy/upstream';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
+import { homeRelativeDisplayPath } from './displayPath';
 import {
   appShortcutsFilePath,
   preferencesFilePath,
@@ -222,7 +223,8 @@ export function getSkillsStore(): SkillsStore {
       getLibraryLocation: () => getConfigStore().get('skillsLibrary'),
       centralDirFor: (location) => skillsLibraryPath(location),
       // Shorten a home-rooted path to `~/…` for display (metadata only; no file contents).
-      displayPath: (abs) => (abs === homeDir ? '~' : abs.startsWith(`${homeDir}/`) ? `~${abs.slice(homeDir.length)}` : abs),
+      // Same helper the agent config panel uses, so the two surfaces cannot drift again.
+      displayPath: (abs) => homeRelativeDisplayPath(abs, homeDir),
     });
     const broadcast = throttle(() => broadcastToRenderers(IPC_EVENTS.skillsChanged, store.snapshot()), 1000);
     store.onChange(broadcast);

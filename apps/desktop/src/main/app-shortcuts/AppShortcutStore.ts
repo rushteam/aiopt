@@ -10,6 +10,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renameSyncWithRetry } from '../fsRetry';
 
 import {
   comboToElectronAccelerator,
@@ -179,7 +180,7 @@ export class AppShortcutStore {
     try {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(tmp, JSON.stringify({ version: 1, overrides }, null, 2), 'utf-8');
-      fs.renameSync(tmp, filePath);
+      renameSyncWithRetry(tmp, filePath);
     } catch (error) {
       log.warn('overrides_write_failed', {
         reason: error instanceof Error ? error.name : typeof error,
