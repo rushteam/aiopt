@@ -1,7 +1,7 @@
 {
   "name": "aiopt",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AiOpt — a security-first Electron desktop app framework scaffold. Untrusted renderer / minimal preload / privileged main, IPC as the authorization boundary.",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
@@ -16,6 +16,7 @@
     "check:dco": "node scripts/check-dco.mjs",
     "dco:install-hook": "node scripts/install-dco-hook.mjs",
     "check:i18n-glossary": "node scripts/check-i18n-glossary.mjs",
+    "check:version": "node scripts/check-version.mjs",
     "glossary:generate": "node scripts/generate-glossary-doc.mjs"
   },
   "devDependencies": {

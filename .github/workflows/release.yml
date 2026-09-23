@@ -57,6 +57,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Fail before building rather than after publishing: Electron stamps the installer
+      # names and `app.getVersion()` from the packaged package.json, never from the tag, so
+      # a tag that disagrees with the manifests ships a Release whose assets and About page
+      # state a different version than its name. GITHUB_REF supplies the tag.
+      - name: Version matches the tag
+        run: pnpm check:version
+
       # CI is the final authority on the test gate (AGENTS.md). No installers are
       # built unless every workspace's unit tests pass.
       - name: Unit test gate
