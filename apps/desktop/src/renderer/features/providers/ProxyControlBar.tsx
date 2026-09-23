@@ -61,58 +61,52 @@ export function ProxyControlBar({
 
   return (
     <div style={barStyle}>
-      <div>
-        {/* The switch is paired with the label LINE, and the help text sits underneath it
-            rather than beside it. Putting the two in one row with the paragraph did not
-            work: the paragraph's max-content width is wider than the 832px column, so the
-            label block stretched to fill and pushed the switch ~700px away from the words
-            naming it — the control and its label read as unrelated. */}
-        <div style={rowStyle}>
+      <div style={rowStyle}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: fontSize.md, fontWeight: 600 }}>{t('general.proxyMode.label')}</div>
-
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            aria-label={t('general.proxyMode.label')}
-            disabled={loading}
-            onClick={toggle}
-            style={{
-              flexShrink: 0,
-              position: 'relative',
-              width: 44,
-              height: 24,
-              borderRadius: 999,
-              border: 'none',
-              cursor: loading ? 'default' : 'pointer',
-              background: enabled ? token('accent') : token('borderStrong'),
-              opacity: loading ? 0.5 : 1,
-              transition: 'background 120ms ease',
-              padding: 0,
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                position: 'absolute',
-                top: 2,
-                left: enabled ? 22 : 2,
-                width: 20,
-                height: 20,
-                borderRadius: '50%',
-                background: token('bg'),
-                transition: 'left 120ms ease',
-              }}
-            />
-          </button>
+          <p style={helpStyle}>{t('general.proxyMode.help')}</p>
         </div>
 
-        <p style={helpStyle}>{t('general.proxyMode.help')}</p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={t('general.proxyMode.label')}
+          disabled={loading}
+          onClick={toggle}
+          style={{
+            flexShrink: 0,
+            position: 'relative',
+            width: 44,
+            height: 24,
+            borderRadius: 999,
+            border: 'none',
+            cursor: loading ? 'default' : 'pointer',
+            background: enabled ? token('accent') : token('borderStrong'),
+            opacity: loading ? 0.5 : 1,
+            transition: 'background 120ms ease',
+            padding: 0,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 2,
+              left: enabled ? 22 : 2,
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              background: token('bg'),
+              transition: 'left 120ms ease',
+            }}
+          />
+        </button>
       </div>
 
       {/* ProxyStatusBar carries its own 12px bottom margin for callers that stack it
-          directly; here this region supplies its own spacing below the hairline, so cancel
-          it rather than let it double up. */}
+          directly; this bar supplies its own spacing below the hairline, so cancel it
+          rather than let the two double up. */}
       {showStatus && (
         <div style={{ marginBottom: -space.lg }}>
           <ProxyStatusBar port={proxyPort} />
@@ -123,32 +117,35 @@ export function ProxyControlBar({
 }
 
 // This bar GOVERNS the grid below it, but it used to read as the grid's first card: same
-// `surface` fill, same `border`, radius 8 vs the cards' 10 (2px — not perceptible), and a
-// 12px gap below it identical to the grid's own row gap. Four cues said "sibling" and none
-// said "governs".
+// `surface` fill, same `border`, radius 8 against the cards' 10 (2px — not perceptible),
+// and a 12px gap below it identical to the grid's own row gap. Four cues said "sibling of
+// the cards" and none said "governs them".
 //
-// So it stops being a card: no fill, no box, just a hairline underneath and the page
-// background showing through. That reads as a rule over a region rather than an object
-// inside it — and it's why the fill/border matching the cards was the problem, not the
-// radius. The gap below is also widened past the grid's 12px row gap, so the distance to
-// the first card no longer equals the distance between two card rows.
+// So it stops being a card: no fill, no box, just a hairline underneath with the page
+// background showing through, which is how a region header reads rather than an object
+// inside the region. The fill and border were the problem, not the radius.
 const barStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: space.lg,
   paddingBottom: space.lg,
-  // 24px below the hairline, deliberately DOUBLE the grid's 12px row gap: the old 12px
-  // made the distance from this bar to the first card identical to the distance between
-  // two card rows, which is one of the four cues that made it read as a grid item.
+  // 24px below the hairline, deliberately DOUBLE the grid's 12px row gap: at 12px the
+  // distance from this bar to the first card was exactly the distance between two card
+  // rows, which is one of the cues that made it read as a grid item.
   marginBottom: space['2xl'],
   borderBottom: `1px solid ${token('border')}`,
 } as const;
 
-// Label + switch, both sized to their content and 12px apart — no `space-between`, so the
-// row does not spread to the column's full width.
+// The switch stays at the row's TRAILING EDGE, which is where every settings pane a user
+// has ever seen puts one. Pulling it in beside the label shortens the label-to-control
+// distance on paper (the column is 832px wide, so the gap is ~700px) and looks worse for
+// it: the text block running the full measure is what visually anchors the switch to the
+// end of its own row, and a switch floating 12px after a short bold label reads as
+// cramped, not as associated. Tried and reverted.
 const rowStyle = {
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
   gap: space.lg,
 } as const;
 
