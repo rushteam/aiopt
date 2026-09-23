@@ -16,6 +16,8 @@ import { registerUpdateIpc } from '../update/updateIpc';
 import { registerProviderIpc } from '../providers/providerIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
+import { rebuildAppMenuLabels } from '../menu/appMenu';
+import { rebuildTrayLabels } from '../tray/tray';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
 import { installAppQuitChannel } from '../app/appQuitChannel';
 import {
@@ -40,6 +42,12 @@ export function registerHandlers(): void {
     // Flipping proxy mode re-applies every binding so each moves between its direct
     // config and the loopback route (the change broadcast already refreshed the UI).
     onProxyModeChange: () => getProviderManager().rebuildProxyRoutes(),
+    // The renderer relabels from the broadcast; the native menu and tray are main-side
+    // and must be rebuilt explicitly or they keep the old language until relaunch.
+    onLanguageChange: () => {
+      rebuildAppMenuLabels();
+      rebuildTrayLabels();
+    },
   });
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);

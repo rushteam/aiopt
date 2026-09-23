@@ -23,10 +23,10 @@ import {
   comboToElectronAccelerator,
   type AppShortcutId,
 } from '../../shared/appShortcuts';
-import { MENU_LABELS, resolveMenuLocale, type MenuLabels } from './menuLabels';
+import { MENU_LABELS, resolveMenuLocaleForPreference, type MenuLabels } from './menuLabels';
 import { dispatchToRenderer } from './dispatchToRenderer';
 import { buildViewSubmenu } from './viewMenu';
-import { getAppShortcutStore } from '../services';
+import { getAppShortcutStore, getConfigStore } from '../services';
 import {
   isAppShortcutRecordingActive,
   subscribeAppShortcutRecording,
@@ -122,9 +122,12 @@ function buildTemplate(labels: MenuLabels): MenuItemConstructorOptions[] {
 
 let installed = false;
 
-/** Rebuild + install the native menu for the app's locale. */
+/** Rebuild + install the native menu for the user's chosen language. */
 function rebuildMenu(): void {
-  const labels = MENU_LABELS[resolveMenuLocale(app.getLocale())];
+  // The stored preference, NOT `app.getLocale()` — the OS locale is only the fallback
+  // for `system`. See resolveMenuLocaleForPreference.
+  const labels =
+    MENU_LABELS[resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale())];
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildTemplate(labels)));
 }
 
@@ -132,6 +135,10 @@ function rebuildMenu(): void {
  * Build the native menu and keep it in sync: rebuild when shortcut overrides change
  * (so a rebind re-binds the accelerator) and when the recording gate toggles (so
  * accelerators pause / resume). Idempotent — the subscriptions are installed once.
+ *
+ * Changing the language preference also rebuilds, via `rebuildAppMenuLabels` called
+ * from the config IPC — the menu is built once at install, so nothing would otherwise
+ * re-read the preference until the next launch.
  */
 export function installAppMenu(): void {
   rebuildMenu();
@@ -139,4 +146,15 @@ export function installAppMenu(): void {
   installed = true;
   getAppShortcutStore().subscribe(() => rebuildMenu());
   subscribeAppShortcutRecording(() => rebuildMenu());
+}
+
+/**
+ * Re-label the menu after the language preference changed. Separate from
+ * `installAppMenu` so the config layer can ask for a relabel without re-running the
+ * one-time subscription wiring. No-op before the menu is installed (an early
+ * preference write during bootstrap has nothing to relabel; install builds it fresh).
+ */
+export function rebuildAppMenuLabels(): void {
+  if (!installed) return;
+  rebuildMenu();
 }

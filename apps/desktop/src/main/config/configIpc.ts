@@ -22,6 +22,13 @@ export interface ConfigIpcHooks {
    * loopback route. Best-effort: a failure here must not fail the preference write.
    */
   onProxyModeChange?: (proxyMode: boolean) => void;
+  /**
+   * Called after `language` is set or reset. The renderer relabels itself from the
+   * `config:changed` broadcast, but the NATIVE menu and tray are built in main and read
+   * the preference only when built — so without this they keep the old language until
+   * the next launch. Best-effort, same as above.
+   */
+  onLanguageChange?: () => void;
 }
 
 export function registerConfigIpc(
@@ -40,6 +47,16 @@ export function registerConfigIpc(
     }
   };
 
+  // After a write that changed `language`, relabel the native menu + tray.
+  const reactToLanguage = (): void => {
+    if (!hooks.onLanguageChange) return;
+    try {
+      hooks.onLanguageChange();
+    } catch {
+      // Relabelling is best-effort; the preference is already persisted and broadcast.
+    }
+  };
+
   registry.register(IPC_CHANNELS.configGetAll, (_payload, meta) => {
     meta.assertTrustedSender();
     return store.getEffective();
@@ -53,6 +70,7 @@ export function registerConfigIpc(
     const next: PreferencesShape = store.set(key, obj.value);
     broadcast(IPC_EVENTS.configChanged, next);
     if (key === 'proxyMode') reactToProxyMode(next);
+    if (key === 'language') reactToLanguage();
     return next;
   });
 
@@ -63,6 +81,7 @@ export function registerConfigIpc(
     const next: PreferencesShape = store.reset(key);
     broadcast(IPC_EVENTS.configChanged, next);
     if (key === 'proxyMode') reactToProxyMode(next);
+    if (key === 'language') reactToLanguage();
     return next;
   });
 }

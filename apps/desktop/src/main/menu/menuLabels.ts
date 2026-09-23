@@ -61,3 +61,22 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
 export function resolveMenuLocale(locale: string): MenuLocale {
   return locale.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
+
+/**
+ * The menu locale for a user's stored language PREFERENCE, falling back to the OS
+ * locale only when the preference is `system`.
+ *
+ * Native menu builders must use this and not `resolveMenuLocale(app.getLocale())`:
+ * the OS locale is the default, not the answer. A user whose Mac is in English but
+ * who picked 中文 in Settings was getting a Chinese app window with an English menu
+ * bar and tray, because the preference never reached the menu builders at all.
+ *
+ * Pure (both inputs injected) so the rule is unit-tested without Electron; this is
+ * the same shape as the quit dialog's resolution in index.ts.
+ */
+export function resolveMenuLocaleForPreference(
+  languagePreference: string,
+  osLocale: string,
+): MenuLocale {
+  return resolveMenuLocale(languagePreference === 'system' ? osLocale : languagePreference);
+}

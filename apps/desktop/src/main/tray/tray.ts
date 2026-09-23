@@ -17,10 +17,11 @@
 
 import { app, Menu, Tray, nativeImage, BrowserWindow, type MenuItemConstructorOptions } from 'electron';
 import { MENU_COMMANDS, type MenuCommand } from '../../shared/menuCommands';
-import { MENU_LABELS, resolveMenuLocale } from '../menu/menuLabels';
+import { MENU_LABELS, resolveMenuLocaleForPreference, type MenuLabels } from '../menu/menuLabels';
 import { dispatchToRenderer } from '../menu/dispatchToRenderer';
 import { createMainWindow } from '../window/mainWindow';
 import { TRAY_ICON_16, TRAY_ICON_32 } from './trayIconData';
+import { getConfigStore } from '../services';
 import { logger } from '../logger';
 
 const log = logger.child('tray');
@@ -74,19 +75,9 @@ function buildTrayImage(): Electron.NativeImage {
 
 let tray: Tray | null = null;
 
-/**
- * Create the macOS Tray and its context menu. Idempotent — a second call is a no-op
- * (mirrors installAppMenu). Call after `app.whenReady()`. The menu strings track the
- * app locale, resolved once at install (the menu bar text doesn't change in-process).
- */
-export function installTray(): void {
-  if (tray) return;
-  const labels = MENU_LABELS[resolveMenuLocale(app.getLocale())];
-
-  tray = new Tray(buildTrayImage());
-  tray.setToolTip(app.name);
-
-  const menu = Menu.buildFromTemplate([
+/** Build the context menu for one set of labels. */
+function buildTrayMenu(labels: MenuLabels): Menu {
+  return Menu.buildFromTemplate([
     { label: labels.showWindow, click: () => showMainWindow() },
     { type: 'separator' },
     commandItem(labels.settings, MENU_COMMANDS.openSettings),
@@ -96,7 +87,36 @@ export function installTray(): void {
     { type: 'separator' },
     { label: labels.quit, role: 'quit' },
   ]);
-  tray.setContextMenu(menu);
+}
+
+/** Labels for the user's chosen language (the OS locale is only the `system` fallback). */
+function currentLabels(): MenuLabels {
+  return MENU_LABELS[
+    resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale())
+  ];
+}
+
+/**
+ * Create the macOS Tray and its context menu. Idempotent — a second call is a no-op
+ * (mirrors installAppMenu). Call after `app.whenReady()`. The menu strings follow the
+ * user's language preference and are refreshed by `rebuildTrayLabels` when it changes.
+ */
+export function installTray(): void {
+  if (tray) return;
+
+  tray = new Tray(buildTrayImage());
+  tray.setToolTip(app.name);
+  tray.setContextMenu(buildTrayMenu(currentLabels()));
 
   log.info('tray.installed');
+}
+
+/**
+ * Re-label the tray menu after the language preference changed. No-op when no tray
+ * exists (non-macOS, or before install). Rebuilding the whole template is right here:
+ * an Electron Menu's item labels are read-only once built.
+ */
+export function rebuildTrayLabels(): void {
+  if (!tray) return;
+  tray.setContextMenu(buildTrayMenu(currentLabels()));
 }
