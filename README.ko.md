@@ -107,8 +107,19 @@ Hermes, OpenCode, pi**. 그중 8개는 공급자에 바인딩할 수 있습니�
 
 ### 설치
 
-빌드는 각 [GitHub Release](https://github.com/rushteam/aiopt/releases)에 첨부되며, 태그된 커밋에서 세
-플랫폼 모두에 대해 빌드됩니다.
+**macOS(Apple Silicon)는 Homebrew로 설치하는 것을 권장합니다.**
+
+```sh
+brew install --cask rushteam/tap/aiopt
+```
+
+이 cask는 **AiOpt.app**을 `/Applications`에 설치하고 macOS 격리 플래그를 지우므로, 첫 실행 때 Gatekeeper
+확인 창이 뜨지 않습니다. `brew upgrade --cask aiopt`로 새 릴리스로 업그레이드하고, `brew uninstall --cask aiopt`로
+앱을 제거합니다. `--zap`을 붙이면 저장된 키를 포함한 데이터도 삭제됩니다.
+
+모든 플랫폼에서 빌드를 직접 내려받을 수도 있습니다. 빌드는 각
+[GitHub Release](https://github.com/rushteam/aiopt/releases)에 첨부되며, 태그된 커밋에서 세 플랫폼 모두에 대해
+빌드됩니다.
 
 | 플랫폼 | 받을 파일 | 설치 방법 |
 | --- | --- | --- |
@@ -120,13 +131,14 @@ Hermes, OpenCode, pi**. 그중 8개는 공급자에 바인딩할 수 있습니�
 
 #### 빌드는 서명되지 않았습니다 — 먼저 읽어 주세요
 
-아직 코드 서명 인증서가 없어서 **macOS와 Windows 모두 첫 실행 시 앱을 거부합니다.** 설치할 때마다 한 번,
-의도적으로 넘어가야 하는 차단입니다.
+아직 코드 서명 인증서가 없어서 **macOS와 Windows 모두 내려받은 빌드를 첫 실행 시 거부합니다.** 설치할 때마다
+한 번, 의도적으로 넘어가야 하는 차단입니다. Homebrew cask는 이 단계를 대신 처리합니다.
 
 - **macOS** — 처음 더블클릭하면 "개발자를 확인할 수 없기 때문에 'AiOpt'을(를) 열 수 없습니다"라는 메시지가
   나옵니다. 이를 닫은 다음 **앱을 오른쪽 클릭(또는 Control-클릭) → 열기**를 선택하고, 두 번째 대화 상자에서
   확인합니다. 그래도 macOS가 거부하면 **시스템 설정 → 개인정보 보호 및 보안**을 열고, AiOpt 관련 메시지까지
   스크롤해 **확인 없이 열기**를 클릭합니다.
+  대신 AiOpt가 **손상되었기 때문에 열 수 없다**고 나오면 [자주 묻는 질문](#자주-묻는-질문)을 참고하세요.
 - **Windows** — SmartScreen이 파란색 "Windows의 PC 보호" 화면을 표시합니다. **추가 정보**를 클릭한 뒤
   **실행**을 클릭합니다.
 - **Linux** — 앱을 막는 것은 없습니다.
@@ -150,6 +162,31 @@ AiOpt는 에이전트 CLI의 설정과 형식 변환을 관리할 뿐, 스스로
 **AiOpt는 다른 도구의 설정 파일을 편집합니다.** `shared/aiProviders.ts`에 에이전트별로 선언된 특정 파일만
 기록하고 각각을 먼저 백업하지만, 직접 설정해 둔 파일일 수도 있습니다. 바인딩하기 전에 **설정 보기**로
 확인하세요.
+
+## 자주 묻는 질문
+
+### macOS에서 "'AiOpt'이(가) 손상되었기 때문에 열 수 없습니다. 해당 항목을 휴지통으로 이동해야 합니다."라고 나옵니다
+
+파일은 손상되지 않았습니다. 빌드가 Apple Developer ID로 서명되지 않았고 공증도 받지 않았는데, macOS는
+브라우저로 내려받은 모든 파일에 격리(quarantine) 플래그를 붙입니다. 그래서 Gatekeeper가 앱을 거부하며,
+Apple Silicon과 최신 macOS에서는 흔히 "손상됨"으로 표시합니다 — **확인 없이 열기** 버튼도 없고, 오른쪽 클릭
+→ 열기로도 넘어갈 수 없습니다.
+
+**AiOpt.app**을 `/Applications`로 옮긴 다음, 터미널에서 격리 플래그를 포함한 확장 속성을 지웁니다.
+
+```sh
+sudo xattr -cr /Applications/AiOpt.app
+```
+
+그다음 평소처럼 엽니다. 그래도 실행되지 않으면 — 바로 종료되거나 다시 손상되었다고 나오면 — 임시(ad-hoc)
+서명을 다시 붙이고 한 번 더 시도하세요.
+
+```sh
+codesign --force --deep --sign - /Applications/AiOpt.app
+```
+
+이 저장소의 [Releases](https://github.com/rushteam/aiopt/releases) 페이지에서 내려받은 파일에만 이렇게
+하세요. Homebrew로 설치했다면 이 단계가 필요 없습니다. 빌드가 서명·공증되면 누구에게도 필요 없어집니다.
 
 ## 설계
 
