@@ -10,8 +10,12 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SRC = new URL('../../', import.meta.url).pathname;
+// `fileURLToPath`, not `URL#pathname`: on Windows the pathname is `/D:/a/...`, which Node
+// resolves against the current drive into `D:\D:\a\...` and the scan fails with ENOENT.
+// It also decodes percent-escapes, so a checkout path with a space works on every platform.
+const SRC = fileURLToPath(new URL('../../', import.meta.url));
 
 /** Every .ts/.tsx source file under src/, recursively. */
 function sourceFiles(dir: string): string[] {
