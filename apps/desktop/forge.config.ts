@@ -21,7 +21,12 @@ const config: ForgeConfig = {
     asar: true,
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin', 'linux'])],
+  makers: [
+    // NuGet refuses a package with no `<authors>` ("Authors is required."), and Squirrel only
+    // falls back to package.json's `author`, which this private workspace package has none of.
+    new MakerSquirrel({ authors: 'RushTeam' }),
+    new MakerZIP({}, ['darwin', 'linux']),
+  ],
   plugins: [
     new VitePlugin({
       // The renderer entry name `main_window` produces the injected globals
