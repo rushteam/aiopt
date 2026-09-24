@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "productName": "AiOpt",
-  "description": "AiOpt desktop app scaffold",
+  "description": "AiOpt desktop app: provider routing and API-format translation for AI coding agents",
   "main": ".vite/build/index.js",
   "type": "module",
   "scripts": {

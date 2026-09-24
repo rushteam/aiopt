@@ -2,106 +2,120 @@
 
 English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-A security-first **Electron desktop app framework scaffold**. AiOpt is not a product — it is
-the reusable *primitives* of a mature Electron client, extracted and wired end-to-end so you
-can start a real desktop app on a trustworthy foundation instead of rebuilding the security
-model from scratch.
+**One provider pool, every agent CLI, any API format.**
 
-## The trust model (the whole point)
+AiOpt is a desktop app that routes your AI coding agents to the model providers you actually
+want to pay for tokens. Enter a provider once — its endpoint, key and models — then point Claude
+Code, Codex, Gemini CLI, OpenCode or any other supported agent at it with a click. When the agent
+and the provider speak different API formats, AiOpt's local proxy translates between them, so
+Codex can run on an Anthropic model and Claude Code on any OpenAI-compatible endpoint, with no
+flags, wrappers or environment variables to maintain.
 
-AiOpt is built around one boundary:
+## Why AiOpt
 
-> **Untrusted renderer / minimal preload / privileged main — and IPC is the authorization boundary.**
+Every agent CLI has its own config file, its own key slot and its own idea of which API format
+it speaks. Switching models means editing `~/.claude/settings.json` by hand, then
+`~/.codex/config.toml`, then a YAML file somewhere else — and pasting the same key into each.
+Trying a provider whose format your agent doesn't speak isn't possible at all.
 
-- The **renderer** is a web context. Treat it as hostile input. It holds no OS capability.
-- The **preload** exposes a tiny, purpose-named bridge — never the raw `ipcRenderer`.
-- The **main** process owns every privileged capability and hands it out only through IPC
-  handlers that first **authorize the sender**, then **validate the payload at runtime**
-  (TypeScript types are not runtime checks).
+AiOpt replaces that with one place to manage providers, one switch per agent, and a translation
+layer that removes the format mismatch.
 
-Everything else — CSP as a single main-side choke point, Electron Fuses, fail-closed
-navigation guards, SQLite migrations that never rewrite history, layered config, secrets that
-never touch a git-tracked path — exists to keep that boundary honest.
+## Features
 
-## The vertical slice
+### Provider pool
 
-The scaffold does not pile up features. One end-to-end demo proves every primitive is actually
-wired in:
+- **Add once, reuse everywhere.** A provider is a name, an API format, a base URL, a key and a
+  model list. Every agent draws from the same pool.
+- **Presets** for Anthropic, OpenAI, DeepSeek and Moonshot (Kimi), or **Custom…** for any
+  gateway, relay or self-hosted endpoint.
+- **Load models** straight from the provider's model list instead of typing IDs.
+- **Aliases** write a shorter or agent-friendly name into the agent in place of a long model ID.
+- **Upstream compatibility** strips named top-level request fields before forwarding, for strict
+  gateways that reject a parameter they don't recognise instead of ignoring it.
 
-> a renderer button → a purpose-named preload bridge method → a main IPC handler that
-> **asserts a trusted sender**, then **validates the payload**, then writes to **SQLite (via a
-> migration)**, replies through a **unified IPC error protocol**, and the renderer renders the
-> result with **semantic tokens (light + dark)** — with all copy going through **i18n + the
-> glossary**.
+### One-click agent binding
 
-To add a real feature, copy the shape of that slice. It is also the living example for the
-"implement & review" checklist.
+Nine agent CLIs are recognised: **Claude Code, Codex, Cursor, DeepSeek Harness, Gemini CLI,
+Grok, Hermes, OpenCode and pi**. Eight can be bound to a provider; Cursor's CLI has no base-URL
+override, so it takes part in Skills sync only.
 
-## Base features (batteries included)
+- Pick a provider and model on the agent card and apply. AiOpt writes the agent's **own native
+  config file**, so the agent runs exactly as before — no launcher, no shell alias.
+- **Exclusive** agents have their active provider replaced; **additive** agents (DeepSeek
+  Harness, Hermes, OpenCode) keep every provider side by side and only the default moves.
+- Before its first write to any file, AiOpt keeps the **pristine original** as
+  `<file>.aiopt.bak`. **Restore default** puts it back exactly — or removes the file if AiOpt
+  created it.
+- **View config** lists which files AiOpt manages and where, without ever displaying their
+  contents (several of them hold a key).
 
-Every desktop app needs the same non-business shell, so AiOpt ships it — each piece wired to
-the same trust boundary (trusted sender + runtime validation, fail-closed navigation, secrets
-that never reach the renderer):
+### Cross-format translation proxy
 
-- **Application menu** — a native menu whose command vocabulary (`shared/menuCommands.ts`) is
-  the single source of truth reused by main (dispatch), preload (allowlist re-validation), and
-  renderer (handler). Settings, Check for Updates, and About dispatch one-way to the renderer.
-- **Settings** — a sectioned settings shell: Appearance, Account, Keyboard Shortcuts, Updates,
-  About.
-- **Appearance / theme** — `system | light | dark` on semantic tokens with **both** light and
-  dark values; the preference persists via the layered config store and applies before first
-  paint (no flash), through the CSSOM (CSP-safe).
-- **Account (login / logout)** — a **pluggable auth provider** with a local stub. The session
-  token lives only in the OS-encrypted secret store under a main-only key; the renderer sees a
-  safe `signed-in / signed-out` state and never the token.
-- **Keyboard shortcuts** — one registry (`shared/shortcuts.ts`) drives both the native menu
-  accelerators and the Shortcuts settings list, so they can't drift.
-- **Updates** — a **pluggable update provider** with a local stub that reports "up to date".
-  The real update path is intentionally absent and **gated** — see `docs/dev-rules/updater.md`.
-- **About** — app / Electron / Chrome / Node versions read from main.
-
-Swap the auth and update providers for ones that talk to your backend; the manager, IPC
-surface, and UI stay unchanged.
-
-## Provider routing — one translation proxy, many routes
-
-Agents disagree on wire format: Claude speaks Anthropic Messages, Codex/Grok speak the OpenAI
-Responses API, others speak OpenAI Chat Completions. AiOpt lets an agent speaking format **X**
-bind to any provider speaking format **Y** — without the agent knowing a translation happened.
-
-> **One loopback HTTP server, on one ephemeral `127.0.0.1` port, translates every cross-format
-> binding. Not one proxy per provider, not one per direction — a single server that routes by a
-> per-binding path token.**
-
-- Each binding (one agent → one provider+model) registers **one route**, addressed by an
-  opaque **token in the URL path**: the agent's config points at `http://127.0.0.1:<port>/<token>`
-  and appends its own native suffix (`/v1/messages`, `/v1/chat/completions`, `/responses`).
-- The server strips the token, looks up the route, and the **route spec — not any sniffing of the
-  request body — decides the translation direction**. So an `A→O` binding and an `O→A` binding
-  coexist on the same port, told apart only by their token.
-- **N providers across any mix of directions ⇒ 1 process, 1 port, N token routes.** The route
-  count tracks how many agents are currently bound — nothing else.
-
-| Inbound (agent speaks) → Outbound (provider speaks) | Status |
+| Agent speaks → Provider speaks | Status |
 | --- | --- |
-| Anthropic → OpenAI Chat Completions | enabled |
+| Anthropic Messages → OpenAI Chat Completions | enabled |
 | OpenAI Responses → OpenAI Chat Completions | enabled |
-| OpenAI Responses → Anthropic (with the reasoning bridge) | enabled |
-| OpenAI Chat Completions → Anthropic | reserved |
+| OpenAI Responses → Anthropic Messages (with the reasoning bridge) | enabled |
+| OpenAI Chat Completions → Anthropic Messages | reserved |
 
-This rides the same trust model as everything else. The token authenticates the request and
-**rotates on every re-bind** (an old token dies the instant a binding is re-pointed, cleared, or
-the app restarts); the agent's config holds only that token, never the real provider key. The
-**real key is resolved main-side at request time** and placed into the *outbound* headers only.
-Upstream error bodies are never forwarded (they can echo the key) — the client gets a generic
-coded envelope — and logs record method / de-tokenized path / status / byte count only, never a
-body, header, token, or key.
+- **One loopback server, one `127.0.0.1` port, one route per binding.** Each binding gets an
+  opaque token in the URL path; the route — not a guess from the request body — decides the
+  translation direction, so opposite directions share the port without interfering.
+- **Streaming and tool calls are translated**, not just plain text — Server-Sent Events are
+  re-framed event by event in both directions.
+- **The reasoning bridge** carries Claude's extended-thinking blocks and their signatures
+  through the stateless Responses protocol, so a multi-turn Codex session on a Claude model keeps
+  its reasoning intact.
+- **Fields that can't be translated faithfully are refused** with a clear error rather than
+  silently dropped, so an agent never gets a quietly different answer.
+- **Stable across restarts.** The port and the per-binding tokens persist, so an agent that is
+  already running keeps working after AiOpt restarts. A token is replaced the moment its
+  binding is re-pointed, and dies when the binding is cleared. **Refresh port** moves the proxy
+  if something else takes the port.
 
-## Install and use
+### Proxy mode
 
-Builds for macOS, Windows and Linux are attached to each [GitHub
-Release](https://github.com/rushteam/aiopt/releases), produced on all three platforms from the
-tagged commit:
+- **Off (default):** same-format bindings connect the agent **directly** to the provider, and
+  keep working even when AiOpt isn't running. The provider's key is written into the agent's
+  config file, because the agent has to send it itself.
+- **On:** every binding goes through the local proxy. The agent's config then holds only a
+  loopback token, **the real key never leaves AiOpt's encrypted store**, and usage is counted.
+  AiOpt asks before quitting while agents depend on it.
+- Cross-format bindings always use the proxy. Gemini bindings are always direct.
+
+### Usage
+
+Requests, success rate and input / output / total tokens for traffic that passes through the
+proxy, with a daily chart and breakdowns **by provider, by agent and by model**. Only numeric
+usage fields are read from replies — never content.
+
+### Skills sync
+
+Keep agent skills in one **central library** (inside the app's data, or at `~/.aiopt/skills`)
+and sync them to every agent's skills directory:
+
+- **Pull ←** an agent's skill into the library, **Push →** the library copy to an agent, or
+  **Push to all agents** at once.
+- **Diff** shows file-level changes with content previews; **merge** lets you choose, file by
+  file, which side the library keeps.
+- Every overwrite is atomic. Symbolic links are refused and size limits are enforced, so a
+  stray link or runaway directory cannot be copied across.
+
+### Everyday comforts
+
+- **Copy proxy config** puts an OpenAI-compatible snippet for a proxied route on the clipboard,
+  for pointing any other tool at the same route.
+- Lives in the **menu bar / system tray**; closing the window keeps the proxy running.
+- **Seven interface languages** (English, 简体中文, 日本語, 한국어, Français, Deutsch, Español),
+  light / dark / system themes, and rebindable keyboard shortcuts.
+
+## Getting started
+
+### Install
+
+Builds are attached to each [GitHub Release](https://github.com/rushteam/aiopt/releases), built
+on all three platforms from the tagged commit:
 
 | Platform | What you download | How to install |
 | --- | --- | --- |
@@ -109,60 +123,82 @@ tagged commit:
 | Windows | `Setup.exe` | Run it; Squirrel installs per-user, no admin prompt. |
 | Linux | `.zip` | Unzip anywhere and run the `AiOpt` binary. |
 
-> **No release has been published yet** — that page is empty until the first `v*` tag is
-> pushed. Until then, run from source (below).
+**macOS builds are Apple Silicon (arm64) only** for now. On an Intel Mac, run from source.
 
-### The builds are unsigned — read this first
+#### The builds are unsigned — read this first
 
 There is no code-signing certificate yet, so **both macOS and Windows will refuse the app on
-first launch.** This is not a warning you can ignore; it is a block you have to step past
-deliberately, once per install:
+first launch.** This is a block you have to step past deliberately, once per install:
 
 - **macOS** — the first double-click says AiOpt "cannot be opened because the developer cannot
   be verified." Dismiss it, then **right-click (or Control-click) the app → Open**, and confirm
-  in the second dialog. Right-click → Open is the part that matters: it is a different code
-  path from double-clicking, and it is what lets you through. If macOS still refuses, open
-  **System Settings → Privacy & Security**, scroll to the message about AiOpt, and click **Open
-  Anyway**.
+  in the second dialog. If macOS still refuses, open **System Settings → Privacy & Security**,
+  scroll to the message about AiOpt, and click **Open Anyway**.
 - **Windows** — SmartScreen shows a blue "Windows protected your PC" screen. Click **More
   info**, then **Run anyway**.
 - **Linux** — nothing blocks the app.
 
-Only do this because you trust where the file came from. The same steps are what malware asks
-of you, which is exactly why signing matters and why this section exists instead of a
-reassuring sentence. Signing is planned — see `docs/dev-rules/development-workflow.md` §6.
-
-**macOS builds are Apple Silicon (arm64) only.** The release runner is `macos-latest`, which is
-arm64, so there is no Intel build yet. On an Intel Mac, run from source (below).
+Only do this because you trust where the file came from — the same steps are what malware asks
+of you. Signing is planned (see `docs/dev-rules/development-workflow.md` §6).
 
 ### First run
 
-AiOpt is a config manager and translation proxy for agent CLIs — it does not talk to a model on
-its own. The shortest useful path:
+AiOpt manages configuration and translation for your agent CLIs; it does not talk to a model on
+its own.
 
-1. **Add a provider** — Providers → *Add provider*. Pick a preset or choose Custom, paste the
-   API key, and list the models you want. The key goes into the OS-encrypted secret store and
-   never into a git-tracked file. Reopening the form shows "a key is saved" instead of the key —
-   it comes back in the clear only when you press **Show**, which is a deliberate, gated
-   exception rather than how the app normally reads keys.
-2. **Bind an agent** — each agent card picks a provider and model. AiOpt rewrites that agent's
-   own config file (`~/.claude/settings.json`, `~/.codex/config.toml`, …) to point at the local
-   proxy, so the agent needs no flags and no knowledge that a translation happened.
-3. **Use the agent as you always do.** Requests go through `127.0.0.1`, get translated if the
-   agent and the provider disagree on wire format, and carry the real key only on the outbound
-   leg.
+1. **Add a provider** — Providers → **Add provider**. Pick a preset or **Custom…**, paste the
+   API key, and load or list the models you want. The key goes into the OS-encrypted secret
+   store. Reopening the form shows "a key is saved" rather than the key; it is only displayed
+   again when you press **Show**.
+2. **Bind an agent** — on the agent's card, choose **Configure**, pick a provider and model, and
+   **Apply**. AiOpt rewrites that agent's config file (`~/.claude/settings.json`,
+   `~/.codex/config.toml`, …) to point at the provider or at the local proxy.
+3. **Use the agent as you always do.** Switch models later from the same card; **Restore
+   default** hands the agent's config back exactly as it was.
 
-Nine agent CLIs are recognised: Claude Code, Codex, Cursor, DeepSeek Harness, Gemini CLI, Grok,
-Hermes, OpenCode and pi. Eight of them can be bound to a provider — Cursor cannot, because its
-CLI has no base-URL override, so it appears only in the Skills sync.
+**AiOpt edits config files that belong to other tools.** It only ever writes the specific files
+declared per agent in `shared/aiProviders.ts`, and backs each one up first, but these may be
+files you set up by hand. Check **View config** before you bind.
 
-**AiOpt edits config files that belong to other tools.** It writes only to the known files
-listed per agent in `shared/aiProviders.ts`, but they are the same files you may have set up by
-hand. Look at what an agent card says it will change before you bind it.
+## Design
 
-### Run from source
+### Security as the architecture
 
-Also the route for an Intel Mac, or any platform with no build attached.
+AiOpt holds API keys and rewrites files in your home directory, so its security model is the
+architecture rather than a layer on top:
+
+- **The UI is untrusted.** The interface runs in a sandboxed renderer with context isolation and
+  no Node access. A minimal preload exposes only purpose-named methods, and every IPC handler in
+  the main process **checks the sender, then validates the payload at runtime** before doing
+  anything.
+- **Keys are encrypted by the OS** through Electron `safeStorage` — Keychain on macOS, DPAPI on
+  Windows, the desktop keyring on Linux where one is available. They never reach the UI, a log,
+  or a file under version control.
+- **The proxy binds loopback only**, authenticates every request by its route token, injects
+  the real key into the outbound request alone, never forwards upstream error bodies (they can
+  echo a key), and logs method, path, status and byte counts — never bodies, headers, tokens or
+  keys.
+- **Writes are narrow and reversible.** Only an explicit allowlist of agent config files may be
+  written; every write is atomic (temp file + rename) with a one-time backup; failures leave the
+  previous file intact.
+- **Fail closed.** A strict main-side CSP, locked-down Electron Fuses and navigation guards;
+  corrupt records are dropped on load rather than trusted; untranslatable fields are refused.
+
+### Engineering
+
+- **Stack:** Electron 41, React 19, TypeScript (strict), Vite 6, Electron Forge, Vitest, pnpm
+  workspaces.
+- **Few moving parts.** The proxy is built on Node's own `http` module with no third-party proxy
+  or SDK dependency; the translators and SSE codec are pure functions, tested without a network.
+- **Tested at the edges that matter** — translators, streaming, route tokens, config adapters,
+  atomic writes, and path handling for macOS, Windows and Linux; release builds run on all three.
+- **Localisation is gated.** UI copy goes through i18n, and product terms are checked against an
+  adjudicated glossary in CI.
+
+## Run from source
+
+Also the route for an Intel Mac, or any platform without an attached build. Requires Node 20+
+and pnpm.
 
 ```sh
 pnpm install
@@ -171,12 +207,13 @@ pnpm dev                # open the app window
 
 A source run keeps its data apart from an installed copy, in `AiOpt-dev` rather than `AiOpt`
 (under `~/Library/Application Support`, `%APPDATA%`, or `~/.config`). It starts with no providers,
-and it never reads or changes the installed app's keys. The two can also run at the same time.
+and it never reads or changes the installed app's keys. The two can run at the same time.
 
-Contributors want one more step — `pnpm dco:install-hook` adds the DCO sign-off trailer to
-every commit automatically (see **Gates** below).
+## Contributing
 
-## Gates
+Contributions are welcome. Every commit needs a DCO sign-off — run `pnpm dco:install-hook` once
+to add it automatically. See `CONTRIBUTING.md`, and `AGENTS.md` for the rule index
+(*"read rule Y before you touch area X"*); `docs/dev-rules/repo-map.md` maps the codebase.
 
 | Command | What it enforces |
 | --- | --- |
@@ -186,7 +223,6 @@ every commit automatically (see **Gates** below).
 | `pnpm check:i18n-glossary` | UI copy uses adjudicated product terms; `GLOSSARY.md` is in sync. |
 | `pnpm check:version` | Both manifests state one version, matching the release tag. |
 
-## Layout
+## License
 
-See `docs/dev-rules/repo-map.md` for the repository map, and `AGENTS.md` for the rule index
-that says *"read rule Y before you touch area X."* Start there.
+[MIT](LICENSE) © 2026 RushTeam
