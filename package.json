@@ -2,7 +2,7 @@
   "name": "aiopt",
   "private": true,
   "version": "1.0.0",
-  "description": "AiOpt — a security-first Electron desktop app framework scaffold. Untrusted renderer / minimal preload / privileged main, IPC as the authorization boundary.",
+  "description": "AiOpt — route every AI coding agent CLI to the model providers you choose, with a local cross-format translation proxy.",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
   "engines": {
