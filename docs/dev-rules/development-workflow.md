@@ -86,7 +86,17 @@ To release:
 3. Tag the merge commit on `main` and push the tag: `git tag -a v<version> -m '…' && git push
    origin v<version>`.
 4. Review the draft Release's assets, then publish it.
+5. Bump the Homebrew cask. Set `version` and `sha256` (`shasum -a 256
+   AiOpt-darwin-arm64-<version>.zip`) in `packaging/homebrew/aiopt.rb`, land that through a PR,
+   and copy the file to `Casks/aiopt.rb` in the `rushteam/homebrew-tap` repository. Check it
+   there with `brew audit --cask --strict --online rushteam/tap/aiopt`. The cask is the primary
+   macOS install route: `brew install --cask rushteam/tap/aiopt`.
 
 Builds are **unsigned** — macOS Gatekeeper and Windows SmartScreen warn on first launch. Signing
 is a follow-up that plugs into the `make` step via secrets; until then, say so wherever the
-download is offered.
+download is offered. The Release body in `release.yml` carries the macOS "damaged" fix.
+
+The cask's postflight clears the quarantine flag Homebrew sets on the download, which is what
+lets an unsigned build launch without a Gatekeeper prompt. That is a Gatekeeper bypass: it is
+acceptable only in our own tap, never in a submission to official `homebrew/cask`, and it is to
+be removed once the builds are signed and notarized.

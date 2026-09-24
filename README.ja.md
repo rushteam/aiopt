@@ -112,8 +112,19 @@ Hermes、OpenCode、pi**。そのうち 8 つはプロバイダーにバイン�
 
 ### インストール
 
-ビルドは各 [GitHub Release](https://github.com/rushteam/aiopt/releases) に添付されており、タグの付いたコミット
-から 3 つのプラットフォームそれぞれでビルドされます。
+**macOS（Apple Silicon）は Homebrew でのインストールをおすすめします。**
+
+```sh
+brew install --cask rushteam/tap/aiopt
+```
+
+この cask は **AiOpt.app** を `/Applications` に置き、macOS の隔離フラグを消すので、初回起動時に Gatekeeper の
+確認は出ません。`brew upgrade --cask aiopt` で新しいリリースに更新し、`brew uninstall --cask aiopt` でアプリを
+削除します。`--zap` を付けると、保存済みのキーを含むデータも削除されます。
+
+どのプラットフォームでも、ビルドを直接ダウンロードすることもできます。ビルドは各
+[GitHub Release](https://github.com/rushteam/aiopt/releases) に添付されており、タグの付いたコミットから 3 つの
+プラットフォームそれぞれでビルドされます。
 
 | プラットフォーム | ダウンロードするもの | インストール方法 |
 | --- | --- | --- |
@@ -125,8 +136,8 @@ Hermes、OpenCode、pi**。そのうち 8 つはプロバイダーにバイン�
 
 #### ビルドは未署名です —— まずこちらをお読みください
 
-コード署名証明書がまだないため、**macOS と Windows はどちらも初回起動時にアプリを拒否します。** インストールごとに
-一度、意図的に乗り越える必要があるブロックです。
+コード署名証明書がまだないため、**macOS と Windows はどちらも、ダウンロードしたビルドを初回起動時に拒否します。**
+インストールごとに一度、意図的に乗り越える必要があるブロックです。Homebrew の cask ならこの手順を代わりに行います。
 
 - **macOS** —— 最初にダブルクリックすると、「開発元を検証できないため、“AiOpt”は開けません」と表示されます。
   これを閉じてから、**アプリを右クリック（または Control キーを押しながらクリック）→ 開く** を選び、2 つ目の
@@ -166,10 +177,10 @@ AiOpt はエージェント CLI の設定とフォーマット変換を担うも
 拒否し、Apple Silicon と新しい macOS ではしばしば「壊れている」と表示されます —— **このまま開く** ボタンは
 なく、右クリック → 開く でも回避できません。
 
-**AiOpt.app** を `/Applications` に移動してから、ターミナルで隔離フラグを消します。
+**AiOpt.app** を `/Applications` に移動してから、ターミナルで隔離フラグを含む拡張属性を消します。
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/AiOpt.app
+sudo xattr -cr /Applications/AiOpt.app
 ```
 
 あとはいつもどおり開きます。それでも起動しない —— すぐに終了する、または再び壊れていると表示される —— 場合は、
@@ -180,7 +191,8 @@ codesign --force --deep --sign - /Applications/AiOpt.app
 ```
 
 これを行うのは、このリポジトリの [Releases](https://github.com/rushteam/aiopt/releases) ページから
-ダウンロードしたものに限ってください。ビルドが署名・公証されれば、この手順は不要になります。
+ダウンロードしたものに限ってください。Homebrew でインストールした場合、この手順は不要です。ビルドが署名・公証
+されれば、誰にとっても不要になります。
 
 ## 設計
 

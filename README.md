@@ -114,8 +114,20 @@ and sync them to every agent's skills directory:
 
 ### Install
 
-Builds are attached to each [GitHub Release](https://github.com/rushteam/aiopt/releases), built
-on all three platforms from the tagged commit:
+**macOS (Apple Silicon): install with Homebrew.** This is the recommended route:
+
+```sh
+brew install --cask rushteam/tap/aiopt
+```
+
+The cask puts **AiOpt.app** in `/Applications` and clears the macOS quarantine flag, so the
+first launch shows no Gatekeeper prompt. `brew upgrade --cask aiopt` moves to a new release;
+`brew uninstall --cask aiopt` removes the app, and adding `--zap` also deletes its data,
+including the saved keys.
+
+Every platform can also download a build instead. Builds are attached to each
+[GitHub Release](https://github.com/rushteam/aiopt/releases), built on all three platforms from
+the tagged commit:
 
 | Platform | What you download | How to install |
 | --- | --- | --- |
@@ -127,8 +139,9 @@ on all three platforms from the tagged commit:
 
 #### The builds are unsigned — read this first
 
-There is no code-signing certificate yet, so **both macOS and Windows will refuse the app on
-first launch.** This is a block you have to step past deliberately, once per install:
+There is no code-signing certificate yet, so **both macOS and Windows will refuse a downloaded
+build on first launch.** This is a block you have to step past deliberately, once per install.
+The Homebrew cask does this step for you.
 
 - **macOS** — the first double-click says AiOpt "cannot be opened because the developer cannot
   be verified." Dismiss it, then **right-click (or Control-click) the app → Open**, and confirm
@@ -170,10 +183,11 @@ macOS flags everything downloaded through a browser as quarantined. Gatekeeper t
 app, and on Apple Silicon with a recent macOS it often calls it "damaged" — with no **Open
 Anyway** button, and right-click → Open does not get past it either.
 
-Move **AiOpt.app** into `/Applications`, then clear the quarantine flag in Terminal:
+Move **AiOpt.app** into `/Applications`, then clear its extended attributes, including the
+quarantine flag, in Terminal:
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/AiOpt.app
+sudo xattr -cr /Applications/AiOpt.app
 ```
 
 Open the app as usual. If it still won't start — it quits straight away, or says it is damaged
@@ -184,8 +198,8 @@ codesign --force --deep --sign - /Applications/AiOpt.app
 ```
 
 Only do this for a copy downloaded from this repository's
-[Releases](https://github.com/rushteam/aiopt/releases) page. Once the builds are signed and
-notarized, this step goes away.
+[Releases](https://github.com/rushteam/aiopt/releases) page. Installing with Homebrew skips this
+step. Once the builds are signed and notarized, it goes away for everyone.
 
 ## Design
 
