@@ -134,6 +134,7 @@ first launch.** This is a block you have to step past deliberately, once per ins
   be verified." Dismiss it, then **right-click (or Control-click) the app → Open**, and confirm
   in the second dialog. If macOS still refuses, open **System Settings → Privacy & Security**,
   scroll to the message about AiOpt, and click **Open Anyway**.
+  If it says instead that AiOpt **is damaged and can't be opened**, see the [FAQ](#faq).
 - **Windows** — SmartScreen shows a blue "Windows protected your PC" screen. Click **More
   info**, then **Run anyway**.
 - **Linux** — nothing blocks the app.
@@ -159,6 +160,32 @@ its own.
 **AiOpt edits config files that belong to other tools.** It only ever writes the specific files
 declared per agent in `shared/aiProviders.ts`, and backs each one up first, but these may be
 files you set up by hand. Check **View config** before you bind.
+
+## FAQ
+
+### macOS says "“AiOpt” is damaged and can't be opened. You should move it to the Trash."
+
+The file is not damaged. The build is not signed with an Apple Developer ID or notarized, and
+macOS flags everything downloaded through a browser as quarantined. Gatekeeper then refuses the
+app, and on Apple Silicon with a recent macOS it often calls it "damaged" — with no **Open
+Anyway** button, and right-click → Open does not get past it either.
+
+Move **AiOpt.app** into `/Applications`, then clear the quarantine flag in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/AiOpt.app
+```
+
+Open the app as usual. If it still won't start — it quits straight away, or says it is damaged
+again — give it an ad-hoc signature and try once more:
+
+```sh
+codesign --force --deep --sign - /Applications/AiOpt.app
+```
+
+Only do this for a copy downloaded from this repository's
+[Releases](https://github.com/rushteam/aiopt/releases) page. Once the builds are signed and
+notarized, this step goes away.
 
 ## Design
 

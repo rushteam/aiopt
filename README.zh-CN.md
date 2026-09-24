@@ -109,6 +109,7 @@ AiOpt 用一个统一的供应商管理入口、每个 Agent 一个切换开关�
 - **macOS**——首次双击会提示无法打开“AiOpt”，因为无法验证开发者。关闭提示后，**右键（或按住 Control 点按）
   应用 → 打开**，并在第二个对话框中确认。如果 macOS 仍然拒绝，打开**系统设置 → 隐私与安全性**，滚动到关于
   AiOpt 的提示，点击**仍要打开**。
+  如果提示的是 AiOpt **已损坏，无法打开**，请看[常见问题](#常见问题)。
 - **Windows**——SmartScreen 会显示蓝色的“Windows 已保护你的电脑”界面。点击**更多信息**，然后点击**仍要运行**。
 - **Linux**——不会拦截该应用。
 
@@ -128,6 +129,29 @@ AiOpt 负责为你的 Agent CLI 管理配置和格式转换，它自身不会与
 
 **AiOpt 会编辑属于其他工具的配置文件。** 它只写入 `shared/aiProviders.ts` 中为每个 Agent 声明的特定文件，并且
 每个文件都会先备份，但这些文件可能正是你手动配置过的。绑定之前，先用 **查看配置** 看一看。
+
+## 常见问题
+
+### macOS 提示“‘AiOpt’已损坏，无法打开。你应该将它移到废纸篓。”
+
+文件并没有损坏。构建产物没有 Apple Developer ID 签名，也没有经过公证，而 macOS 会给所有通过浏览器下载的文件
+打上隔离标记。于是 Gatekeeper 拒绝运行该应用；在 Apple Silicon 和较新的 macOS 上，它往往直接报“已损坏”——
+没有**仍要打开**按钮，右键 → 打开也绕不过去。
+
+先把 **AiOpt.app** 拖入 `/Applications`，然后在终端里清除隔离标记：
+
+```sh
+xattr -dr com.apple.quarantine /Applications/AiOpt.app
+```
+
+之后正常打开即可。如果仍然无法启动——一打开就退出，或者再次提示已损坏——给它补一个临时（ad-hoc）签名后再试：
+
+```sh
+codesign --force --deep --sign - /Applications/AiOpt.app
+```
+
+只对从本仓库 [Releases](https://github.com/rushteam/aiopt/releases) 页面下载的文件这样做。等构建完成签名和
+公证后，就不再需要这一步。
 
 ## 设计
 
