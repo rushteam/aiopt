@@ -1,5 +1,7 @@
 # AiOpt
 
+English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
+
 A security-first **Electron desktop app framework scaffold**. AiOpt is not a product — it is
 the reusable *primitives* of a mature Electron client, extracted and wired end-to-end so you
 can start a real desktop app on a trustworthy foundation instead of rebuilding the security
