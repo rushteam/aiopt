@@ -145,7 +145,10 @@ function DailyChart({ daily, t }: { daily: readonly UsageDailyPoint[]; t: Transl
     <div
       style={{
         display: 'flex',
-        alignItems: 'flex-end',
+        // Stretch, not flex-end: each column must fill the chart's height so the bar's
+        // percentage height has a definite box to resolve against. With flex-end the
+        // columns were content-sized and every bar computed to 0px — an empty chart.
+        alignItems: 'stretch',
         gap: space.xs,
         height: 140,
         padding: space.md,
