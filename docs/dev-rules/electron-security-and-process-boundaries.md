@@ -136,7 +136,10 @@ unavoidable.
   paths.
 - The packaged build must keep the Fuses: disable `RunAsNode`, Node options, and CLI inspect;
   enable cookie encryption, embedded ASAR integrity validation, and load the app only from
-  ASAR.
+  ASAR. `FusesPlugin` loads unconditionally (it only acts when packaging), and `release.yml`
+  reads the flipped binary back with `pnpm --filter desktop run check:fuses` before uploading;
+  keep that script's list in step with `forge.config.ts`. v1.0.0 shipped without the fuses
+  because the plugin was gated on a `process.argv` test that never matched.
 - Use a currently-supported Electron version; on upgrade, re-check the official security
   checklist, default changes, and breaking changes. Do not delete an explicit setting because
   "the default is already safe."

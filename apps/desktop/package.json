@@ -10,6 +10,7 @@
     "dev": "electron-forge start",
     "package": "electron-forge package",
     "build": "electron-forge make",
+    "check:fuses": "node scripts/check-fuses.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",

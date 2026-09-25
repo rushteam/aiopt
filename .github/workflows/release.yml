@@ -84,6 +84,11 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      # Read the fuses back from the packaged binary. A config that silently skips
+      # FusesPlugin still builds cleanly, which is how v1.0.0 shipped unhardened.
+      - name: Fuses are flipped
+        run: pnpm --filter desktop run check:fuses
+
       - name: Upload build artifacts to the run
         uses: actions/upload-artifact@v7
         with:
