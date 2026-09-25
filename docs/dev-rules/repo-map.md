@@ -20,6 +20,7 @@ principle — the directory split *is* the trust split.
 | `packaging/homebrew/` | Source of the Homebrew cask published in `rushteam/homebrew-tap`. |
 | `.githooks/`, `.github/` | DCO commit hook; PR template and DCO app config. |
 | `apps/desktop/` | The Electron application. |
+| `apps/desktop/screenshots/` | Dev-only README screenshot harness: the renderer against a mock bridge with demo data (`pnpm --filter desktop screenshots` → `docs/images/screenshots/`). Never bundled. |
 
 ## `apps/desktop/src` — the trust split
 

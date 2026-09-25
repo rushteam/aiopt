@@ -12,7 +12,8 @@
     "build": "electron-forge make",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "screenshots": "node screenshots/capture.mjs"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
