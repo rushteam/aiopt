@@ -202,7 +202,7 @@ function BreakdownTable({
   return (
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeadingStyle}>{heading}</h2>
-      <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden' }}>
+      <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden', background: token('bg') }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fontSize.md }}>
           <thead>
             <tr style={{ background: token('surface') }}>

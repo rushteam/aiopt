@@ -317,7 +317,7 @@ function Matrix({
   // grid: skill name | library | one column per available agent.
   const gridTemplateColumns = `minmax(150px, 1.4fr) 84px ${agents.map(() => '84px').join(' ')}`;
   return (
-    <div style={{ minWidth: 'fit-content' }}>
+    <div style={{ minWidth: 'fit-content', background: token('bg') }}>
       <div style={{ ...matrixRowStyle, gridTemplateColumns }}>
         <div style={headCellStyle}>{t('skills.skill')}</div>
         <div style={{ ...headCellStyle, textAlign: 'center' }}>{t('skills.central')}</div>
