@@ -1,14 +1,12 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import type { ForgeConfig } from '@electron-forge/shared-types';
-
-// FusesPlugin conflicts with VitePlugin on the `start` command, so it is only
-// loaded for package/make. `ELECTRON_FORGE_START` is not a real env var — we key
-// off the forge command via process.argv instead.
-const isPackaging = process.argv.some((a) => a === 'package' || a === 'make');
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -21,11 +19,29 @@ const config: ForgeConfig = {
     asar: true,
   },
   rebuildConfig: {},
+  hooks: {
+    // Unsigned macOS builds: FusesPlugin re-signs only the Electron binary, ad hoc, before
+    // packager rewrites Info.plist and renames the bundle, so the finished app's seal no longer
+    // matches and `codesign --verify` rejects it. Re-seal the whole bundle ad hoc once it is
+    // final. A configured `osxSign` signs properly after this point, so leave it alone then.
+    postPackage: async (forgeConfig, { platform, outputPaths }) => {
+      if (platform !== 'darwin' || forgeConfig.packagerConfig.osxSign) return;
+      for (const outputPath of outputPaths) {
+        const appPath = path.join(outputPath, `${forgeConfig.packagerConfig.name}.app`);
+        execFileSync('codesign', ['--force', '--deep', '--sign', '-', appPath]);
+        execFileSync('codesign', ['--verify', '--deep', '--strict', appPath]);
+      }
+    },
+  },
   makers: [
     // NuGet refuses a package with no `<authors>` ("Authors is required."), and Squirrel only
     // falls back to package.json's `author`, which this private workspace package has none of.
     new MakerSquirrel({ authors: 'RushTeam' }),
-    new MakerZIP({}, ['darwin', 'linux']),
+    // macOS ships a disk image: open it, drag AiOpt.app onto the Applications link. Leaving
+    // `name` unset keeps Forge's `AiOpt-<version>-<arch>.dmg`, which the Homebrew cask's url and
+    // the release notes rely on. ULFO (lzfse) is smaller than the UDZO default; needs macOS 10.11+.
+    new MakerDMG({ format: 'ULFO', icon: 'assets/icon.icns' }),
+    new MakerZIP({}, ['linux']),
   ],
   plugins: [
     new VitePlugin({
@@ -51,20 +67,19 @@ const config: ForgeConfig = {
       ],
     }),
     // Hardening fuses for the packaged app — see
-    // docs/dev-rules/electron-security-and-process-boundaries.md §7.
-    ...(isPackaging
-      ? [
-          new FusesPlugin({
-            version: FuseVersion.V1,
-            [FuseV1Options.RunAsNode]: false,
-            [FuseV1Options.EnableCookieEncryption]: true,
-            [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
-            [FuseV1Options.EnableNodeCliInspectArguments]: false,
-            [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-            [FuseV1Options.OnlyLoadAppFromAsar]: true,
-          }),
-        ]
-      : []),
+    // docs/dev-rules/electron-security-and-process-boundaries.md §7. Always loaded: the plugin
+    // only hooks `packageAfterCopy`, so `start` never reaches it, and a command-line test for
+    // package/make does not work (Forge runs each command as its own electron-forge-<cmd>.js).
+    // `pnpm --filter desktop run check:fuses` reads the result back from the packaged binary.
+    new FusesPlugin({
+      version: FuseVersion.V1,
+      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.EnableCookieEncryption]: true,
+      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+      [FuseV1Options.EnableNodeCliInspectArguments]: false,
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
   ],
 };
 

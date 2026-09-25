@@ -87,7 +87,7 @@ To release:
    origin v<version>`.
 4. Review the draft Release's assets, then publish it.
 5. Bump the Homebrew cask. Set `version` and `sha256` (`shasum -a 256
-   AiOpt-darwin-arm64-<version>.zip`) in `packaging/homebrew/aiopt.rb`, land that through a PR,
+   AiOpt-<version>-arm64.dmg`) in `packaging/homebrew/aiopt.rb`, land that through a PR,
    and copy the file to `Casks/aiopt.rb` in the `rushteam/homebrew-tap` repository. Check it
    there with `brew audit --cask --strict --online rushteam/tap/aiopt`. The cask is the primary
    macOS install route: `brew install --cask rushteam/tap/aiopt`.

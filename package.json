@@ -23,6 +23,6 @@
     "typescript": "^5.6.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron", "electron-winstaller", "esbuild"]
+    "onlyBuiltDependencies": ["electron", "electron-winstaller", "esbuild", "fs-xattr", "macos-alias"]
   }
 }

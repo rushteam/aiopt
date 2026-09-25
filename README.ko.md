@@ -138,7 +138,7 @@ brew install --cask rushteam/tap/aiopt
 
 | 플랫폼 | 받을 파일 | 설치 방법 |
 | --- | --- | --- |
-| macOS | `.zip` | 압축을 풀고 **AiOpt.app**을 `/Applications`로 드래그합니다. |
+| macOS | `.dmg` | 열고 **AiOpt.app**을 **Applications** 폴더로 드래그합니다. |
 | Windows | `Setup.exe` | 실행하면 됩니다. Squirrel이 사용자 단위로 설치하며 관리자 권한 요청은 없습니다. |
 | Linux | `.zip` | 원하는 곳에 압축을 풀고 `AiOpt` 바이너리를 실행합니다. |
 
