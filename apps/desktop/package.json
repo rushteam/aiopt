@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "productName": "AiOpt",
   "description": "AiOpt desktop app: provider routing and API-format translation for AI coding agents",
