@@ -54,6 +54,14 @@ export const TOKENS = {
   // Modal scrim. A dark panel on a dark page needs a heavier scrim to separate
   // from the surface behind it, so dark is deeper than light.
   overlay: { light: 'rgba(0,0,0,0.45)', dark: 'rgba(0,0,0,0.6)' },
+  // The ambient background (components/background). Decoration, like `border`: no
+  // contrast floor applies, and it only ever shows where no text or control sits.
+  // All accent-tinted and translucent, so it takes the page's hue without competing
+  // with a real accent element; dark runs a touch stronger to read on the darker bg.
+  decorLine: { light: 'rgba(41,95,227,0.22)', dark: 'rgba(132,165,245,0.26)' },
+  decorGrid: { light: 'rgba(26,28,32,0.05)', dark: 'rgba(232,234,237,0.045)' },
+  decorPulse: { light: 'rgba(41,95,227,0.6)', dark: 'rgba(168,192,251,0.7)' },
+  decorGlow: { light: 'rgba(41,95,227,0.05)', dark: 'rgba(132,165,245,0.08)' },
 } as const satisfies Record<string, TokenValue>;
 
 export type TokenName = keyof typeof TOKENS;

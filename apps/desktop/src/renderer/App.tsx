@@ -12,6 +12,7 @@ import { ProvidersHome } from './features/providers/ProvidersHome';
 import { UsageHome } from './features/usage/UsageHome';
 import { SkillsHome } from './features/skills/SkillsHome';
 import { TitleBar } from './components/TitleBar';
+import { BackgroundLines } from './components/background/BackgroundLines';
 import { type AppTab } from './components/TabBar';
 import { MENU_COMMANDS, type MenuCommand } from '../shared/menuCommands';
 
@@ -52,7 +53,8 @@ export function App() {
   const settingsOpen = settingsSection !== null;
 
   // The window is a column: the top bar (tabs + settings gear, plus the macOS
-  // hamburger) on one row, then the active screen fills the rest.
+  // hamburger) on one row, then the active screen fills the rest, over the ambient
+  // background lines.
   return (
     <div
       style={{
@@ -73,16 +75,21 @@ export function App() {
         }}
         settingsOpen={settingsOpen}
       />
-      <div style={{ flex: 1, minHeight: 0 }}>
-        {settingsSection !== null ? (
-          <SettingsView initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
-        ) : tab === 'usage' ? (
-          <UsageHome />
-        ) : tab === 'skills' ? (
-          <SkillsHome />
-        ) : (
-          <ProvidersHome />
-        )}
+      {/* The ambient lines sit behind the tab screens (transparent roots, opaque cards).
+          Settings paints its own opaque ground, so it isn't drawn there at all. */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        {!settingsOpen && <BackgroundLines />}
+        <div style={{ position: 'relative', height: '100%' }}>
+          {settingsSection !== null ? (
+            <SettingsView initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
+          ) : tab === 'usage' ? (
+            <UsageHome />
+          ) : tab === 'skills' ? (
+            <SkillsHome />
+          ) : (
+            <ProvidersHome />
+          )}
+        </div>
       </div>
     </div>
   );

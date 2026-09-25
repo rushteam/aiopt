@@ -55,3 +55,35 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+/* Ambient background (components/background/BackgroundLines.tsx). Keyframes can't be
+ * written as inline styles, so they live here; each element passes its own distances
+ * in as custom properties. The loops stop while the window is hidden, and a user who
+ * asked the OS for less motion gets a still picture: lines frozen in place, no pulses. */
+@keyframes aiopt-bg-drift {
+  from { transform: translateX(var(--drift-from)); }
+  to { transform: translateX(var(--drift-to)); }
+}
+
+@keyframes aiopt-bg-sway {
+  from { transform: translateY(calc(var(--sway) * -1)); }
+  to { transform: translateY(var(--sway)); }
+}
+
+@keyframes aiopt-bg-pulse {
+  0% { stroke-dashoffset: var(--pulse-from); }
+  65%, 100% { stroke-dashoffset: var(--pulse-to); }
+}
+
+.aiopt-bg[data-paused] .aiopt-bg-anim {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiopt-bg .aiopt-bg-anim {
+    animation: none !important;
+  }
+  .aiopt-bg .aiopt-bg-pulses {
+    display: none;
+  }
+}
