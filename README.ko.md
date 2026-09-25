@@ -10,6 +10,11 @@ AiOpt는 AI 코딩 에이전트를 실제로 토큰 비용을 지불하고 싶�
 로컬 프록시가 그 사이를 변환합니다. Codex를 Anthropic 모델로, Claude Code를 임의의 OpenAI 호환 엔드포인트로
 실행할 수 있으며, 관리해야 할 플래그, 래퍼, 환경 변수는 없습니다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/providers-dark.png">
+  <img alt="AiOpt 공급자 화면: 각 에이전트 CLI에 바인딩된 공급자와 모델, 아래에는 공급자 풀" src="docs/images/screenshots/providers-light.png">
+</picture>
+
 ## AiOpt가 해결하는 문제
 
 에이전트 CLI마다 자체 설정 파일, 자체 키 위치, 자체 API 형식이 있습니다. 모델을 바꾸려면
@@ -83,6 +88,11 @@ Hermes, OpenCode, pi**. 그중 8개는 공급자에 바인딩할 수 있습니�
 프록시를 거친 트래픽에 대해 요청 수, 성공률, 입력 / 출력 / 전체 토큰을 집계하고, 일별 차트와 **공급자별·
 에이전트별·모델별** 분석을 제공합니다. 응답에서는 숫자로 된 사용량 필드만 읽으며, 내용은 절대 읽지 않습니다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/usage-dark.png">
+  <img alt="AiOpt 사용량 화면: 요청 수와 토큰 합계, 일별 토큰 차트, 공급자별 내역" src="docs/images/screenshots/usage-light.png">
+</picture>
+
 ### 스킬 동기화
 
 에이전트 스킬을 하나의 **중앙 라이브러리**(앱 데이터 안, 또는 `~/.aiopt/skills`)에 모아 각 에이전트의 스킬
@@ -94,6 +104,11 @@ Hermes, OpenCode, pi**. 그중 8개는 공급자에 바인딩할 수 있습니�
   파일별로 고를 수 있습니다.
 - 모든 덮어쓰기는 원자적입니다. 심볼릭 링크는 거부되고 크기 제한이 적용되므로, 엉뚱한 링크나 비대해진
   디렉터리가 복사될 수 없습니다.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/skills-dark.png">
+  <img alt="AiOpt 스킬 화면: 라이브러리와 각 에이전트에 걸친 스킬 동기화 매트릭스" src="docs/images/screenshots/skills-light.png">
+</picture>
 
 ### 일상의 편의
 

@@ -9,6 +9,11 @@ AiOpt 是一款桌面应用，把你的 AI 编程 Agent 路由到你真正想为
 当 Agent 与供应商的接口格式不一致时，AiOpt 的本地代理会在两者之间转换：Codex 可以跑在 Anthropic 模型上，
 Claude Code 也可以接任意 OpenAI 兼容的接口，无需维护任何启动参数、包装脚本或环境变量。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/providers-dark.png">
+  <img alt="AiOpt 供应商页面：各 Agent CLI 绑定的供应商与模型，下方是供应商池" src="docs/images/screenshots/providers-light.png">
+</picture>
+
 ## 为什么是 AiOpt
 
 每个 Agent CLI 都有自己的配置文件、自己的密钥位置，也有自己认定的接口格式。换个模型，就得手动改
@@ -72,6 +77,11 @@ AiOpt 用一个统一的供应商管理入口、每个 Agent 一个切换开关�
 对经过代理的流量统计请求数、成功率以及输入 / 输出 / 总 token，提供每日图表，并可**按供应商、按 Agent、按模型**
 细分。只读取响应中的数值用量字段——从不读取内容。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/usage-dark.png">
+  <img alt="AiOpt 统计页面：请求数与 token 总量、每日 token 图表，以及按供应商的明细" src="docs/images/screenshots/usage-light.png">
+</picture>
+
 ### 技能同步
 
 把 Agent 的技能集中放在一个**中央库**里（位于应用数据目录，或 `~/.aiopt/skills`），再同步到每个 Agent 的技能目录：
@@ -79,6 +89,11 @@ AiOpt 用一个统一的供应商管理入口、每个 Agent 一个切换开关�
 - 用 **拉取 ←** 把 Agent 的技能收进中央库，用 **推送 →** 把中央库的版本发给某个 Agent，或者一次 **推送到全部 Agent**。
 - **对比** 显示文件级改动并可预览内容；**合并** 让你逐个文件决定中央库保留哪一边的版本。
 - 每次覆盖都是原子操作。符号链接会被拒绝，并且有大小上限，所以误放的链接或失控的目录不会被复制过去。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/skills-dark.png">
+  <img alt="AiOpt 技能页面：技能在中央库与各 Agent 之间的同步矩阵" src="docs/images/screenshots/skills-light.png">
+</picture>
 
 ### 日常体验
 

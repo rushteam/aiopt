@@ -5,5 +5,5 @@
     "types": ["vite/client", "node"],
     "noEmit": true
   },
-  "include": ["src", "forge.config.ts", "vite.*.config.ts", "vitest.config.ts"]
+  "include": ["src", "screenshots", "forge.config.ts", "vite.*.config.ts", "vitest.config.ts"]
 }

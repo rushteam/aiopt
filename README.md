@@ -11,6 +11,11 @@ and the provider speak different API formats, AiOpt's local proxy translates bet
 Codex can run on an Anthropic model and Claude Code on any OpenAI-compatible endpoint, with no
 flags, wrappers or environment variables to maintain.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/providers-dark.png">
+  <img alt="AiOpt Providers screen: agent CLIs bound to providers and models, with the provider pool below" src="docs/images/screenshots/providers-light.png">
+</picture>
+
 ## Why AiOpt
 
 Every agent CLI has its own config file, its own key slot and its own idea of which API format
@@ -90,6 +95,11 @@ Requests, success rate and input / output / total tokens for traffic that passes
 proxy, with a daily chart and breakdowns **by provider, by agent and by model**. Only numeric
 usage fields are read from replies — never content.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/usage-dark.png">
+  <img alt="AiOpt Usage screen: request and token totals, a daily token chart, and breakdowns by provider" src="docs/images/screenshots/usage-light.png">
+</picture>
+
 ### Skills sync
 
 Keep agent skills in one **central library** (inside the app's data, or at `~/.aiopt/skills`)
@@ -101,6 +111,11 @@ and sync them to every agent's skills directory:
   file, which side the library keeps.
 - Every overwrite is atomic. Symbolic links are refused and size limits are enforced, so a
   stray link or runaway directory cannot be copied across.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/skills-dark.png">
+  <img alt="AiOpt Skills screen: a sync matrix of skills across the library and each agent" src="docs/images/screenshots/skills-light.png">
+</picture>
 
 ### Everyday comforts
 

@@ -11,6 +11,11 @@ Claude Code、Codex、Gemini CLI、OpenCode などの対応エージェントを
 モデルで動かすことも、Claude Code を任意の OpenAI 互換エンドポイントにつなぐこともでき、フラグやラッパー、
 環境変数を管理する必要はありません。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/providers-dark.png">
+  <img alt="AiOpt のプロバイダー画面：各エージェント CLI にバインドされたプロバイダーとモデル、その下にプロバイダープール" src="docs/images/screenshots/providers-light.png">
+</picture>
+
 ## AiOpt が解決すること
 
 エージェント CLI はそれぞれ独自の設定ファイル、独自のキーの置き場所、独自の API フォーマットを持っています。
@@ -88,6 +93,11 @@ Hermes、OpenCode、pi**。そのうち 8 つはプロバイダーにバイン�
 **プロバイダー別・エージェント別・モデル別** の内訳を表示します。応答から読み取るのは数値の使用量フィールド
 だけで、内容は決して読みません。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/usage-dark.png">
+  <img alt="AiOpt の使用状況画面：リクエスト数とトークンの合計、日別トークンのグラフ、プロバイダー別の内訳" src="docs/images/screenshots/usage-light.png">
+</picture>
+
 ### スキルの同期
 
 エージェントのスキルをひとつの**中央ライブラリ**（アプリのデータ内、または `~/.aiopt/skills`）にまとめ、各
@@ -99,6 +109,11 @@ Hermes、OpenCode、pi**。そのうち 8 つはプロバイダーにバイン�
   ファイルごとに選べます。
 - 上書きはすべてアトミックです。シンボリックリンクは拒否され、サイズの上限もあるので、紛れ込んだリンクや
   肥大化したディレクトリがコピーされることはありません。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshots/skills-dark.png">
+  <img alt="AiOpt のスキル画面：ライブラリと各エージェントにまたがるスキルの同期マトリクス" src="docs/images/screenshots/skills-light.png">
+</picture>
 
 ### 日々の使い心地
 
