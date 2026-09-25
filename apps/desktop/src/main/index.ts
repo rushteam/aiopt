@@ -96,18 +96,8 @@ let quitConfirmed = false;
  * native menu Quit, the Tray Quit, and the in-app menu's Quit — they all funnel through
  * before-quit. The dialog only INFORMS; it never rewrites a config or writes a key.
  */
-async function confirmQuitDespiteProxy(): Promise<void> {
+async function confirmQuitDespiteProxy(proxiedCount: number): Promise<void> {
   const config = getConfigStore();
-  const proxiedCount = getProviderManager()
-    .getSnapshot()
-    .agents.filter((a) => a.proxied).length;
-
-  if (!shouldWarnBeforeQuit(config.get('warnOnQuitWithProxy'), proxiedCount)) {
-    quitConfirmed = true;
-    app.quit();
-    return;
-  }
-
   const pref = config.get('language');
   const locale = resolveQuitDialogLocale(pref === 'system' ? app.getLocale() : pref);
   const labels = QUIT_DIALOG_LABELS[locale];
@@ -141,9 +131,17 @@ app.on('before-quit', (event) => {
   // The early squirrel/single-instance quits fire before `ready`; never intercept
   // those (services aren't built yet, and there's nothing proxied to warn about).
   if (app.isReady() && !quitConfirmed) {
-    event.preventDefault();
-    void confirmQuitDespiteProxy();
-    return;
+    // Decide synchronously. Cancelling a quit that needs no warning and re-issuing it
+    // from inside this handler is swallowed by Electron (the second before-quit runs,
+    // but the app never reaches will-quit), so the user had to quit twice.
+    const proxiedCount = getProviderManager()
+      .getSnapshot()
+      .agents.filter((a) => a.proxied).length;
+    if (shouldWarnBeforeQuit(getConfigStore().get('warnOnQuitWithProxy'), proxiedCount)) {
+      event.preventDefault();
+      void confirmQuitDespiteProxy(proxiedCount);
+      return;
+    }
   }
   // From here on the window close handler must let the window close (not hide to tray).
   markQuitting();
