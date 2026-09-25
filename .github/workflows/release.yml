@@ -14,7 +14,7 @@
 # follow-up; when added it plugs into the `package`/`make` step via secrets.
 #
 # The Homebrew cask (packaging/homebrew/aiopt.rb, published in rushteam/homebrew-tap)
-# downloads the macOS zip from the Release. It is bumped by hand after the Release is
+# downloads the macOS dmg from the Release. It is bumped by hand after the Release is
 # published — see docs/dev-rules/development-workflow.md §6.
 name: Release
 
@@ -116,7 +116,7 @@ jobs:
             brew install --cask rushteam/tap/aiopt
             ```
 
-            Or download `AiOpt-darwin-arm64-*.zip` below, unzip it and drag **AiOpt.app** into `/Applications`.
+            Or download `AiOpt-*-arm64.dmg` below, open it and drag **AiOpt.app** onto the **Applications** folder.
 
             **如果提示已损坏，请在终端执行 `sudo xattr -cr /Applications/AiOpt.app`**
 

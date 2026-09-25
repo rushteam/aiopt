@@ -2,7 +2,10 @@
 # `brew install --cask rushteam/tap/aiopt` installs the macOS build from a GitHub Release.
 #
 # Bump `version` and `sha256` for every release (docs/dev-rules/development-workflow.md §6):
-#   shasum -a 256 AiOpt-darwin-arm64-<version>.zip
+#   shasum -a 256 AiOpt-<version>-arm64.dmg
+#
+# v1.0.0 shipped a zip; releases after it ship a dmg instead. On the first bump past 1.0.0,
+# switch `url` to ".../v#{version}/AiOpt-#{version}-arm64.dmg" along with version and sha256.
 #
 # This cask belongs in our own tap only. The build is not signed with a Developer ID or
 # notarized, so the postflight step clears the quarantine flag Homebrew puts on every cask

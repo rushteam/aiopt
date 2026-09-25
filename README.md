@@ -146,7 +146,7 @@ the tagged commit:
 
 | Platform | What you download | How to install |
 | --- | --- | --- |
-| macOS | `.zip` | Unzip, drag **AiOpt.app** into `/Applications`. |
+| macOS | `.dmg` | Open it, drag **AiOpt.app** onto the **Applications** folder. |
 | Windows | `Setup.exe` | Run it; Squirrel installs per-user, no admin prompt. |
 | Linux | `.zip` | Unzip anywhere and run the `AiOpt` binary. |
 

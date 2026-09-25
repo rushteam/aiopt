@@ -1,6 +1,7 @@
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import type { ForgeConfig } from '@electron-forge/shared-types';
@@ -25,7 +26,11 @@ const config: ForgeConfig = {
     // NuGet refuses a package with no `<authors>` ("Authors is required."), and Squirrel only
     // falls back to package.json's `author`, which this private workspace package has none of.
     new MakerSquirrel({ authors: 'RushTeam' }),
-    new MakerZIP({}, ['darwin', 'linux']),
+    // macOS ships a disk image: open it, drag AiOpt.app onto the Applications link. Leaving
+    // `name` unset keeps Forge's `AiOpt-<version>-<arch>.dmg`, which the Homebrew cask's url and
+    // the release notes rely on. ULFO (lzfse) is smaller than the UDZO default; needs macOS 10.11+.
+    new MakerDMG({ format: 'ULFO', icon: 'assets/icon.icns' }),
+    new MakerZIP({}, ['linux']),
   ],
   plugins: [
     new VitePlugin({
