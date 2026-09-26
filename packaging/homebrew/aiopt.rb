@@ -1,8 +1,10 @@
-# Source of `Casks/aiopt.rb` in the rushteam/homebrew-tap repository, so
-# `brew install --cask rushteam/tap/aiopt` installs the macOS build from a GitHub Release.
+# AiOpt's Homebrew cask. The source is packaging/homebrew/aiopt.rb in rushteam/aiopt; the
+# published copy is Casks/aiopt.rb in rushteam/homebrew-tap, which
+# `brew install --cask rushteam/tap/aiopt` reads.
 #
-# Bump `version` and `sha256` for every release (docs/dev-rules/development-workflow.md §6):
-#   shasum -a 256 AiOpt-<version>-arm64.dmg
+# Change the cask in rushteam/aiopt only. The tap's sync workflow copies it and fills in
+# `version` and `sha256` from the latest published Release, so neither needs a hand bump
+# (rushteam/aiopt, docs/dev-rules/development-workflow.md §6).
 #
 # This cask belongs in our own tap only. The build is not signed with a Developer ID or
 # notarized, so the postflight step clears the quarantine flag Homebrew puts on every cask

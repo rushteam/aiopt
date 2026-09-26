@@ -86,11 +86,19 @@ To release:
 3. Tag the merge commit on `main` and push the tag: `git tag -a v<version> -m '…' && git push
    origin v<version>`.
 4. Review the draft Release's assets, then publish it.
-5. Bump the Homebrew cask. Set `version` and `sha256` (`shasum -a 256
-   AiOpt-<version>-arm64.dmg`) in `packaging/homebrew/aiopt.rb`, land that through a PR,
-   and copy the file to `Casks/aiopt.rb` in the `rushteam/homebrew-tap` repository. Check it
-   there with `brew audit --cask --strict --online rushteam/tap/aiopt`. The cask is the primary
+5. The Homebrew cask follows on its own. `rushteam/homebrew-tap` runs a sync workflow every
+   six hours (or on demand: Actions → Sync AiOpt cask → Run workflow). It reads the latest
+   published Release, downloads `AiOpt-<version>-arm64.dmg`, and checks its sha256 against
+   GitHub's asset digest. It then rebuilds `Casks/aiopt.rb` from `packaging/homebrew/aiopt.rb`
+   on `main` here and runs `brew style`, `brew audit --cask --strict --online`, and a real
+   install. A change of only `version` and `sha256` is committed to the tap's `main` directly.
+   Any other difference opens a pull request in the tap for review. The cask is the primary
    macOS install route: `brew install --cask rushteam/tap/aiopt`.
+
+   So change the cask's structure (url, postflight, zap, caveats) here, through a PR. The
+   `version` and `sha256` in this repository's copy may lag the tap and need no bump. Drafts
+   and prereleases are never picked up, and a Release older than the tap's version is
+   ignored.
 
 Builds are **unsigned** — macOS Gatekeeper and Windows SmartScreen warn on first launch. Signing
 is a follow-up that plugs into the `make` step via secrets; until then, say so wherever the
