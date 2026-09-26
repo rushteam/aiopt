@@ -17,7 +17,7 @@ principle — the directory split *is* the trust split.
 | `docs/design-rules/DESIGN.md` | Visual system: semantic tokens, dual light/dark delivery gate. |
 | `i18n/` | `glossary.json` (source) + generated `GLOSSARY.md` for the product-term gate. |
 | `scripts/` | Gate implementations: DCO, glossary, workspace test runner. |
-| `packaging/homebrew/` | Source of the Homebrew cask published in `rushteam/homebrew-tap`. |
+| `packaging/homebrew/` | Source of the Homebrew cask. `rushteam/homebrew-tap`'s sync workflow copies it and fills in the version. |
 | `.githooks/`, `.github/` | DCO commit hook; PR template and DCO app config. |
 | `apps/desktop/` | The Electron application. |
 | `apps/desktop/scripts/` | Packaged-build gates: `check-fuses.mjs` reads the hardening fuses back from `out/` (run by `release.yml`). |

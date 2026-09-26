@@ -14,8 +14,8 @@
 # follow-up; when added it plugs into the `package`/`make` step via secrets.
 #
 # The Homebrew cask (packaging/homebrew/aiopt.rb, published in rushteam/homebrew-tap)
-# downloads the macOS dmg from the Release. It is bumped by hand after the Release is
-# published — see docs/dev-rules/development-workflow.md §6.
+# downloads the macOS dmg from the Release. The tap's own workflow picks up a newly
+# published Release and bumps the cask — see docs/dev-rules/development-workflow.md §6.
 name: Release
 
 on:
