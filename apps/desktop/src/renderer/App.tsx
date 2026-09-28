@@ -8,6 +8,7 @@ import { token } from './themes/tokens';
 import { useTheme } from './themes/ThemeProvider';
 import { useAppShortcut } from './hooks/useAppShortcut';
 import { SettingsView, type SettingsSectionId } from './features/settings/SettingsView';
+import { UpdateNotice } from './features/settings/UpdateNotice';
 import { ProvidersHome } from './features/providers/ProvidersHome';
 import { UsageHome } from './features/usage/UsageHome';
 import { SkillsHome } from './features/skills/SkillsHome';
@@ -36,7 +37,10 @@ export function App() {
     } else if (command === MENU_COMMANDS.showSkills) {
       setSettingsSection(null);
       setTab('skills');
-    } else if (command === MENU_COMMANDS.checkForUpdates) setSettingsSection('updates');
+    } else if (command === MENU_COMMANDS.checkForUpdates) {
+      setSettingsSection('updates');
+      void window.aiopt.update.check();
+    }
     else if (command === MENU_COMMANDS.showAbout) setSettingsSection('about');
   }, []);
 
@@ -76,6 +80,7 @@ export function App() {
         }}
         settingsOpen={settingsOpen}
       />
+      <UpdateNotice onOpen={() => setSettingsSection('updates')} />
       {/* The ambient lines sit behind the tab screens (transparent roots, opaque cards).
           Settings paints its own opaque ground, so it isn't drawn there at all. */}
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>

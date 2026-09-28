@@ -13,7 +13,13 @@ import { createMainWindow } from './window/mainWindow';
 import { registerHandlers } from './ipc/registerHandlers';
 import { installAppMenu } from './menu/appMenu';
 import { installTray, markQuitting } from './tray/tray';
-import { getConfigStore, getProviderManager, getTranslationProxy, shutdownWorkbench } from './services';
+import {
+  getConfigStore,
+  getProviderManager,
+  getTranslationProxy,
+  getUpdateService,
+  shutdownWorkbench,
+} from './services';
 import {
   QUIT_DIALOG_LABELS,
   formatQuitMessage,
@@ -69,6 +75,10 @@ app.whenReady().then(async () => {
   // macOS menu-bar icon. Must be created after `ready`. Adds no IPC/renderer
   // privilege — it reuses the menu-command path and a main-side window reveal.
   installTray();
+
+  // Announce a newer published release. Check-only: a failure must not block startup,
+  // and nothing is downloaded. The window is already up so the result can be shown.
+  void getUpdateService().check();
 
   app.on('activate', () => {
     // Recreate the window if it was fully closed, otherwise reveal the hidden one

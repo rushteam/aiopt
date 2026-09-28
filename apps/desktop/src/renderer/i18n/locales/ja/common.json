@@ -97,6 +97,7 @@
     "title": "更新",
     "currentVersion": "現在のバージョン",
     "check": "更新を確認",
+    "notice": "新しいバージョンがあります：",
     "checking": "確認中…",
     "state": {
       "idle": "新しいバージョンがあるか確認します。",

@@ -134,8 +134,9 @@ const api = {
   },
 
   /**
-   * App updates. The bundled stub always reports up-to-date; a real feed is a
-   * gated, high-risk change (see docs/dev-rules/updater.md).
+   * App updates. Main compares the running version with the newest published GitHub
+   * Release and reports the result. It does not download or install; that remains
+   * gated (see docs/dev-rules/updater.md).
    */
   update: {
     getStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke(IPC_CHANNELS.updateGetStatus),

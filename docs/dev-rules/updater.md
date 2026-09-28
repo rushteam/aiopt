@@ -13,13 +13,18 @@ highest-blast-radius change in the repo.
 
 - A **provider seam** (`main/update/updateProvider.ts`): one method, `checkForUpdates(current)`,
   that answers "is there a newer version?" — it does **not** download or install anything.
-- A **local stub** (`localStubUpdateProvider.ts`) that always reports `up-to-date`. This is the
-  default; the framework has **no real update feed**.
+- A **check-only GitHub feed** (`githubReleaseUpdateProvider.ts`), wired in production. It
+  GETs the pinned `https://api.github.com/repos/rushteam/aiopt/releases/latest` over HTTPS,
+  refuses a redirect off that host, and reports a stable `vX.Y.Z` tag only when it is strictly
+  newer than the running version. Drafts and prereleases are not announced. The renderer
+  cannot choose the URL. The status carries the version, never a download URL.
+- A **local stub** (`localStubUpdateProvider.ts`) that always reports `up-to-date`, kept for tests.
 - An **update service** (`updateService.ts`) modelling only the `check → notify` flow (idle →
-  checking → up-to-date / update-available / error), broadcast to the renderer.
+  checking → up-to-date / update-available / error), broadcast to the renderer. Startup runs
+  one check; a banner shows the new version. Nothing is downloaded.
 
 That is the entire shape. Downloading, signature verification, and install-on-quit are
-deliberately absent.
+deliberately absent. Builds are still unsigned, so an artifact must not be executed.
 
 ## 2. The gate (do not skip)
 

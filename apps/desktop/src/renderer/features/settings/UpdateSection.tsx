@@ -1,7 +1,8 @@
 // Update settings — shows the current version + update status and a check button.
 //
-// The bundled stub always resolves to "up to date". Status is owned by main; we
-// read it once, subscribe to pushes, and reflect the in-flight `checking` state.
+// Status is owned by main, which compares against the newest published GitHub Release.
+// We read it once, subscribe to pushes, and reflect the in-flight `checking` state.
+// Nothing here downloads or installs.
 
 import { useEffect, useState } from 'react';
 import type { UpdateStatus } from '../../../shared/ipc-channels';

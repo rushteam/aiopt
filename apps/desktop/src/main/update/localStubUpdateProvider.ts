@@ -1,8 +1,8 @@
 // Local stub update provider — the batteries-included default.
 //
-// It always reports "up-to-date": the framework deliberately ships with NO real
-// update feed. Replace this provider with one that queries your release channel;
-// doing so is a high-risk change gated by docs/dev-rules/updater.md.
+// It always reports "up-to-date". Production uses githubReleaseUpdateProvider
+// (check-only). This stub remains for tests. Downloading or installing an update
+// is still gated by docs/dev-rules/updater.md.
 
 import type { UpdateProvider, UpdateCheckResult } from './updateProvider';
 
