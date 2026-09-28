@@ -92,13 +92,36 @@ export interface SkillAgentColumn {
 
 /**
  * Where the central library points. An enum, never a renderer-supplied path.
- * `'app'` = userData/skills; `'home'` = ~/.aiopt/skills;
+ * `'app'` = userData/skills (private to the app).
  * `'agents'` = ~/.agents/skills, the cross-client user skills directory from the
- * Agent Skills client guide (https://agentskills.io). That is the home-level
- * convention, not a project `.agents/skills/` (which would be git-tracked).
+ * Agent Skills client guide (https://agentskills.io). Home-level, so it is not a
+ * project `.agents/skills/` that Git would track.
+ * `'home'` = ~/.aiopt/skills. Legacy only: nothing else scans it, so the picker
+ * does not offer it unless this is already the stored choice.
  */
 export const SKILLS_LIBRARY_LOCATIONS = ['app', 'home', 'agents'] as const;
 export type SkillsLibraryLocation = (typeof SKILLS_LIBRARY_LOCATIONS)[number];
+
+/** Picker options. The legacy `~/.aiopt/skills` choice stays visible only while it is current. */
+export function skillsLibraryChoices(current: SkillsLibraryLocation): readonly SkillsLibraryLocation[] {
+  return current === 'home' ? ['app', 'agents', 'home'] : ['app', 'agents'];
+}
+
+/**
+ * First use, when the user has never set `skillsLibrary`. Adopt `~/.agents/skills`
+ * only if that directory already exists and the in-app library has no skills.
+ * Returns null to leave the default (`app`) — an in-app library that already has
+ * skills stays put, so an upgrade does not hide it. The caller persists a non-null
+ * result once; this function does not look at the disk.
+ */
+export function preferStandardSkillsLibrary(input: {
+  hasOverride: boolean;
+  appHasSkills: boolean;
+  standardDirExists: boolean;
+}): 'agents' | null {
+  if (input.hasOverride || input.appHasSkills || !input.standardDirExists) return null;
+  return 'agents';
+}
 
 /** The scanned view of the world handed to the renderer. */
 export interface SkillsSnapshot {

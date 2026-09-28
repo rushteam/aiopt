@@ -31,7 +31,7 @@ import {
 import { skillsErrorMessage } from './errors';
 import { AGENT_NAMES } from '../../../shared/aiProviders';
 import type { AgentId } from '../../../shared/aiProviders';
-import { newerSkillSide, SKILLS_LIBRARY_LOCATIONS } from '../../../shared/skills';
+import { newerSkillSide, skillsLibraryChoices } from '../../../shared/skills';
 import type {
   SkillDiffResult,
   SkillEntry,
@@ -274,7 +274,7 @@ function LocationToggle({
   onChange: (loc: SkillsLibraryLocation) => void;
   t: TranslateFn;
 }) {
-  const options = SKILLS_LIBRARY_LOCATIONS;
+  const options = skillsLibraryChoices(value);
   return (
     <div role="group" aria-label={t('skills.library.label')} style={segmentedStyle}>
       {options.map((opt, index) => {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_IDS } from '../aiProviders';
-import { AGENT_SKILL_DIRS, computeSyncState, isValidSkillName, newerSkillSide } from '../skills';
+import {
+  AGENT_SKILL_DIRS,
+  computeSyncState,
+  isValidSkillName,
+  newerSkillSide,
+  preferStandardSkillsLibrary,
+  skillsLibraryChoices,
+} from '../skills';
 
 describe('isValidSkillName', () => {
   it('accepts ordinary single-segment names', () => {
@@ -74,6 +81,32 @@ describe('AGENT_SKILL_DIRS', () => {
 
   it('maps the skills-only agent cursor to ~/.cursor/skills', () => {
     expect(AGENT_SKILL_DIRS.cursor).toBe('.cursor/skills');
+  });
+});
+
+describe('skills library location', () => {
+  it('offers the in-app library and the standard directory', () => {
+    expect(skillsLibraryChoices('app')).toEqual(['app', 'agents']);
+    expect(skillsLibraryChoices('agents')).toEqual(['app', 'agents']);
+  });
+
+  it('keeps a previously chosen ~/.aiopt/skills visible', () => {
+    expect(skillsLibraryChoices('home')).toEqual(['app', 'agents', 'home']);
+  });
+
+  it('adopts ~/.agents/skills only on first use when the in-app library is empty', () => {
+    expect(
+      preferStandardSkillsLibrary({ hasOverride: false, appHasSkills: false, standardDirExists: true }),
+    ).toBe('agents');
+    expect(
+      preferStandardSkillsLibrary({ hasOverride: true, appHasSkills: false, standardDirExists: true }),
+    ).toBeNull();
+    expect(
+      preferStandardSkillsLibrary({ hasOverride: false, appHasSkills: true, standardDirExists: true }),
+    ).toBeNull();
+    expect(
+      preferStandardSkillsLibrary({ hasOverride: false, appHasSkills: false, standardDirExists: false }),
+    ).toBeNull();
   });
 });
 

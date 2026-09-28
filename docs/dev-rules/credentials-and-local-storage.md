@@ -33,7 +33,7 @@ Electron's `app.getPath(...)`:
 | Caches / rebuildable artifacts | `app.getPath('cache')` | Disposable; must be safe to delete. |
 | Transient scratch | `app.getPath('temp')` | Per-run; clean up on exit. |
 | Logs | `app.getPath('logs')` | Rotating; masked; no secrets. |
-| Skills central library | `skillsLibrary` enum, resolved in main: `userData/skills`, `~/.aiopt/skills`, or `~/.agents/skills` | User-owned skill files. Switching the enum points at another directory and does not move files. `~/.agents/skills` is the cross-client user directory (home-level, not a project `.agents/` that Git would track) and is shared with other agents that scan it. |
+| Skills central library | `skillsLibrary` enum, resolved in main: `userData/skills` or `~/.agents/skills`. A previously stored `~/.aiopt/skills` is still resolved. | User-owned skill files. Switching the enum points at another directory and does not move files. On first use, if the in-app library is empty and `~/.agents/skills` already exists, that choice is recorded. `~/.agents/skills` is the cross-client user directory (home-level, not a project `.agents/` that Git would track) and is shared with other agents that scan it. |
 
 - `userData` depends on how the app runs. A packaged build uses Electron's default,
   `<appData>/AiOpt`. An unpackaged run (`pnpm dev`) uses a sibling, `<appData>/AiOpt-dev`, set by
