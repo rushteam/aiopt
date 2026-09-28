@@ -1,6 +1,7 @@
-// Resolve and probe the herdr CLI — local managed copy first, then PATH.
+// Resolve and probe the herdr CLI — system PATH first, then an AiOpt-managed install.
 //
-// AiOpt may install herdr under the workbench data dir (plugin-style). Remote tasks use
+// Users who already installed herdr keep using that copy; the managed binary is only a fallback
+// after one-click install when nothing was found on PATH. Remote tasks use
 // `ssh <target> herdr …` (not herdr's `--remote` TUI attach flag, which does not apply to
 // socket API subcommands).
 
@@ -25,11 +26,12 @@ export function resolveLocalHerdrBinary(opts: {
   homeDir: string;
   isExecutable: (file: string) => boolean;
 }): { binary: string | null; source: HerdrInstallSource } {
+  const dirs = candidateBinDirs(opts.pathEnv, opts.homeDir);
+  const onPath = findBinary('herdr', dirs, opts.isExecutable);
+  if (onPath) return { binary: onPath, source: 'path' };
   const managed = managedHerdrBinary(opts.workbenchDataDir);
   if (opts.isExecutable(managed)) return { binary: managed, source: 'managed' };
-  const dirs = candidateBinDirs(opts.pathEnv, opts.homeDir);
-  const hit = findBinary('herdr', dirs, opts.isExecutable);
-  return hit ? { binary: hit, source: 'path' } : { binary: null, source: null };
+  return { binary: null, source: null };
 }
 
 export async function probeHerdrVersion(

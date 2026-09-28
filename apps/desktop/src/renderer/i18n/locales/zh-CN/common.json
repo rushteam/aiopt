@@ -393,7 +393,7 @@
     "herdrMissing": "未找到 herdr，任务无法运行，但对话仍可使用。可在下方一键安装，或在别处安装后重启工作台。",
     "attachHint": "可在终端中查看或接管这些 Agent：",
     "herdr": {
-      "notFound": "尚未检测到 herdr（优先使用 AiOpt 内置副本，其次为 PATH）。",
+      "notFound": "未检测到 herdr。若你已安装，请确认在 PATH 中；也可点击下方由 AiOpt 安装。",
       "local": "herdr {{version}} · {{path}}",
       "remote": "通过 SSH 使用远程 herdr · {{target}}",
       "install": "安装 herdr",

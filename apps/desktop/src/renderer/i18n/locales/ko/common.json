@@ -392,7 +392,7 @@
     "removeConfirmYes": "제거",
     "herdrMissing": "herdr를 찾을 수 없어 태스크를 실행할 수 없습니다. 채팅은 계속 사용할 수 있습니다. 아래에서 설치하거나, 다른 경로로 설치한 뒤 워크벤치를 다시 시작하세요.",
     "herdr": {
-      "notFound": "herdr가 아직 설치되지 않았습니다(AiOpt는 내장 복사본을 먼저 확인한 뒤 PATH를 확인합니다).",
+      "notFound": "herdr를 찾을 수 없습니다. 이미 설치했다면 PATH에 있는지 확인하거나, 아래에서 AiOpt로 설치하세요.",
       "local": "herdr {{version}} · {{path}}",
       "remote": "SSH 원격 herdr · {{target}}",
       "install": "herdr 설치",

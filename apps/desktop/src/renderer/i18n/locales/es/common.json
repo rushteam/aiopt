@@ -392,7 +392,7 @@
     "removeConfirmYes": "Quitar",
     "herdrMissing": "No se encontró herdr, así que las tareas no pueden ejecutarse. El chat sigue funcionando. Instálalo abajo o reinicia tras instalarlo fuera de AiOpt.",
     "herdr": {
-      "notFound": "herdr aún no está instalado (AiOpt busca primero su copia propia y luego el PATH).",
+      "notFound": "No se encontró herdr. Si ya lo instalaste, debe estar en el PATH, o instálalo abajo con AiOpt.",
       "local": "herdr {{version}} · {{path}}",
       "remote": "herdr remoto por SSH · {{target}}",
       "install": "Instalar herdr",
