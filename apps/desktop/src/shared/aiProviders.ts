@@ -13,6 +13,9 @@
 // one of the provider's (see resolveBindingRoute); pairs it cannot translate are
 // refused.
 
+import type { AgentImportConfig } from './agentImport';
+import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
+
 /**
  * The wire format a provider speaks / an agent consumes.
  *
@@ -301,10 +304,19 @@ export function normalizeDropFields(raw: readonly string[]): string[] {
  * A provider in the global pool. The API key is deliberately absent — it is stored
  * encrypted in the main-only secret store under `main_provider_<id>_key` and never
  * appears in this record (which is persisted as plaintext JSON and crosses IPC).
+ *
+ * OAuth providers (`credentialMode: 'oauth'`) store tokens under `main_oauth_provider_<id>`
+ * instead; see docs/dev-rules/oauth-providers.md.
  */
 export interface Provider {
   id: string;
   name: string;
+  /** Defaults to API key when absent. */
+  credentialMode?: ProviderCredentialMode;
+  /** Public OAuth metadata when `credentialMode` is `oauth`. */
+  oauth?: OAuthProviderConfig;
+  /** Which agent session to read when `credentialMode` is `agent_import`. */
+  agentImport?: AgentImportConfig;
   /**
    * The wire formats this provider serves at `baseUrl` — non-empty, de-duplicated, in
    * {@link API_FORMATS} order (see {@link normalizeApiFormats}). A gateway commonly serves

@@ -17,6 +17,12 @@ import { useUsage } from '../../hooks/useUsage';
 import { useProviders } from '../../hooks/useProviders';
 import { clearUsage } from '../../lib/usageStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import {
+  ScrollTabScreen,
+  tabScreenIntroSecondaryStyle,
+  tabScreenIntroStyle,
+  tabScreenSectionStyle,
+} from '../../components/TabScreenShell';
 import { AGENTS } from '../../../shared/aiProviders';
 import type { UsageBucket, UsageDailyPoint } from '../../../shared/usageStats';
 
@@ -40,14 +46,14 @@ export function UsageHome() {
     totals.requests > 0 ? Math.round((totals.okRequests / totals.requests) * 100) : 0;
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto' }}>
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
+    <>
+      <ScrollTabScreen>
         {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
         <h1 className="sr-only">{t('usage.title')}</h1>
-        <p style={{ margin: '0 0 4px', color: token('textMuted'), fontSize: fontSize.md }}>
+        <p style={{ ...tabScreenIntroSecondaryStyle, color: token('textMuted'), fontSize: fontSize.md }}>
           {t('usage.subtitle')}
         </p>
-        <p style={{ margin: '0 0 24px', color: token('textMuted'), fontSize: fontSize.sm }}>
+        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.sm }}>
           {t('usage.scopeNote')}
         </p>
 
@@ -55,7 +61,7 @@ export function UsageHome() {
           <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.empty')}</p>
         ) : (
           <>
-            <section style={{ marginBottom: 32 }}>
+            <section style={tabScreenSectionStyle}>
               <div style={cardGridStyle}>
                 <StatCard label={t('usage.totals.requests')} value={fmt(totals.requests)} />
                 <StatCard label={t('usage.totals.successRate')} value={`${successRate}%`} />
@@ -65,7 +71,7 @@ export function UsageHome() {
               </div>
             </section>
 
-            <section style={{ marginBottom: 32 }}>
+            <section style={tabScreenSectionStyle}>
               <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
               <DailyChart daily={usage.daily} t={t} />
             </section>
@@ -91,7 +97,7 @@ export function UsageHome() {
           </>
         )}
 
-        <section style={{ marginTop: 32, display: 'flex', alignItems: 'center', gap: space.md }}>
+        <section style={{ ...tabScreenSectionStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: space.md }}>
           <button
             type="button"
             onClick={() => setConfirmClear(true)}
@@ -102,7 +108,7 @@ export function UsageHome() {
             {t('usage.clear')}
           </button>
         </section>
-      </div>
+      </ScrollTabScreen>
       {confirmClear && (
         <ConfirmDialog
           title={t('usage.clearConfirm')}
@@ -116,7 +122,7 @@ export function UsageHome() {
           onCancel={() => setConfirmClear(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -200,7 +206,7 @@ function BreakdownTable({
 }) {
   if (rows.length === 0) return null;
   return (
-    <section style={{ marginBottom: 32 }}>
+    <section style={tabScreenSectionStyle}>
       <h2 style={sectionHeadingStyle}>{heading}</h2>
       <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden', background: token('bg') }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fontSize.md }}>

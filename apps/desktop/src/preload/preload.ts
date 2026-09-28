@@ -217,6 +217,16 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.providersDetectFormats, input),
     test: (providerId: string): Promise<ProviderTestResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersTest, { providerId }),
+    oauthStart: (providerId: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersOAuthStart, { providerId }),
+    oauthDisconnect: (providerId: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersOAuthDisconnect, { providerId }),
+    agentImportScan: (): Promise<import('../shared/ipc-channels').ProviderAgentImportScanResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersAgentImportScan),
+    agentImportAdd: (
+      agentId: import('../shared/agentImport').AgentImportAgentId,
+    ): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersAgentImportAdd, { agentId }),
     /**
      * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Unlike every
      * sibling here, this returns the secret (see the channel note). Callers must hold

@@ -25,6 +25,11 @@ import {
   type ProviderModel,
 } from '../../shared/aiProviders';
 import type { ProviderManager } from './providerManager';
+import {
+  OAUTH_SUBSCRIPTION_KINDS,
+  type OAuthProviderConfig,
+  type ProviderCredentialMode,
+} from '../../shared/oauthProviders';
 
 /**
  * Validate an untrusted formats list: a non-empty array, every entry a known format.
@@ -60,6 +65,42 @@ function optionalDropFields(raw: unknown): string[] | undefined {
   }
   // Canonical order + de-duped, so the stored value doesn't depend on click order.
   return normalizeDropFields(fields);
+}
+
+const CREDENTIAL_MODES = ['api_key', 'oauth', 'agent_import'] as const satisfies readonly ProviderCredentialMode[];
+
+function optionalCredentialMode(raw: unknown): ProviderCredentialMode | undefined {
+  if (raw === undefined) return undefined;
+  return requireEnum(raw, CREDENTIAL_MODES, 'credentialMode');
+}
+
+function parseOAuthConfig(raw: unknown): OAuthProviderConfig {
+  const obj = requireObject(raw, 'oauth');
+  const kind = requireEnum(obj.kind, OAUTH_SUBSCRIPTION_KINDS, 'oauth.kind');
+  const config: OAuthProviderConfig = { kind };
+  if (typeof obj.clientId === 'string' && obj.clientId.trim() !== '') {
+    config.clientId = obj.clientId.trim();
+  }
+  if (typeof obj.authorizeUrl === 'string' && obj.authorizeUrl.trim() !== '') {
+    config.authorizeUrl = obj.authorizeUrl.trim();
+  }
+  if (typeof obj.tokenUrl === 'string' && obj.tokenUrl.trim() !== '') {
+    config.tokenUrl = obj.tokenUrl.trim();
+  }
+  if (Array.isArray(obj.scopes)) {
+    config.scopes = obj.scopes
+      .map((entry, i) => requireString(entry, `oauth.scopes[${i}]`).trim())
+      .filter((s) => s !== '');
+  }
+  if (typeof obj.accountLabel === 'string' && obj.accountLabel.trim() !== '') {
+    config.accountLabel = obj.accountLabel.trim();
+  }
+  return config;
+}
+
+function optionalOAuth(raw: unknown): OAuthProviderConfig | undefined {
+  if (raw === undefined) return undefined;
+  return parseOAuthConfig(raw);
 }
 
 /** Validate an untrusted models array: non-empty, each `{ id, alias? }` well-formed. */
@@ -108,6 +149,8 @@ export function registerProviderIpc(
       models: requireModels(obj.models),
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
       apiKey: typeof obj.apiKey === 'string' && obj.apiKey !== '' ? obj.apiKey : undefined,
+      credentialMode: optionalCredentialMode(obj.credentialMode),
+      oauth: optionalOAuth(obj.oauth),
       dropRequestFields: optionalDropFields(obj.dropRequestFields),
     });
   });
@@ -125,6 +168,8 @@ export function registerProviderIpc(
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
       // null clears the stored key; a string replaces it; omitted leaves it.
       apiKey: obj.apiKey === null ? null : typeof obj.apiKey === 'string' ? obj.apiKey : undefined,
+      credentialMode: optionalCredentialMode(obj.credentialMode),
+      oauth: optionalOAuth(obj.oauth),
       // Present = replace the whole set (an empty array clears it); omitted = unchanged.
       dropRequestFields: optionalDropFields(obj.dropRequestFields),
     });

@@ -141,10 +141,41 @@
       "heading": "Grupo de proveedores",
       "empty": "Aún no hay proveedores. Añade uno para empezar."
     },
+    "import": {
+      "heading": "Importar desde agents instalados",
+      "scanAction": "Escanear agents",
+      "empty": "No se encontraron sesiones de agent importables.",
+      "scanning": "Escaneando…",
+      "rescan": "Volver a escanear",
+      "signedIn": "Sesión iniciada · {{account}}",
+      "add": "Añadir como proveedor",
+      "adding": "Añadiendo…",
+      "reason": {
+        "not_installed": "No instalado",
+        "not_signed_in": "Sin sesión",
+        "unsupported": "Aún no compatible"
+      },
+      "errors": {
+        "restartRequired": "Cierra la app por completo, ábrela de nuevo y vuelve a escanear."
+      }
+    },
+    "credential": {
+      "apiKey": "Clave de API",
+      "oauth": "Inicio de sesión por suscripción"
+    },
+    "oauth": {
+      "customPkce": "OAuth personalizado (avanzado…)"
+    },
     "fields": {
       "name": "Nombre",
       "apiFormats": "Formatos de API",
       "baseUrl": "URL base",
+      "credentialMode": "Autenticación",
+      "oauthClientId": "ID de cliente OAuth",
+      "oauthAuthorizeUrl": "URL de autorización",
+      "oauthTokenUrl": "URL del token",
+      "oauthScopes": "Scopes",
+      "oauthService": "Suscripción",
       "apiKey": "Clave de API",
       "models": "Modelos",
       "modelId": "ID del modelo",
@@ -157,6 +188,8 @@
       "editTitle": "Editar proveedor",
       "preset": "Preajuste",
       "presetNone": "Personalizado…",
+      "presetGroupApi": "Proveedores con clave API",
+      "presetGroupOAuth": "Suscripción (OAuth)",
       "apiKeyKeep": "Déjalo en blanco para conservar la clave guardada",
       "addModel": "Añadir modelo",
       "removeModel": "Quitar modelo",
@@ -178,6 +211,10 @@
       "showKey": "Mostrar",
       "hideKey": "Ocultar",
       "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla.",
+      "credentialModeLocked": "El tipo de autenticación no se puede cambiar después de crear el proveedor.",
+      "oauthHint": "Tras guardar, usa Conectar en la tarjeta del proveedor. Los tokens permanecen en la app — no se escriben en la config del agente.",
+      "oauthStubHint": "El inicio de sesión integrado de ChatGPT, Claude o Copilot llegará en una versión posterior. Por ahora usa un preset con clave API u OAuth personalizado.",
+      "oauthScopesPlaceholder": "scopes separados por espacios",
       "dropNone": "No se quita nada",
       "dropHint": "Algunos upstreams rechazan una solicitud que lleva un parámetro que no reconocen en lugar de ignorarlo; lo habitual es una pasarela delante de un backend estricto. Elige los parámetros que se quitarán antes de que AiOpt envíe una solicitud a este proveedor.",
       "dropGroup": {
@@ -193,6 +230,13 @@
       "models": "Modelos",
       "keySet": "Clave guardada",
       "keyMissing": "Sin clave",
+      "oauthConnected": "Sesión iniciada · {{account}}",
+      "oauthDisconnected": "Sin sesión",
+      "oauthAccountUnknown": "Conectado",
+      "oauthConnect": "Conectar",
+      "oauthDisconnect": "Desconectar",
+      "oauthBusy": "En curso…",
+      "agentImportHint": "La sesión se lee del agent en cada solicitud",
       "edit": "Editar",
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar este proveedor?",

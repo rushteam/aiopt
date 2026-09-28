@@ -141,10 +141,41 @@
       "heading": "プロバイダープール",
       "empty": "プロバイダーがまだありません。追加して始めましょう。"
     },
+    "import": {
+      "heading": "インストール済み Agent からインポート",
+      "scanAction": "Agent をスキャン",
+      "empty": "インポートできる Agent セッションがありません。",
+      "scanning": "スキャン中…",
+      "rescan": "再スキャン",
+      "signedIn": "サインイン済み · {{account}}",
+      "add": "プロバイダーとして追加",
+      "adding": "追加中…",
+      "reason": {
+        "not_installed": "未インストール",
+        "not_signed_in": "未サインイン",
+        "unsupported": "未対応"
+      },
+      "errors": {
+        "restartRequired": "アプリを完全に終了してから開き直し、再スキャンしてください。"
+      }
+    },
+    "credential": {
+      "apiKey": "API キー",
+      "oauth": "サブスクリプションでログイン"
+    },
+    "oauth": {
+      "customPkce": "カスタム OAuth（上級）"
+    },
     "fields": {
       "name": "名前",
       "apiFormats": "API 形式",
       "baseUrl": "Base URL",
+      "credentialMode": "認証方式",
+      "oauthClientId": "OAuth クライアント ID",
+      "oauthAuthorizeUrl": "認可 URL",
+      "oauthTokenUrl": "トークン URL",
+      "oauthScopes": "スコープ",
+      "oauthService": "サブスクリプション",
       "apiKey": "API キー",
       "models": "モデル",
       "modelId": "モデル ID",
@@ -157,6 +188,8 @@
       "editTitle": "プロバイダーを編集",
       "preset": "プリセット",
       "presetNone": "カスタム…",
+      "presetGroupApi": "API キー系",
+      "presetGroupOAuth": "サブスクリプション（OAuth）",
       "apiKeyKeep": "空欄のままにすると保存済みのキーを保持します",
       "addModel": "モデルを追加",
       "removeModel": "モデルを削除",
@@ -178,6 +211,10 @@
       "showKey": "表示",
       "hideKey": "非表示",
       "keySavedHidden": "キーは保存済み · セキュリティのため非表示です。空欄のままにすると保持し、入力すると置き換えます。",
+      "credentialModeLocked": "作成後は認証方式を変更できません。",
+      "oauthHint": "保存後、プロバイダーカードの「接続」でサインインしてください。トークンはアプリ内のみ — エージェント設定には書き込まれません。",
+      "oauthStubHint": "ChatGPT / Claude / Copilot の組み込みログインは今後の版で提供予定です。今は API キープリセットまたはカスタム OAuth をご利用ください。",
+      "oauthScopesPlaceholder": "スコープはスペース区切り",
       "dropNone": "何も除去しない",
       "dropHint": "アップストリームによっては、認識できないパラメータを無視せずリクエスト全体を拒否します。厳格に検証するバックエンドの前にゲートウェイがある場合によく起こります。AiOpt がこのプロバイダーへ転送する前に除去するパラメータを選んでください。",
       "dropGroup": {
@@ -193,6 +230,13 @@
       "models": "モデル",
       "keySet": "キー保存済み",
       "keyMissing": "キーなし",
+      "oauthConnected": "サインイン済み · {{account}}",
+      "oauthDisconnected": "未サインイン",
+      "oauthAccountUnknown": "接続済み",
+      "oauthConnect": "接続",
+      "oauthDisconnect": "切断",
+      "oauthBusy": "処理中…",
+      "agentImportHint": "リクエストごとに Agent からセッションを読み取り",
       "edit": "編集",
       "delete": "削除",
       "confirmDelete": "このプロバイダーを削除しますか？",

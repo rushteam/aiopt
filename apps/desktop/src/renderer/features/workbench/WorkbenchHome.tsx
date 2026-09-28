@@ -48,6 +48,7 @@ import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
 import { WorkbenchSplitPane } from './WorkbenchSplitPane';
+import { WorkspaceTabScreen } from '../../components/TabScreenShell';
 
 export function WorkbenchHome() {
   const t = useT();
@@ -94,32 +95,25 @@ export function WorkbenchHome() {
     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
-      <div style={{ flexShrink: 0, padding: '8px 24px 0', display: 'flex', flexDirection: 'column', gap: space.sm }}>
-        <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
-        {error && (
-          <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
-            {error}
-          </p>
-        )}
-      </div>
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '12px 24px 24px',
-        }}
-      >
-        <WorkbenchSplitPane
-          resizeLabel={t('workbench.splitResizeHandle')}
-          left={<ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />}
-          right={
-            <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
-          }
-        />
-      </div>
+      <WorkspaceTabScreen>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: space.sm }}>
+          <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
+          {error && (
+            <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
+              {error}
+            </p>
+          )}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <WorkbenchSplitPane
+            resizeLabel={t('workbench.splitResizeHandle')}
+            left={<ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />}
+            right={
+              <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+            }
+          />
+        </div>
+      </WorkspaceTabScreen>
       {confirmStop && (
         <ConfirmDialog
           title={t('workbench.stopConfirm')}

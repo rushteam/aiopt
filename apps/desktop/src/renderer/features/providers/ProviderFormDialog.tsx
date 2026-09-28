@@ -25,6 +25,11 @@ import {
 } from '../../../shared/aiProviders';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
 import {
+  isOAuthStubKind,
+  type OAuthSubscriptionKind,
+  type ProviderCredentialMode,
+} from '../../../shared/oauthProviders';
+import {
   addProvider,
   detectProviderFormats,
   fetchProviderModels,
@@ -86,6 +91,19 @@ export function ProviderFormDialog({
     { kind: 'ok' | 'none' | 'error'; text: string } | null
   >(null);
   const [baseUrl, setBaseUrl] = useState(provider?.baseUrl ?? '');
+  const [credentialMode, setCredentialMode] = useState<ProviderCredentialMode>(
+    provider?.credentialMode ?? 'api_key',
+  );
+  const [oauthClientId, setOauthClientId] = useState(provider?.oauth?.clientId ?? '');
+  const [oauthAuthorizeUrl, setOauthAuthorizeUrl] = useState(provider?.oauth?.authorizeUrl ?? '');
+  const [oauthTokenUrl, setOauthTokenUrl] = useState(provider?.oauth?.tokenUrl ?? '');
+  const [oauthScopes, setOauthScopes] = useState(provider?.oauth?.scopes?.join(' ') ?? '');
+  const [oauthKind, setOauthKind] = useState<OAuthSubscriptionKind>(
+    provider?.oauth?.kind ?? 'openai_codex',
+  );
+  const usesOAuth = credentialMode === 'oauth';
+  const oauthSubscriptionPresets = PROVIDER_PRESETS.filter((p) => p.credentialMode === 'oauth');
+  const apiKeyPresets = PROVIDER_PRESETS.filter((p) => p.credentialMode === 'api_key');
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<ModelRow[]>(toRows(provider?.models ?? []));
   const [notes, setNotes] = useState(provider?.notes ?? '');
@@ -127,6 +145,17 @@ export function ProviderFormDialog({
     setShowKey((v) => !v);
   }
 
+  function applyOAuthKindPreset(kind: OAuthSubscriptionKind): void {
+    if (kind === 'generic_pkce') return;
+    const preset = PROVIDER_PRESETS.find((p) => p.oauthKind === kind);
+    if (!preset) return;
+    setName(preset.name);
+    setApiFormats([...preset.apiFormats]);
+    setDetectMessage(null);
+    setBaseUrl(preset.baseUrl);
+    setModels(toRows(preset.models));
+  }
+
   function applyPreset(key: string): void {
     const preset = PROVIDER_PRESETS.find((p) => p.key === key);
     if (!preset) return;
@@ -135,6 +164,21 @@ export function ProviderFormDialog({
     setDetectMessage(null);
     setBaseUrl(preset.baseUrl);
     setModels(toRows(preset.models));
+    setCredentialMode(preset.credentialMode);
+    if (preset.credentialMode === 'oauth' && preset.oauthKind) {
+      setOauthKind(preset.oauthKind);
+      setOauthClientId('');
+      setOauthAuthorizeUrl('');
+      setOauthTokenUrl('');
+      setOauthScopes('');
+    } else {
+      setOauthKind('openai_codex');
+    }
+  }
+
+  function onOAuthKindChange(kind: OAuthSubscriptionKind): void {
+    setOauthKind(kind);
+    applyOAuthKindPreset(kind);
   }
 
   // Keep the selection in the shared allowlist's canonical order, so what we send matches
@@ -228,6 +272,34 @@ export function ProviderFormDialog({
     setBusy(true);
     setError(null);
     const parsedModels = rowsToModels(models);
+    const oauthAccountPatch =
+      editing && (provider.oauth?.accountLabel ?? provider.oauthAccountLabel)
+        ? {
+            accountLabel:
+              provider.oauth?.accountLabel ?? provider.oauthAccountLabel ?? undefined,
+          }
+        : {};
+    const oauthConfig = usesOAuth
+      ? oauthKind === 'generic_pkce'
+        ? {
+            kind: 'generic_pkce' as const,
+            clientId: oauthClientId.trim(),
+            authorizeUrl: oauthAuthorizeUrl.trim(),
+            tokenUrl: oauthTokenUrl.trim(),
+            scopes:
+              oauthScopes
+                .split(/[\s,]+/)
+                .map((s) => s.trim())
+                .filter((s) => s !== '').length > 0
+                ? oauthScopes
+                    .split(/[\s,]+/)
+                    .map((s) => s.trim())
+                    .filter((s) => s !== '')
+                : undefined,
+            ...oauthAccountPatch,
+          }
+        : { kind: oauthKind, ...oauthAccountPatch }
+      : undefined;
     try {
       if (editing) {
         await updateProvider({
@@ -237,8 +309,10 @@ export function ProviderFormDialog({
           baseUrl,
           models: parsedModels,
           notes,
+          credentialMode,
+          oauth: oauthConfig,
           // Blank field on edit = leave the stored key untouched.
-          apiKey: apiKey === '' ? undefined : apiKey,
+          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
           // Always sent: it is a checkbox group, so an empty array must clear the set
           // rather than read as "unchanged".
           dropRequestFields: dropFields,
@@ -250,7 +324,9 @@ export function ProviderFormDialog({
           baseUrl,
           models: parsedModels,
           notes: notes === '' ? undefined : notes,
-          apiKey: apiKey === '' ? undefined : apiKey,
+          credentialMode,
+          oauth: oauthConfig,
+          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
           dropRequestFields: dropFields.length > 0 ? dropFields : undefined,
         });
       }
@@ -262,11 +338,19 @@ export function ProviderFormDialog({
     }
   }
 
+  const oauthEndpointsOk =
+    !usesOAuth ||
+    oauthKind !== 'generic_pkce' ||
+    (oauthClientId.trim() !== '' &&
+      oauthAuthorizeUrl.trim() !== '' &&
+      oauthTokenUrl.trim() !== '');
+
   const canSubmit =
     name.trim() !== '' &&
     baseUrl.trim() !== '' &&
     apiFormats.length > 0 &&
     rowsToModels(models).length > 0 &&
+    oauthEndpointsOk &&
     !busy;
 
   return (
@@ -288,23 +372,6 @@ export function ProviderFormDialog({
           </button>
         </div>
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: space.lg }}>
-          {!editing && (
-            <label style={fieldStyle}>
-              {t('providers.form.preset')}
-              <select
-                defaultValue=""
-                onChange={(e) => applyPreset(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">{t('providers.form.presetNone')}</option>
-                {PROVIDER_PRESETS.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <label style={fieldStyle}>
             {t('providers.fields.name')}
             <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
@@ -318,6 +385,127 @@ export function ProviderFormDialog({
               style={inputStyle}
             />
           </label>
+          {!editing && (
+            <label style={fieldStyle}>
+              {t('providers.form.preset')}
+              <select
+                defaultValue=""
+                onChange={(e) => applyPreset(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">{t('providers.form.presetNone')}</option>
+                <optgroup label={t('providers.form.presetGroupApi')}>
+                  {apiKeyPresets.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label={t('providers.form.presetGroupOAuth')}>
+                  {oauthSubscriptionPresets.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+          )}
+          <label style={fieldStyle}>
+            {t('providers.fields.credentialMode')}
+            <select
+              value={credentialMode}
+              onChange={(e) => {
+                const mode = e.target.value as ProviderCredentialMode;
+                setCredentialMode(mode);
+                if (mode === 'oauth' && oauthKind === 'generic_pkce' && !editing) {
+                  setOauthKind('openai_codex');
+                  applyOAuthKindPreset('openai_codex');
+                }
+              }}
+              disabled={editing}
+              style={inputStyle}
+            >
+              <option value="api_key">{t('providers.credential.apiKey')}</option>
+              <option value="oauth">{t('providers.credential.oauth')}</option>
+            </select>
+            {editing && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.credentialModeLocked')}
+              </span>
+            )}
+          </label>
+          {usesOAuth && (
+            <>
+              <label style={fieldStyle}>
+                {t('providers.fields.oauthService')}
+                <select
+                  value={oauthKind}
+                  onChange={(e) => onOAuthKindChange(e.target.value as OAuthSubscriptionKind)}
+                  disabled={editing}
+                  style={inputStyle}
+                >
+                  {oauthSubscriptionPresets.map((p) =>
+                    p.oauthKind ? (
+                      <option key={p.key} value={p.oauthKind}>
+                        {p.name}
+                      </option>
+                    ) : null,
+                  )}
+                  <option value="generic_pkce">{t('providers.oauth.customPkce')}</option>
+                </select>
+              </label>
+              {isOAuthStubKind(oauthKind) && (
+                <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
+                  {t('providers.form.oauthStubHint')}
+                </p>
+              )}
+              {oauthKind === 'generic_pkce' && (
+                <>
+                  <label style={fieldStyle}>
+                    {t('providers.fields.oauthClientId')}
+                    <input
+                      value={oauthClientId}
+                      onChange={(e) => setOauthClientId(e.target.value)}
+                      style={inputStyle}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label style={fieldStyle}>
+                    {t('providers.fields.oauthAuthorizeUrl')}
+                    <input
+                      value={oauthAuthorizeUrl}
+                      onChange={(e) => setOauthAuthorizeUrl(e.target.value)}
+                      placeholder="https://…/authorize"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldStyle}>
+                    {t('providers.fields.oauthTokenUrl')}
+                    <input
+                      value={oauthTokenUrl}
+                      onChange={(e) => setOauthTokenUrl(e.target.value)}
+                      placeholder="https://…/token"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldStyle}>
+                    {t('providers.fields.oauthScopes')}
+                    <input
+                      value={oauthScopes}
+                      onChange={(e) => setOauthScopes(e.target.value)}
+                      placeholder={t('providers.form.oauthScopesPlaceholder')}
+                      style={inputStyle}
+                    />
+                  </label>
+                </>
+              )}
+              <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.oauthHint')}
+              </p>
+            </>
+          )}
+          {!usesOAuth && (
           <div style={fieldStyle}>
             <span>{t('providers.fields.apiKey')}</span>
             <div style={{ display: 'flex', gap: space.sm }}>
@@ -357,6 +545,7 @@ export function ProviderFormDialog({
               </span>
             )}
           </div>
+          )}
           {/* Formats come AFTER the URL and key they describe: Detect needs both, and the
               order reads as "here is the endpoint — now, what does it speak?". A native
               fieldset so the group name is announced with its checkboxes. */}

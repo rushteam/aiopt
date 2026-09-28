@@ -141,10 +141,41 @@
       "heading": "Pool de fournisseurs",
       "empty": "Aucun fournisseur pour l’instant. Ajoutez-en un pour commencer."
     },
+    "import": {
+      "heading": "Importer depuis les agents installés",
+      "scanAction": "Analyser les agents",
+      "empty": "Aucune session d’agent importable trouvée.",
+      "scanning": "Analyse…",
+      "rescan": "Relancer l'analyse",
+      "signedIn": "Connecté · {{account}}",
+      "add": "Ajouter comme fournisseur",
+      "adding": "Ajout…",
+      "reason": {
+        "not_installed": "Non installé",
+        "not_signed_in": "Non connecté",
+        "unsupported": "Pas encore pris en charge"
+      },
+      "errors": {
+        "restartRequired": "Quittez l’app complètement, rouvrez-la, puis relancez l’analyse."
+      }
+    },
+    "credential": {
+      "apiKey": "Clé d’API",
+      "oauth": "Connexion par abonnement"
+    },
+    "oauth": {
+      "customPkce": "OAuth personnalisé (avancé…)"
+    },
     "fields": {
       "name": "Nom",
       "apiFormats": "Formats d’API",
       "baseUrl": "URL de base",
+      "credentialMode": "Authentification",
+      "oauthClientId": "ID client OAuth",
+      "oauthAuthorizeUrl": "URL d’autorisation",
+      "oauthTokenUrl": "URL du jeton",
+      "oauthScopes": "Scopes",
+      "oauthService": "Abonnement",
       "apiKey": "Clé d’API",
       "models": "Modèles",
       "modelId": "ID du modèle",
@@ -157,6 +188,8 @@
       "editTitle": "Modifier le fournisseur",
       "preset": "Préréglage",
       "presetNone": "Personnalisé…",
+      "presetGroupApi": "Fournisseurs par clé API",
+      "presetGroupOAuth": "Abonnement (OAuth)",
       "apiKeyKeep": "Laissez vide pour conserver la clé enregistrée",
       "addModel": "Ajouter un modèle",
       "removeModel": "Supprimer le modèle",
@@ -178,6 +211,10 @@
       "showKey": "Afficher",
       "hideKey": "Masquer",
       "keySavedHidden": "Une clé est enregistrée · masquée par sécurité. Laissez vide pour la conserver, ou saisissez-en une pour la remplacer.",
+      "credentialModeLocked": "Le type d’authentification ne peut pas être modifié après la création du fournisseur.",
+      "oauthHint": "Après l’enregistrement, utilisez Connexion sur la fiche du fournisseur. Les jetons restent dans l’app — ils ne sont pas écrits dans la config de l’agent.",
+      "oauthStubHint": "La connexion ChatGPT, Claude ou Copilot intégrée arrive dans une version ultérieure. En attendant, preset avec clé API ou OAuth personnalisé.",
+      "oauthScopesPlaceholder": "scopes séparés par des espaces",
       "dropNone": "Aucun paramètre retiré",
       "dropHint": "Certains services amont rejettent une requête portant un paramètre qu'ils ne reconnaissent pas, au lieu de l'ignorer — en général une passerelle devant un backend strict. Choisissez les paramètres à retirer avant qu'AiOpt ne transmette une requête à ce fournisseur.",
       "dropGroup": {
@@ -193,6 +230,13 @@
       "models": "Modèles",
       "keySet": "Clé enregistrée",
       "keyMissing": "Aucune clé",
+      "oauthConnected": "Connecté · {{account}}",
+      "oauthDisconnected": "Non connecté",
+      "oauthAccountUnknown": "Connecté",
+      "oauthConnect": "Connexion",
+      "oauthDisconnect": "Déconnexion",
+      "oauthBusy": "En cours…",
+      "agentImportHint": "Session lue depuis l'agent à chaque requête",
       "edit": "Modifier",
       "delete": "Supprimer",
       "confirmDelete": "Supprimer ce fournisseur ?",

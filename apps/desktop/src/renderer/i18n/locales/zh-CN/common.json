@@ -145,10 +145,41 @@
       "heading": "供应商池",
       "empty": "还没有供应商，添加一个开始使用。"
     },
+    "import": {
+      "heading": "从已安装 Agent 导入",
+      "scanAction": "扫描 Agent",
+      "empty": "未发现可导入的 Agent 登录。",
+      "scanning": "扫描中…",
+      "rescan": "重新扫描",
+      "signedIn": "已登录 · {{account}}",
+      "add": "添加为供应商",
+      "adding": "添加中…",
+      "reason": {
+        "not_installed": "未安装",
+        "not_signed_in": "未登录",
+        "unsupported": "暂不支持"
+      },
+      "errors": {
+        "restartRequired": "请完全退出后重新打开应用，再点「重新扫描」。"
+      }
+    },
+    "credential": {
+      "apiKey": "API 密钥",
+      "oauth": "订阅登录"
+    },
+    "oauth": {
+      "customPkce": "自定义 OAuth（高级）"
+    },
     "fields": {
       "name": "名称",
       "apiFormats": "接口格式",
       "baseUrl": "Base URL",
+      "credentialMode": "认证方式",
+      "oauthClientId": "OAuth 客户端 ID",
+      "oauthAuthorizeUrl": "授权 URL",
+      "oauthTokenUrl": "令牌 URL",
+      "oauthScopes": "Scope",
+      "oauthService": "订阅服务",
       "apiKey": "API 密钥",
       "models": "模型",
       "modelId": "模型 ID",
@@ -161,6 +192,8 @@
       "editTitle": "编辑供应商",
       "preset": "预设",
       "presetNone": "自定义…",
+      "presetGroupApi": "API 密钥供应商",
+      "presetGroupOAuth": "订阅登录（OAuth）",
       "apiKeyKeep": "留空则保留已存储的密钥",
       "addModel": "添加模型",
       "removeModel": "移除该模型",
@@ -182,6 +215,10 @@
       "showKey": "显示",
       "hideKey": "隐藏",
       "keySavedHidden": "已保存密钥 · 出于安全不显示。留空保持不变，输入则替换。",
+      "credentialModeLocked": "创建后不能更改认证方式。",
+      "oauthHint": "保存后请在供应商卡片上点「连接」登录。令牌只留在应用内，不会写入 Agent 配置。",
+      "oauthStubHint": "ChatGPT / Claude / Copilot 内置登录将在后续版本开放。目前请用 API 密钥预设，或「自定义 OAuth」对接自建 IdP。",
+      "oauthScopesPlaceholder": "多个 scope 用空格分隔",
       "dropNone": "不剥离任何参数",
       "dropHint": "有些上游遇到不认识的参数会直接报错，而不是忽略它——通常是网关后面接了一个严格校验的后端。在这里选择 AiOpt 转发请求给该供应商之前需要剥离的参数。",
       "dropGroup": {
@@ -197,6 +234,13 @@
       "models": "模型",
       "keySet": "已存密钥",
       "keyMissing": "无密钥",
+      "oauthConnected": "已登录 · {{account}}",
+      "oauthDisconnected": "未登录",
+      "oauthAccountUnknown": "已连接",
+      "oauthConnect": "连接",
+      "oauthDisconnect": "断开",
+      "oauthBusy": "处理中…",
+      "agentImportHint": "每次请求时从 Agent 读取会话",
       "edit": "编辑",
       "delete": "删除",
       "test": "测试连接",

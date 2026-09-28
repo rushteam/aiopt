@@ -10,7 +10,12 @@ import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
-import { removeProvider, testProvider } from '../../lib/providerStore';
+import {
+  oauthDisconnectProvider,
+  oauthStartProvider,
+  removeProvider,
+  testProvider,
+} from '../../lib/providerStore';
 import type { ProviderTestResult } from '../../../shared/ipc-channels';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { providerErrorMessage } from './errors';
@@ -29,6 +34,10 @@ export function ProviderCard({
   const [hoverDelete, setHoverDelete] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
+  const [oauthBusy, setOauthBusy] = useState(false);
+  const isOAuth = provider.credentialMode === 'oauth';
+  const isAgentImport = provider.credentialMode === 'agent_import';
+  const sessionBacked = isOAuth || isAgentImport;
 
   async function onTest(): Promise<void> {
     if (provider.virtual) return;
@@ -40,6 +49,30 @@ export function ProviderCard({
       setTestResult({ ok: false, latencyMs: null, format: null, error: 'upstream' });
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function onOAuthConnect(): Promise<void> {
+    setOauthBusy(true);
+    setError(null);
+    try {
+      await oauthStartProvider(provider.id);
+    } catch (err) {
+      setError(providerErrorMessage(t, err));
+    } finally {
+      setOauthBusy(false);
+    }
+  }
+
+  async function onOAuthDisconnect(): Promise<void> {
+    setOauthBusy(true);
+    setError(null);
+    try {
+      await oauthDisconnectProvider(provider.id);
+    } catch (err) {
+      setError(providerErrorMessage(t, err));
+    } finally {
+      setOauthBusy(false);
     }
   }
 
@@ -86,8 +119,23 @@ export function ProviderCard({
         <p style={metaStyle}>{t('providers.combined.description')}</p>
       )}
       <p style={metaStyle}>
-        {t('providers.card.models')}: {provider.models.length} ·{' '}
-        {provider.hasKey ? t('providers.card.keySet') : t('providers.card.keyMissing')}
+        {t('providers.card.models')}: {provider.models.length}
+        {sessionBacked ? (
+          <>
+            {' · '}
+            {provider.hasKey
+              ? t('providers.card.oauthConnected').replace(
+                  '{{account}}',
+                  provider.oauthAccountLabel?.trim() || t('providers.card.oauthAccountUnknown'),
+                )
+              : t('providers.card.oauthDisconnected')}
+          </>
+        ) : (
+          <>
+            {' · '}
+            {provider.hasKey ? t('providers.card.keySet') : t('providers.card.keyMissing')}
+          </>
+        )}
       </p>
       {error && (
         <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.sm }}>
@@ -125,10 +173,30 @@ export function ProviderCard({
             >
               {t('providers.card.edit')}
             </button>
+            {isOAuth && (
+              <button
+                type="button"
+                onClick={() => void (provider.hasKey ? onOAuthDisconnect() : onOAuthConnect())}
+                disabled={busy || oauthBusy}
+                {...hoverBackground('transparent', token('surfaceHover'))}
+                style={actionStyle('ghost')}
+              >
+                {oauthBusy
+                  ? t('providers.card.oauthBusy')
+                  : provider.hasKey
+                    ? t('providers.card.oauthDisconnect')
+                    : t('providers.card.oauthConnect')}
+              </button>
+            )}
+            {isAgentImport && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.card.agentImportHint')}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void onTest()}
-              disabled={busy || testing}
+              disabled={busy || testing || (sessionBacked && !provider.hasKey)}
               {...hoverBackground('transparent', token('surfaceHover'))}
               style={actionStyle('ghost')}
             >

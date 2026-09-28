@@ -22,8 +22,10 @@ import { broadcastToRenderers } from './ipc/broadcast';
 import {
   createProviderStore,
   createFileProviderPersistence,
+  type ProviderStore,
 } from './providers/providerStore';
 import { createProviderManager, type ProviderManager } from './providers/providerManager';
+import { createOAuthManager, type OAuthManager } from './oauth/oauthManager';
 import { createAdapterRegistry } from './providers/adapters/registry';
 import { createTranslationProxy, type TranslationProxy } from './proxy/translationProxy';
 import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/proxyStore';
@@ -56,6 +58,8 @@ let secretStore: SecretStore | null = null;
 let authManager: AuthManager | null = null;
 let updateService: UpdateService | null = null;
 let appShortcutStore: AppShortcutStore | null = null;
+let providerStore: ProviderStore | null = null;
+let oauthManager: OAuthManager | null = null;
 let providerManager: ProviderManager | null = null;
 let translationProxy: TranslationProxy | null = null;
 let usageStore: UsageStore | null = null;
@@ -150,10 +154,33 @@ export function getAppShortcutStore(): AppShortcutStore {
   return appShortcutStore;
 }
 
+function getProviderStore(): ProviderStore {
+  if (!providerStore) {
+    providerStore = createProviderStore(createFileProviderPersistence(providersFilePath()));
+  }
+  return providerStore;
+}
+
+export function getOAuthManager(): OAuthManager {
+  if (!oauthManager) {
+    oauthManager = createOAuthManager({
+      store: getProviderStore(),
+      secrets: getSecretStore(),
+      fetchImpl: (url, init) => net.fetch(url, init),
+      onProvidersChanged: () => {
+        if (providerManager) {
+          broadcastToRenderers(IPC_EVENTS.providersChanged, providerManager.getSnapshot());
+        }
+      },
+    });
+  }
+  return oauthManager;
+}
+
 export function getProviderManager(): ProviderManager {
   if (!providerManager) {
     providerManager = createProviderManager(
-      createProviderStore(createFileProviderPersistence(providersFilePath())),
+      getProviderStore(),
       getSecretStore(),
       createAdapterRegistry(),
       // Announce every pool/binding change to all windows (safe snapshot, no key).
@@ -169,6 +196,7 @@ export function getProviderManager(): ProviderManager {
       // Copy-proxy-config writes the (token-bearing) snippet straight to the OS clipboard,
       // main-side, so the token never crosses IPC back to the renderer.
       (text) => clipboard.writeText(text),
+      getOAuthManager(),
     );
   }
   return providerManager;

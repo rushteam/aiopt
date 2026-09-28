@@ -125,6 +125,38 @@ export async function testProvider(providerId: string): Promise<ProviderTestResu
   return window.aiopt.providers.test(providerId);
 }
 
+export async function oauthStartProvider(providerId: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.oauthStart(providerId));
+}
+
+export async function oauthDisconnectProvider(providerId: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.oauthDisconnect(providerId));
+}
+
+export async function scanAgentImports(): Promise<
+  import('../../shared/agentImport').AgentImportCandidate[]
+> {
+  ensureInitialized();
+  const scan = window.aiopt.providers.agentImportScan;
+  if (typeof scan !== 'function') {
+    throw new Error('[UNSUPPORTED_CAPABILITY] agent import scan is unavailable');
+  }
+  const result = await scan();
+  if (!result || !Array.isArray(result.candidates)) {
+    throw new Error('[INTERNAL] invalid agent import scan response');
+  }
+  return result.candidates;
+}
+
+export async function addAgentImportProvider(
+  agentId: import('../../shared/agentImport').AgentImportAgentId,
+): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.agentImportAdd(agentId));
+}
+
 /**
  * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Read-only, does not
  * touch the pool. The caller must hold the returned value transiently only — never
