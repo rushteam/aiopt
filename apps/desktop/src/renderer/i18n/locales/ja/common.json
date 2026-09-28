@@ -390,7 +390,17 @@
     "stopConfirmYes": "すべて停止",
     "removeConfirm": "このタスクとワークツリーを削除しますか？ブランチは残ります。未コミットの変更があるワークツリーは削除されません。",
     "removeConfirmYes": "削除",
-    "herdrMissing": "herdr が見つからないため、タスクを実行できません。チャットは使えます。herdr をインストールしてから、ワークベンチを再起動してください。",
+    "herdrMissing": "herdr が見つからないため、タスクを実行できません。チャットは使えます。下からインストールするか、別途インストール後にワークベンチを再起動してください。",
+    "herdr": {
+      "notFound": "herdr はまだインストールされていません（AiOpt は組み込みコピーを優先し、次に PATH を確認します）。",
+      "local": "herdr {{version}} · {{path}}",
+      "remote": "SSH 経由のリモート herdr · {{target}}",
+      "install": "herdr をインストール",
+      "installing": "herdr をインストール中…",
+      "sshLabel": "リモート herdr（SSH）",
+      "sshPlaceholder": "user@host",
+      "sshHint": "そのマシン上で SSH 経由で herdr を実行します（herdr TUI の --remote ではありません）。"
+    },
     "attachHint": "ターミナルからエージェントを確認・操作できます:",
     "status": {
       "stopped": "停止中",

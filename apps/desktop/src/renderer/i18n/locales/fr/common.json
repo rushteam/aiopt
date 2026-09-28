@@ -390,7 +390,17 @@
     "stopConfirmYes": "Tout arrêter",
     "removeConfirm": "Supprimer cette tâche et son worktree ? La branche est conservée. Un worktree avec des modifications non validées n'est pas supprimé.",
     "removeConfirmYes": "Supprimer",
-    "herdrMissing": "herdr est introuvable : les tâches ne peuvent pas s'exécuter. Le chat reste disponible. Installez herdr, puis redémarrez l'atelier.",
+    "herdrMissing": "herdr est introuvable : les tâches ne peuvent pas s'exécuter. Le chat reste disponible. Installez-le ci-dessous ou redémarrez après une installation externe.",
+    "herdr": {
+      "notFound": "herdr n'est pas encore installé (AiOpt vérifie d'abord sa copie locale, puis le PATH).",
+      "local": "herdr {{version}} · {{path}}",
+      "remote": "herdr distant via SSH · {{target}}",
+      "install": "Installer herdr",
+      "installing": "Installation de herdr…",
+      "sshLabel": "herdr distant (SSH)",
+      "sshPlaceholder": "user@host",
+      "sshHint": "Exécute herdr sur cette machine via SSH (pas l'attache TUI --remote de herdr)."
+    },
     "attachHint": "Suivez ou prenez la main sur les agents depuis un terminal :",
     "status": {
       "stopped": "Arrêté",

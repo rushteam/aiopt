@@ -390,7 +390,17 @@
     "stopConfirmYes": "Detener todo",
     "removeConfirm": "¿Quitar esta tarea y su worktree? La rama se conserva. Un worktree con cambios sin confirmar no se quita.",
     "removeConfirmYes": "Quitar",
-    "herdrMissing": "No se encontró herdr, así que las tareas no pueden ejecutarse. El chat sigue funcionando. Instala herdr y reinicia el banco de trabajo.",
+    "herdrMissing": "No se encontró herdr, así que las tareas no pueden ejecutarse. El chat sigue funcionando. Instálalo abajo o reinicia tras instalarlo fuera de AiOpt.",
+    "herdr": {
+      "notFound": "herdr aún no está instalado (AiOpt busca primero su copia propia y luego el PATH).",
+      "local": "herdr {{version}} · {{path}}",
+      "remote": "herdr remoto por SSH · {{target}}",
+      "install": "Instalar herdr",
+      "installing": "Instalando herdr…",
+      "sshLabel": "herdr remoto (SSH)",
+      "sshPlaceholder": "user@host",
+      "sshHint": "Ejecuta herdr en esa máquina por SSH (no es el attach TUI --remote de herdr)."
+    },
     "attachHint": "Observa o toma el control de los agentes desde una terminal:",
     "status": {
       "stopped": "Detenido",

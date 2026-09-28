@@ -32,6 +32,7 @@ import {
   stopTask,
   stopWorkbench,
   updateTask,
+  installHerdr,
   updateWorkbenchSettings,
 } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -97,7 +98,7 @@ export function WorkbenchHome() {
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
       <div style={{ padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: space.lg }}>
-        <StatusBar wb={wb} t={t} busy={busy} onToggle={() => void toggle()} />
+        <StatusBar wb={wb} t={t} busy={busy} run={run} onToggle={() => void toggle()} />
         <FolderStrip folders={wb.folders} t={t} run={run} />
         {error && (
           <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
@@ -147,13 +148,19 @@ function StatusBar({
   wb,
   t,
   busy,
+  run,
   onToggle,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   busy: boolean;
+  run: Runner;
   onToggle: () => void;
 }) {
+  const probe = wb.herdrProbe;
+  const showInstall = !probe.remote && !probe.installed && wb.status !== 'error';
+  const tasksBlocked =
+    (wb.status === 'ready' && !wb.herdrAvailable) || (!probe.installed && wb.status === 'stopped');
   const on = wb.status === 'ready' || wb.status === 'starting';
   const dot =
     wb.status === 'ready' ? token('success') : wb.status === 'error' ? token('danger') : token('borderStrong');
@@ -192,12 +199,39 @@ function StatusBar({
       {wb.issue && (
         <p style={{ margin: 0, fontSize: fontSize.base, color: token('danger') }}>{t(`workbench.issue.${wb.issue}`)}</p>
       )}
-      {wb.status === 'ready' && !wb.herdrAvailable && (
+      {(probe.installed || probe.installing || showInstall) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: space.md }}>
+          <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+            {probe.remote
+              ? t('workbench.herdr.remote').replace('{{target}}', probe.displayPath ?? '')
+              : probe.installed
+                ? t('workbench.herdr.local')
+                    .replace('{{version}}', probe.version ?? '—')
+                    .replace('{{path}}', probe.displayPath ?? '')
+                : t('workbench.herdr.notFound')}
+          </span>
+          {showInstall && (
+            <button
+              type="button"
+              disabled={probe.installing || busy}
+              onClick={() => void run(installHerdr)}
+              {...hoverBackground(token('accent'), token('accentHover'))}
+              style={{ ...accentStyle, fontSize: fontSize.sm, padding: '4px 10px', opacity: probe.installing ? 0.6 : 1 }}
+            >
+              {probe.installing ? t('workbench.herdr.installing') : t('workbench.herdr.install')}
+            </button>
+          )}
+        </div>
+      )}
+      {tasksBlocked && wb.status !== 'starting' && (
         <p style={{ margin: 0, fontSize: fontSize.base, color: token('textMuted') }}>{t('workbench.herdrMissing')}</p>
       )}
       {wb.status === 'ready' && wb.herdrAvailable && (
         <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
-          {t('workbench.attachHint')} <code style={codeStyle}>herdr --session {wb.herdrSession}</code>
+          {t('workbench.attachHint')}{' '}
+          <code style={codeStyle}>
+            {probe.remote ? `ssh ${wb.settings.herdrSshTarget} herdr --session ${wb.herdrSession}` : `herdr --session ${wb.herdrSession}`}
+          </code>
         </p>
       )}
     </section>
@@ -634,6 +668,11 @@ function TaskBoard({
   liveCount: number;
 }) {
   const [creating, setCreating] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [sshDraft, setSshDraft] = useState(wb.settings.herdrSshTarget ?? '');
+  useEffect(() => {
+    setSshDraft(wb.settings.herdrSshTarget ?? '');
+  }, [wb.settings.herdrSshTarget]);
   const tasks = [...wb.tasks].sort(
     (a, b) => STATUS_GROUP[a.status] - STATUS_GROUP[b.status] || a.createdAt - b.createdAt,
   );
@@ -647,8 +686,12 @@ function TaskBoard({
       wb.folders.some((f) => f.id === task.folderId) &&
       taskDependenciesMet(task, wb.tasks),
   ).length;
-  const [savingSettings, setSavingSettings] = useState(false);
-  const setSetting = (patch: { autoRun?: boolean; notifyCoordinator?: boolean; autoLaunchDependents?: boolean }): void => {
+  const setSetting = (patch: {
+    autoRun?: boolean;
+    notifyCoordinator?: boolean;
+    autoLaunchDependents?: boolean;
+    herdrSshTarget?: string | null;
+  }): void => {
     setSavingSettings(true);
     void run(() => updateWorkbenchSettings(patch)).finally(() => setSavingSettings(false));
   };
@@ -715,6 +758,33 @@ function TaskBoard({
           disabled={savingSettings}
           onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
         />
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted') }}>
+          {t('workbench.herdr.sshLabel')}
+          <input
+            type="text"
+            value={sshDraft}
+            disabled={savingSettings || wb.status === 'starting'}
+            placeholder={t('workbench.herdr.sshPlaceholder')}
+            onChange={(e) => setSshDraft(e.target.value)}
+            onBlur={() => {
+              const trimmed = sshDraft.trim();
+              const next = trimmed === '' ? null : trimmed;
+              if (next === wb.settings.herdrSshTarget) return;
+              setSetting({ herdrSshTarget: next });
+            }}
+            style={{
+              minWidth: 180,
+              maxWidth: 280,
+              padding: '4px 8px',
+              borderRadius: radius.sm,
+              border: `1px solid ${token('border')}`,
+              background: token('surface'),
+              color: token('text'),
+              fontSize: fontSize.sm,
+            }}
+          />
+          <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
+        </label>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.lg }}>
         {creating && (

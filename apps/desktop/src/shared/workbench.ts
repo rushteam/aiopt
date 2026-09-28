@@ -195,6 +195,21 @@ export interface ConversationView {
   current: boolean;
 }
 
+/** Where the resolved herdr binary came from (display only). */
+export type HerdrInstallSource = 'managed' | 'path' | null;
+
+/** herdr CLI detection — updated on open, after install, and when workbench starts. */
+export interface HerdrProbeView {
+  installed: boolean;
+  source: HerdrInstallSource;
+  /** Home-relative when under the user's home; otherwise a short label (e.g. managed copy). */
+  displayPath: string | null;
+  version: string | null;
+  installing: boolean;
+  /** When set, task commands run on the remote host via `ssh target herdr …`. */
+  remote: boolean;
+}
+
 /** The user's workbench preferences (only changed keys are persisted; see manager). */
 export interface WorkbenchSettings {
   /** Run the coordinator's proposals at once when they have a folder (user-asked turns only). */
@@ -203,13 +218,25 @@ export interface WorkbenchSettings {
   notifyCoordinator: boolean;
   /** When a task reaches `done`, launch proposed dependents that are otherwise ready (user turns only). */
   autoLaunchDependents: boolean;
+  /**
+   * Optional SSH destination (`user@host`) for herdr. Empty means local. This is not herdr's
+   * `--remote` TUI attach flag — Workbench drives the socket API over SSH instead.
+   */
+  herdrSshTarget: string | null;
 }
 
 export const DEFAULT_WORKBENCH_SETTINGS: Readonly<WorkbenchSettings> = {
   autoRun: false,
   notifyCoordinator: true,
   autoLaunchDependents: false,
+  herdrSshTarget: null,
 };
+
+const HERDR_SSH_TARGET_RE = /^[a-zA-Z0-9._@:\-]{1,200}$/;
+
+export function isValidHerdrSshTarget(value: string): boolean {
+  return HERDR_SSH_TARGET_RE.test(value);
+}
 
 /** Whether every dependency on the board is `done`. */
 export function taskDependenciesMet(task: Pick<TaskView, 'dependsOn'>, tasks: readonly TaskView[]): boolean {
@@ -246,6 +273,8 @@ export interface WorkbenchSnapshot {
   herdrSession: string;
   /** Whether the herdr binary was found (the tasks side needs it; chat does not). */
   herdrAvailable: boolean;
+  /** CLI probe (local managed copy first, then PATH). Independent of `status`. */
+  herdrProbe: HerdrProbeView;
   /** Saved conversations, newest first. The current one is absent until it has a message. */
   conversations: ConversationView[];
   settings: WorkbenchSettings;

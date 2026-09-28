@@ -205,6 +205,7 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
   const onChange = vi.fn();
   const deps: WorkbenchDeps = {
     platform: 'darwin',
+    arch: 'arm64',
     dataDir: DATA,
     homeDir: '/u',
     env: { PATH: '/usr/bin', HOME: '/u', OPENAI_API_KEY: 'leak-me-not' },
@@ -227,6 +228,7 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
       },
     },
     findBinary: (name) => `/opt/bin/${name}`,
+    isExecutableFile: (file) => /\/(herdr|pi|git)$/.test(file),
     resolveModel: () => MODEL,
     exec,
     spawnDetached,
@@ -363,7 +365,10 @@ describe('workbench start', () => {
   });
 
   it('still chats when herdr is unavailable', async () => {
-    const s = await started({}, { findBinary: (name) => (name === 'herdr' ? null : `/opt/bin/${name}`) });
+    const s = await started({}, {
+      findBinary: (name) => (name === 'herdr' ? null : `/opt/bin/${name}`),
+      isExecutableFile: (file) => !file.endsWith('/herdr') && /\/(pi|git)$/.test(file),
+    });
     expect(s.wb.getSnapshot()).toMatchObject({ status: 'ready', herdrAvailable: false });
   });
 
@@ -728,7 +733,10 @@ describe('workbench run all and auto-run', () => {
   it('refuses to run all while stopped or without herdr', async () => {
     const idle = setup();
     expect(codeOf(() => idle.wb.runAll())).toBe('PRECONDITION_FAILED');
-    const noHerdr = await started({}, { findBinary: (name) => (name === 'herdr' ? null : `/opt/bin/${name}`) });
+    const noHerdr = await started({}, {
+      findBinary: (name) => (name === 'herdr' ? null : `/opt/bin/${name}`),
+      isExecutableFile: (file) => !file.endsWith('/herdr') && /\/(pi|git)$/.test(file),
+    });
     expect(codeOf(() => noHerdr.wb.runAll())).toBe('PRECONDITION_FAILED');
   });
 
@@ -867,6 +875,7 @@ describe('workbench settings', () => {
       autoRun: false,
       notifyCoordinator: true,
       autoLaunchDependents: false,
+      herdrSshTarget: null,
     });
 
     s.wb.updateSettings({ autoRun: true });
@@ -875,6 +884,7 @@ describe('workbench settings', () => {
       autoRun: true,
       notifyCoordinator: true,
       autoLaunchDependents: false,
+      herdrSshTarget: null,
     });
 
     s.wb.updateSettings({ autoRun: false, notifyCoordinator: false });
@@ -885,6 +895,7 @@ describe('workbench settings', () => {
       autoRun: false,
       notifyCoordinator: false,
       autoLaunchDependents: false,
+      herdrSshTarget: null,
     });
   });
 });

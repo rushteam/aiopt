@@ -37,6 +37,8 @@ function setup(picked: string | null = '/work/app') {
     openConversation: vi.fn(async () => {}),
     deleteConversation: vi.fn(),
     updateSettings: vi.fn(),
+    refreshHerdrProbe: vi.fn(async () => {}),
+    installHerdr: vi.fn(async () => {}),
   } satisfies WorkbenchManager;
   const pickFolder = vi.fn(async () => picked);
   const reg = createInMemoryRegistry();
@@ -58,7 +60,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder } = setup();
-    expect(CHANNELS).toHaveLength(20);
+    expect(CHANNELS).toHaveLength(22);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',

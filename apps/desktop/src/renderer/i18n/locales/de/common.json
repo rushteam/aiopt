@@ -390,7 +390,17 @@
     "stopConfirmYes": "Alle stoppen",
     "removeConfirm": "Diese Aufgabe und ihren Worktree entfernen? Der Branch bleibt erhalten. Ein Worktree mit nicht committeten Änderungen wird nicht entfernt.",
     "removeConfirmYes": "Entfernen",
-    "herdrMissing": "herdr wurde nicht gefunden, daher können keine Aufgaben laufen. Der Chat funktioniert weiterhin. Installieren Sie herdr und starten Sie die Werkbank neu.",
+    "herdrMissing": "herdr wurde nicht gefunden, daher können keine Aufgaben laufen. Der Chat funktioniert weiterhin. Installieren Sie herdr unten oder starten Sie die Werkbank nach einer externen Installation neu.",
+    "herdr": {
+      "notFound": "herdr ist noch nicht installiert (AiOpt prüft zuerst die eigene Kopie, dann Ihren PATH).",
+      "local": "herdr {{version}} · {{path}}",
+      "remote": "Remote-herdr per SSH · {{target}}",
+      "install": "herdr installieren",
+      "installing": "herdr wird installiert…",
+      "sshLabel": "Remote-herdr (SSH)",
+      "sshPlaceholder": "user@host",
+      "sshHint": "Führt herdr auf diesem Rechner per SSH aus (nicht herdrs TUI --remote)."
+    },
     "attachHint": "Agenten im Terminal beobachten oder übernehmen:",
     "status": {
       "stopped": "Gestoppt",

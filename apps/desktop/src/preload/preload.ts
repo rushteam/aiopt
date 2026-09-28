@@ -345,6 +345,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationDelete, { conversationId }),
     updateSettings: (request: WorkbenchSettingsUpdateRequest): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchSettingsUpdate, request),
+    refreshHerdrProbe: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchHerdrProbe),
+    installHerdr: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchHerdrInstall),
     /** Subscribe to workbench changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: WorkbenchSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.workbenchChanged, callback),

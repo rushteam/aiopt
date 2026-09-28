@@ -27,6 +27,14 @@ const EMPTY: WorkbenchSnapshot = {
   folders: [],
   herdrSession: 'aiopt',
   herdrAvailable: false,
+  herdrProbe: {
+    installed: false,
+    source: null,
+    displayPath: null,
+    version: null,
+    installing: false,
+    remote: false,
+  },
   conversations: [],
   settings: { ...DEFAULT_WORKBENCH_SETTINGS },
 };
@@ -100,6 +108,8 @@ export const deleteConversation = (conversationId: string): Promise<void> =>
   apply(wb().deleteConversation(conversationId));
 export const updateWorkbenchSettings = (request: WorkbenchSettingsUpdateRequest): Promise<void> =>
   apply(wb().updateSettings(request));
+export const refreshHerdrProbe = (): Promise<void> => apply(wb().refreshHerdrProbe());
+export const installHerdr = (): Promise<void> => apply(wb().installHerdr());
 
 /** The worker's recent terminal text (already stripped of control characters by main). */
 export async function readTaskOutput(taskId: string): Promise<string> {

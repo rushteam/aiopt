@@ -52,11 +52,13 @@ import {
   type TaskOrigin,
   type TaskStatus,
   type TaskView,
+  type HerdrProbeView,
   type WorkbenchIssue,
   type WorkbenchModel,
   type WorkbenchSettings,
   type WorkbenchSnapshot,
   type WorkbenchStatus,
+  isValidHerdrSshTarget,
 } from '../../shared/workbench';
 import { throwIpcError } from '../ipc/validate';
 import type { Logger } from '../logger';
@@ -85,6 +87,13 @@ import {
   TASKS_FILE_ENV,
   TASK_UPDATE_COMMAND,
 } from './orchestratorExtension';
+import { installManagedHerdr } from './herdrInstall';
+import {
+  herdrExecForTarget,
+  herdrSpawnArgv,
+  probeHerdrVersion,
+  resolveLocalHerdrBinary,
+} from './herdrProbe';
 
 /** The model the workbench agents use, resolved main-side from pi's binding in Providers. */
 export interface ResolvedWorkbenchModel {
@@ -118,6 +127,7 @@ export interface WorkbenchFs {
 
 export interface WorkbenchDeps {
   platform: NodeJS.Platform;
+  arch: string;
   /** `<userData>/workbench`. */
   dataDir: string;
   homeDir: string;
@@ -126,6 +136,8 @@ export interface WorkbenchDeps {
   fs: WorkbenchFs;
   /** Resolve a CLI name to an executable path, or null. */
   findBinary(name: 'pi' | 'herdr' | 'git', dirs: readonly string[]): string | null;
+  /** Whether a path is an executable regular file (used to prefer the managed herdr copy). */
+  isExecutableFile: (file: string) => boolean;
   resolveModel(): ResolvedWorkbenchModel | null;
   /** execFile (no shell). Resolves on a non-zero exit. */
   exec(file: string, args: readonly string[], timeoutMs: number, env: Record<string, string>): Promise<ExecResult>;
@@ -181,6 +193,10 @@ export interface WorkbenchManager {
   openConversation(conversationId: string): Promise<void>;
   deleteConversation(conversationId: string): void;
   updateSettings(patch: Partial<WorkbenchSettings>): void;
+  /** Re-check PATH / managed copy (and remote version when configured). */
+  refreshHerdrProbe(): Promise<void>;
+  /** Download herdr into the workbench data dir (macOS / Linux). */
+  installHerdr(): Promise<void>;
 }
 
 /** The provider slug the workbench's own pi config defines. */
@@ -340,6 +356,94 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let userTurn = false;
   const pendingNotify = new Set<string>();
   let notifyScheduled = false;
+  let herdrInstalling = false;
+  let herdrProbeVersion: string | null = null;
+  let herdrProbeSource: HerdrProbeView['source'] = null;
+  let herdrProbeBinary: string | null = null;
+
+  function herdrSshTarget(): string | null {
+    const t = settings.herdrSshTarget;
+    return t && isValidHerdrSshTarget(t) ? t : null;
+  }
+
+  function resolveHerdrLocal(): { binary: string | null; source: HerdrProbeView['source'] } {
+    return resolveLocalHerdrBinary({
+      workbenchDataDir: deps.dataDir,
+      pathEnv: deps.env.PATH,
+      homeDir: deps.homeDir,
+      isExecutable: deps.isExecutableFile,
+    });
+  }
+
+  function herdrDisplayPath(binary: string | null, source: HerdrProbeView['source']): string | null {
+    if (!binary) return null;
+    if (source === 'managed') return homeRelativeDisplayPath(binary, deps.homeDir);
+    return homeRelativeDisplayPath(binary, deps.homeDir);
+  }
+
+  function buildHerdrProbeView(): HerdrProbeView {
+    const remote = herdrSshTarget() !== null;
+    const installed = remote ? herdrProbeVersion !== null : herdrProbeBinary !== null;
+    return {
+      installed,
+      source: remote ? null : herdrProbeSource,
+      displayPath: remote ? herdrSshTarget() : herdrDisplayPath(herdrProbeBinary, herdrProbeSource),
+      version: herdrProbeVersion,
+      installing: herdrInstalling,
+      remote,
+    };
+  }
+
+  async function refreshHerdrProbe(): Promise<void> {
+    const ssh = herdrSshTarget();
+    if (!ssh) {
+      const resolved = resolveHerdrLocal();
+      herdrProbeBinary = resolved.binary;
+      herdrProbeSource = resolved.source;
+    } else {
+      herdrProbeBinary = null;
+      herdrProbeSource = null;
+    }
+    const local = resolveHerdrLocal();
+    const binary = local.binary ?? 'herdr';
+    const probeEnv =
+      cliEnv.PATH !== undefined ? cliEnv : baseEnv(candidateBinDirs(deps.env.PATH, deps.homeDir));
+    try {
+      herdrProbeVersion = await probeHerdrVersion(
+        (file, args, timeoutMs) => deps.exec(file, args, timeoutMs, probeEnv),
+        binary,
+        ssh,
+      );
+    } catch {
+      herdrProbeVersion = null;
+    }
+    if (ssh && !herdrProbeVersion) {
+      // Remote probe failed — treat as not installed for tasks.
+    } else if (!ssh && !local.binary) {
+      herdrProbeVersion = null;
+    }
+    changed();
+  }
+
+  async function installHerdr(): Promise<void> {
+    if (deps.platform === 'win32') throwIpcError('INVALID_PARAMS', 'unsupported platform');
+    if (herdrInstalling) return;
+    herdrInstalling = true;
+    changed();
+    try {
+      await installManagedHerdr(deps.dataDir, deps.platform, deps.arch);
+      const resolved = resolveHerdrLocal();
+      herdrProbeBinary = resolved.binary;
+      herdrProbeSource = resolved.source;
+      await refreshHerdrProbe();
+    } catch (err) {
+      log.error('workbench.herdr_install_failed', { code: errorCode(err) });
+      throwIpcError('INTERNAL', 'herdr install failed');
+    } finally {
+      herdrInstalling = false;
+      changed();
+    }
+  }
 
   /** Every change goes through here; the board is written whenever it actually moved. */
   function changed(): void {
@@ -576,6 +680,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         typeof doc.autoLaunchDependents === 'boolean'
           ? doc.autoLaunchDependents
           : DEFAULT_WORKBENCH_SETTINGS.autoLaunchDependents,
+      herdrSshTarget:
+        typeof doc.herdrSshTarget === 'string' && isValidHerdrSshTarget(doc.herdrSshTarget)
+          ? doc.herdrSshTarget
+          : DEFAULT_WORKBENCH_SETTINGS.herdrSshTarget,
     };
   }
 
@@ -589,6 +697,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       if (value === DEFAULT_WORKBENCH_SETTINGS[key]) delete next[key];
       else next[key] = value;
     }
+    if (patch.herdrSshTarget !== undefined) {
+      const value = patch.herdrSshTarget;
+      if (value === null || value === '') delete next.herdrSshTarget;
+      else if (isValidHerdrSshTarget(value)) next.herdrSshTarget = value;
+      else throwIpcError('INVALID_PARAMS', 'invalid herdrSshTarget');
+    }
     try {
       deps.fs.mkdirp(deps.dataDir);
       deps.fs.writeFile(settingsFile, `${JSON.stringify(next, null, 2)}\n`);
@@ -599,6 +713,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     settingsDoc = next;
     settings = settingsFrom(settingsDoc);
     if (!settings.notifyCoordinator) pendingNotify.clear();
+    void refreshHerdrProbe();
     changed();
   }
 
@@ -718,6 +833,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       folders: folders.map(folderView),
       herdrSession: WORKBENCH_HERDR_SESSION,
       herdrAvailable: herdr !== null,
+      herdrProbe: buildHerdrProbeView(),
       conversations: conversations.map(conversationView),
       settings: { ...settings },
     };
@@ -811,7 +927,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     launching.clear();
   }
 
-  async function startServer(client: HerdrClient, binary: string, env: Record<string, string>): Promise<void> {
+  async function startServer(
+    client: HerdrClient,
+    binary: string,
+    env: Record<string, string>,
+    sshTarget: string | null,
+  ): Promise<void> {
     if (await client.isRunning()) {
       if (ownsServer) return;
       // Left over from a previous run that did not shut down cleanly: its environment
@@ -819,7 +940,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       log.warn('workbench.stale_server');
       await client.stopServer();
     }
-    deps.spawnDetached(binary, ['--session', WORKBENCH_HERDR_SESSION, 'server'], env, deps.homeDir);
+    const spawn = herdrSpawnArgv(sshTarget, binary, ['--session', WORKBENCH_HERDR_SESSION, 'server']);
+    deps.spawnDetached(spawn.file, spawn.argv, env, deps.homeDir);
     for (let i = 0; i < SERVER_READY_TRIES; i += 1) {
       if (await client.isRunning()) {
         ownsServer = true;
@@ -855,13 +977,19 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       return;
     }
     model = resolved.view;
-    herdrBinary = deps.findBinary('herdr', dirs);
+    const sshTarget = herdrSshTarget();
+    const resolvedHerdr = resolveHerdrLocal();
+    herdrBinary = sshTarget ? (resolvedHerdr.binary ?? 'herdr') : resolvedHerdr.binary;
     gitBinary = deps.findBinary('git', dirs);
 
     // pi is a node script (`#!/usr/bin/env node`): its own dir goes first so the node it was
     // installed with is found even from a Finder launch's minimal PATH.
     const binDirs = [
-      ...new Set([path.dirname(piBinary), ...(herdrBinary ? [path.dirname(herdrBinary)] : []), ...dirs]),
+      ...new Set([
+        path.dirname(piBinary),
+        ...(resolvedHerdr.binary ? [path.dirname(resolvedHerdr.binary)] : []),
+        ...dirs,
+      ]),
     ];
     cliEnv = baseEnv(binDirs);
     const agentEnv = { ...cliEnv, [WORKBENCH_KEY_ENV]: resolved.key || 'none' };
@@ -904,16 +1032,18 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       await resumeLatest(client);
       if (seq !== startSeq) return;
 
-      if (herdrBinary) {
-        const binary = herdrBinary;
+      if (sshTarget || herdrBinary) {
+        const binary = herdrBinary ?? 'herdr';
+        const execBase = (file: string, args: readonly string[], timeoutMs: number) =>
+          deps.exec(file, args, timeoutMs, cliEnv);
         const hc = (deps.createHerdr ?? createHerdrClient)({
           binary,
           session: WORKBENCH_HERDR_SESSION,
-          exec: (file, args, timeoutMs) => deps.exec(file, args, timeoutMs, cliEnv),
+          exec: herdrExecForTarget(execBase, sshTarget),
           sleep: deps.sleep,
         });
         try {
-          await startServer(hc, binary, agentEnv);
+          await startServer(hc, binary, agentEnv, sshTarget);
           // The pi integration lets herdr see each worker's state; it installs into the
           // workbench's own pi agent dir (created above), not the user's.
           await hc.installPiIntegration();
@@ -1546,6 +1676,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
   }
 
+  void refreshHerdrProbe();
+
   return {
     getSnapshot,
     start,
@@ -1568,5 +1700,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     openConversation,
     deleteConversation,
     updateSettings,
+    refreshHerdrProbe,
+    installHerdr,
   };
 }
