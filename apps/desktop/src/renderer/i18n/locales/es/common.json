@@ -141,10 +141,19 @@
       "heading": "Grupo de proveedores",
       "empty": "Aún no hay proveedores. Añade uno para empezar."
     },
+    "credential": {
+      "apiKey": "Clave de API",
+      "oauth": "OAuth (PKCE)"
+    },
     "fields": {
       "name": "Nombre",
       "apiFormats": "Formatos de API",
       "baseUrl": "URL base",
+      "credentialMode": "Autenticación",
+      "oauthClientId": "ID de cliente OAuth",
+      "oauthAuthorizeUrl": "URL de autorización",
+      "oauthTokenUrl": "URL del token",
+      "oauthScopes": "Scopes",
       "apiKey": "Clave de API",
       "models": "Modelos",
       "modelId": "ID del modelo",
@@ -178,6 +187,9 @@
       "showKey": "Mostrar",
       "hideKey": "Ocultar",
       "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla.",
+      "credentialModeLocked": "El tipo de autenticación no se puede cambiar después de crear el proveedor.",
+      "oauthHint": "Tras guardar, usa Conectar en la tarjeta del proveedor. Los tokens permanecen en la app — no se escriben en la config del agente.",
+      "oauthScopesPlaceholder": "scopes separados por espacios",
       "dropNone": "No se quita nada",
       "dropHint": "Algunos upstreams rechazan una solicitud que lleva un parámetro que no reconocen en lugar de ignorarlo; lo habitual es una pasarela delante de un backend estricto. Elige los parámetros que se quitarán antes de que AiOpt envíe una solicitud a este proveedor.",
       "dropGroup": {
@@ -193,6 +205,12 @@
       "models": "Modelos",
       "keySet": "Clave guardada",
       "keyMissing": "Sin clave",
+      "oauthConnected": "Sesión iniciada · {{account}}",
+      "oauthDisconnected": "Sin sesión",
+      "oauthAccountUnknown": "Conectado",
+      "oauthConnect": "Conectar",
+      "oauthDisconnect": "Desconectar",
+      "oauthBusy": "En curso…",
       "edit": "Editar",
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar este proveedor?",

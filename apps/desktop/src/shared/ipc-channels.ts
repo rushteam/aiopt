@@ -11,6 +11,7 @@ import type {
   AppShortcutOverrides,
 } from './appShortcuts';
 import type { AgentId, ApiFormat, AgentBinding, ProviderModel } from './aiProviders';
+import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
 import type { UsageSnapshot } from './usageStats';
 import type {
   SkillDiffResult,
@@ -89,6 +90,10 @@ export const IPC_CHANNELS = {
   providersDetectFormats: 'providers:detect-formats',
   /** Minimal live request per format; returns latency only — never the key. See providerTest.ts. */
   providersTest: 'providers:test',
+  /** Start OAuth login in the system browser (main-only flow). See oauth-providers.md. */
+  providersOAuthStart: 'providers:oauth-start',
+  /** Clear stored OAuth tokens for a provider. */
+  providersOAuthDisconnect: 'providers:oauth-disconnect',
   // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
   // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
   // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
@@ -478,6 +483,11 @@ export interface ProviderSummary {
   notes?: string;
   createdAt: number;
   hasKey: boolean;
+  credentialMode?: ProviderCredentialMode;
+  /** Public OAuth endpoints (no tokens) when `credentialMode` is `oauth`. */
+  oauth?: OAuthProviderConfig;
+  /** Display-only account label when `credentialMode` is `oauth`. */
+  oauthAccountLabel?: string | null;
   /**
    * Request fields the proxy strips before forwarding to this upstream (see
    * `Provider.dropRequestFields`). Not secret — it is a list of well-known API parameter
@@ -556,6 +566,8 @@ export interface ProviderAddRequest {
   models: ProviderModel[];
   notes?: string;
   apiKey?: string;
+  credentialMode?: ProviderCredentialMode;
+  oauth?: OAuthProviderConfig;
   /** Fields the proxy should strip for this upstream; validated against the allowlist. */
   dropRequestFields?: string[];
 }
@@ -573,11 +585,17 @@ export interface ProviderUpdateRequest {
   models?: ProviderModel[];
   notes?: string;
   apiKey?: string | null;
+  credentialMode?: ProviderCredentialMode;
+  oauth?: OAuthProviderConfig;
   /**
    * Replaces the whole set when present (it is a checkbox group, not a patch); omitted
    * leaves it untouched. An empty array clears it.
    */
   dropRequestFields?: string[];
+}
+
+export interface ProviderOAuthStartRequest {
+  providerId: string;
 }
 
 export interface ProviderRemoveRequest {
@@ -862,6 +880,14 @@ export interface IpcContract {
   [IPC_CHANNELS.providersTest]: {
     request: ProviderTestRequest;
     result: ProviderTestResult;
+  };
+  [IPC_CHANNELS.providersOAuthStart]: {
+    request: ProviderOAuthStartRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersOAuthDisconnect]: {
+    request: ProviderOAuthStartRequest;
+    result: ProvidersSnapshot;
   };
   [IPC_CHANNELS.providersRevealKey]: {
     request: ProviderRevealKeyRequest;

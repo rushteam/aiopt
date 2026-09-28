@@ -125,6 +125,16 @@ export async function testProvider(providerId: string): Promise<ProviderTestResu
   return window.aiopt.providers.test(providerId);
 }
 
+export async function oauthStartProvider(providerId: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.oauthStart(providerId));
+}
+
+export async function oauthDisconnectProvider(providerId: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.oauthDisconnect(providerId));
+}
+
 /**
  * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Read-only, does not
  * touch the pool. The caller must hold the returned value transiently only — never

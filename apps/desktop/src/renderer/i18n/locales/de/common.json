@@ -141,10 +141,19 @@
       "heading": "Anbieter-Pool",
       "empty": "Noch keine Anbieter. Fügen Sie einen hinzu, um zu beginnen."
     },
+    "credential": {
+      "apiKey": "API-Schlüssel",
+      "oauth": "OAuth (PKCE)"
+    },
     "fields": {
       "name": "Name",
       "apiFormats": "API-Formate",
       "baseUrl": "Base URL",
+      "credentialMode": "Authentifizierung",
+      "oauthClientId": "OAuth-Client-ID",
+      "oauthAuthorizeUrl": "Authorize-URL",
+      "oauthTokenUrl": "Token-URL",
+      "oauthScopes": "Scopes",
       "apiKey": "API-Schlüssel",
       "models": "Modelle",
       "modelId": "Modell-ID",
@@ -178,6 +187,9 @@
       "showKey": "Anzeigen",
       "hideKey": "Verbergen",
       "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen.",
+      "credentialModeLocked": "Der Authentifizierungstyp kann nach dem Anlegen nicht geändert werden.",
+      "oauthHint": "Nach dem Speichern auf der Anbieterkarte „Verbinden“ wählen. Tokens bleiben in der App — sie werden nicht in die Agent-Konfiguration geschrieben.",
+      "oauthScopesPlaceholder": "Scopes durch Leerzeichen getrennt",
       "dropNone": "Nichts entfernen",
       "dropHint": "Manche Upstreams lehnen eine Anfrage mit einem unbekannten Parameter ab, statt ihn zu ignorieren — meist ein Gateway vor einem streng prüfenden Backend. Wählen Sie die Parameter, die entfernt werden, bevor AiOpt eine Anfrage an diesen Anbieter weiterleitet.",
       "dropGroup": {
@@ -193,6 +205,12 @@
       "models": "Modelle",
       "keySet": "Schlüssel gespeichert",
       "keyMissing": "Kein Schlüssel",
+      "oauthConnected": "Angemeldet · {{account}}",
+      "oauthDisconnected": "Nicht angemeldet",
+      "oauthAccountUnknown": "Verbunden",
+      "oauthConnect": "Verbinden",
+      "oauthDisconnect": "Trennen",
+      "oauthBusy": "Bitte warten…",
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "confirmDelete": "Diesen Anbieter löschen?",

@@ -141,10 +141,19 @@
       "heading": "Pool de fournisseurs",
       "empty": "Aucun fournisseur pour l’instant. Ajoutez-en un pour commencer."
     },
+    "credential": {
+      "apiKey": "Clé d’API",
+      "oauth": "OAuth (PKCE)"
+    },
     "fields": {
       "name": "Nom",
       "apiFormats": "Formats d’API",
       "baseUrl": "URL de base",
+      "credentialMode": "Authentification",
+      "oauthClientId": "ID client OAuth",
+      "oauthAuthorizeUrl": "URL d’autorisation",
+      "oauthTokenUrl": "URL du jeton",
+      "oauthScopes": "Scopes",
       "apiKey": "Clé d’API",
       "models": "Modèles",
       "modelId": "ID du modèle",
@@ -178,6 +187,9 @@
       "showKey": "Afficher",
       "hideKey": "Masquer",
       "keySavedHidden": "Une clé est enregistrée · masquée par sécurité. Laissez vide pour la conserver, ou saisissez-en une pour la remplacer.",
+      "credentialModeLocked": "Le type d’authentification ne peut pas être modifié après la création du fournisseur.",
+      "oauthHint": "Après l’enregistrement, utilisez Connexion sur la fiche du fournisseur. Les jetons restent dans l’app — ils ne sont pas écrits dans la config de l’agent.",
+      "oauthScopesPlaceholder": "scopes séparés par des espaces",
       "dropNone": "Aucun paramètre retiré",
       "dropHint": "Certains services amont rejettent une requête portant un paramètre qu'ils ne reconnaissent pas, au lieu de l'ignorer — en général une passerelle devant un backend strict. Choisissez les paramètres à retirer avant qu'AiOpt ne transmette une requête à ce fournisseur.",
       "dropGroup": {
@@ -193,6 +205,12 @@
       "models": "Modèles",
       "keySet": "Clé enregistrée",
       "keyMissing": "Aucune clé",
+      "oauthConnected": "Connecté · {{account}}",
+      "oauthDisconnected": "Non connecté",
+      "oauthAccountUnknown": "Connecté",
+      "oauthConnect": "Connexion",
+      "oauthDisconnect": "Déconnexion",
+      "oauthBusy": "En cours…",
       "edit": "Modifier",
       "delete": "Supprimer",
       "confirmDelete": "Supprimer ce fournisseur ?",

@@ -20,6 +20,7 @@ import {
   type Provider,
   type ProviderModel,
 } from '../../shared/aiProviders';
+import { isOAuthSubscriptionKind, providerUsesOAuth } from '../../shared/oauthProviders';
 import { throwIpcError } from '../ipc/validate';
 
 export interface ProvidersDocument {
@@ -84,6 +85,30 @@ function validProvider(raw: unknown): Provider | null {
     createdAt: typeof obj.createdAt === 'number' ? obj.createdAt : 0,
   };
   if (typeof obj.notes === 'string' && obj.notes.trim() !== '') provider.notes = obj.notes;
+  if (obj.credentialMode === 'oauth') {
+    provider.credentialMode = 'oauth';
+    if (!obj.oauth || typeof obj.oauth !== 'object') return null;
+    const oauthRaw = obj.oauth as Record<string, unknown>;
+    if (!isOAuthSubscriptionKind(oauthRaw.kind)) return null;
+    provider.oauth = { kind: oauthRaw.kind };
+    if (typeof oauthRaw.clientId === 'string' && oauthRaw.clientId.trim() !== '') {
+      provider.oauth.clientId = oauthRaw.clientId.trim();
+    }
+    if (typeof oauthRaw.authorizeUrl === 'string' && oauthRaw.authorizeUrl.trim() !== '') {
+      provider.oauth.authorizeUrl = oauthRaw.authorizeUrl.trim();
+    }
+    if (typeof oauthRaw.tokenUrl === 'string' && oauthRaw.tokenUrl.trim() !== '') {
+      provider.oauth.tokenUrl = oauthRaw.tokenUrl.trim();
+    }
+    if (Array.isArray(oauthRaw.scopes)) {
+      provider.oauth.scopes = oauthRaw.scopes.filter((s): s is string => typeof s === 'string');
+    }
+    if (typeof oauthRaw.accountLabel === 'string' && oauthRaw.accountLabel.trim() !== '') {
+      provider.oauth.accountLabel = oauthRaw.accountLabel.trim();
+    }
+  } else if (obj.credentialMode === 'api_key') {
+    provider.credentialMode = 'api_key';
+  }
   // Drop-fields: keep only names on the shared allowlist (normalizeDropFields discards
   // anything else, so a hand-edited file can't make the proxy strip `tools`), and omit the
   // key entirely when nothing survives — an empty array and "absent" mean the same thing,

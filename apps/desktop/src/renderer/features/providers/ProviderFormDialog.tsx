@@ -24,6 +24,7 @@ import {
   type ProviderModel,
 } from '../../../shared/aiProviders';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
+import type { ProviderCredentialMode } from '../../../shared/oauthProviders';
 import {
   addProvider,
   detectProviderFormats,
@@ -86,6 +87,14 @@ export function ProviderFormDialog({
     { kind: 'ok' | 'none' | 'error'; text: string } | null
   >(null);
   const [baseUrl, setBaseUrl] = useState(provider?.baseUrl ?? '');
+  const [credentialMode, setCredentialMode] = useState<ProviderCredentialMode>(
+    provider?.credentialMode ?? 'api_key',
+  );
+  const [oauthClientId, setOauthClientId] = useState(provider?.oauth?.clientId ?? '');
+  const [oauthAuthorizeUrl, setOauthAuthorizeUrl] = useState(provider?.oauth?.authorizeUrl ?? '');
+  const [oauthTokenUrl, setOauthTokenUrl] = useState(provider?.oauth?.tokenUrl ?? '');
+  const [oauthScopes, setOauthScopes] = useState(provider?.oauth?.scopes?.join(' ') ?? '');
+  const usesOAuth = credentialMode === 'oauth';
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<ModelRow[]>(toRows(provider?.models ?? []));
   const [notes, setNotes] = useState(provider?.notes ?? '');
@@ -228,6 +237,30 @@ export function ProviderFormDialog({
     setBusy(true);
     setError(null);
     const parsedModels = rowsToModels(models);
+    const oauthConfig = usesOAuth
+      ? {
+          kind: 'generic_pkce' as const,
+          clientId: oauthClientId.trim(),
+          authorizeUrl: oauthAuthorizeUrl.trim(),
+          tokenUrl: oauthTokenUrl.trim(),
+          scopes:
+            oauthScopes
+              .split(/[\s,]+/)
+              .map((s) => s.trim())
+              .filter((s) => s !== '').length > 0
+              ? oauthScopes
+                  .split(/[\s,]+/)
+                  .map((s) => s.trim())
+                  .filter((s) => s !== '')
+              : undefined,
+          ...(editing && (provider.oauth?.accountLabel ?? provider.oauthAccountLabel)
+            ? {
+                accountLabel:
+                  provider.oauth?.accountLabel ?? provider.oauthAccountLabel ?? undefined,
+              }
+            : {}),
+        }
+      : undefined;
     try {
       if (editing) {
         await updateProvider({
@@ -237,8 +270,10 @@ export function ProviderFormDialog({
           baseUrl,
           models: parsedModels,
           notes,
+          credentialMode,
+          oauth: oauthConfig,
           // Blank field on edit = leave the stored key untouched.
-          apiKey: apiKey === '' ? undefined : apiKey,
+          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
           // Always sent: it is a checkbox group, so an empty array must clear the set
           // rather than read as "unchanged".
           dropRequestFields: dropFields,
@@ -250,7 +285,9 @@ export function ProviderFormDialog({
           baseUrl,
           models: parsedModels,
           notes: notes === '' ? undefined : notes,
-          apiKey: apiKey === '' ? undefined : apiKey,
+          credentialMode,
+          oauth: oauthConfig,
+          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
           dropRequestFields: dropFields.length > 0 ? dropFields : undefined,
         });
       }
@@ -262,11 +299,18 @@ export function ProviderFormDialog({
     }
   }
 
+  const oauthEndpointsOk =
+    !usesOAuth ||
+    (oauthClientId.trim() !== '' &&
+      oauthAuthorizeUrl.trim() !== '' &&
+      oauthTokenUrl.trim() !== '');
+
   const canSubmit =
     name.trim() !== '' &&
     baseUrl.trim() !== '' &&
     apiFormats.length > 0 &&
     rowsToModels(models).length > 0 &&
+    oauthEndpointsOk &&
     !busy;
 
   return (
@@ -318,6 +362,67 @@ export function ProviderFormDialog({
               style={inputStyle}
             />
           </label>
+          <label style={fieldStyle}>
+            {t('providers.fields.credentialMode')}
+            <select
+              value={credentialMode}
+              onChange={(e) => setCredentialMode(e.target.value as ProviderCredentialMode)}
+              disabled={editing}
+              style={inputStyle}
+            >
+              <option value="api_key">{t('providers.credential.apiKey')}</option>
+              <option value="oauth">{t('providers.credential.oauth')}</option>
+            </select>
+            {editing && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.credentialModeLocked')}
+              </span>
+            )}
+          </label>
+          {usesOAuth && (
+            <>
+              <label style={fieldStyle}>
+                {t('providers.fields.oauthClientId')}
+                <input
+                  value={oauthClientId}
+                  onChange={(e) => setOauthClientId(e.target.value)}
+                  style={inputStyle}
+                  autoComplete="off"
+                />
+              </label>
+              <label style={fieldStyle}>
+                {t('providers.fields.oauthAuthorizeUrl')}
+                <input
+                  value={oauthAuthorizeUrl}
+                  onChange={(e) => setOauthAuthorizeUrl(e.target.value)}
+                  placeholder="https://…/authorize"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldStyle}>
+                {t('providers.fields.oauthTokenUrl')}
+                <input
+                  value={oauthTokenUrl}
+                  onChange={(e) => setOauthTokenUrl(e.target.value)}
+                  placeholder="https://…/token"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldStyle}>
+                {t('providers.fields.oauthScopes')}
+                <input
+                  value={oauthScopes}
+                  onChange={(e) => setOauthScopes(e.target.value)}
+                  placeholder={t('providers.form.oauthScopesPlaceholder')}
+                  style={inputStyle}
+                />
+              </label>
+              <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.oauthHint')}
+              </p>
+            </>
+          )}
+          {!usesOAuth && (
           <div style={fieldStyle}>
             <span>{t('providers.fields.apiKey')}</span>
             <div style={{ display: 'flex', gap: space.sm }}>
@@ -357,6 +462,7 @@ export function ProviderFormDialog({
               </span>
             )}
           </div>
+          )}
           {/* Formats come AFTER the URL and key they describe: Detect needs both, and the
               order reads as "here is the endpoint — now, what does it speak?". A native
               fieldset so the group name is announced with its checkboxes. */}

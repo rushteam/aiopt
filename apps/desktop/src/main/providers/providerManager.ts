@@ -39,6 +39,9 @@ import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
 import { isCombinedProviderId } from '../../shared/combinedProvider';
+import { providerUsesOAuth } from '../../shared/oauthProviders';
+import type { OAuthManager } from '../oauth/oauthManager';
+import { isOAuthSubscriptionKind } from '../../shared/oauthProviders';
 import type { ProviderStore } from './providerStore';
 import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
 import { describeAgentConfig } from './agentConfigView';
@@ -167,8 +170,10 @@ export function createProviderManager(
   // never returned to the caller. Defaults to a no-op so existing constructors need not
   // supply it (copyProxyConfig then silently does nothing).
   copyToClipboard: (text: string) => void = () => {},
+  oauth: Pick<OAuthManager, 'isConnected' | 'readAccessTokenSync' | 'disconnect'> | null = null,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
+    const oauthBacked = providerUsesOAuth(provider.credentialMode);
     return {
       id: provider.id,
       name: provider.name,
@@ -177,7 +182,12 @@ export function createProviderManager(
       models: provider.models,
       notes: provider.notes,
       createdAt: provider.createdAt,
-      hasKey: secrets.has(providerSecretKey(provider.id)),
+      hasKey: oauthBacked
+        ? (oauth?.isConnected(provider.id) ?? false)
+        : secrets.has(providerSecretKey(provider.id)),
+      credentialMode: provider.credentialMode,
+      oauth: oauthBacked ? provider.oauth : undefined,
+      oauthAccountLabel: oauthBacked ? (provider.oauth?.accountLabel ?? null) : undefined,
       dropRequestFields: provider.dropRequestFields,
     };
   }
@@ -225,7 +235,12 @@ export function createProviderManager(
    */
   function resolveProbeKey(input: { apiKey?: string; providerId?: string }): string | null {
     if (input.apiKey && input.apiKey !== '') return input.apiKey;
-    return input.providerId ? secrets.get(providerSecretKey(input.providerId)) : null;
+    if (!input.providerId) return null;
+    const probeProvider = store.getProvider(input.providerId);
+    if (probeProvider && providerUsesOAuth(probeProvider.credentialMode)) {
+      return oauth?.readAccessTokenSync(input.providerId) ?? null;
+    }
+    return secrets.get(providerSecretKey(input.providerId));
   }
 
   /**
@@ -263,7 +278,9 @@ export function createProviderManager(
     // native gemini binding is always direct). Proxy mode ON therefore routes every
     // proxyable binding through the loopback, native or not.
     const proxyable = translationSupported(inbound, outbound);
-    const direct = sameFormat && (!getProxyMode() || !proxyable);
+    // OAuth tokens never go on disk — always route through the loopback proxy.
+    const oauthBacked = providerUsesOAuth(provider.credentialMode);
+    const direct = sameFormat && (!getProxyMode() || !proxyable) && !oauthBacked;
 
     if (direct) {
       // Drop any stale route left by a previous proxied binding for this agent.
@@ -335,6 +352,12 @@ export function createProviderManager(
     addProvider(input) {
       const apiFormats = normalizeApiFormats(input.apiFormats);
       if (apiFormats.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
+      const credentialMode = input.credentialMode ?? 'api_key';
+      if (providerUsesOAuth(credentialMode)) {
+        if (!input.oauth || !isOAuthSubscriptionKind(input.oauth.kind)) {
+          throwIpcError('INVALID_PARAMS', 'OAuth providers require a valid oauth.kind');
+        }
+      }
       const provider: Provider = {
         id: randomUUID(),
         name: input.name,
@@ -343,10 +366,14 @@ export function createProviderManager(
         models: input.models,
         notes: input.notes,
         createdAt: Date.now(),
+        credentialMode: providerUsesOAuth(credentialMode) ? 'oauth' : undefined,
+        oauth: providerUsesOAuth(credentialMode) ? input.oauth : undefined,
         ...dropFieldsPatch(input.dropRequestFields),
       };
       store.addProvider(provider);
-      if (input.apiKey) secrets.set(providerSecretKey(provider.id), input.apiKey);
+      if (!providerUsesOAuth(credentialMode) && input.apiKey) {
+        secrets.set(providerSecretKey(provider.id), input.apiKey);
+      }
       return announce();
     },
 
@@ -358,6 +385,7 @@ export function createProviderManager(
       const apiFormats =
         input.apiFormats !== undefined ? normalizeApiFormats(input.apiFormats) : existing.apiFormats;
       if (apiFormats.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
+      const credentialMode = input.credentialMode ?? existing.credentialMode ?? 'api_key';
       const next: Provider = {
         ...existing,
         name: input.name ?? existing.name,
@@ -365,7 +393,14 @@ export function createProviderManager(
         baseUrl: input.baseUrl ?? existing.baseUrl,
         models: input.models ?? existing.models,
         notes: input.notes !== undefined ? input.notes : existing.notes,
+        credentialMode: providerUsesOAuth(credentialMode) ? 'oauth' : undefined,
+        oauth: providerUsesOAuth(credentialMode)
+          ? (input.oauth ?? existing.oauth)
+          : undefined,
       };
+      if (providerUsesOAuth(credentialMode) && next.oauth && !isOAuthSubscriptionKind(next.oauth.kind)) {
+        throwIpcError('INVALID_PARAMS', 'OAuth providers require a valid oauth.kind');
+      }
       // Drop-fields is a whole-set replace when present (the form sends a checkbox group,
       // not a patch), so an empty array must CLEAR it rather than read as "unchanged" —
       // hence deleting the key instead of assigning `undefined`, which would serialize as
@@ -377,11 +412,13 @@ export function createProviderManager(
       }
       store.replaceProvider(next);
 
-      // apiKey: string replaces, null clears, undefined leaves alone.
-      if (input.apiKey === null) {
-        secrets.delete(providerSecretKey(input.id));
-      } else if (typeof input.apiKey === 'string' && input.apiKey !== '') {
-        secrets.set(providerSecretKey(input.id), input.apiKey);
+      // apiKey: string replaces, null clears, undefined leaves alone (OAuth providers ignore keys).
+      if (!providerUsesOAuth(credentialMode)) {
+        if (input.apiKey === null) {
+          secrets.delete(providerSecretKey(input.id));
+        } else if (typeof input.apiKey === 'string' && input.apiKey !== '') {
+          secrets.set(providerSecretKey(input.id), input.apiKey);
+        }
       }
       return announce();
     },
@@ -398,6 +435,7 @@ export function createProviderManager(
       }
       store.removeProvider(id);
       secrets.delete(providerSecretKey(id));
+      oauth?.disconnect(id);
       return announce();
     },
 
@@ -473,12 +511,18 @@ export function createProviderManager(
       if (!provider) {
         return { ok: false, latencyMs: null, format: null, error: 'not_found' as const };
       }
-      const apiKey = secrets.get(providerSecretKey(providerId));
+      const apiKey = providerUsesOAuth(provider.credentialMode)
+        ? (oauth?.readAccessTokenSync(providerId) ?? null)
+        : secrets.get(providerSecretKey(providerId));
       return testProviderConnectivity(provider, apiKey, fetchImpl);
     },
 
     revealKey(providerId) {
-      if (!store.getProvider(providerId)) throwIpcError('NOT_FOUND', 'provider not found');
+      const provider = store.getProvider(providerId);
+      if (!provider) throwIpcError('NOT_FOUND', 'provider not found');
+      if (providerUsesOAuth(provider.credentialMode)) {
+        throwIpcError('PRECONDITION_FAILED', 'OAuth providers do not expose a stored API key');
+      }
       // Deliberate plaintext read for the "view saved key" feature. Never log this
       // value; the caller (renderer) must hold it transiently only.
       return secrets.get(providerSecretKey(providerId));
@@ -487,6 +531,10 @@ export function createProviderManager(
     resolveUpstreamKey(providerId) {
       // Main-side-only plaintext read for the proxy's outbound request. Never logged,
       // never returned across IPC (unlike revealKey, whose value reaches the renderer).
+      const provider = store.getProvider(providerId);
+      if (provider && providerUsesOAuth(provider.credentialMode)) {
+        return oauth?.readAccessTokenSync(providerId) ?? null;
+      }
       return secrets.get(providerSecretKey(providerId));
     },
 

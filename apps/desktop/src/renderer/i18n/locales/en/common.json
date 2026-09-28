@@ -145,10 +145,19 @@
       "heading": "Provider pool",
       "empty": "No providers yet. Add one to get started."
     },
+    "credential": {
+      "apiKey": "API key",
+      "oauth": "OAuth (PKCE)"
+    },
     "fields": {
       "name": "Name",
       "apiFormats": "API formats",
       "baseUrl": "Base URL",
+      "credentialMode": "Authentication",
+      "oauthClientId": "OAuth client ID",
+      "oauthAuthorizeUrl": "Authorize URL",
+      "oauthTokenUrl": "Token URL",
+      "oauthScopes": "Scopes",
       "apiKey": "API key",
       "models": "Models",
       "modelId": "Model ID",
@@ -182,6 +191,9 @@
       "showKey": "Show",
       "hideKey": "Hide",
       "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace.",
+      "credentialModeLocked": "Authentication type cannot be changed after the provider is created.",
+      "oauthHint": "After saving, use Connect on the provider card to sign in. Tokens stay in the app — they are never written to agent config.",
+      "oauthScopesPlaceholder": "space-separated scopes",
       "dropNone": "Nothing stripped",
       "dropHint": "Some upstreams reject a request carrying a parameter they don't recognize instead of ignoring it — a gateway in front of a strict backend is the usual cause. Pick the parameters to strip before AiOpt forwards a request to this provider.",
       "dropGroup": {
@@ -197,6 +209,12 @@
       "models": "Models",
       "keySet": "Key stored",
       "keyMissing": "No key",
+      "oauthConnected": "Signed in · {{account}}",
+      "oauthDisconnected": "Not signed in",
+      "oauthAccountUnknown": "Connected",
+      "oauthConnect": "Connect",
+      "oauthDisconnect": "Disconnect",
+      "oauthBusy": "Working…",
       "edit": "Edit",
       "delete": "Delete",
       "test": "Test connection",

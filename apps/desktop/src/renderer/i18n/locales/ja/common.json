@@ -141,10 +141,19 @@
       "heading": "プロバイダープール",
       "empty": "プロバイダーがまだありません。追加して始めましょう。"
     },
+    "credential": {
+      "apiKey": "API キー",
+      "oauth": "OAuth（PKCE）"
+    },
     "fields": {
       "name": "名前",
       "apiFormats": "API 形式",
       "baseUrl": "Base URL",
+      "credentialMode": "認証方式",
+      "oauthClientId": "OAuth クライアント ID",
+      "oauthAuthorizeUrl": "認可 URL",
+      "oauthTokenUrl": "トークン URL",
+      "oauthScopes": "スコープ",
       "apiKey": "API キー",
       "models": "モデル",
       "modelId": "モデル ID",
@@ -178,6 +187,9 @@
       "showKey": "表示",
       "hideKey": "非表示",
       "keySavedHidden": "キーは保存済み · セキュリティのため非表示です。空欄のままにすると保持し、入力すると置き換えます。",
+      "credentialModeLocked": "作成後は認証方式を変更できません。",
+      "oauthHint": "保存後、プロバイダーカードの「接続」でサインインしてください。トークンはアプリ内のみ — エージェント設定には書き込まれません。",
+      "oauthScopesPlaceholder": "スコープはスペース区切り",
       "dropNone": "何も除去しない",
       "dropHint": "アップストリームによっては、認識できないパラメータを無視せずリクエスト全体を拒否します。厳格に検証するバックエンドの前にゲートウェイがある場合によく起こります。AiOpt がこのプロバイダーへ転送する前に除去するパラメータを選んでください。",
       "dropGroup": {
@@ -193,6 +205,12 @@
       "models": "モデル",
       "keySet": "キー保存済み",
       "keyMissing": "キーなし",
+      "oauthConnected": "サインイン済み · {{account}}",
+      "oauthDisconnected": "未サインイン",
+      "oauthAccountUnknown": "接続済み",
+      "oauthConnect": "接続",
+      "oauthDisconnect": "切断",
+      "oauthBusy": "処理中…",
       "edit": "編集",
       "delete": "削除",
       "confirmDelete": "このプロバイダーを削除しますか？",

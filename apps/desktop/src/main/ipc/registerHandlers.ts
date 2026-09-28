@@ -14,6 +14,7 @@ import { registerAppInfoIpc } from '../app/appInfoIpc';
 import { registerAuthIpc } from '../auth/authIpc';
 import { registerUpdateIpc } from '../update/updateIpc';
 import { registerProviderIpc } from '../providers/providerIpc';
+import { registerOAuthProviderIpc } from '../oauth/oauthIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
 import { registerWorkbenchIpc } from '../workbench/workbenchIpc';
@@ -30,6 +31,7 @@ import {
   getAppVersions,
   getAuthManager,
   getConfigStore,
+  getOAuthManager,
   getProviderManager,
   getSecretStore,
   getSkillsStore,
@@ -55,12 +57,14 @@ export function registerHandlers(): void {
   registerAppInfoIpc(registry, getAppVersions);
   registerAuthIpc(registry, getAuthManager());
   registerUpdateIpc(registry, getUpdateService());
-  registerProviderIpc(registry, getProviderManager(), {
+  const providers = getProviderManager();
+  registerProviderIpc(registry, providers, {
     // `file` is resolved MAIN-side by the manager from the agent-config allowlist; the
     // renderer names the file by (agentId, role) and never supplies a path. showItemInFolder
     // (not openPath) so the OS selects the file in its folder — AiOpt never reads it.
     revealItem: (file: string) => shell.showItemInFolder(file),
   });
+  registerOAuthProviderIpc(registry, getOAuthManager(), providers);
   registerUsageIpc(registry, getUsageStore());
   registerSkillsIpc(registry, getSkillsStore(), {
     // The import SOURCE is chosen here in main via a native picker — never supplied
