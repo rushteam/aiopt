@@ -9,11 +9,12 @@
 
 import type {
   ProviderAddRequest,
+  ProviderDetectFormatsRequest,
   ProviderFetchModelsRequest,
   ProviderUpdateRequest,
   ProvidersSnapshot,
 } from '../../shared/ipc-channels';
-import type { AgentId, ProviderModel } from '../../shared/aiProviders';
+import type { AgentId, ApiFormat, ProviderModel } from '../../shared/aiProviders';
 
 type Listener = () => void;
 
@@ -104,6 +105,18 @@ export async function fetchProviderModels(
   ensureInitialized();
   const { models } = await window.aiopt.providers.fetchModels(input);
   return models;
+}
+
+/**
+ * Probe a base URL for the wire formats it serves. Read-only like fetchProviderModels —
+ * it informs the add/edit form and never touches the pool.
+ */
+export async function detectProviderFormats(
+  input: ProviderDetectFormatsRequest,
+): Promise<ApiFormat[]> {
+  ensureInitialized();
+  const { formats } = await window.aiopt.providers.detectFormats(input);
+  return formats;
 }
 
 /**

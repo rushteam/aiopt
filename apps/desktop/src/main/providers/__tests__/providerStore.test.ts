@@ -42,7 +42,7 @@ function codeOf(fn: () => void): string {
 const sample: Provider = {
   id: 'p1',
   name: 'Anthropic',
-  apiFormat: 'anthropic',
+  apiFormats: ['anthropic'],
   baseUrl: 'https://api.anthropic.com',
   models: [{ id: 'claude-x', alias: 'cx' }],
   createdAt: 123,
@@ -103,7 +103,7 @@ describe('provider store — drops leftover "official-" ids on load', () => {
     const store = createProviderStore(
       memoryPersistence({
         providers: [
-          { id: 'official-anthropic', name: 'Anthropic', apiFormat: 'anthropic', baseUrl: 'https://a', models: [{ id: 'a1' }], createdAt: 1 },
+          { id: 'official-anthropic', name: 'Anthropic', apiFormats: ['anthropic'], baseUrl: 'https://a', models: [{ id: 'a1' }], createdAt: 1 },
           sample,
         ],
       }),
@@ -115,7 +115,7 @@ describe('provider store — drops leftover "official-" ids on load', () => {
     const store = createProviderStore(
       memoryPersistence({
         providers: [
-          { id: 'official-anthropic', name: 'Anthropic', apiFormat: 'anthropic', baseUrl: 'https://a', models: [{ id: 'a1' }], createdAt: 1 },
+          { id: 'official-anthropic', name: 'Anthropic', apiFormats: ['anthropic'], baseUrl: 'https://a', models: [{ id: 'a1' }], createdAt: 1 },
         ],
         bindings: { claude: { providerId: 'official-anthropic', modelId: 'a1' } },
       }),
@@ -131,13 +131,39 @@ describe('provider store — load validation (fail-closed)', () => {
       memoryPersistence({
         providers: [
           sample,
-          { id: '', name: 'no id', apiFormat: 'openai', baseUrl: 'x', models: [] }, // bad id
-          { id: 'p2', name: 'bad format', apiFormat: 'nope', baseUrl: 'x', models: [] }, // bad format
-          { id: 'p3', name: 'no base', apiFormat: 'openai', models: [] }, // missing baseUrl
+          { id: '', name: 'no id', apiFormats: ['openai'], baseUrl: 'x', models: [] }, // bad id
+          { id: 'p2', name: 'bad format', apiFormats: ['nope'], baseUrl: 'x', models: [] }, // no known format
+          { id: 'p3', name: 'no base', apiFormats: ['openai'], models: [] }, // missing baseUrl
+          { id: 'p4', name: 'no formats', apiFormats: [], baseUrl: 'x', models: [] }, // empty set
+          { id: 'p5', name: 'not a list', apiFormats: 'openai', baseUrl: 'x', models: [] }, // wrong shape
         ],
       }),
     );
     expect(store.listProviders().map((p) => p.id)).toEqual(['p1']);
+  });
+
+  it('keeps only known formats, in canonical order, and drops duplicates', () => {
+    const store = createProviderStore(
+      memoryPersistence({
+        providers: [{ ...sample, apiFormats: ['openai', 'nope', 'anthropic', 'openai', 7] }],
+      }),
+    );
+    expect(store.getProvider('p1')?.apiFormats).toEqual(['anthropic', 'openai']);
+  });
+
+  it('migrates a legacy single `apiFormat` record into a one-element `apiFormats`', () => {
+    // Files written before version 3 carried one format per provider; loading upgrades the
+    // shape in memory so the next save rewrites it, and a binding to it keeps working.
+    const { apiFormats: _drop, ...rest } = sample;
+    const store = createProviderStore(
+      memoryPersistence({
+        version: 2,
+        providers: [{ ...rest, apiFormat: 'anthropic' }],
+        bindings: { claude: { providerId: 'p1', modelId: 'claude-x' } },
+      }),
+    );
+    expect(store.getProvider('p1')).toEqual(sample);
+    expect(store.getBinding('claude')).toEqual({ providerId: 'p1', modelId: 'claude-x' });
   });
 
   it('drops a duplicate id on load, keeping the first', () => {
@@ -244,7 +270,7 @@ describe('file provider persistence', () => {
     store.setBinding('claude', { providerId: 'p1', modelId: 'claude-x' });
 
     const onDisk = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
-    expect(onDisk.version).toBe(2);
+    expect(onDisk.version).toBe(3);
 
     const reopened = createProviderStore(createFileProviderPersistence(file));
     expect(reopened.getProvider('p1')).toEqual(sample);

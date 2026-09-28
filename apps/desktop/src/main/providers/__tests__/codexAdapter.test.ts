@@ -9,7 +9,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'My OpenAI',
-  apiFormat: 'openai',
+  apiFormats: ['openai-responses'],
   baseUrl: 'https://api.example.com/v1',
   models: [{ id: 'gpt-5-codex' }],
   createdAt: 0,
@@ -46,12 +46,12 @@ describe('codex adapter — detectInstalled', () => {
 
 describe('codex adapter — writeLive', () => {
   it('writes the API key into auth.json', () => {
-    createCodexAdapter().writeLive({ provider, modelId: 'gpt-5-codex', apiKey: 'sk-secret' });
+    createCodexAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-5-codex', apiKey: 'sk-secret' });
     expect(readAuth()).toEqual({ OPENAI_API_KEY: 'sk-secret' });
   });
 
   it('writes the exact custom-provider config.toml', () => {
-    createCodexAdapter().writeLive({ provider, modelId: 'gpt-5-codex', apiKey: 'sk' });
+    createCodexAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-5-codex', apiKey: 'sk' });
     expect(fs.readFileSync(configFile(), 'utf8')).toBe(
       [
         'model_provider = "custom"',
@@ -72,14 +72,14 @@ describe('codex adapter — writeLive', () => {
   it('merges auth.json, preserving an existing ChatGPT tokens block', () => {
     fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
     fs.writeFileSync(authFile(), JSON.stringify({ tokens: { access: 'keep' } }), 'utf8');
-    createCodexAdapter().writeLive({ provider, modelId: 'gpt-5-codex', apiKey: 'sk' });
+    createCodexAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-5-codex', apiKey: 'sk' });
     expect(readAuth()).toEqual({ tokens: { access: 'keep' }, OPENAI_API_KEY: 'sk' });
   });
 
   it('drops a stale OPENAI_API_KEY when no key is provided', () => {
     fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
     fs.writeFileSync(authFile(), JSON.stringify({ OPENAI_API_KEY: 'old' }), 'utf8');
-    createCodexAdapter().writeLive({ provider, modelId: 'gpt-5-codex', apiKey: null });
+    createCodexAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-5-codex', apiKey: null });
     expect(readAuth().OPENAI_API_KEY).toBeUndefined();
   });
 
@@ -87,7 +87,7 @@ describe('codex adapter — writeLive', () => {
     fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
     const original = 'model = "old"\n';
     fs.writeFileSync(configFile(), original, 'utf8');
-    createCodexAdapter().writeLive({ provider, modelId: 'gpt-5-codex', apiKey: 'sk' });
+    createCodexAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-5-codex', apiKey: 'sk' });
     expect(fs.readFileSync(`${configFile()}${AGENT_BACKUP_SUFFIX}`, 'utf8')).toBe(original);
   });
 });

@@ -10,16 +10,19 @@ import {
   bindingAvailability,
   getAgentDef,
   isFormatCompatible,
+  normalizeApiFormats,
+  resolveBindingRoute,
   translationSupported,
   type AgentId,
+  type ApiFormat,
   type Provider,
 } from '../aiProviders';
 
-function providerWithFormat(apiFormat: Provider['apiFormat']): Provider {
+function providerWithFormats(...apiFormats: ApiFormat[]): Provider {
   return {
     id: 'p1',
     name: 'Example',
-    apiFormat,
+    apiFormats,
     baseUrl: 'https://api.example.com',
     models: [{ id: 'm1' }],
     createdAt: 0,
@@ -94,12 +97,13 @@ describe('aiProviders registry', () => {
 });
 
 describe('built-in provider presets', () => {
-  it('every preset has a unique, prefixed id and a known format', () => {
+  it('every preset has a unique, prefixed id and at least one known format', () => {
     const ids = OFFICIAL_PROVIDERS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const p of OFFICIAL_PROVIDERS) {
       expect(p.id.startsWith(OFFICIAL_PROVIDER_ID_PREFIX)).toBe(true);
-      expect(API_FORMATS).toContain(p.apiFormat);
+      expect(p.apiFormats.length).toBeGreaterThan(0);
+      for (const f of p.apiFormats) expect(API_FORMATS).toContain(f);
       expect(p.baseUrl.length).toBeGreaterThan(0);
       expect(p.models.length).toBeGreaterThan(0);
     }
@@ -109,45 +113,111 @@ describe('built-in provider presets', () => {
 describe('isFormatCompatible', () => {
   it('permits a provider whose format the agent accepts', () => {
     const claude = getAgentDef('claude')!; // accepts anthropic
-    expect(isFormatCompatible(claude, providerWithFormat('anthropic'))).toBe(true);
+    expect(isFormatCompatible(claude, providerWithFormats('anthropic'))).toBe(true);
   });
 
   it('rejects a provider whose format the agent does not accept', () => {
     const claude = getAgentDef('claude')!; // anthropic only
-    expect(isFormatCompatible(claude, providerWithFormat('openai'))).toBe(false);
-    expect(isFormatCompatible(claude, providerWithFormat('gemini'))).toBe(false);
+    expect(isFormatCompatible(claude, providerWithFormats('openai'))).toBe(false);
+    expect(isFormatCompatible(claude, providerWithFormats('gemini'))).toBe(false);
   });
 
   it('a multi-format agent accepts any of its formats', () => {
     const opencode = getAgentDef('opencode')!; // openai + anthropic
-    expect(isFormatCompatible(opencode, providerWithFormat('openai'))).toBe(true);
-    expect(isFormatCompatible(opencode, providerWithFormat('anthropic'))).toBe(true);
-    expect(isFormatCompatible(opencode, providerWithFormat('gemini'))).toBe(false);
+    expect(isFormatCompatible(opencode, providerWithFormats('openai'))).toBe(true);
+    expect(isFormatCompatible(opencode, providerWithFormats('anthropic'))).toBe(true);
+    expect(isFormatCompatible(opencode, providerWithFormats('gemini'))).toBe(false);
+  });
+
+  it('a multi-format provider is compatible when any of its formats is accepted', () => {
+    const claude = getAgentDef('claude')!;
+    expect(isFormatCompatible(claude, providerWithFormats('openai', 'anthropic'))).toBe(true);
+    expect(isFormatCompatible(claude, providerWithFormats('openai', 'gemini'))).toBe(false);
+  });
+});
+
+describe('normalizeApiFormats', () => {
+  it('keeps known formats in canonical order, dropping unknowns, blanks and duplicates', () => {
+    expect(normalizeApiFormats(['openai', ' anthropic ', 'nope', 'openai', 3, null])).toEqual([
+      'anthropic',
+      'openai',
+    ]);
+    expect(normalizeApiFormats([])).toEqual([]);
+  });
+});
+
+describe('resolveBindingRoute', () => {
+  it('prefers the agent’s own format, in the agent’s order, when the provider serves it', () => {
+    // Codex speaks only Responses; an OpenAI provider that serves both picks Responses.
+    expect(resolveBindingRoute(getAgentDef('codex')!, ['openai', 'openai-responses'])).toEqual({
+      kind: 'native',
+      inbound: 'openai-responses',
+      outbound: 'openai-responses',
+    });
+    // Claude speaks anthropic; a mixed provider is bound natively, not translated.
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['openai', 'anthropic'])).toEqual({
+      kind: 'native',
+      inbound: 'anthropic',
+      outbound: 'anthropic',
+    });
+    // opencode lists openai before anthropic — the agent's order wins, not the provider's.
+    expect(resolveBindingRoute(getAgentDef('opencode')!, ['anthropic', 'openai'])).toEqual({
+      kind: 'native',
+      inbound: 'openai',
+      outbound: 'openai',
+    });
+  });
+
+  it('falls back to a translated route from the agent’s first format', () => {
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['openai'])).toEqual({
+      kind: 'translated',
+      inbound: 'anthropic',
+      outbound: 'openai',
+    });
+    // Codex → Chat is preferred over Codex → Anthropic when both are available.
+    expect(resolveBindingRoute(getAgentDef('codex')!, ['anthropic', 'openai'])).toEqual({
+      kind: 'translated',
+      inbound: 'openai-responses',
+      outbound: 'openai',
+    });
+    expect(resolveBindingRoute(getAgentDef('codex')!, ['anthropic'])).toEqual({
+      kind: 'translated',
+      inbound: 'openai-responses',
+      outbound: 'anthropic',
+    });
+  });
+
+  it('returns null when nothing native or translatable is served', () => {
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['gemini'])).toBeNull();
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['openai-responses'])).toBeNull();
+    expect(resolveBindingRoute(getAgentDef('gemini')!, ['openai', 'anthropic'])).toBeNull();
+    expect(resolveBindingRoute(getAgentDef('codex')!, [])).toBeNull();
   });
 });
 
 describe('bindingAvailability', () => {
-  it('is direct when the agent accepts the provider format', () => {
-    expect(bindingAvailability(getAgentDef('claude')!, 'anthropic')).toBe('direct');
-    expect(bindingAvailability(getAgentDef('opencode')!, 'openai')).toBe('direct');
-    expect(bindingAvailability(getAgentDef('opencode')!, 'anthropic')).toBe('direct');
+  it('is native when the agent accepts one of the provider formats', () => {
+    expect(bindingAvailability(getAgentDef('claude')!, ['anthropic'])).toBe('native');
+    expect(bindingAvailability(getAgentDef('opencode')!, ['openai'])).toBe('native');
+    expect(bindingAvailability(getAgentDef('opencode')!, ['anthropic'])).toBe('native');
+    expect(bindingAvailability(getAgentDef('claude')!, ['openai', 'anthropic'])).toBe('native');
   });
 
-  it('is proxy when the formats differ but the agent’s first format can be translated', () => {
+  it('is translated when the formats differ but the agent’s first format can be translated', () => {
     // Claude speaks anthropic; an OpenAI Chat provider is translated.
-    expect(bindingAvailability(getAgentDef('claude')!, 'openai')).toBe('proxy');
+    expect(bindingAvailability(getAgentDef('claude')!, ['openai'])).toBe('translated');
     // Codex speaks Responses; Chat Completions and Anthropic are both translated.
-    expect(bindingAvailability(getAgentDef('codex')!, 'openai')).toBe('proxy');
-    expect(bindingAvailability(getAgentDef('codex')!, 'anthropic')).toBe('proxy');
+    expect(bindingAvailability(getAgentDef('codex')!, ['openai'])).toBe('translated');
+    expect(bindingAvailability(getAgentDef('codex')!, ['anthropic'])).toBe('translated');
   });
 
   it('is unsupported when no translation route exists', () => {
-    expect(bindingAvailability(getAgentDef('claude')!, 'gemini')).toBe('unsupported');
-    expect(bindingAvailability(getAgentDef('claude')!, 'openai-responses')).toBe('unsupported');
-    expect(bindingAvailability(getAgentDef('codex')!, 'gemini')).toBe('unsupported');
-    expect(bindingAvailability(getAgentDef('gemini')!, 'openai')).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('claude')!, ['gemini'])).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('claude')!, ['openai-responses'])).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('codex')!, ['gemini'])).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('gemini')!, ['openai'])).toBe('unsupported');
     // pi's first format is anthropic, which cannot be translated into Responses.
-    expect(bindingAvailability(getAgentDef('pi')!, 'openai-responses')).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('pi')!, ['openai-responses'])).toBe('unsupported');
   });
 });
 

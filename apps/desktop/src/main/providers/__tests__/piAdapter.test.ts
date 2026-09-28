@@ -8,7 +8,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'pi Anthropic',
-  apiFormat: 'anthropic',
+  apiFormats: ['anthropic'],
   baseUrl: 'https://api.anthropic.com',
   models: [{ id: 'claude-opus-5' }],
   createdAt: 0,
@@ -46,7 +46,7 @@ describe('pi adapter — detectInstalled', () => {
 
 describe('pi adapter — writeLive', () => {
   it('writes the slug-keyed auth, models and settings binding', () => {
-    createPiAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk-p' });
+    createPiAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk-p' });
     expect(readJson(authFile())).toEqual({
       'aiopt-p1': { type: 'api_key', key: 'sk-p' },
     });
@@ -67,7 +67,8 @@ describe('pi adapter — writeLive', () => {
 
   it('maps an openai-format provider to pi openai-completions', () => {
     createPiAdapter().writeLive({
-      provider: { ...provider, apiFormat: 'openai' },
+      provider,
+      apiFormat: 'openai',
       modelId: 'claude-opus-5',
       apiKey: 'sk',
     });
@@ -85,7 +86,7 @@ describe('pi adapter — writeLive', () => {
     );
     fs.writeFileSync(settingsFile(), JSON.stringify({ theme: 'dark' }), 'utf8');
 
-    createPiAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    createPiAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
 
     expect((readJson(authFile()) as Record<string, unknown>).other).toEqual({
       type: 'api_key',
@@ -100,13 +101,14 @@ describe('pi adapter — writeLive', () => {
   it('drops the slug auth entry when no key is provided', () => {
     fs.mkdirSync(path.join(home, '.pi', 'agent'), { recursive: true });
     fs.writeFileSync(authFile(), JSON.stringify({ 'aiopt-p1': { type: 'api_key', key: 'old' } }), 'utf8');
-    createPiAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: null });
+    createPiAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: null });
     expect(readJson(authFile())['aiopt-p1']).toBeUndefined();
   });
 
   it('lists a model by its alias (the outward wire name) when one is set', () => {
     createPiAdapter().writeLive({
       provider: { ...provider, models: [{ id: 'claude-opus-5', alias: 'opus' }] },
+      apiFormat: 'anthropic',
       modelId: 'opus',
       apiKey: 'sk',
     });

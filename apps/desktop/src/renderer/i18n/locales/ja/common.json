@@ -140,7 +140,7 @@
     },
     "fields": {
       "name": "名前",
-      "apiFormat": "API フォーマット",
+      "apiFormats": "API 形式",
       "baseUrl": "Base URL",
       "apiKey": "API キー",
       "models": "モデル",
@@ -163,6 +163,11 @@
       "loadModels": "モデルを読み込む",
       "loadingModels": "読み込み中…",
       "loadModelsEmpty": "プロバイダーからモデルが返されませんでした。",
+      "apiFormatsHint": "このエンドポイントが提供する形式をすべてチェックしてください。バインド時は Agent がネイティブに話せる形式を優先します。",
+      "detectFormats": "自動検出",
+      "detecting": "検出中…",
+      "detectFound": "検出済み:",
+      "detectNone": "この URL では対応する形式が応答しませんでした。Base URL（とキー）を確認するか、手動でチェックしてください。",
       "cancel": "キャンセル",
       "close": "閉じる",
       "save": "保存",
@@ -296,7 +301,8 @@
     "library": {
       "label": "中央ライブラリ",
       "app": "アプリ内",
-      "home": "~/.aiopt/skills"
+      "home": "~/.aiopt/skills",
+      "agents": "~/.agents/skills"
     },
     "meta": {
       "files": "ファイル"

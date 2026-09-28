@@ -54,9 +54,16 @@ export function ProviderCard({
 
   return (
     <div style={cardStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: space.md }}>
         <strong style={{ fontSize: fontSize.lg }}>{provider.name}</strong>
-        <span style={badgeStyle}>{t(`providers.formats.${provider.apiFormat}`)}</span>
+        {/* One badge per served format — a gateway that speaks several shows them all. */}
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: space.xs }}>
+          {provider.apiFormats.map((format) => (
+            <span key={format} style={badgeStyle}>
+              {t(`providers.formats.${format}`)}
+            </span>
+          ))}
+        </span>
       </div>
       <p style={metaStyle}>{provider.baseUrl}</p>
       <p style={metaStyle}>

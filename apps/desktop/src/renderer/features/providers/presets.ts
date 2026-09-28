@@ -14,7 +14,7 @@ import type { ApiFormat, ProviderModel } from '../../../shared/aiProviders';
 export interface ProviderPreset {
   key: string;
   name: string;
-  apiFormat: ApiFormat;
+  apiFormats: ApiFormat[];
   baseUrl: string;
   models: ProviderModel[];
 }
@@ -22,7 +22,7 @@ export interface ProviderPreset {
 export const PROVIDER_PRESETS: readonly ProviderPreset[] = OFFICIAL_PROVIDERS.map((p) => ({
   key: p.id,
   name: p.name,
-  apiFormat: p.apiFormat,
+  apiFormats: [...p.apiFormats],
   baseUrl: p.baseUrl,
   models: p.models.map((m) => ({ ...m })),
 }));

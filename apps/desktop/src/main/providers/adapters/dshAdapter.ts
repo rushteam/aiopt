@@ -14,9 +14,9 @@
 //     REJECTS this file at load if it is group/other-readable, so it MUST be written 0600
 //     (writeAgentConfigFile's `mode` arg; the containing dir is forced to 0700).
 //
-// dsh selects its wire protocol per provider via the `api` field; API_BY_FORMAT maps our
-// provider's apiFormat onto it. The compatibility gate (AGENTS.acceptedFormats) only routes
-// openai / openai-responses / anthropic providers here.
+// dsh selects its wire protocol per provider via the `api` field; API_BY_FORMAT maps the
+// binding's resolved wire format (WriteLiveInput.apiFormat) onto it. The compatibility gate
+// (AGENTS.acceptedFormats) only routes openai / openai-responses / anthropic here.
 //
 // NOTE: dsh's active model/provider selection is per-thread runtime state, not a settings.yaml
 // field, so — unlike Hermes — there is no startup pointer to move here. Declaring the provider
@@ -91,7 +91,7 @@ export function createDshAdapter(): AgentAdapter {
       return fs.existsSync(agentConfigDir('dsh'));
     },
 
-    writeLive({ provider, modelId, apiKey }: WriteLiveInput) {
+    writeLive({ provider, apiFormat, modelId, apiKey }: WriteLiveInput) {
       const slug = `aiopt-${provider.id}`;
       const credRef = envRefName(provider.id);
 
@@ -100,7 +100,7 @@ export function createDshAdapter(): AgentAdapter {
       const settings = readConfigDocument(settingsFile);
       const entry = mapAt(settings, ['llm-pi-ai', 'providers', slug]);
       entry.set('displayName', provider.name);
-      entry.set('api', API_BY_FORMAT[provider.apiFormat]);
+      entry.set('api', API_BY_FORMAT[apiFormat]);
       entry.set('baseURL', provider.baseUrl);
       // Each model listed by its outward wire name (alias when set, else id) — this is the
       // id dsh sends on the wire.
