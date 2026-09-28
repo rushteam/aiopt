@@ -4,6 +4,7 @@
 // the Windows join (pass `path.win32`). `skillsLibraryPath` in main/paths.ts supplies the
 // real `userData` / `home` roots from `app.getPath`. The renderer never chooses a path.
 
+import fs from 'node:fs';
 import path from 'node:path';
 import type { SkillsLibraryLocation } from '../../shared/skills';
 
@@ -12,7 +13,7 @@ export type PathJoin = Pick<typeof path, 'join'>;
 
 /**
  * `'app'` → `<userData>/skills`
- * `'home'` → `<home>/.aiopt/skills`
+ * `'home'` → `<home>/.aiopt/skills` (legacy; still resolved when already chosen)
  * `'agents'` → `<home>/.agents/skills` — the cross-client user skills directory
  * (Agent Skills client guide). Home-level, so it is not a project `.agents/` that
  * Git would track.
@@ -33,5 +34,14 @@ export function skillsLibraryDir(
       const exhaustive: never = location;
       return exhaustive;
     }
+  }
+}
+
+/** True when `abs` is a real directory. A symlink does not count (`lstat`). Missing → false. */
+export function isRealDirectory(abs: string): boolean {
+  try {
+    return fs.lstatSync(abs).isDirectory();
+  } catch {
+    return false;
   }
 }

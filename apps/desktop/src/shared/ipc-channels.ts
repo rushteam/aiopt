@@ -302,10 +302,12 @@ export interface PreferencesShape {
    */
   language: LanguagePreference;
   /**
-   * Where the central Skills library lives. `'app'` = inside userData; `'home'` =
-   * an independent `~/.aiopt/skills`; `'agents'` = `~/.agents/skills`, the
-   * cross-client user skills directory. This is an ENUM, not a path: the renderer
-   * never supplies an absolute path — main resolves it (see main/paths.ts).
+   * Where the central Skills library lives. `'app'` = inside userData; `'agents'` =
+   * `~/.agents/skills`, the cross-client user skills directory. `'home'`
+   * (`~/.aiopt/skills`) is still accepted for a choice already stored. This is an
+   * ENUM, not a path: the renderer never supplies an absolute path — main resolves
+   * it (see main/paths.ts). On first use, main may record `'agents'` when that
+   * directory already exists and the in-app library is empty.
    */
   skillsLibrary: SkillsLibraryLocation;
   /**

@@ -31,6 +31,8 @@ import type { ProxyFetch } from './proxy/upstream';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
+import { isRealDirectory } from './skills/skillsLibraryDir';
+import { preferStandardSkillsLibrary } from '../shared/skills';
 import { homeRelativeDisplayPath } from './displayPath';
 import { createWorkbenchManager, type WorkbenchManager } from './workbench/workbenchManager';
 import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
@@ -213,6 +215,21 @@ export function getUsageStore(): UsageStore {
 }
 
 /**
+ * First open of Skills, when the user has never chosen a library: if the in-app
+ * library is empty and `~/.agents/skills` already exists, record that choice.
+ * Does not create the directory, and does not move a library that already has skills.
+ */
+function adoptStandardLibraryIfUnset(): void {
+  const config = getConfigStore();
+  const choice = preferStandardSkillsLibrary({
+    hasOverride: Object.prototype.hasOwnProperty.call(config.getOverrides(), 'skillsLibrary'),
+    appHasSkills: createNodeSkillsFs().listSkillNames(skillsLibraryPath('app')).length > 0,
+    standardDirExists: isRealDirectory(skillsLibraryPath('agents')),
+  });
+  if (choice) config.set('skillsLibrary', choice);
+}
+
+/**
  * The skills store — AiOpt as the central library for skills scattered across each agent's
  * global skills dir. It has NO persistence file of its own: the skill DIRECTORIES on disk are
  * the source of truth, and every path is resolved main-side from base dirs it holds (the central
@@ -222,6 +239,7 @@ export function getUsageStore(): UsageStore {
  */
 export function getSkillsStore(): SkillsStore {
   if (!skillsStore) {
+    adoptStandardLibraryIfUnset();
     const homeDir = app.getPath('home');
     const store = createSkillsStore({
       fs: createNodeSkillsFs(),

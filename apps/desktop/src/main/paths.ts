@@ -2,8 +2,8 @@
 //
 // App config, secrets, and logs live under Electron's `userData` directory —
 // never the repo, the cwd, or a git-tracked path. The skills library is the
-// exception: the user can point it at `~/.aiopt/skills` or `~/.agents/skills`
-// (still derived from `app.getPath('home')`, never a checkout). See
+// exception: it can point at `~/.agents/skills` (or a previously chosen
+// `~/.aiopt/skills`), still derived from `app.getPath('home')`, never a checkout. See
 // docs/dev-rules/credentials-and-local-storage.md.
 
 import { app } from 'electron';
@@ -52,8 +52,8 @@ export function proxyStateFilePath(): string {
 /**
  * The central Skills library directory, resolved from the enum preference.
  * `'app'` keeps it inside `userData` (managed with the rest of the app's data);
- * `'home'` places it in an independent `~/.aiopt/skills`; `'agents'` places it in
- * `~/.agents/skills`, the cross-client user skills directory. All three are derived
+ * `'agents'` places it in `~/.agents/skills`, the cross-client user skills directory;
+ * `'home'` still resolves a previously chosen `~/.aiopt/skills`. All three are derived
  * from `app.getPath` — never a project path, so skill files are not written into a
  * git checkout. The renderer never supplies this path — main computes it here so a
  * hostile renderer can never redirect skill reads/writes to an arbitrary location.
