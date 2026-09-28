@@ -26,6 +26,7 @@ import {
   type ProviderRefreshProxyPortResult,
   type ProviderFetchModelsResult,
   type ProviderRevealKeyResult,
+  type ProviderTestResult,
   type ProviderUpdateRequest,
   type ProvidersSnapshot,
   type SkillsImportResult,
@@ -214,6 +215,8 @@ const api = {
      */
     detectFormats: (input: ProviderDetectFormatsRequest): Promise<ProviderDetectFormatsResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersDetectFormats, input),
+    test: (providerId: string): Promise<ProviderTestResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersTest, { providerId }),
     /**
      * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Unlike every
      * sibling here, this returns the secret (see the channel note). Callers must hold

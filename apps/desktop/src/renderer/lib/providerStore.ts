@@ -12,6 +12,7 @@ import type {
   ProviderDetectFormatsRequest,
   ProviderFetchModelsRequest,
   ProviderUpdateRequest,
+  ProviderTestResult,
   ProvidersSnapshot,
 } from '../../shared/ipc-channels';
 import type { AgentId, ApiFormat, ProviderModel } from '../../shared/aiProviders';
@@ -117,6 +118,11 @@ export async function detectProviderFormats(
   ensureInitialized();
   const { formats } = await window.aiopt.providers.detectFormats(input);
   return formats;
+}
+
+export async function testProvider(providerId: string): Promise<ProviderTestResult> {
+  ensureInitialized();
+  return window.aiopt.providers.test(providerId);
 }
 
 /**

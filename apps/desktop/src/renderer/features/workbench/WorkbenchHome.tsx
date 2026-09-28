@@ -24,7 +24,6 @@ import {
   startWorkbench,
   stopWorkbench,
   updateTask,
-  updateWorkbenchSettings,
 } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { workbenchErrorMessage } from './errors';
@@ -44,10 +43,11 @@ import {
 import { TaskDagView } from './TaskDagView';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { TaskChatPane } from './TaskChatPane';
-import { TaskTabBar } from './TaskTabBar';
-import { TaskDetailToolbar } from './TaskDetailToolbar';
+import { TaskBoardTabRow } from './TaskBoardTabRow';
 import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
+import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
+import { WorkbenchSplitPane } from './WorkbenchSplitPane';
 
 export function WorkbenchHome() {
   const t = useT();
@@ -71,6 +71,8 @@ export function WorkbenchHome() {
 
   const liveCount = wb.tasks.filter((task) => isLiveTaskStatus(task.status)).length;
   const running = wb.status === 'ready';
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const selectedTask = wb.tasks.find((task) => task.id === selectedTaskId) ?? null;
 
   const toggle = async (): Promise<void> => {
     if (running || wb.status === 'starting') {
@@ -89,11 +91,11 @@ export function WorkbenchHome() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
-      <div style={{ padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: space.md }}>
-        <WorkbenchTopBar wb={wb} t={t} busy={busy} run={run} onToggle={() => void toggle()} />
+      <div style={{ flexShrink: 0, padding: '8px 24px 0', display: 'flex', flexDirection: 'column', gap: space.sm }}>
+        <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
         {error && (
           <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
             {error}
@@ -104,14 +106,19 @@ export function WorkbenchHome() {
         style={{
           flex: 1,
           minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(260px, 2fr) minmax(340px, 3fr)',
-          gap: space.xl,
-          padding: '16px 24px 24px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '12px 24px 24px',
         }}
       >
-        <ChatPane wb={wb} t={t} run={run} />
-        <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} />
+        <WorkbenchSplitPane
+          resizeLabel={t('workbench.splitResizeHandle')}
+          left={<ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />}
+          right={
+            <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+          }
+        />
       </div>
       {confirmStop && (
         <ConfirmDialog
@@ -138,12 +145,26 @@ type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
-function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: Runner }) {
+function ChatPane({
+  wb,
+  t,
+  run,
+  busy,
+  onToggle,
+}: {
+  wb: WorkbenchSnapshot;
+  t: TranslateFn;
+  run: Runner;
+  busy: boolean;
+  onToggle: () => void;
+}) {
   const [draft, setDraft] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const ready = wb.status === 'ready';
+  const sessionOn = wb.status === 'ready' || wb.status === 'starting';
+  const toggleDisabled = busy || wb.status === 'starting';
   // Switching conversations mid-reply would orphan the reply, so main refuses it; so does the UI.
   const canSwitch = ready && !wb.streaming;
 
@@ -159,10 +180,42 @@ function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: 
     if (await run(() => sendChat(text))) setDraft('');
   };
 
+  const addTaskMention = (taskId: string): void => {
+    setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
+  };
+
   return (
-    <section aria-label={t('workbench.chat.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <section
+      aria-label={t('workbench.chat.title')}
+      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
       <div style={paneHeaderStyle}>
         <h2 style={paneTitleStyle}>{t('workbench.chat.title')}</h2>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={toggleDisabled}
+          title={sessionOn ? t('workbench.stop') : t('workbench.start')}
+          {...(sessionOn
+            ? hoverBackground('transparent', token('surfaceHover'))
+            : hoverBackground(token('accent'), token('accentHover')))}
+          style={{
+            all: 'unset',
+            cursor: toggleDisabled ? 'default' : 'pointer',
+            fontSize: fontSize.xs,
+            fontWeight: 600,
+            padding: '3px 10px',
+            borderRadius: radius.sm,
+            border: sessionOn ? `1px solid ${token('borderStrong')}` : 'none',
+            background: sessionOn ? 'transparent' : token('accent'),
+            color: sessionOn ? token('text') : token('accentText'),
+            opacity: toggleDisabled ? 0.5 : 1,
+            flexShrink: 0,
+            marginLeft: space.sm,
+          }}
+        >
+          {wb.status === 'starting' ? t('workbench.status.starting') : sessionOn ? t('workbench.stop') : t('workbench.start')}
+        </button>
         <span style={{ flex: 1 }} />
         <button
           type="button"
@@ -207,6 +260,11 @@ function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: 
           const el = e.currentTarget;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
+        onDragOver={acceptTaskMentionDrag}
+        onDrop={(e) => {
+          const payload = readTaskMentionDrop(e);
+          if (payload) addTaskMention(payload.id);
+        }}
         aria-live="polite"
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.lg }}
       >
@@ -216,27 +274,31 @@ function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: 
           </p>
         )}
         {wb.chat.map((item) => (
-          <ChatEntry key={item.id} item={item} t={t} />
+          <ChatEntry key={item.id} item={item} tasks={wb.tasks} t={t} />
         ))}
       </div>
-      <WorkbenchChatComposer
-        draft={draft}
-        setDraft={setDraft}
-        onSend={() => void send()}
-        disabled={!ready}
-        streaming={wb.streaming}
-        onAbort={() => void run(abortChat)}
-        maxLength={WORKBENCH_LIMITS.chatText}
-        placeholder={t('workbench.chat.placeholder')}
-        sendHint={t('workbench.chat.sendHint')}
-        sendLabel={t('workbench.chat.send')}
-        abortLabel={t('workbench.chat.abort')}
-      />
+      <div style={{ flexShrink: 0 }}>
+        <WorkbenchChatComposer
+          draft={draft}
+          setDraft={setDraft}
+          onSend={() => void send()}
+          disabled={!ready}
+          streaming={wb.streaming}
+          onAbort={() => void run(abortChat)}
+          maxLength={WORKBENCH_LIMITS.chatText}
+          placeholder={t('workbench.chat.placeholder')}
+          sendHint={t('workbench.chat.sendHint')}
+          sendLabel={t('workbench.chat.send')}
+          abortLabel={t('workbench.chat.abort')}
+          onTaskMentionDrop={ready ? addTaskMention : undefined}
+          dropHint={t('workbench.chat.taskMentionDrop')}
+        />
+      </div>
     </section>
   );
 }
 
-function ChatEntry({ item, t }: { item: ChatItem; t: TranslateFn }) {
+function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskView[]; t: TranslateFn }) {
   switch (item.kind) {
     case 'user':
       return (
@@ -252,7 +314,7 @@ function ChatEntry({ item, t }: { item: ChatItem; t: TranslateFn }) {
               overflowWrap: 'anywhere',
             }}
           >
-            {item.text}
+            {renderTextWithTaskMentions(item.text, tasks)}
           </div>
         </div>
       );
@@ -368,7 +430,13 @@ function HistoryPanel({
       onKeyDown={(e) => {
         if (e.key === 'Escape' && !confirmDelete) onClose();
       }}
-      style={{ borderBottom: `1px solid ${token('border')}`, background: token('surface'), maxHeight: 260, overflowY: 'auto' }}
+      style={{
+        borderBottom: `1px solid ${token('border')}`,
+        background: token('surface'),
+        flexShrink: 0,
+        maxHeight: 260,
+        overflowY: 'auto',
+      }}
     >
       {conversations.length === 0 ? (
         <p style={{ margin: 0, padding: space.lg, fontSize: fontSize.sm, color: token('textMuted') }}>{t('workbench.chat.historyEmpty')}</p>
@@ -475,20 +543,18 @@ function TaskBoard({
   t,
   run,
   liveCount,
+  selectedId,
+  onSelectTask,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
   liveCount: number;
+  selectedId: string | null;
+  onSelectTask: (id: string | null) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sshDraft, setSshDraft] = useState(wb.settings.herdrSshTarget ?? '');
-  useEffect(() => {
-    setSshDraft(wb.settings.herdrSshTarget ?? '');
-  }, [wb.settings.herdrSshTarget]);
   const tasks = [...wb.tasks].sort(
     (a, b) => STATUS_GROUP[a.status] - STATUS_GROUP[b.status] || a.createdAt - b.createdAt,
   );
@@ -504,125 +570,35 @@ function TaskBoard({
   ).length;
   useEffect(() => {
     if (tasks.length === 0) {
-      setSelectedId(null);
+      onSelectTask(null);
       return;
     }
-    if (!selectedId || !tasks.some((task) => task.id === selectedId)) setSelectedId(tasks[0]!.id);
-  }, [tasks, selectedId]);
+    if (!selectedId || !tasks.some((task) => task.id === selectedId)) onSelectTask(tasks[0]!.id);
+  }, [tasks, selectedId, onSelectTask]);
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
-  const setSetting = (patch: {
-    autoRun?: boolean;
-    notifyCoordinator?: boolean;
-    autoLaunchDependents?: boolean;
-    herdrSshTarget?: string | null;
-  }): void => {
-    setSavingSettings(true);
-    void run(() => updateWorkbenchSettings(patch)).finally(() => setSavingSettings(false));
-  };
 
   return (
-    <section aria-label={t('workbench.tasks.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={paneHeaderStyle}>
-        <h2 style={paneTitleStyle}>{t('workbench.tasks.title')}</h2>
-        <span style={{ fontSize: fontSize.sm, color: token('textMuted'), fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {t('workbench.tasks.taskTotal').replace('{{count}}', String(tasks.length))}
-          {' · '}
-          {t('workbench.tasks.concurrent')} {liveCount}/{WORKBENCH_LIMITS.liveTasks}
-        </span>
-        <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={() => void run(runAllTasks)}
-          disabled={!canRun || runnable === 0}
-          title={t('workbench.tasks.runAllHint')}
-          {...hoverBackground('transparent', token('surfaceHover'))}
-          style={{ ...actionButtonStyle, opacity: canRun && runnable > 0 ? 1 : 0.5 }}
-        >
-          {t('workbench.tasks.runAll')}
-          {runnable > 0 && (
-            <span style={{ marginLeft: space.xs, color: token('textMuted'), fontVariantNumeric: 'tabular-nums' }}>{runnable}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          disabled={creating || full}
-          {...hoverBackground('transparent', token('surfaceHover'))}
-          style={{ ...actionButtonStyle, opacity: creating || full ? 0.5 : 1 }}
-        >
-          {t('workbench.tasks.new')}
-        </button>
-      </div>
-      <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
-        <summary
-          style={{
-            padding: '6px 12px',
-            fontSize: fontSize.sm,
-            color: token('textMuted'),
-            cursor: 'pointer',
-            listStyle: 'none',
-          }}
-        >
-          {t('workbench.tasks.preferences')}
-        </summary>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: space.md,
-            padding: '8px 12px 12px',
-          }}
-        >
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg }}>
-            <SettingToggle
-              label={t('workbench.tasks.autoRun')}
-              hint={t('workbench.tasks.autoRunHint')}
-              checked={wb.settings.autoRun}
-              disabled={savingSettings}
-              onChange={(autoRun) => setSetting({ autoRun })}
-            />
-            <SettingToggle
-              label={t('workbench.tasks.notify')}
-              hint={t('workbench.tasks.notifyHint')}
-              checked={wb.settings.notifyCoordinator}
-              disabled={savingSettings}
-              onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
-            />
-            <SettingToggle
-              label={t('workbench.tasks.autoLaunchDependents')}
-              hint={t('workbench.tasks.autoLaunchDependentsHint')}
-              checked={wb.settings.autoLaunchDependents}
-              disabled={savingSettings}
-              onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
-            />
-          </div>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted'), maxWidth: 360 }}>
-            {t('workbench.herdr.sshLabel')}
-            <input
-              type="text"
-              value={sshDraft}
-              disabled={savingSettings || wb.status === 'starting'}
-              placeholder={t('workbench.herdr.sshPlaceholder')}
-              onChange={(e) => setSshDraft(e.target.value)}
-              onBlur={() => {
-                const trimmed = sshDraft.trim();
-                const next = trimmed === '' ? null : trimmed;
-                if (next === wb.settings.herdrSshTarget) return;
-                setSetting({ herdrSshTarget: next });
-              }}
-              style={{
-                padding: '4px 8px',
-                borderRadius: radius.sm,
-                border: `1px solid ${token('borderStrong')}`,
-                background: token('surface'),
-                color: token('text'),
-                fontSize: fontSize.sm,
-              }}
-            />
-            <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
-          </label>
-        </div>
-      </details>
+    <section
+      aria-label={t('workbench.tasks.title')}
+      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
+      <TaskBoardTabRow
+        tasks={tasks}
+        selectedId={selectedId}
+        onSelect={onSelectTask}
+        t={t}
+        wb={wb}
+        run={run}
+        onEditTask={(id) => setEditingId(id)}
+        liveCount={liveCount}
+        onNewTask={() => setCreating(true)}
+        creating={creating}
+        taskFull={full}
+        canRun={canRun}
+        runnable={runnable}
+        selectedTask={selectedTask}
+        sessionReady={wb.status === 'ready'}
+      />
       {creating && (
         <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
           <TaskForm
@@ -637,7 +613,6 @@ function TaskBoard({
           />
         </div>
       )}
-      <TaskTabBar tasks={tasks} selectedId={selectedId} onSelect={setSelectedId} t={t} />
       {shouldShowTaskPlan(wb.tasks) && (
         <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
           <summary
@@ -651,7 +626,7 @@ function TaskBoard({
           >
             {t('workbench.plan.title')}
           </summary>
-          <TaskDagView tasks={wb.tasks} selectedId={selectedId} onSelect={setSelectedId} t={t} />
+          <TaskDagView tasks={wb.tasks} selectedId={selectedId} onSelect={onSelectTask} t={t} />
         </details>
       )}
       {selectedTask && editingId === selectedTask.id ? (
@@ -681,19 +656,8 @@ function TaskBoard({
             }}
           />
         </div>
-      ) : (
-        selectedTask && (
-          <TaskDetailToolbar
-            task={selectedTask}
-            wb={wb}
-            t={t}
-            run={run}
-            canLaunch={canRun}
-            onEdit={() => setEditingId(selectedTask.id)}
-          />
-        )
-      )}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      ) : null}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {selectedTask ? (
           <TaskChatPane task={selectedTask} wb={wb} t={t} run={run} />
         ) : (
@@ -703,28 +667,6 @@ function TaskBoard({
         )}
       </div>
     </section>
-  );
-}
-
-/** A persisted workbench preference; the hint explains it on hover and to screen readers. */
-function SettingToggle({
-  label,
-  hint,
-  checked,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  checked: boolean;
-  disabled: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label title={hint} style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, fontSize: fontSize.sm, color: token('text') }}>
-      <input type="checkbox" checked={checked} disabled={disabled} aria-description={hint} onChange={(e) => onChange(e.target.checked)} />
-      {label}
-    </label>
   );
 }
 
@@ -897,6 +839,7 @@ const paneHeaderStyle: CSSProperties = {
   gap: space.md,
   padding: '8px 12px',
   borderBottom: `1px solid ${token('border')}`,
+  flexShrink: 0,
 };
 
 const paneTitleStyle: CSSProperties = { margin: 0, fontSize: fontSize.lg, fontWeight: 600 };

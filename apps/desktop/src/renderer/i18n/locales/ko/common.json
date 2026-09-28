@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "에이전트"
+      "heading": "에이전트",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "로컬 프록시",
@@ -194,7 +196,18 @@
       "edit": "편집",
       "delete": "삭제",
       "confirmDelete": "이 공급자를 삭제할까요?",
-      "confirmYes": "삭제"
+      "confirmYes": "삭제",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "감지되지 않음",
@@ -243,7 +256,8 @@
       "noModelMatch": "일치하는 모델이 없습니다.",
       "bound": "현재 바인딩됨",
       "apply": "적용",
-      "restoreDefaultRow": "기본값"
+      "restoreDefaultRow": "기본값",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "일부 정보가 올바르지 않습니다. 필드를 확인한 후 다시 시도하세요.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "공급자가 API 키를 거부했습니다. 키를 확인한 후 다시 시도하세요.",
       "UPSTREAM_ERROR": "공급자에서 모델을 불러오지 못했습니다. Base URL을 확인한 후 다시 시도하세요.",
       "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "워크벤치",
     "subtitle": "작업을 태스크로 나누는 코디네이터와 대화하고, 승인한 각 태스크를 herdr 세션 안의 독립된 pi 에이전트로 실행합니다. 공급자 탭에서 pi에 연결한 공급자와 모델을 사용합니다.",
     "start": "시작",
+    "splitResizeHandle": "코디네이터와 태스크 영역 너비 조절",
     "stop": "중지",
     "cancel": "취소",
     "model": "모델:",
@@ -432,9 +451,10 @@
       "title": "코디네이터",
       "reset": "새 대화",
       "empty": "원하는 작업을 설명하세요. 코디네이터가 보드에 태스크를 제안합니다. 실행을 누르면 태스크마다 별도의 에이전트가 시작되어 해당 폴더의 파일을 변경할 수 있으므로, 실행을 누르거나 자동 실행을 켜기 전에는 아무것도 실행되지 않습니다.",
-      "notRunning": "워크벤치를 시작하면 코디네이터와 대화할 수 있습니다.",
+      "notRunning": "위의 시작을 눌러 코디네이터와 대화하세요.",
       "placeholder": "코디네이터에게 메시지 보내기",
       "sendHint": "Enter로 전송 · Shift+Enter로 줄바꿈",
+      "taskMentionDrop": "놓으면 태스크를 참조합니다 (@task)",
       "send": "전송",
       "abort": "응답 중지",
       "you": "나:",
@@ -461,7 +481,9 @@
       "session_reset": "새 대화를 시작했습니다.",
       "session_opened": "대화를 복원했습니다."
     },
-    "plan": { "title": "태스크 계획" },
+    "plan": {
+      "title": "태스크 계획"
+    },
     "taskChat": {
       "title": "태스크 채팅",
       "empty": "태스크를 선택하면 초기 프롬프트가 여기에 표시됩니다.",
@@ -473,6 +495,11 @@
       "settings": "워크벤치 설정",
       "preferences": "자동화",
       "list": "모든 태스크",
+      "dragMention": "코디네이터 채팅으로 끌어다 태스크 참조",
+      "boardMenu": "태스크 작업",
+      "tabMenu": "태스크 옵션",
+      "tabMenuEmpty": "이 태스크에 사용할 옵션이 없습니다.",
+      "doneNoRelaunch": "완료된 태스크는 여기서 다시 실행할 수 없습니다.",
       "taskTotal": "태스크 {{count}}개",
       "concurrent": "동시 실행",
       "running": "실행 중",
@@ -480,8 +507,10 @@
       "create": "태스크 추가",
       "save": "저장",
       "empty": "아직 태스크가 없습니다. 코디네이터에게 요청하거나 직접 추가하세요.",
+      "sessionRequiredHint": "태스크를 실행하려면 왼쪽 코디네이터에서 워크벤치를 시작하세요.",
       "titleLabel": "제목",
       "promptLabel": "할 일(에이전트에게 전송)",
+      "activeWorkspace": "선택된 태스크",
       "folderLabel": "폴더",
       "noFolder": "폴더 선택",
       "folderGone": "폴더가 제거됨",
@@ -501,7 +530,7 @@
       "autoLaunchDependentsHint": "태스크를 완료로 표시하면, 그 태스크에 의존하는 제안 태스크가 준비되었을 때 실행합니다.",
       "waitingOn": "대기 중:",
       "notify": "코디네이터에게 보고",
-      "notifyHint": "태스크가 검토나 입력이 필요하거나 실패하면 코디네이터에게 알려 채팅에서 요약하게 합니다.",
+      "notifyHint": "태스크가 검토·입력이 필요하거나 실패했거나 완료/중지로 표시되면 코디네이터에게 알려 채팅에서 요약하게 합니다.",
       "promptPlaceholder": "예: src/auth의 회원가입 폼에 입력 검증을 추가한 뒤 단위 테스트를 실행하고 실패를 수정합니다.",
       "promptHint": "에이전트는 이 텍스트만 볼 수 있고 채팅은 볼 수 없습니다. 목표, 관련 파일, 결과 확인 방법을 적어 주세요."
     },

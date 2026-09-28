@@ -226,7 +226,7 @@ export interface HerdrProbeView {
 export interface WorkbenchSettings {
   /** Run the coordinator's proposals at once when they have a folder (user-asked turns only). */
   autoRun: boolean;
-  /** Tell the coordinator when a task needs review, needs input, or fails. */
+  /** Tell the coordinator when a task needs review, needs input, fails, or is marked done/stopped. */
   notifyCoordinator: boolean;
   /** When a task reaches `done`, launch proposed dependents that are otherwise ready (user turns only). */
   autoLaunchDependents: boolean;
@@ -277,10 +277,18 @@ export function pendingDependencies(task: Pick<TaskView, 'dependsOn'>, tasks: re
   return out;
 }
 
+/** Last batch of tasks reported to the coordinator (tray / status hints). */
+export interface WorkbenchNotifyPreview {
+  titles: string[];
+  at: number;
+}
+
 export interface WorkbenchSnapshot {
   status: WorkbenchStatus;
   issue: WorkbenchIssue | null;
   model: WorkbenchModel | null;
+  /** Most recent coordinator notify batch, when notify is enabled. */
+  lastNotify: WorkbenchNotifyPreview | null;
   /** Whether the orchestrator is currently producing a reply. */
   streaming: boolean;
   chat: ChatItem[];

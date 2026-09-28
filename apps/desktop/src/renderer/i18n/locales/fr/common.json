@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agents"
+      "heading": "Agents",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "Proxy local",
@@ -194,7 +196,18 @@
       "edit": "Modifier",
       "delete": "Supprimer",
       "confirmDelete": "Supprimer ce fournisseur ?",
-      "confirmYes": "Supprimer"
+      "confirmYes": "Supprimer",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "Non détecté",
@@ -243,7 +256,8 @@
       "noModelMatch": "Aucun modèle correspondant.",
       "bound": "Actuellement lié",
       "apply": "Appliquer",
-      "restoreDefaultRow": "Par défaut"
+      "restoreDefaultRow": "Par défaut",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "Certaines informations sont invalides. Vérifiez les champs et réessayez.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "Le fournisseur a rejeté la clé d’API. Vérifiez la clé et réessayez.",
       "UPSTREAM_ERROR": "Impossible de charger les modèles depuis le fournisseur. Vérifiez l’URL de base et réessayez.",
       "INTERNAL": "Une erreur est survenue. Réessayez."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "Atelier",
     "subtitle": "Discutez avec un coordinateur qui découpe le travail en tâches, puis lancez chaque tâche approuvée comme agent pi distinct dans une session herdr. Utilise le fournisseur et le modèle de pi définis dans Fournisseurs.",
     "start": "Démarrer",
+    "splitResizeHandle": "Redimensionner le coordinateur et les tâches",
     "stop": "Arrêter",
     "cancel": "Annuler",
     "model": "Modèle :",
@@ -432,9 +451,10 @@
       "title": "Coordinateur",
       "reset": "Nouvelle conversation",
       "empty": "Décrivez ce que vous voulez faire. Le coordinateur propose des tâches sur le tableau. Lancer démarre chacune comme un agent distinct qui peut modifier les fichiers de son dossier : rien ne s'exécute tant que vous n'appuyez pas sur Lancer (ou n'activez pas le lancement automatique).",
-      "notRunning": "Démarrez l'atelier pour discuter avec le coordinateur.",
+      "notRunning": "Appuyez sur Démarrer ci-dessus pour discuter avec le coordinateur.",
       "placeholder": "Écrire au coordinateur",
       "sendHint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
+      "taskMentionDrop": "Relâchez pour référencer la tâche (@task)",
       "send": "Envoyer",
       "abort": "Arrêter la réponse",
       "you": "Vous :",
@@ -461,7 +481,9 @@
       "session_reset": "Nouvelle conversation commencée.",
       "session_opened": "Conversation restaurée."
     },
-    "plan": { "title": "Plan des tâches" },
+    "plan": {
+      "title": "Plan des tâches"
+    },
     "taskChat": {
       "title": "Chat de la tâche",
       "empty": "Sélectionnez une tâche pour afficher le prompt initial ici.",
@@ -473,6 +495,11 @@
       "settings": "Réglages de l'atelier",
       "preferences": "Automatisation",
       "list": "Toutes les tâches",
+      "dragMention": "Glissez vers le chat du coordinateur pour référencer la tâche",
+      "boardMenu": "Actions des tâches",
+      "tabMenu": "Options de la tâche",
+      "tabMenuEmpty": "Aucune option pour cette tâche.",
+      "doneNoRelaunch": "Les tâches terminées ne peuvent pas être relancées ici.",
       "taskTotal": "{{count}} tâches",
       "concurrent": "En parallèle",
       "running": "En cours",
@@ -480,8 +507,10 @@
       "create": "Ajouter la tâche",
       "save": "Enregistrer",
       "empty": "Aucune tâche pour l'instant. Demandez au coordinateur, ou ajoutez-en une vous-même.",
+      "sessionRequiredHint": "Démarrez l'atelier depuis le panneau Coordinateur (à gauche) pour exécuter des tâches.",
       "titleLabel": "Titre",
       "promptLabel": "À faire (envoyé à l'agent)",
+      "activeWorkspace": "Tâche active",
       "folderLabel": "Dossier",
       "noFolder": "Choisir un dossier",
       "folderGone": "Dossier retiré",
@@ -501,7 +530,7 @@
       "autoLaunchDependentsHint": "Quand une tâche est marquée terminée, lancer les propositions qui en dépendent et sont prêtes.",
       "waitingOn": "En attente de :",
       "notify": "Informer le coordinateur",
-      "notifyHint": "Quand une tâche attend une revue, attend une réponse ou échoue, prévenir le coordinateur pour qu'il résume dans la conversation.",
+      "notifyHint": "Quand une tâche attend une revue, une réponse, échoue ou est marquée terminée/arrêtée, prévenir le coordinateur pour qu'il résume dans la conversation.",
       "promptPlaceholder": "Ex. : ajouter la validation des champs au formulaire d'inscription dans src/auth, puis lancer les tests unitaires et corriger les échecs.",
       "promptHint": "L'agent ne voit que ce texte, pas la conversation. Indiquez l'objectif, les fichiers concernés et comment vérifier le résultat."
     },

@@ -91,23 +91,25 @@ export function TaskChatPane({
           ) : undefined
         }
       />
-      <WorkbenchChatComposer
-        draft={draft}
-        setDraft={setDraft}
-        onSend={() => void send()}
-        disabled={!ready || !canMessage}
-        maxLength={WORKBENCH_LIMITS.taskPrompt}
-        placeholder={
-          !ready
-            ? t('workbench.chat.notRunning')
-            : canMessage
-              ? t('workbench.taskChat.placeholder')
-              : t('workbench.taskChat.waitLaunch')
-        }
-        sendHint={t('workbench.chat.sendHint')}
-        sendLabel={t('workbench.chat.send')}
-        rows={3}
-      />
+      <div style={{ flexShrink: 0 }}>
+        <WorkbenchChatComposer
+          draft={draft}
+          setDraft={setDraft}
+          onSend={() => void send()}
+          disabled={!ready || !canMessage}
+          maxLength={WORKBENCH_LIMITS.taskPrompt}
+          placeholder={
+            !ready
+              ? t('workbench.chat.notRunning')
+              : canMessage
+                ? t('workbench.taskChat.placeholder')
+                : t('workbench.taskChat.waitLaunch')
+          }
+          sendHint={t('workbench.chat.sendHint')}
+          sendLabel={t('workbench.chat.send')}
+          rows={3}
+        />
+      </div>
     </section>
   );
 }

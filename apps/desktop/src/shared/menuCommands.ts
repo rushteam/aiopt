@@ -14,6 +14,7 @@ export const MENU_COMMANDS = {
   openSettings: 'open-settings',
   showUsage: 'show-usage',
   showSkills: 'show-skills',
+  showWorkbench: 'open-workbench',
   checkForUpdates: 'check-for-updates',
   showAbout: 'show-about',
 } as const;

@@ -18,6 +18,11 @@ import { getAgentDef } from '../../../shared/aiProviders';
 import type { SecretStore } from '../../secrets/secretStore';
 import { IPC_CHANNELS, type ProvidersSnapshot } from '../../../shared/ipc-channels';
 import { decodeIpcError, isIpcError, type IpcErrorCode } from '../../../shared/ipc-errors';
+import { resetModelsDevCacheForTests } from '../modelsDev';
+
+function pool(snap: ProvidersSnapshot) {
+  return snap.providers.filter((p) => !p.virtual);
+}
 
 const trusted: IpcInvokeMeta = { assertTrustedSender: () => {} };
 const untrusted: IpcInvokeMeta = {
@@ -158,7 +163,7 @@ describe('provider IPC — dropRequestFields (strict: an unknown name is refused
       { ...addPayload, dropRequestFields: ['seed', 'store'] },
       trusted,
     )) as ProvidersSnapshot;
-    expect(snap.providers[0]!.dropRequestFields).toEqual(['store', 'seed']);
+    expect(pool(snap)[0]!.dropRequestFields).toEqual(['store', 'seed']);
   });
 
   it('refuses an unknown field name with INVALID_PARAMS and stores nothing', async () => {
@@ -200,14 +205,14 @@ describe('provider IPC — dropRequestFields (strict: an unknown name is refused
       { ...addPayload, dropRequestFields: ['store'] },
       trusted,
     )) as ProvidersSnapshot;
-    const id = added.providers[0]!.id;
+    const id = pool(added)[0]!.id;
     const snap = (await reg.invoke(
       IPC_CHANNELS.providersUpdate,
       { id, name: 'Renamed' },
       trusted,
     )) as ProvidersSnapshot;
-    expect(snap.providers[0]!.name).toBe('Renamed');
-    expect(snap.providers[0]!.dropRequestFields).toEqual(['store']);
+    expect(pool(snap)[0]!.name).toBe('Renamed');
+    expect(pool(snap)[0]!.dropRequestFields).toEqual(['store']);
   });
 
   it('an empty array on update CLEARS the stored set', async () => {
@@ -217,7 +222,7 @@ describe('provider IPC — dropRequestFields (strict: an unknown name is refused
       { ...addPayload, dropRequestFields: ['store'] },
       trusted,
     )) as ProvidersSnapshot;
-    const id = added.providers[0]!.id;
+    const id = pool(added)[0]!.id;
     const snap = (await reg.invoke(
       IPC_CHANNELS.providersUpdate,
       { id, dropRequestFields: [] },
@@ -225,7 +230,7 @@ describe('provider IPC — dropRequestFields (strict: an unknown name is refused
     )) as ProvidersSnapshot;
     // Undefined, not []: clearing must reach the same state as never having configured it,
     // or the UI would show "nothing stripped" while the record still carried a marker.
-    expect(snap.providers[0]!.dropRequestFields).toBeUndefined();
+    expect(pool(snap)[0]!.dropRequestFields).toBeUndefined();
   });
 });
 
@@ -233,8 +238,8 @@ describe('provider IPC — flows never leak the key', () => {
   it('add returns a snapshot with hasKey and no plaintext', async () => {
     const { reg, secrets } = harness();
     const snap = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
-    expect(snap.providers).toHaveLength(1);
-    expect(snap.providers[0]!.hasKey).toBe(true);
+    expect(pool(snap)).toHaveLength(1);
+    expect(pool(snap)[0]!.hasKey).toBe(true);
     expect(JSON.stringify(snap)).not.toContain('sk-secret');
     // The key really was stored (just not returned).
     expect([...secrets.raw.values()]).toContain('sk-secret');
@@ -243,7 +248,7 @@ describe('provider IPC — flows never leak the key', () => {
   it('setBinding a compatible provider succeeds and records the binding', async () => {
     const { reg } = harness();
     const added = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
-    const id = added.providers[0]!.id;
+    const id = pool(added)[0]!.id;
     const snap = (await reg.invoke(
       IPC_CHANNELS.providersSetBinding,
       { agentId: 'claude', providerId: id, modelId: 'claude-x' },
@@ -276,7 +281,7 @@ describe('provider IPC — restoreDefault', () => {
   it('clears the binding for a trusted call', async () => {
     const { reg } = harness();
     const added = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
-    const id = added.providers[0]!.id;
+    const id = pool(added)[0]!.id;
     await reg.invoke(
       IPC_CHANNELS.providersSetBinding,
       { agentId: 'claude', providerId: id, modelId: 'claude-x' },
@@ -304,7 +309,7 @@ describe('provider IPC — revealKey (gated: returns plaintext by design)', () =
   it('returns the stored plaintext key for a trusted sender', async () => {
     const { reg } = harness();
     const added = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
-    const id = added.providers[0]!.id;
+    const id = pool(added)[0]!.id;
     const result = (await reg.invoke(
       IPC_CHANNELS.providersRevealKey,
       { providerId: id },
@@ -465,7 +470,7 @@ describe('provider IPC — detectFormats', () => {
     };
     const { reg } = harness(fetchImpl);
     const snap = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
-    const providerId = snap.providers[0]!.id;
+    const providerId = pool(snap)[0]!.id;
     await reg.invoke(IPC_CHANNELS.providersDetectFormats, { ...detectPayload, providerId }, trusted);
     expect(seen).toContain('Bearer sk-secret');
   });

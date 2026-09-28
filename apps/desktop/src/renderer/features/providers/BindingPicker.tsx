@@ -24,6 +24,13 @@ import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
 import { resolveBindingRoute, type ProviderModel } from '../../../shared/aiProviders';
+import { isCombinedProviderId } from '../../../shared/combinedProvider';
+import {
+  COMBINED_PROVIDER_ID,
+  decodeCombinedModelKey,
+  encodeCombinedModelKey,
+  formatModelRef,
+} from '../../../shared/modelRef';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 
@@ -55,14 +62,23 @@ export function BindingPicker({
 
   // Native matches first, then proxy-translated, then pairs the proxy cannot carry
   // (greyed) — a stable, scannable order.
+  const displayProviders = useMemo(
+    () =>
+      providers.map((p) =>
+        isCombinedProviderId(p.id) ? { ...p, name: t('providers.combined.name') } : p,
+      ),
+    [providers, t],
+  );
+
   const routeFor = (p: ProviderSummary) => resolveBindingRoute(agent, p.apiFormats);
   const ordered = useMemo(() => {
     const rank = (p: ProviderSummary): number => {
+      if (isCombinedProviderId(p.id)) return 3;
       const route = resolveBindingRoute(agent, p.apiFormats);
       return route === null ? 0 : route.kind === 'native' ? 2 : 1;
     };
-    return [...providers].sort((a, b) => rank(b) - rank(a));
-  }, [providers, agent]);
+    return [...displayProviders].sort((a, b) => rank(b) - rank(a));
+  }, [displayProviders, agent]);
 
   // The default model to stage for a provider: keep the live one if this is the bound
   // provider (don't clobber the user's pick), otherwise the first (sorted) model — so
@@ -91,9 +107,19 @@ export function BindingPicker({
   const isRestoreSelected = selectedId === RESTORE_ID;
 
   const selected = ordered.find((p) => p.id === selectedId) ?? null;
+
+  const routeProvider = useMemo((): ProviderSummary | null => {
+    if (!selected) return null;
+    if (!isCombinedProviderId(selected.id) || !pendingModelId) return selected;
+    const decoded = decodeCombinedModelKey(pendingModelId);
+    if (!decoded) return null;
+    return ordered.find((p) => p.id === decoded.providerId) ?? null;
+  }, [selected, pendingModelId, ordered]);
+
   // The route this binding would take: null when the proxy cannot carry the pair.
-  const selectedRoute = selected ? routeFor(selected) : null;
-  const selectedSelectable = selectedRoute !== null;
+  const selectedRoute = routeProvider ? routeFor(routeProvider) : null;
+  const selectedSelectable =
+    selectedRoute !== null && (!isCombinedProviderId(selected?.id ?? '') || routeProvider !== null);
 
   const sortedModels = useMemo(
     () => (selected ? [...selected.models].sort(compareModels) : []),
@@ -104,7 +130,10 @@ export function BindingPicker({
     const q = modelQuery.trim().toLowerCase();
     if (q === '') return sortedModels;
     return sortedModels.filter(
-      (m) => m.id.toLowerCase().includes(q) || (m.alias?.toLowerCase().includes(q) ?? false),
+      (m) =>
+        m.id.toLowerCase().includes(q) ||
+        (m.alias?.toLowerCase().includes(q) ?? false) ||
+        (m.catalogName?.toLowerCase().includes(q) ?? false),
     );
   }, [sortedModels, modelQuery]);
 
@@ -149,7 +178,13 @@ export function BindingPicker({
       void doRestore();
       return;
     }
-    if (selected && pendingModelId !== undefined) void choose(selected.id, pendingModelId);
+    if (!selected || pendingModelId === undefined) return;
+    if (isCombinedProviderId(selected.id)) {
+      const decoded = decodeCombinedModelKey(pendingModelId);
+      if (decoded) void choose(decoded.providerId, decoded.modelId);
+      return;
+    }
+    void choose(selected.id, pendingModelId);
   }
 
   return (
@@ -324,9 +359,23 @@ export function BindingPicker({
                     ) : (
                       filteredModels.map((model) => {
                         const staged = pendingModelId === model.id;
-                        const bound =
-                          agent.binding?.providerId === selected.id &&
-                          agent.binding?.modelId === model.id;
+                        const bound = isCombinedProviderId(selected.id)
+                          ? agent.binding != null &&
+                            model.id ===
+                              encodeCombinedModelKey(agent.binding.providerId, agent.binding.modelId)
+                          : agent.binding?.providerId === selected.id &&
+                            agent.binding?.modelId === model.id;
+                        const label =
+                          model.alias ??
+                          (isCombinedProviderId(selected.id)
+                            ? model.id
+                            : formatModelRef(selected.name, model));
+                        const sub =
+                          model.catalogName && model.catalogName !== model.id
+                            ? model.catalogName
+                            : !model.alias && !isCombinedProviderId(selected.id)
+                              ? model.id
+                              : null;
                         return (
                           <button
                             key={model.id}
@@ -363,17 +412,27 @@ export function BindingPicker({
                                 </>
                               )}
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {model.id}
+                                {label}
                               </span>
+                              {model.reasoning && (
+                                <span
+                                  style={{
+                                    fontSize: fontSize.xs,
+                                    color: staged ? token('accentText') : token('textMuted'),
+                                  }}
+                                >
+                                  {t('providers.binding.reasoning')}
+                                </span>
+                              )}
                             </span>
-                            {model.alias && (
+                            {sub && (
                               <span
                                 style={{
                                   fontSize: fontSize.xs,
                                   color: staged ? token('accentText') : token('textMuted'),
                                 }}
                               >
-                                → {model.alias}
+                                {sub}
                               </span>
                             )}
                           </button>

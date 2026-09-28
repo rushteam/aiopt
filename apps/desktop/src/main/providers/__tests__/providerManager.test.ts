@@ -12,6 +12,7 @@ import type { AgentId, ApiFormat } from '../../../shared/aiProviders';
 import { getAgentDef } from '../../../shared/aiProviders';
 import type { SecretStore } from '../../secrets/secretStore';
 import type { ProvidersSnapshot } from '../../../shared/ipc-channels';
+import { resetModelsDevCacheForTests } from '../modelsDev';
 import { decodeIpcError, isIpcError } from '../../../shared/ipc-errors';
 
 function memorySecrets(): SecretStore & { raw: Map<string, string> } {
@@ -151,7 +152,8 @@ function addProvider(
     notes: undefined,
     apiKey: overrides.apiKey,
   });
-  return snap.providers[snap.providers.length - 1]!.id;
+  const real = snap.providers.filter((p) => !p.virtual);
+  return real[real.length - 1]!.id;
 }
 
 describe('provider manager — provider CRUD', () => {
@@ -255,7 +257,7 @@ describe('provider manager — setBinding (the apply flow)', () => {
       notes: undefined,
       apiKey: 'sk',
     });
-    const id = snap.providers[snap.providers.length - 1]!.id;
+    const id = snap.providers.filter((p) => !p.virtual).at(-1)!.id;
     manager.setBinding('claude', id, 'claude-real');
 
     // The agent config receives the alias…
@@ -717,6 +719,8 @@ describe('provider manager — rebuildProxyRoutes (startup route refresh)', () =
 });
 
 describe('provider manager — fetchModels (key resolution)', () => {
+  beforeEach(() => resetModelsDevCacheForTests());
+
   it('prefers a freshly-typed key over the stored one', async () => {
     const { fetchImpl, calls } = recordingFetch();
     const { manager } = harness(['claude'], { fetchImpl });
@@ -729,7 +733,8 @@ describe('provider manager — fetchModels (key resolution)', () => {
       providerId: id,
     });
 
-    expect(calls[0]!.headers.authorization).toBe('Bearer typed-key');
+    const catalog = calls.find((c) => c.url.includes('api.example.com'));
+    expect(catalog!.headers.authorization).toBe('Bearer typed-key');
     expect(models).toEqual([{ id: 'm-a' }]);
   });
 
@@ -744,7 +749,8 @@ describe('provider manager — fetchModels (key resolution)', () => {
       providerId: id,
     });
 
-    expect(calls[0]!.headers.authorization).toBe('Bearer stored-key');
+    const catalog = calls.find((c) => c.url.includes('api.example.com'));
+    expect(catalog!.headers.authorization).toBe('Bearer stored-key');
   });
 
   it('sends no key when neither a typed key nor a stored provider key exists', async () => {
@@ -753,7 +759,8 @@ describe('provider manager — fetchModels (key resolution)', () => {
 
     await manager.fetchModels({ apiFormats: ['openai'], baseUrl: 'https://api.example.com/v1' });
 
-    expect(calls[0]!.headers.authorization).toBeUndefined();
+    const catalog = calls.find((c) => c.url.includes('api.example.com'));
+    expect(catalog!.headers.authorization).toBeUndefined();
   });
 });
 

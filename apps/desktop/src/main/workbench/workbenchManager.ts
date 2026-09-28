@@ -56,10 +56,12 @@ import {
   type WorkbenchIssue,
   type WorkbenchModel,
   type WorkbenchSettings,
+  type WorkbenchNotifyPreview,
   type WorkbenchSnapshot,
   type WorkbenchStatus,
   isValidHerdrSshTarget,
 } from '../../shared/workbench';
+import { expandTaskMentions } from '../../shared/taskMention';
 import { throwIpcError } from '../ipc/validate';
 import type { Logger } from '../logger';
 import { homeRelativeDisplayPath } from '../displayPath';
@@ -215,7 +217,7 @@ const SESSION_HEAD_BYTES = 32 * 1024;
 const TASK_BRIEF_CHARS = 600;
 /** pi's session file name: `<ISO time with - for :>_<uuid>.jsonl`. */
 const SESSION_FILE_RE = /^\d{4}-\d{2}-\d{2}T[\d-]+Z_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/;
-/** Statuses the coordinator is told about (the user may want to act on them). */
+/** Live-task statuses from polling that need the user or coordinator to act (see queueNotify). */
 const NOTIFY_STATUSES: readonly TaskStatus[] = ['review', 'blocked', 'failed'];
 const TASK_ORIGINS: readonly TaskOrigin[] = ['orchestrator', 'user'];
 const TASK_FAILURES: readonly TaskFailure[] = ['herdr_error', 'folder_missing', 'agent_lost'];
@@ -375,6 +377,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let userTurn = false;
   const pendingNotify = new Set<string>();
   let notifyScheduled = false;
+  let lastNotify: WorkbenchNotifyPreview | null = null;
   let herdrInstalling = false;
   let herdrProbeVersion: string | null = null;
   let herdrProbeSource: HerdrProbeView['source'] = null;
@@ -850,6 +853,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       status,
       issue,
       model,
+      lastNotify,
       streaming: transcript.streaming(),
       chat: transcript.items(),
       tasks: [...tasks.values()].map(taskView),
@@ -1217,8 +1221,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     const client = requireOrchestrator();
     const message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.chatText);
     if (message === '') throwIpcError('INVALID_PARAMS', 'message is empty');
+    const promptText = expandTaskMentions(
+      message,
+      [...tasks.values()].map((t) => ({ id: t.id, title: t.title, status: t.status })),
+    );
     try {
-      await client.prompt(message, transcript.streaming());
+      await client.prompt(promptText, transcript.streaming());
     } catch (err) {
       transcript.pushError(err instanceof Error ? err.message : 'prompt failed');
       changed();
@@ -1575,13 +1583,18 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
 
   async function endTask(taskId: string, action: 'complete' | 'stop'): Promise<void> {
     const t = requireTask(taskId, action);
+    const client = herdr;
+    if (client && t.agentName && isLiveTaskStatus(t.status)) {
+      t.outputTail = await readTail(client, t.agentName);
+    }
     t.status = action === 'complete' ? 'done' : 'stopped';
     t.updatedAt = deps.now();
     changed();
-    if (herdr) await closeWorkspace(herdr, t);
+    if (client) await closeWorkspace(client, t);
     else t.workspaceId = null;
     changed();
     if (action === 'complete') maybeLaunchDependents(taskId);
+    queueNotify([taskId]);
   }
 
   async function removeTask(taskId: string): Promise<void> {
@@ -1633,6 +1646,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     pendingNotify.clear();
     const client = rpc;
     if (ids.length === 0 || !client || status !== 'ready' || !settings.notifyCoordinator) return;
+    lastNotify = {
+      titles: ids.map((id) => tasks.get(id)?.title ?? id).filter((t) => t !== ''),
+      at: deps.now(),
+    };
     saveTasks();
     try {
       await client.command(`/${TASK_UPDATE_COMMAND} ${ids.join(' ')}`);

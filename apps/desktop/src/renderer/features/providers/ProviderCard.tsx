@@ -10,7 +10,8 @@ import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
-import { removeProvider } from '../../lib/providerStore';
+import { removeProvider, testProvider } from '../../lib/providerStore';
+import type { ProviderTestResult } from '../../../shared/ipc-channels';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { providerErrorMessage } from './errors';
 
@@ -26,6 +27,21 @@ export function ProviderCard({
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [hoverDelete, setHoverDelete] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
+
+  async function onTest(): Promise<void> {
+    if (provider.virtual) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult(await testProvider(provider.id));
+    } catch {
+      setTestResult({ ok: false, latencyMs: null, format: null, error: 'upstream' });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function onDelete(): Promise<void> {
     setBusy(true);
@@ -65,7 +81,10 @@ export function ProviderCard({
           ))}
         </span>
       </div>
-      <p style={metaStyle}>{provider.baseUrl}</p>
+      {!provider.virtual && <p style={metaStyle}>{provider.baseUrl}</p>}
+      {provider.virtual && (
+        <p style={metaStyle}>{t('providers.combined.description')}</p>
+      )}
       <p style={metaStyle}>
         {t('providers.card.models')}: {provider.models.length} ·{' '}
         {provider.hasKey ? t('providers.card.keySet') : t('providers.card.keyMissing')}
@@ -75,28 +94,59 @@ export function ProviderCard({
           {error}
         </p>
       )}
+      {testResult && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: fontSize.sm,
+            color: testResult.ok ? token('text') : token('danger'),
+          }}
+        >
+          {testResult.ok
+            ? t('providers.card.testOk')
+                .replace('{{ms}}', String(testResult.latencyMs ?? 0))
+                .replace(
+                  '{{format}}',
+                  testResult.format ? t(`providers.formats.${testResult.format}`) : '',
+                )
+            : t(`providers.card.testErrors.${testResult.error ?? 'upstream'}`)}
+        </p>
+      )}
 
-      <div style={{ display: 'flex', gap: space.md, marginTop: 4 }}>
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={busy}
-          {...hoverBackground('transparent', token('surfaceHover'))}
-          style={actionStyle('ghost')}
-        >
-          {t('providers.card.edit')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          disabled={busy}
-          onMouseEnter={() => setHoverDelete(true)}
-          onMouseLeave={() => setHoverDelete(false)}
-          style={deleteButtonStyle(hoverDelete)}
-        >
-          <TrashIcon />
-          {t('providers.card.delete')}
-        </button>
+      <div style={{ display: 'flex', gap: space.md, marginTop: 4, flexWrap: 'wrap' }}>
+        {!provider.virtual && (
+          <>
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={busy}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={actionStyle('ghost')}
+            >
+              {t('providers.card.edit')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void onTest()}
+              disabled={busy || testing}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={actionStyle('ghost')}
+            >
+              {testing ? t('providers.card.testing') : t('providers.card.test')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={busy}
+              onMouseEnter={() => setHoverDelete(true)}
+              onMouseLeave={() => setHoverDelete(false)}
+              style={deleteButtonStyle(hoverDelete)}
+            >
+              <TrashIcon />
+              {t('providers.card.delete')}
+            </button>
+          </>
+        )}
       </div>
       {confirmDialog}
     </div>

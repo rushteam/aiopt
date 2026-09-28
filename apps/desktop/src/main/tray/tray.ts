@@ -17,6 +17,8 @@
 
 import { app, Menu, Tray, nativeImage, BrowserWindow, type MenuItemConstructorOptions } from 'electron';
 import { MENU_COMMANDS, type MenuCommand } from '../../shared/menuCommands';
+import { isLiveTaskStatus } from '../../shared/workbench';
+import type { WorkbenchSnapshot } from '../../shared/workbench';
 import { MENU_LABELS, resolveMenuLocaleForPreference, type MenuLabels } from '../menu/menuLabels';
 import { dispatchToRenderer } from '../menu/dispatchToRenderer';
 import { createMainWindow } from '../window/mainWindow';
@@ -75,11 +77,49 @@ function buildTrayImage(): Electron.NativeImage {
 
 let tray: Tray | null = null;
 
+/** Live workbench hints for the tray (main-side only; no IPC). */
+let workbenchHint: WorkbenchSnapshot | null = null;
+
+export function syncWorkbenchTrayHint(snapshot: WorkbenchSnapshot | null): void {
+  workbenchHint = snapshot;
+  if (tray) {
+    tray.setContextMenu(buildTrayMenu(currentLabels()));
+    const live = snapshot?.tasks.filter((t) => isLiveTaskStatus(t.status)).length ?? 0;
+    const base = app.name;
+    tray.setToolTip(live > 0 ? `${base} · ${live}` : base);
+  }
+}
+
+function workbenchItems(labels: MenuLabels): MenuItemConstructorOptions[] {
+  if (!workbenchHint) return [];
+  const live = workbenchHint.tasks.filter((t) => isLiveTaskStatus(t.status)).length;
+  const items: MenuItemConstructorOptions[] = [
+    {
+      label: labels.workbenchRunning.replace('{{count}}', String(live)),
+      enabled: false,
+    },
+  ];
+  const notify = workbenchHint.lastNotify;
+  if (notify && notify.titles.length > 0) {
+    const line = notify.titles.slice(0, 2).join(' · ');
+    items.push({
+      label: labels.workbenchLastNotify.replace('{{summary}}', line),
+      enabled: false,
+    });
+  } else {
+    items.push({ label: labels.workbenchNoNotify, enabled: false });
+  }
+  items.push(commandItem(labels.workbenchOpen, MENU_COMMANDS.showWorkbench));
+  items.push({ type: 'separator' });
+  return items;
+}
+
 /** Build the context menu for one set of labels. */
 function buildTrayMenu(labels: MenuLabels): Menu {
   return Menu.buildFromTemplate([
     { label: labels.showWindow, click: () => showMainWindow() },
     { type: 'separator' },
+    ...workbenchItems(labels),
     commandItem(labels.settings, MENU_COMMANDS.openSettings),
     commandItem(labels.usage, MENU_COMMANDS.showUsage),
     commandItem(labels.skills, MENU_COMMANDS.showSkills),

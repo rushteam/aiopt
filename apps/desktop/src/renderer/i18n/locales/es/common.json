@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agentes"
+      "heading": "Agentes",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "Proxy local",
@@ -194,7 +196,18 @@
       "edit": "Editar",
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar este proveedor?",
-      "confirmYes": "Eliminar"
+      "confirmYes": "Eliminar",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "No detectado",
@@ -243,7 +256,8 @@
       "noModelMatch": "Ningún modelo coincide.",
       "bound": "Vinculado actualmente",
       "apply": "Aplicar",
-      "restoreDefaultRow": "Predeterminado"
+      "restoreDefaultRow": "Predeterminado",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "Algunos datos no son válidos. Comprueba los campos e inténtalo de nuevo.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "El proveedor rechazó la clave de API. Comprueba la clave e inténtalo de nuevo.",
       "UPSTREAM_ERROR": "No se pudieron cargar los modelos del proveedor. Comprueba la URL base e inténtalo de nuevo.",
       "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "Banco de trabajo",
     "subtitle": "Conversa con un coordinador que divide el trabajo en tareas y ejecuta cada tarea aprobada como su propio agente pi en una sesión de herdr. Usa el proveedor y el modelo de pi definidos en Proveedores.",
     "start": "Iniciar",
+    "splitResizeHandle": "Cambiar el ancho del coordinador y las tareas",
     "stop": "Detener",
     "cancel": "Cancelar",
     "model": "Modelo:",
@@ -432,9 +451,10 @@
       "title": "Coordinador",
       "reset": "Nueva conversación",
       "empty": "Describe lo que quieres hacer. El coordinador propone tareas en el tablero. Ejecutar inicia cada una como un agente propio que puede cambiar archivos en su carpeta, así que nada se ejecuta hasta que pulses Ejecutar (o actives la ejecución automática).",
-      "notRunning": "Inicia el banco de trabajo para conversar con el coordinador.",
+      "notRunning": "Pulsa Iniciar arriba para conversar con el coordinador.",
       "placeholder": "Escribe al coordinador",
       "sendHint": "Intro para enviar · Mayús+Intro para nueva línea",
+      "taskMentionDrop": "Suelta para referenciar la tarea (@task)",
       "send": "Enviar",
       "abort": "Detener respuesta",
       "you": "Tú:",
@@ -461,7 +481,9 @@
       "session_reset": "Se inició una nueva conversación.",
       "session_opened": "Conversación restaurada."
     },
-    "plan": { "title": "Plan de tareas" },
+    "plan": {
+      "title": "Plan de tareas"
+    },
     "taskChat": {
       "title": "Chat de la tarea",
       "empty": "Selecciona una tarea para ver el prompt inicial aquí.",
@@ -473,6 +495,11 @@
       "settings": "Ajustes del banco de trabajo",
       "preferences": "Automatización",
       "list": "Todas las tareas",
+      "dragMention": "Arrastra al chat del coordinador para referenciar la tarea",
+      "boardMenu": "Acciones de tareas",
+      "tabMenu": "Opciones de la tarea",
+      "tabMenuEmpty": "No hay opciones para esta tarea.",
+      "doneNoRelaunch": "Las tareas completadas no se pueden ejecutar de nuevo desde aquí.",
       "taskTotal": "{{count}} tareas",
       "concurrent": "Concurrentes",
       "running": "En curso",
@@ -480,8 +507,10 @@
       "create": "Añadir tarea",
       "save": "Guardar",
       "empty": "Aún no hay tareas. Pídeselas al coordinador o añade una tú.",
+      "sessionRequiredHint": "Inicia el banco de trabajo desde el panel del coordinador (izquierda) para ejecutar tareas.",
       "titleLabel": "Título",
       "promptLabel": "Qué hacer (se envía al agente)",
+      "activeWorkspace": "Tarea activa",
       "folderLabel": "Carpeta",
       "noFolder": "Elige una carpeta",
       "folderGone": "Carpeta quitada",
@@ -501,7 +530,7 @@
       "autoLaunchDependentsHint": "Al marcar una tarea como hecha, inicia las propuestas que dependen de ella y están listas.",
       "waitingOn": "Esperando a:",
       "notify": "Informar al coordinador",
-      "notifyHint": "Cuando una tarea necesite revisión o una respuesta, o falle, avisar al coordinador para que lo resuma en el chat.",
+      "notifyHint": "Cuando una tarea necesite revisión o respuesta, falle o se marque hecha o detenida, avisar al coordinador para que lo resuma en el chat.",
       "promptPlaceholder": "p. ej.: Añade validación al formulario de registro en src/auth, luego ejecuta las pruebas unitarias y corrige los fallos.",
       "promptHint": "El agente solo ve este texto, no el chat. Indica el objetivo, los archivos implicados y cómo comprobar el resultado."
     },
