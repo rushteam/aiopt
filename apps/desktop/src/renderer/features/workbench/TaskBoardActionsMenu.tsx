@@ -24,6 +24,9 @@ export function TaskBoardActionsMenu({
   runnable,
   onEditTask,
   paired,
+  statTitle,
+  taskCount,
+  liveCount,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
@@ -34,6 +37,9 @@ export function TaskBoardActionsMenu({
   onEditTask: () => void;
   /** Renders flush with the new-task (+) control on the tab strip. */
   paired?: boolean;
+  statTitle?: string;
+  taskCount?: number;
+  liveCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -108,6 +114,20 @@ export function TaskBoardActionsMenu({
           flexDirection: 'column',
         }}
       >
+        {statTitle !== undefined && taskCount !== undefined && liveCount !== undefined && (
+          <p
+            style={{
+              margin: 0,
+              padding: '4px 8px 6px',
+              fontSize: fontSize.xs,
+              fontVariantNumeric: 'tabular-nums',
+              color: token('textMuted'),
+              borderBottom: `1px solid ${token('border')}`,
+            }}
+          >
+            {statTitle}
+          </p>
+        )}
         <MenuItem
           disabled={!canRun || runnable === 0}
           onClick={() => {
@@ -179,7 +199,8 @@ export function TaskBoardActionsMenu({
       <button
         ref={buttonRef}
         type="button"
-        aria-label={t('workbench.tasks.boardMenu')}
+        aria-label={statTitle ? `${t('workbench.tasks.boardMenu')} — ${statTitle}` : t('workbench.tasks.boardMenu')}
+        title={statTitle ?? t('workbench.tasks.boardMenu')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={toggle}

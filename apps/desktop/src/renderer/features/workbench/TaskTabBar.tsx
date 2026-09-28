@@ -87,9 +87,9 @@ export function TaskTabBar({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              flexShrink: 0,
-              maxWidth: selected ? 194 : 220,
-              minWidth: 72,
+              flex: 1,
+              minWidth: 0,
+              maxWidth: '100%',
               height: TASK_TAB_HEIGHT,
               marginTop: TASK_TAB_MARGIN_TOP,
               padding: '0 12px',
@@ -114,7 +114,16 @@ export function TaskTabBar({
         );
 
         return (
-          <div key={task.id} style={{ display: 'inline-flex', alignItems: 'flex-end', flexShrink: 0 }}>
+          <div
+            key={task.id}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'flex-end',
+              flex: selected ? '1 1 160px' : '0 0 auto',
+              minWidth: selected ? 100 : 52,
+              maxWidth: selected ? 480 : 136,
+            }}
+          >
             {tabButton}
             {selected && (
               <TaskTabActionsMenu task={task} wb={wb} t={t} run={run} onEdit={() => onEditTask(task.id)} />

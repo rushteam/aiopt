@@ -4,13 +4,7 @@ import type { TranslateFn } from '../../i18n';
 import { WORKBENCH_LIMITS, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { TaskTabBar } from './TaskTabBar';
 import { TaskBoardActionsMenu } from './TaskBoardActionsMenu';
-import {
-  TASK_TAB_HEIGHT,
-  TASK_TAB_MARGIN_BOTTOM,
-  TASK_TAB_MARGIN_TOP,
-  taskTabStatChipStyle,
-  taskTabToolButtonStyle,
-} from './taskTabChrome';
+import { TASK_TAB_HEIGHT, TASK_TAB_MARGIN_TOP, taskTabToolButtonStyle } from './taskTabChrome';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
@@ -29,6 +23,7 @@ export function TaskBoardTabRow({
   canRun,
   runnable,
   selectedTask,
+  sessionReady,
 }: {
   tasks: readonly TaskView[];
   selectedId: string | null;
@@ -44,6 +39,7 @@ export function TaskBoardTabRow({
   canRun: boolean;
   runnable: number;
   selectedTask: TaskView | null;
+  sessionReady: boolean;
 }) {
   const statTitle = `${t('workbench.tasks.taskTotal').replace('{{count}}', String(tasks.length))} · ${t('workbench.tasks.concurrent')} ${liveCount}/${WORKBENCH_LIMITS.liveTasks}`;
 
@@ -51,96 +47,99 @@ export function TaskBoardTabRow({
     <div
       style={{
         display: 'flex',
-        alignItems: 'flex-end',
-        gap: space.md,
-        minHeight: TASK_TAB_HEIGHT + TASK_TAB_MARGIN_TOP,
-        paddingLeft: space.md,
-        paddingRight: space.md,
+        flexDirection: 'column',
+        flexShrink: 0,
         borderBottom: `1px solid ${token('border')}`,
         background: token('bg'),
-        flexShrink: 0,
       }}
     >
       <div
-        title={statTitle}
-        aria-label={statTitle}
-        style={taskTabStatChipStyle()}
-      >
-        <span style={{ color: token('text'), fontWeight: 600 }}>{tasks.length}</span>
-        <span aria-hidden style={{ width: 1, height: 14, background: token('borderStrong'), opacity: 0.55 }} />
-        <span>
-          {liveCount}/{WORKBENCH_LIMITS.liveTasks}
-        </span>
-      </div>
-      <div
-        aria-hidden
         style={{
-          width: 1,
-          height: 18,
-          background: token('border'),
-          flexShrink: 0,
-          marginBottom: 6,
-          alignSelf: 'flex-end',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: space.sm,
+          minHeight: TASK_TAB_HEIGHT + TASK_TAB_MARGIN_TOP,
+          paddingLeft: space.sm,
+          paddingRight: space.sm,
         }}
-      />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-end' }}>
-        {tasks.length > 0 ? (
-          <TaskTabBar
-            embedded
-            tasks={tasks}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            t={t}
-            wb={wb}
-            run={run}
-            onEditTask={onEditTask}
-          />
-        ) : (
-          <span
+      >
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-end' }}>
+          {tasks.length > 0 ? (
+            <TaskTabBar
+              embedded
+              tasks={tasks}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              t={t}
+              wb={wb}
+              run={run}
+              onEditTask={onEditTask}
+            />
+          ) : (
+            <span
+              style={{
+                fontSize: fontSize.sm,
+                color: token('textMuted'),
+                padding: `${TASK_TAB_MARGIN_TOP}px 4px 6px`,
+              }}
+            >
+              {t('workbench.tasks.empty')}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'flex-end', flexShrink: 0, gap: 0 }}>
+          <button
+            type="button"
+            aria-label={t('workbench.tasks.new')}
+            title={t('workbench.tasks.new')}
+            disabled={creating || taskFull}
+            onClick={onNewTask}
+            {...hoverBackground(token('bg'), token('surfaceHover'))}
             style={{
-              fontSize: fontSize.sm,
-              color: token('textMuted'),
-              padding: `${TASK_TAB_MARGIN_TOP}px 0 ${Math.max(0, -TASK_TAB_MARGIN_BOTTOM)}px`,
+              ...taskTabToolButtonStyle({
+                cursor: creating || taskFull ? 'default' : 'pointer',
+                borderRadius: `${radius.sm}px 0 0 0`,
+                borderRight: 'none',
+                fontSize: fontSize.lg,
+                lineHeight: 1,
+                opacity: creating || taskFull ? 0.45 : 1,
+              }),
             }}
           >
-            {t('workbench.tasks.empty')}
-          </span>
-        )}
+            +
+          </button>
+          <TaskBoardActionsMenu
+            paired
+            wb={wb}
+            t={t}
+            run={run}
+            selectedTask={selectedTask}
+            canRun={canRun}
+            runnable={runnable}
+            taskCount={tasks.length}
+            liveCount={liveCount}
+            statTitle={statTitle}
+            onEditTask={() => {
+              if (selectedTask) onEditTask(selectedTask.id);
+            }}
+          />
+        </div>
       </div>
-      <div style={{ display: 'inline-flex', alignItems: 'flex-end', flexShrink: 0, gap: 0 }}>
-        <button
-          type="button"
-          aria-label={t('workbench.tasks.new')}
-          title={t('workbench.tasks.new')}
-          disabled={creating || taskFull}
-          onClick={onNewTask}
-          {...hoverBackground(token('bg'), token('surfaceHover'))}
+      {!sessionReady && (
+        <p
           style={{
-            ...taskTabToolButtonStyle({
-              cursor: creating || taskFull ? 'default' : 'pointer',
-              borderRadius: `${radius.sm}px 0 0 0`,
-              borderRight: 'none',
-              fontSize: fontSize.lg,
-              lineHeight: 1,
-              opacity: creating || taskFull ? 0.45 : 1,
-            }),
+            margin: 0,
+            padding: '4px 10px',
+            fontSize: fontSize.xs,
+            lineHeight: 1.4,
+            color: token('textMuted'),
+            borderTop: `1px solid ${token('border')}`,
+            background: token('surface'),
           }}
         >
-          +
-        </button>
-        <TaskBoardActionsMenu
-          paired
-        wb={wb}
-        t={t}
-        run={run}
-        selectedTask={selectedTask}
-        canRun={canRun}
-        runnable={runnable}
-        onEditTask={() => {
-          if (selectedTask) onEditTask(selectedTask.id);
-        }}
-        />
-      </div>
+          {t('workbench.tasks.sessionRequiredHint')}
+        </p>
+      )}
     </div>
   );
 }

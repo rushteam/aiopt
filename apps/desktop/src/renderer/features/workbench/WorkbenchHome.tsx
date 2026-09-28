@@ -106,8 +106,8 @@ export function WorkbenchHome() {
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: 'minmax(260px, 2fr) minmax(340px, 3fr)',
-          gap: space.xl,
+          gridTemplateColumns: 'minmax(220px, 0.85fr) minmax(420px, 1.9fr)',
+          gap: space.lg,
           padding: '12px 24px 24px',
         }}
       >
@@ -577,23 +577,8 @@ function TaskBoard({
         canRun={canRun}
         runnable={runnable}
         selectedTask={selectedTask}
+        sessionReady={wb.status === 'ready'}
       />
-      {wb.status !== 'ready' && (
-        <p
-          style={{
-            margin: 0,
-            padding: `${space.sm}px ${space.md}px`,
-            fontSize: fontSize.xs,
-            lineHeight: 1.45,
-            color: token('textMuted'),
-            background: token('surface'),
-            borderBottom: `1px solid ${token('border')}`,
-            flexShrink: 0,
-          }}
-        >
-          {t('workbench.tasks.sessionRequiredHint')}
-        </p>
-      )}
       {creating && (
         <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
           <TaskForm
