@@ -7,8 +7,10 @@
 //
 // The core idea (vs. cc-switch): a provider is entered ONCE into a global pool and
 // declares its wire format; each agent declares which formats it can consume. A
-// binding is only legal when the formats are compatible (see isFormatCompatible);
-// a cross-format pairing needs the future proxy layer and is refused for now.
+// same-format binding is written directly (or through the proxy when proxy mode is
+// on). A cross-format pairing is legal when the translation proxy can carry the
+// agent's format to the provider's (see bindingAvailability); pairs it cannot
+// translate are refused.
 
 /**
  * The wire format a provider speaks / an agent consumes.
@@ -345,6 +347,33 @@ export function getAgentDef(id: AgentId): AgentDef | undefined {
 /** A provider may bind to an agent only when the agent accepts the provider's format. */
 export function isFormatCompatible(agent: AgentDef, provider: Provider): boolean {
   return agent.acceptedFormats.includes(provider.apiFormat);
+}
+
+/**
+ * How a provider can be pointed at an agent. This is the predicate both the binding
+ * picker and `providerManager.applyBinding` use, so the UI cannot offer a pairing the
+ * main process will refuse (or hide one it would accept).
+ *
+ * - `direct` — the agent accepts the provider's format natively. Proxy mode may still
+ *   route it, but the pairing itself does not depend on translation.
+ * - `proxy` — the formats differ, and the translation proxy can carry the agent's first
+ *   accepted format to the provider's. Cross-format bindings always take this route,
+ *   whether or not proxy mode is on.
+ * - `unsupported` — no native match and no translation route (gemini crossed with any
+ *   other format, or a cross-format pair whose outbound format is `openai-responses`).
+ */
+export type BindingAvailability = 'direct' | 'proxy' | 'unsupported';
+
+export function bindingAvailability(
+  agent: { acceptedFormats: readonly ApiFormat[] },
+  apiFormat: ApiFormat,
+): BindingAvailability {
+  if (agent.acceptedFormats.includes(apiFormat)) return 'direct';
+  // Same inbound choice as applyBinding: a cross-format route speaks the agent's
+  // first accepted format and is translated into the provider's.
+  const inbound = agent.acceptedFormats[0];
+  if (inbound !== undefined && translationSupported(inbound, apiFormat)) return 'proxy';
+  return 'unsupported';
 }
 
 /**
