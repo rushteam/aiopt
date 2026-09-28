@@ -37,6 +37,18 @@ The wire protocol a provider speaks and an agent accepts — one of anthropic, o
 
 - **zh-CN**: 接口格式
 
+### Coordinator (`coordinator`)
+
+The single chat agent on the workbench. It breaks a request into tasks and proposes them on the board; it never starts a task itself — the user presses Run on each one. The code calls it the orchestrator; UI copy says coordinator. Not 'manager', 'boss', or 'master agent' in UI copy. Term still under discussion.
+
+- **zh-CN**: 协调者
+  - forbidden: `主管`, `主 Agent`, `调度器`
+- **ja**: コーディネーター
+- **ko**: 코디네이터
+- **fr**: Coordinateur
+- **de**: Koordinator
+- **es**: Coordinador
+
 ### Merge (`merge`)
 
 Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.
@@ -125,3 +137,15 @@ A per-provider setting naming the request parameters AiOpt strips from a request
 - **fr**: Compatibilité amont
 - **de**: Upstream-Kompatibilität
 - **es**: Compatibilidad con el upstream
+
+### Workbench (`workbench`)
+
+The tab where the user chats with the coordinator and runs tasks, each as its own pi agent in a herdr session. It names the whole screen, not a single agent or task. Not 'studio', 'workspace', or 'console' in UI copy (herdr already uses 'workspace' for its own concept). Term still under discussion.
+
+- **zh-CN**: 工作台
+  - forbidden: `工作区`, `控制台`
+- **ja**: ワークベンチ
+- **ko**: 워크벤치
+- **fr**: Atelier
+- **de**: Werkbank
+- **es**: Banco de trabajo

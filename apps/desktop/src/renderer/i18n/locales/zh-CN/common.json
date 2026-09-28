@@ -370,5 +370,147 @@
       "UNSUPPORTED_CAPABILITY": "该 Agent 没有已知的技能目录。",
       "INTERNAL": "出了点问题，请重试。"
     }
+  },
+  "workbench": {
+    "title": "工作台",
+    "subtitle": "与协调者对话，由它把工作拆成任务；每个经你批准的任务都作为独立的 pi Agent 在 herdr 会话中运行。使用「供应商」页里 pi 绑定的供应商与模型。",
+    "start": "启动",
+    "stop": "停止",
+    "cancel": "取消",
+    "model": "模型：",
+    "proxied": "经本地代理",
+    "direct": "直连",
+    "stopConfirm": "停止工作台？所有正在运行的任务也会一并停止。",
+    "stopConfirmYes": "全部停止",
+    "removeConfirm": "移除此任务及其工作树？分支会保留。有未提交更改的工作树不会被移除。",
+    "removeConfirmYes": "移除",
+    "herdrMissing": "未找到 herdr，任务无法运行，但对话仍可使用。安装 herdr 后请重启工作台。",
+    "attachHint": "可在终端中查看或接管这些 Agent：",
+    "status": {
+      "stopped": "已停止",
+      "starting": "正在启动…",
+      "ready": "运行中",
+      "error": "无法启动"
+    },
+    "issue": {
+      "unsupported_platform": "工作台暂不支持 Windows。",
+      "pi_missing": "未找到 pi。请安装 pi CLI 后重试。",
+      "herdr_missing": "未找到 herdr。请安装 herdr 后重试。",
+      "no_binding": "pi 尚未绑定供应商。请先在「供应商」页绑定 pi。",
+      "start_failed": "协调者无法启动。请检查 pi 的供应商与模型后重试。",
+      "orchestrator_exited": "协调者意外停止。请重新启动工作台。"
+    },
+    "folders": {
+      "label": "文件夹",
+      "empty": "添加一个允许 Agent 工作的文件夹。",
+      "add": "添加文件夹…",
+      "remove": "移除文件夹",
+      "git": "git",
+      "hint": "Agent 只会在这些文件夹里运行；协调者只能读取它们。"
+    },
+    "chat": {
+      "title": "协调者",
+      "reset": "新对话",
+      "empty": "描述你想完成的工作。协调者会在任务板上提出任务。「运行」会为每个任务启动一个独立的 Agent，它能修改所在文件夹里的文件，所以在你点「运行」（或开启自动运行）之前，什么都不会执行。",
+      "notRunning": "启动工作台后即可与协调者对话。",
+      "placeholder": "给协调者发消息",
+      "sendHint": "Enter 发送 · Shift+Enter 换行",
+      "send": "发送",
+      "abort": "停止回复",
+      "you": "你：",
+      "thinking": "推理过程",
+      "replying": "正在回复…",
+      "error": "错误：",
+      "tool": {
+        "running": "运行中",
+        "done": "完成",
+        "failed": "失败",
+        "args": "输入",
+        "result": "结果"
+      },
+      "history": "历史",
+      "historyEmpty": "还没有保存的对话。",
+      "untitled": "未命名对话",
+      "current": "当前",
+      "delete": "删除",
+      "deleteConfirm": "删除这段对话？",
+      "taskUpdate": "任务更新（由应用发送）"
+    },
+    "notice": {
+      "board_full": "任务板已满，部分提议的任务被丢弃。",
+      "session_reset": "已开始新对话。",
+      "session_opened": "已恢复对话。"
+    },
+    "tasks": {
+      "title": "任务",
+      "running": "运行中",
+      "new": "新建任务",
+      "create": "添加任务",
+      "save": "保存",
+      "empty": "还没有任务。向协调者提出需求，或自己添加一个。",
+      "titleLabel": "标题",
+      "promptLabel": "要做的事（发送给 Agent）",
+      "folderLabel": "文件夹",
+      "noFolder": "选择文件夹",
+      "folderGone": "文件夹已移除",
+      "isolated": "独立工作树（新分支）",
+      "isolatedUnavailable": "只有 git 文件夹才能在独立工作树中运行任务。",
+      "needFolder": "请先选择文件夹。",
+      "fromCoordinator": "由协调者提出",
+      "fromYou": "由你添加",
+      "worktree": "工作树：",
+      "branch": "分支：",
+      "attach": "接入：",
+      "runAll": "全部运行",
+      "runAllHint": "运行所有已选好文件夹的待定任务。",
+      "autoRun": "自动运行提议",
+      "autoRunHint": "协调者提出的任务如果已指定文件夹，就立即运行。只对回复你本人消息时提出的任务生效。",
+      "autoLaunchDependents": "自动启动后续任务",
+      "autoLaunchDependentsHint": "某任务标记为完成后，自动启动依赖它且已就绪的提议任务。",
+      "waitingOn": "等待：",
+      "notify": "向协调者汇报",
+      "notifyHint": "任务需要审阅、需要输入或失败时，通知协调者，由它在对话里总结。",
+      "promptPlaceholder": "例如：给 src/auth 里的注册表单加上输入校验，然后运行单元测试并修复失败的用例。",
+      "promptHint": "Agent 只能看到这段文字，看不到对话内容。请写清目标、涉及的文件以及如何验证结果。"
+    },
+    "taskStatus": {
+      "proposed": "待批准",
+      "starting": "启动中",
+      "working": "工作中",
+      "blocked": "需要输入",
+      "review": "待审阅",
+      "done": "已完成",
+      "stopped": "已停止",
+      "failed": "失败"
+    },
+    "failure": {
+      "herdr_error": "herdr 无法启动该 Agent。",
+      "folder_missing": "该文件夹已不存在。",
+      "agent_lost": "该 Agent 的窗格已关闭。"
+    },
+    "actions": {
+      "launch": "运行",
+      "relaunch": "重新运行",
+      "edit": "编辑",
+      "complete": "标记完成",
+      "stop": "停止",
+      "remove": "移除",
+      "message": "发送",
+      "messagePlaceholder": "回复该 Agent",
+      "showOutput": "显示输出",
+      "hideOutput": "隐藏输出"
+    },
+    "output": {
+      "loading": "正在加载…",
+      "empty": "暂无输出。"
+    },
+    "errors": {
+      "INVALID_PARAMS": "部分信息缺失或无效。",
+      "NOT_FOUND": "该任务或文件夹已不存在。",
+      "PRECONDITION_FAILED": "当前无法执行该操作。可能工作台已停止、运行中的任务过多，或工作树有未提交的更改。",
+      "UPSTREAM_ERROR": "pi 或 herdr 没有响应，请重试。",
+      "PERMISSION_DENIED": "该操作不被允许。",
+      "INTERNAL": "出了点问题，请重试。"
+    }
   }
 }

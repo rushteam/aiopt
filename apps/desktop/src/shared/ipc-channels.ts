@@ -20,6 +20,7 @@ import type {
   SkillsLibraryLocation,
   SkillsSnapshot,
 } from './skills';
+import type { TaskOutput, WorkbenchSnapshot } from './workbench';
 
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
@@ -130,6 +131,31 @@ export const IPC_CHANNELS = {
   skillsFileContent: 'skills:file-content',
   skillsMerge: 'skills:merge',
   skillsReveal: 'skills:reveal',
+
+  // Workbench (multi-agent work assistant). The renderer names folders and tasks by opaque
+  // ids minted in main — never a path, command line, or agent name. A folder enters only
+  // through a main-side picker (`folderAdd`). Mutations return the fresh snapshot; the
+  // `workbenchChanged` push keeps the view live as agents stream and workers change state.
+  workbenchGet: 'workbench:get',
+  workbenchStart: 'workbench:start',
+  workbenchStop: 'workbench:stop',
+  workbenchChatSend: 'workbench:chat-send',
+  workbenchChatAbort: 'workbench:chat-abort',
+  workbenchChatReset: 'workbench:chat-reset',
+  workbenchFolderAdd: 'workbench:folder-add',
+  workbenchFolderRemove: 'workbench:folder-remove',
+  workbenchTaskCreate: 'workbench:task-create',
+  workbenchTaskUpdate: 'workbench:task-update',
+  workbenchTaskLaunch: 'workbench:task-launch',
+  workbenchTaskMessage: 'workbench:task-message',
+  workbenchTaskComplete: 'workbench:task-complete',
+  workbenchTaskStop: 'workbench:task-stop',
+  workbenchTaskRemove: 'workbench:task-remove',
+  workbenchTaskOutput: 'workbench:task-output',
+  workbenchTaskRunAll: 'workbench:task-run-all',
+  workbenchConversationOpen: 'workbench:conversation-open',
+  workbenchConversationDelete: 'workbench:conversation-delete',
+  workbenchSettingsUpdate: 'workbench:settings-update',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -226,6 +252,12 @@ export const IPC_EVENTS = {
    * import/delete so an open Skills view rescans without polling.
    */
   skillsChanged: 'skills:changed',
+  /**
+   * The workbench changed; payload is `WorkbenchSnapshot` (chat transcript, task board,
+   * home-shortened folder paths — never a credential or an absolute path). Pushed
+   * (throttled) as the orchestrator streams and as workers change state.
+   */
+  workbenchChanged: 'workbench:changed',
 } as const;
 
 export type IpcEvent = (typeof IPC_EVENTS)[keyof typeof IPC_EVENTS];
@@ -616,6 +648,58 @@ export interface ProviderRevealConfigRequest {
   role: string;
 }
 
+// --- Workbench wire contract ----------------------------------------------
+//
+// Ids only (validated by `isValidWorkbenchId`); every text field is length-capped and
+// stripped of control characters in main before it reaches an agent.
+
+export interface WorkbenchChatSendRequest {
+  text: string;
+}
+
+export interface WorkbenchFolderRef {
+  folderId: string;
+}
+
+export interface WorkbenchTaskRef {
+  taskId: string;
+}
+
+export interface WorkbenchTaskCreateRequest {
+  title: string;
+  prompt: string;
+  folderId: string | null;
+  isolated: boolean;
+}
+
+/** Omitted fields are left as they are. */
+export interface WorkbenchTaskUpdateRequest {
+  taskId: string;
+  title?: string;
+  prompt?: string;
+  folderId?: string | null;
+  isolated?: boolean;
+  /** Replace dependency edges (`null` clears). Ids must be other board tasks. */
+  dependsOn?: string[] | null;
+}
+
+export interface WorkbenchTaskMessageRequest {
+  taskId: string;
+  text: string;
+}
+
+/** A conversation, by the id (a uuid) the snapshot listed — never a path. */
+export interface WorkbenchConversationRef {
+  conversationId: string;
+}
+
+/** Omitted fields are left as they are. */
+export interface WorkbenchSettingsUpdateRequest {
+  autoRun?: boolean;
+  notifyCoordinator?: boolean;
+  autoLaunchDependents?: boolean;
+}
+
 // --- Skills wire contract -------------------------------------------------
 //
 // The renderer names a skill by (agentId, name) only — never a path. Mutations
@@ -744,4 +828,24 @@ export interface IpcContract {
   [IPC_CHANNELS.skillsFileContent]: { request: SkillsFileContentRequest; result: SkillFileContent };
   [IPC_CHANNELS.skillsMerge]: { request: SkillsMergeRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsReveal]: { request: SkillRevealRef; result: Record<string, never> };
+  [IPC_CHANNELS.workbenchGet]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchStart]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchStop]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchChatSend]: { request: WorkbenchChatSendRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchChatAbort]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchChatReset]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchFolderAdd]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchFolderRemove]: { request: WorkbenchFolderRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskCreate]: { request: WorkbenchTaskCreateRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskUpdate]: { request: WorkbenchTaskUpdateRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskLaunch]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskMessage]: { request: WorkbenchTaskMessageRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskComplete]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskStop]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskRemove]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskOutput]: { request: WorkbenchTaskRef; result: TaskOutput };
+  [IPC_CHANNELS.workbenchTaskRunAll]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchConversationDelete]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };
 }

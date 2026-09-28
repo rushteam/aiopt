@@ -106,6 +106,22 @@
       "note": "A per-provider setting naming the request parameters AiOpt strips from a request before forwarding it to that provider's upstream. It exists for an upstream that REJECTS an unrecognized parameter instead of ignoring it (typically a gateway in front of a strict backend). The choice is per-provider, drawn from a fixed allowlist, and split into parameters whose removal cannot change the reply and parameters whose removal can. Structural capability fields (tools, messages, model) are deliberately absent from the allowlist and must never be added. Not 'drop params', 'compatibility mode', or 'parameter filter' in UI copy. Term still under discussion.",
       "translations": { "zh-CN": "上游兼容性", "ja": "アップストリーム互換性", "ko": "업스트림 호환성", "fr": "Compatibilité amont", "de": "Upstream-Kompatibilität", "es": "Compatibilidad con el upstream" },
       "forbidden": { "zh-CN": ["兼容模式", "参数过滤"] }
+    },
+    {
+      "id": "workbench",
+      "en": "Workbench",
+      "status": "proposed",
+      "note": "The tab where the user chats with the coordinator and runs tasks, each as its own pi agent in a herdr session. It names the whole screen, not a single agent or task. Not 'studio', 'workspace', or 'console' in UI copy (herdr already uses 'workspace' for its own concept). Term still under discussion.",
+      "translations": { "zh-CN": "工作台", "ja": "ワークベンチ", "ko": "워크벤치", "fr": "Atelier", "de": "Werkbank", "es": "Banco de trabajo" },
+      "forbidden": { "zh-CN": ["工作区", "控制台"] }
+    },
+    {
+      "id": "coordinator",
+      "en": "Coordinator",
+      "status": "proposed",
+      "note": "The single chat agent on the workbench. It breaks a request into tasks and proposes them on the board; it never starts a task itself — the user presses Run on each one. The code calls it the orchestrator; UI copy says coordinator. Not 'manager', 'boss', or 'master agent' in UI copy. Term still under discussion.",
+      "translations": { "zh-CN": "协调者", "ja": "コーディネーター", "ko": "코디네이터", "fr": "Coordinateur", "de": "Koordinator", "es": "Coordinador" },
+      "forbidden": { "zh-CN": ["主管", "主 Agent", "调度器"] }
     }
   ]
 }

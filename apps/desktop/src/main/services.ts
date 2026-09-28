@@ -32,6 +32,10 @@ import { createUsageStore, createFileUsagePersistence, type UsageStore } from '.
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
 import { homeRelativeDisplayPath } from './displayPath';
+import { createWorkbenchManager, type WorkbenchManager } from './workbench/workbenchManager';
+import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
+import { resolveWorkbenchModel } from './workbench/resolveModel';
+import { logger } from './logger';
 import {
   appShortcutsFilePath,
   preferencesFilePath,
@@ -40,6 +44,7 @@ import {
   secretsDir,
   skillsLibraryPath,
   usageHistoryFilePath,
+  workbenchDir,
 } from './paths';
 import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 
@@ -52,6 +57,7 @@ let providerManager: ProviderManager | null = null;
 let translationProxy: TranslationProxy | null = null;
 let usageStore: UsageStore | null = null;
 let skillsStore: SkillsStore | null = null;
+let workbenchManager: WorkbenchManager | null = null;
 
 /**
  * Leading + trailing throttle: fire immediately, then at most once per `waitMs`. Used to
@@ -231,6 +237,44 @@ export function getSkillsStore(): SkillsStore {
     skillsStore = store;
   }
   return skillsStore;
+}
+
+/**
+ * The workbench — a chat orchestrator (headless pi) that proposes tasks, and pi workers in
+ * AiOpt's own herdr session that run the ones the user approves. It follows pi's binding on
+ * the Providers screen for its model; the credential goes to its child processes by
+ * environment only. A throttled `workbench:changed` snapshot keeps the view live while the
+ * orchestrator streams.
+ */
+export function getWorkbenchManager(): WorkbenchManager {
+  if (!workbenchManager) {
+    let manager: WorkbenchManager | null = null;
+    const broadcast = throttle(() => {
+      if (manager) broadcastToRenderers(IPC_EVENTS.workbenchChanged, manager.getSnapshot());
+    }, 150);
+    manager = createWorkbenchManager({
+      ...createNodeWorkbenchDeps(),
+      platform: process.platform,
+      dataDir: workbenchDir(),
+      homeDir: app.getPath('home'),
+      env: process.env,
+      resolveModel: () =>
+        resolveWorkbenchModel({
+          snapshot: () => getProviderManager().getSnapshot(),
+          endpointFor: (agentId) => getTranslationProxy().endpointFor(agentId),
+          resolveUpstreamKey: (providerId) => getProviderManager().resolveUpstreamKey(providerId),
+        }),
+      onChange: broadcast,
+      logger: logger.child('workbench'),
+    });
+    workbenchManager = manager;
+  }
+  return workbenchManager;
+}
+
+/** Tear the workbench down on quit, only if it was ever built. */
+export function shutdownWorkbench(): void {
+  workbenchManager?.shutdown();
 }
 
 /** The version strings shown on the About page. */

@@ -13,7 +13,7 @@ import { createMainWindow } from './window/mainWindow';
 import { registerHandlers } from './ipc/registerHandlers';
 import { installAppMenu } from './menu/appMenu';
 import { installTray, markQuitting } from './tray/tray';
-import { getConfigStore, getProviderManager, getTranslationProxy } from './services';
+import { getConfigStore, getProviderManager, getTranslationProxy, shutdownWorkbench } from './services';
 import {
   QUIT_DIALOG_LABELS,
   formatQuitMessage,
@@ -145,6 +145,8 @@ app.on('before-quit', (event) => {
   }
   // From here on the window close handler must let the window close (not hide to tray).
   markQuitting();
+  // Ends the orchestrator and AiOpt's herdr session (every worker with it). Non-blocking.
+  shutdownWorkbench();
   void getTranslationProxy()
     .stop()
     .catch((err) => logger.error('proxy.stop_failed', { message: err instanceof Error ? err.message : String(err) }));
