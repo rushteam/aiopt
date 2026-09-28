@@ -392,7 +392,7 @@
     "removeConfirmYes": "Entfernen",
     "herdrMissing": "herdr wurde nicht gefunden, daher können keine Aufgaben laufen. Der Chat funktioniert weiterhin. Installieren Sie herdr unten oder starten Sie die Werkbank nach einer externen Installation neu.",
     "herdr": {
-      "notFound": "herdr ist noch nicht installiert (AiOpt prüft zuerst die eigene Kopie, dann Ihren PATH).",
+      "notFound": "herdr wurde nicht gefunden. Liegt es schon vor, muss es im PATH sein – oder unten mit AiOpt installieren.",
       "local": "herdr {{version}} · {{path}}",
       "remote": "Remote-herdr per SSH · {{target}}",
       "install": "herdr installieren",

@@ -273,7 +273,7 @@ export interface WorkbenchSnapshot {
   herdrSession: string;
   /** Whether the herdr binary was found (the tasks side needs it; chat does not). */
   herdrAvailable: boolean;
-  /** CLI probe (local managed copy first, then PATH). Independent of `status`. */
+  /** CLI probe (PATH first, then AiOpt-managed install). Independent of `status`. */
   herdrProbe: HerdrProbeView;
   /** Saved conversations, newest first. The current one is absent until it has a message. */
   conversations: ConversationView[];

@@ -8,7 +8,7 @@ import {
 } from '../herdrProbe';
 
 describe('resolveLocalHerdrBinary', () => {
-  it('prefers the managed copy under the workbench data dir', () => {
+  it('prefers herdr on PATH when both PATH and managed copies exist', () => {
     const managed = managedHerdrBinary('/data/wb');
     const hit = resolveLocalHerdrBinary({
       workbenchDataDir: '/data/wb',
@@ -16,17 +16,28 @@ describe('resolveLocalHerdrBinary', () => {
       homeDir: '/home/u',
       isExecutable: (p) => p === managed || p === '/usr/bin/herdr',
     });
-    expect(hit).toEqual({ binary: managed, source: 'managed' });
+    expect(hit).toEqual({ binary: '/usr/bin/herdr', source: 'path' });
   });
 
-  it('falls back to PATH when managed copy is missing', () => {
+  it('uses the managed copy when PATH has no herdr', () => {
+    const managed = managedHerdrBinary('/data/wb');
     const hit = resolveLocalHerdrBinary({
       workbenchDataDir: '/data/wb',
       pathEnv: '/usr/bin',
       homeDir: '/home/u',
-      isExecutable: (p) => p === '/usr/bin/herdr',
+      isExecutable: (p) => p === managed,
     });
-    expect(hit).toEqual({ binary: '/usr/bin/herdr', source: 'path' });
+    expect(hit).toEqual({ binary: managed, source: 'managed' });
+  });
+
+  it('returns null when neither PATH nor managed has herdr', () => {
+    const hit = resolveLocalHerdrBinary({
+      workbenchDataDir: '/data/wb',
+      pathEnv: '/usr/bin',
+      homeDir: '/home/u',
+      isExecutable: () => false,
+    });
+    expect(hit).toEqual({ binary: null, source: null });
   });
 });
 

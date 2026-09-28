@@ -392,7 +392,7 @@
     "removeConfirmYes": "削除",
     "herdrMissing": "herdr が見つからないため、タスクを実行できません。チャットは使えます。下からインストールするか、別途インストール後にワークベンチを再起動してください。",
     "herdr": {
-      "notFound": "herdr はまだインストールされていません（AiOpt は組み込みコピーを優先し、次に PATH を確認します）。",
+      "notFound": "herdr が見つかりません。インストール済みの場合は PATH を確認するか、下から AiOpt でインストールしてください。",
       "local": "herdr {{version}} · {{path}}",
       "remote": "SSH 経由のリモート herdr · {{target}}",
       "install": "herdr をインストール",

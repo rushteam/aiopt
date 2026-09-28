@@ -392,7 +392,7 @@
     "removeConfirmYes": "Supprimer",
     "herdrMissing": "herdr est introuvable : les tâches ne peuvent pas s'exécuter. Le chat reste disponible. Installez-le ci-dessous ou redémarrez après une installation externe.",
     "herdr": {
-      "notFound": "herdr n'est pas encore installé (AiOpt vérifie d'abord sa copie locale, puis le PATH).",
+      "notFound": "herdr est introuvable. S'il est déjà installé, il doit être dans le PATH, ou installez-le ci-dessous avec AiOpt.",
       "local": "herdr {{version}} · {{path}}",
       "remote": "herdr distant via SSH · {{target}}",
       "install": "Installer herdr",

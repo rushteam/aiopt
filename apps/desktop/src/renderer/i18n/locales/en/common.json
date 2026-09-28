@@ -393,7 +393,7 @@
     "herdrMissing": "herdr wasn't found, so tasks can't run. Chat still works. Install herdr below or restart after installing elsewhere.",
     "attachHint": "Watch or take over the agents from a terminal:",
     "herdr": {
-      "notFound": "herdr isn't installed yet (AiOpt checks its own copy first, then your PATH).",
+      "notFound": "herdr wasn't found. If you installed it already, make sure it's on your PATH—or install it below with AiOpt.",
       "local": "herdr {{version}} · {{path}}",
       "remote": "Remote herdr via SSH · {{target}}",
       "install": "Install herdr",
