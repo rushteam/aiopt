@@ -230,6 +230,10 @@ export const AGENT_NAMES: Record<AgentId, string> = Object.fromEntries(
 export interface ProviderModel {
   id: string;
   alias?: string;
+  /** Friendly name from models.dev when matched (optional metadata, not secret). */
+  catalogName?: string;
+  /** Whether the catalog marks the model as a reasoning model (UI hint). */
+  reasoning?: boolean;
 }
 
 /** The name written into an agent's config for a model: its alias when set, else its id. */

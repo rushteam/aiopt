@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agenten"
+      "heading": "Agenten",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "Lokaler Proxy",
@@ -194,7 +196,18 @@
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "confirmDelete": "Diesen Anbieter löschen?",
-      "confirmYes": "Löschen"
+      "confirmYes": "Löschen",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "Nicht erkannt",
@@ -243,7 +256,8 @@
       "noModelMatch": "Keine passenden Modelle.",
       "bound": "Aktuell gebunden",
       "apply": "Anwenden",
-      "restoreDefaultRow": "Standard"
+      "restoreDefaultRow": "Standard",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "Einige Angaben sind ungültig. Prüfen Sie die Felder und versuchen Sie es erneut.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "Der Anbieter hat den API-Schlüssel abgelehnt. Prüfen Sie den Schlüssel und versuchen Sie es erneut.",
       "UPSTREAM_ERROR": "Die Modelle konnten nicht vom Anbieter geladen werden. Prüfen Sie die Base URL und versuchen Sie es erneut.",
       "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "Werkbank",
     "subtitle": "Chatten Sie mit einem Koordinator, der Arbeit in Aufgaben aufteilt, und führen Sie jede freigegebene Aufgabe als eigenen pi-Agenten in einer herdr-Sitzung aus. Verwendet den Anbieter und das Modell von pi aus „Anbieter“.",
     "start": "Starten",
+    "splitResizeHandle": "Breite von Koordinator und Aufgabenbereich ändern",
     "stop": "Stoppen",
     "cancel": "Abbrechen",
     "model": "Modell:",
@@ -462,7 +481,9 @@
       "session_reset": "Neue Unterhaltung begonnen.",
       "session_opened": "Unterhaltung wiederhergestellt."
     },
-    "plan": { "title": "Aufgabenplan" },
+    "plan": {
+      "title": "Aufgabenplan"
+    },
     "taskChat": {
       "title": "Aufgaben-Chat",
       "empty": "Wählen Sie eine Aufgabe, dann erscheint der Start-Prompt hier.",

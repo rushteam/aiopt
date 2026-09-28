@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agents"
+      "heading": "Agents",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "Proxy local",
@@ -194,7 +196,18 @@
       "edit": "Modifier",
       "delete": "Supprimer",
       "confirmDelete": "Supprimer ce fournisseur ?",
-      "confirmYes": "Supprimer"
+      "confirmYes": "Supprimer",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "Non détecté",
@@ -243,7 +256,8 @@
       "noModelMatch": "Aucun modèle correspondant.",
       "bound": "Actuellement lié",
       "apply": "Appliquer",
-      "restoreDefaultRow": "Par défaut"
+      "restoreDefaultRow": "Par défaut",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "Certaines informations sont invalides. Vérifiez les champs et réessayez.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "Le fournisseur a rejeté la clé d’API. Vérifiez la clé et réessayez.",
       "UPSTREAM_ERROR": "Impossible de charger les modèles depuis le fournisseur. Vérifiez l’URL de base et réessayez.",
       "INTERNAL": "Une erreur est survenue. Réessayez."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "Atelier",
     "subtitle": "Discutez avec un coordinateur qui découpe le travail en tâches, puis lancez chaque tâche approuvée comme agent pi distinct dans une session herdr. Utilise le fournisseur et le modèle de pi définis dans Fournisseurs.",
     "start": "Démarrer",
+    "splitResizeHandle": "Redimensionner le coordinateur et les tâches",
     "stop": "Arrêter",
     "cancel": "Annuler",
     "model": "Modèle :",
@@ -462,7 +481,9 @@
       "session_reset": "Nouvelle conversation commencée.",
       "session_opened": "Conversation restaurée."
     },
-    "plan": { "title": "Plan des tâches" },
+    "plan": {
+      "title": "Plan des tâches"
+    },
     "taskChat": {
       "title": "Chat de la tâche",
       "empty": "Sélectionnez une tâche pour afficher le prompt initial ici.",

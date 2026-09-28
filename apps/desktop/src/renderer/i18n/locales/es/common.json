@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agentes"
+      "heading": "Agentes",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "Proxy local",
@@ -194,7 +196,18 @@
       "edit": "Editar",
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar este proveedor?",
-      "confirmYes": "Eliminar"
+      "confirmYes": "Eliminar",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "No detectado",
@@ -243,7 +256,8 @@
       "noModelMatch": "Ningún modelo coincide.",
       "bound": "Vinculado actualmente",
       "apply": "Aplicar",
-      "restoreDefaultRow": "Predeterminado"
+      "restoreDefaultRow": "Predeterminado",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "Algunos datos no son válidos. Comprueba los campos e inténtalo de nuevo.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "El proveedor rechazó la clave de API. Comprueba la clave e inténtalo de nuevo.",
       "UPSTREAM_ERROR": "No se pudieron cargar los modelos del proveedor. Comprueba la URL base e inténtalo de nuevo.",
       "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "Banco de trabajo",
     "subtitle": "Conversa con un coordinador que divide el trabajo en tareas y ejecuta cada tarea aprobada como su propio agente pi en una sesión de herdr. Usa el proveedor y el modelo de pi definidos en Proveedores.",
     "start": "Iniciar",
+    "splitResizeHandle": "Cambiar el ancho del coordinador y las tareas",
     "stop": "Detener",
     "cancel": "Cancelar",
     "model": "Modelo:",
@@ -462,7 +481,9 @@
       "session_reset": "Se inició una nueva conversación.",
       "session_opened": "Conversación restaurada."
     },
-    "plan": { "title": "Plan de tareas" },
+    "plan": {
+      "title": "Plan de tareas"
+    },
     "taskChat": {
       "title": "Chat de la tarea",
       "empty": "Selecciona una tarea para ver el prompt inicial aquí.",

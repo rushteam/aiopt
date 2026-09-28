@@ -47,6 +47,7 @@ import { TaskBoardTabRow } from './TaskBoardTabRow';
 import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
+import { WorkbenchSplitPane } from './WorkbenchSplitPane';
 
 export function WorkbenchHome() {
   const t = useT();
@@ -90,10 +91,10 @@ export function WorkbenchHome() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
-      <div style={{ padding: '8px 24px 0', display: 'flex', flexDirection: 'column', gap: space.sm }}>
+      <div style={{ flexShrink: 0, padding: '8px 24px 0', display: 'flex', flexDirection: 'column', gap: space.sm }}>
         <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
         {error && (
           <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
@@ -105,14 +106,19 @@ export function WorkbenchHome() {
         style={{
           flex: 1,
           minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(220px, 0.85fr) minmax(420px, 1.9fr)',
-          gap: space.lg,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
           padding: '12px 24px 24px',
         }}
       >
-        <ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />
-        <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+        <WorkbenchSplitPane
+          resizeLabel={t('workbench.splitResizeHandle')}
+          left={<ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />}
+          right={
+            <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+          }
+        />
       </div>
       {confirmStop && (
         <ConfirmDialog
@@ -179,7 +185,10 @@ function ChatPane({
   };
 
   return (
-    <section aria-label={t('workbench.chat.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <section
+      aria-label={t('workbench.chat.title')}
+      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
       <div style={paneHeaderStyle}>
         <h2 style={paneTitleStyle}>{t('workbench.chat.title')}</h2>
         <button
@@ -268,21 +277,23 @@ function ChatPane({
           <ChatEntry key={item.id} item={item} tasks={wb.tasks} t={t} />
         ))}
       </div>
-      <WorkbenchChatComposer
-        draft={draft}
-        setDraft={setDraft}
-        onSend={() => void send()}
-        disabled={!ready}
-        streaming={wb.streaming}
-        onAbort={() => void run(abortChat)}
-        maxLength={WORKBENCH_LIMITS.chatText}
-        placeholder={t('workbench.chat.placeholder')}
-        sendHint={t('workbench.chat.sendHint')}
-        sendLabel={t('workbench.chat.send')}
-        abortLabel={t('workbench.chat.abort')}
-        onTaskMentionDrop={ready ? addTaskMention : undefined}
-        dropHint={t('workbench.chat.taskMentionDrop')}
-      />
+      <div style={{ flexShrink: 0 }}>
+        <WorkbenchChatComposer
+          draft={draft}
+          setDraft={setDraft}
+          onSend={() => void send()}
+          disabled={!ready}
+          streaming={wb.streaming}
+          onAbort={() => void run(abortChat)}
+          maxLength={WORKBENCH_LIMITS.chatText}
+          placeholder={t('workbench.chat.placeholder')}
+          sendHint={t('workbench.chat.sendHint')}
+          sendLabel={t('workbench.chat.send')}
+          abortLabel={t('workbench.chat.abort')}
+          onTaskMentionDrop={ready ? addTaskMention : undefined}
+          dropHint={t('workbench.chat.taskMentionDrop')}
+        />
+      </div>
     </section>
   );
 }
@@ -419,7 +430,13 @@ function HistoryPanel({
       onKeyDown={(e) => {
         if (e.key === 'Escape' && !confirmDelete) onClose();
       }}
-      style={{ borderBottom: `1px solid ${token('border')}`, background: token('surface'), maxHeight: 260, overflowY: 'auto' }}
+      style={{
+        borderBottom: `1px solid ${token('border')}`,
+        background: token('surface'),
+        flexShrink: 0,
+        maxHeight: 260,
+        overflowY: 'auto',
+      }}
     >
       {conversations.length === 0 ? (
         <p style={{ margin: 0, padding: space.lg, fontSize: fontSize.sm, color: token('textMuted') }}>{t('workbench.chat.historyEmpty')}</p>
@@ -561,7 +578,10 @@ function TaskBoard({
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
 
   return (
-    <section aria-label={t('workbench.tasks.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <section
+      aria-label={t('workbench.tasks.title')}
+      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
       <TaskBoardTabRow
         tasks={tasks}
         selectedId={selectedId}
@@ -637,7 +657,7 @@ function TaskBoard({
           />
         </div>
       ) : null}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {selectedTask ? (
           <TaskChatPane task={selectedTask} wb={wb} t={t} run={run} />
         ) : (
@@ -819,6 +839,7 @@ const paneHeaderStyle: CSSProperties = {
   gap: space.md,
   padding: '8px 12px',
   borderBottom: `1px solid ${token('border')}`,
+  flexShrink: 0,
 };
 
 const paneTitleStyle: CSSProperties = { margin: 0, fontSize: fontSize.lg, fontWeight: 600 };

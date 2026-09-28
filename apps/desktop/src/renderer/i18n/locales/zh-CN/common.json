@@ -126,7 +126,13 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agent"
+      "heading": "Agent",
+      "showNotDetected": "显示 {{count}} 个未检测到的 Agent",
+      "hideNotDetected": "隐藏未检测到的 Agent"
+    },
+    "combined": {
+      "name": "联合提供商",
+      "description": "池中所有提供商的模型合并为一个列表，绑定 Agent 时可直接选用。"
     },
     "proxy": {
       "label": "本地代理",
@@ -193,6 +199,17 @@
       "keyMissing": "无密钥",
       "edit": "编辑",
       "delete": "删除",
+      "test": "测试连接",
+      "testing": "测试中…",
+      "testOk": "已连通 · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "找不到该供应商。",
+        "no_key": "请先填写 API 密钥。",
+        "no_models": "请至少添加一个模型。",
+        "unauthorized": "供应商拒绝了 API 密钥。",
+        "unreachable": "无法连接到供应商。",
+        "upstream": "供应商响应异常。"
+      },
       "confirmDelete": "确定删除该供应商？",
       "confirmYes": "确认删除"
     },
@@ -242,6 +259,7 @@
       "searchModels": "搜索模型…",
       "noModelMatch": "没有匹配的模型。",
       "bound": "当前绑定",
+      "reasoning": "推理",
       "apply": "应用",
       "restoreDefaultRow": "默认"
     },
@@ -382,6 +400,7 @@
     "title": "工作台",
     "subtitle": "与协调者对话，由它把工作拆成任务；每个经你批准的任务都作为独立的 pi Agent 在 herdr 会话中运行。使用「供应商」页里 pi 绑定的供应商与模型。",
     "start": "启动",
+    "splitResizeHandle": "拖动以调整协调者与任务区域宽度",
     "stop": "停止",
     "cancel": "取消",
     "model": "模型：",

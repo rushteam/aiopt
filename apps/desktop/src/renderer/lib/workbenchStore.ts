@@ -21,6 +21,7 @@ const EMPTY: WorkbenchSnapshot = {
   status: 'stopped',
   issue: null,
   model: null,
+  lastNotify: null,
   streaming: false,
   chat: [],
   tasks: [],

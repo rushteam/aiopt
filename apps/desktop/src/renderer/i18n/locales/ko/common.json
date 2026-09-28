@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "에이전트"
+      "heading": "에이전트",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "로컬 프록시",
@@ -194,7 +196,18 @@
       "edit": "편집",
       "delete": "삭제",
       "confirmDelete": "이 공급자를 삭제할까요?",
-      "confirmYes": "삭제"
+      "confirmYes": "삭제",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "감지되지 않음",
@@ -243,7 +256,8 @@
       "noModelMatch": "일치하는 모델이 없습니다.",
       "bound": "현재 바인딩됨",
       "apply": "적용",
-      "restoreDefaultRow": "기본값"
+      "restoreDefaultRow": "기본값",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "일부 정보가 올바르지 않습니다. 필드를 확인한 후 다시 시도하세요.",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "공급자가 API 키를 거부했습니다. 키를 확인한 후 다시 시도하세요.",
       "UPSTREAM_ERROR": "공급자에서 모델을 불러오지 못했습니다. Base URL을 확인한 후 다시 시도하세요.",
       "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "워크벤치",
     "subtitle": "작업을 태스크로 나누는 코디네이터와 대화하고, 승인한 각 태스크를 herdr 세션 안의 독립된 pi 에이전트로 실행합니다. 공급자 탭에서 pi에 연결한 공급자와 모델을 사용합니다.",
     "start": "시작",
+    "splitResizeHandle": "코디네이터와 태스크 영역 너비 조절",
     "stop": "중지",
     "cancel": "취소",
     "model": "모델:",
@@ -462,7 +481,9 @@
       "session_reset": "새 대화를 시작했습니다.",
       "session_opened": "대화를 복원했습니다."
     },
-    "plan": { "title": "태스크 계획" },
+    "plan": {
+      "title": "태스크 계획"
+    },
     "taskChat": {
       "title": "태스크 채팅",
       "empty": "태스크를 선택하면 초기 프롬프트가 여기에 표시됩니다.",

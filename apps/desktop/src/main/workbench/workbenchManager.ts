@@ -56,6 +56,7 @@ import {
   type WorkbenchIssue,
   type WorkbenchModel,
   type WorkbenchSettings,
+  type WorkbenchNotifyPreview,
   type WorkbenchSnapshot,
   type WorkbenchStatus,
   isValidHerdrSshTarget,
@@ -376,6 +377,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let userTurn = false;
   const pendingNotify = new Set<string>();
   let notifyScheduled = false;
+  let lastNotify: WorkbenchNotifyPreview | null = null;
   let herdrInstalling = false;
   let herdrProbeVersion: string | null = null;
   let herdrProbeSource: HerdrProbeView['source'] = null;
@@ -851,6 +853,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       status,
       issue,
       model,
+      lastNotify,
       streaming: transcript.streaming(),
       chat: transcript.items(),
       tasks: [...tasks.values()].map(taskView),
@@ -1643,6 +1646,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     pendingNotify.clear();
     const client = rpc;
     if (ids.length === 0 || !client || status !== 'ready' || !settings.notifyCoordinator) return;
+    lastNotify = {
+      titles: ids.map((id) => tasks.get(id)?.title ?? id).filter((t) => t !== ''),
+      at: deps.now(),
+    };
     saveTasks();
     try {
       await client.command(`/${TASK_UPDATE_COMMAND} ${ids.join(' ')}`);

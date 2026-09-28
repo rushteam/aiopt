@@ -87,6 +87,8 @@ export const IPC_CHANNELS = {
   // format). Same key handling as fetch-models: a key may be SENT or resolved main-side,
   // and the result carries ONLY the detected format list. See formatProbe.ts.
   providersDetectFormats: 'providers:detect-formats',
+  /** Minimal live request per format; returns latency only — never the key. See providerTest.ts. */
+  providersTest: 'providers:test',
   // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
   // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
   // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
@@ -466,6 +468,8 @@ export interface AppShortcutsChangedEvent {
 /** A pool provider as the renderer sees it: no key, just whether one is stored. */
 export interface ProviderSummary {
   id: string;
+  /** Synthetic aggregate of all pool providers — not editable on disk. */
+  virtual?: boolean;
   name: string;
   /** The formats served at `baseUrl` — see `Provider.apiFormats`. Non-empty, canonical order. */
   apiFormats: ApiFormat[];
@@ -633,6 +637,21 @@ export interface ProviderDetectFormatsRequest {
 export interface ProviderDetectFormatsResult {
   /** The formats whose endpoint answered, in canonical order. Empty when none did. */
   formats: ApiFormat[];
+}
+
+/** Run a minimal live request on one stored provider (main-side only). */
+export interface ProviderTestRequest {
+  providerId: string;
+}
+
+export interface ProviderTestResult {
+  ok: boolean;
+  /** Round-trip ms for the first format that responded usefully; null when none did. */
+  latencyMs: number | null;
+  /** Which wire format succeeded, when `ok`. */
+  format: ApiFormat | null;
+  /** Coded failure reason safe for UI mapping (never carries the key). */
+  error: 'not_found' | 'no_key' | 'no_models' | 'unauthorized' | 'unreachable' | 'upstream' | null;
 }
 
 /**
@@ -839,6 +858,10 @@ export interface IpcContract {
   [IPC_CHANNELS.providersDetectFormats]: {
     request: ProviderDetectFormatsRequest;
     result: ProviderDetectFormatsResult;
+  };
+  [IPC_CHANNELS.providersTest]: {
+    request: ProviderTestRequest;
+    result: ProviderTestResult;
   };
   [IPC_CHANNELS.providersRevealKey]: {
     request: ProviderRevealKeyRequest;

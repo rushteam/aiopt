@@ -15,6 +15,7 @@ import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { copyProxyConfig } from '../../lib/providerStore';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
+import { formatModelRef } from '../../../shared/modelRef';
 
 export function AgentCard({
   agent,
@@ -69,8 +70,11 @@ export function AgentCard({
           were both muted 13px, which rendered the screen's most important distinction as
           its least visible one. */}
       <p style={bound ? boundStyle : metaStyle}>
-        {bound
-          ? `${bound.name} · ${agent.binding?.modelId ?? ''}`
+        {bound && agent.binding
+          ? formatModelRef(
+              bound.name,
+              bound.models.find((m) => m.id === agent.binding!.modelId) ?? agent.binding.modelId,
+            )
           : t('providers.agent.unbound')}
       </p>
 

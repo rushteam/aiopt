@@ -26,6 +26,7 @@ import type {
   ProviderFetchModelsRequest,
   ProviderSummary,
   ProviderUpdateRequest,
+  ProviderTestResult,
   ProvidersSnapshot,
 } from '../../shared/ipc-channels';
 import { MAIN_ONLY_SECRET_PREFIX, type SecretStore } from '../secrets/secretStore';
@@ -33,7 +34,11 @@ import { throwIpcError } from '../ipc/validate';
 import { logger } from '../logger';
 import type { AgentAdapter } from './adapters/agentAdapter';
 import { fetchProviderModels, type FetchLike } from './modelCatalog';
+import { enrichProviderModels } from './modelsDev';
 import { detectProviderFormats } from './formatProbe';
+import { testProviderConnectivity } from './providerTest';
+import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
+import { isCombinedProviderId } from '../../shared/combinedProvider';
 import type { ProviderStore } from './providerStore';
 import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
 import { describeAgentConfig } from './agentConfigView';
@@ -79,6 +84,7 @@ export interface ProviderManager {
    * like {@link fetchModels}, with the same key resolution; returns only the format list.
    */
   detectFormats(input: ProviderDetectFormatsRequest): Promise<ApiFormat[]>;
+  testProvider(providerId: string): Promise<ProviderTestResult>;
   /**
    * GATED: return a provider's stored key in plaintext. This is the one read that
    * hands a secret back to the caller (and ultimately the renderer) by design —
@@ -178,8 +184,11 @@ export function createProviderManager(
 
   function snapshot(): ProvidersSnapshot {
     const proxyPort = getProxy().getPort();
+    const realProviders = store.listProviders().map(toSummary);
+    const combined = buildCombinedProviderSummary(realProviders, 'All providers');
+    const providers = combined ? [...realProviders, combined] : realProviders;
     return {
-      providers: store.listProviders().map(toSummary),
+      providers,
       // The live loopback port, or null before the proxy has bound (-1). Not a secret — it
       // already sits in each proxied agent's on-disk baseUrl; the renderer shows it and offers
       // the "refresh port" action. The token is never included.
@@ -378,6 +387,7 @@ export function createProviderManager(
     },
 
     removeProvider(id) {
+      if (isCombinedProviderId(id)) throwIpcError('INVALID_PARAMS', 'cannot remove the combined provider');
       if (!store.getProvider(id)) throwIpcError('NOT_FOUND', 'provider not found');
       // Drop any cross-format proxy route that referenced this provider (a bound agent
       // would otherwise keep a live route whose upstream key just disappeared).
@@ -394,6 +404,10 @@ export function createProviderManager(
     setBinding(agentId, providerId, modelId) {
       const def = getAgentDef(agentId);
       if (!def) throwIpcError('INVALID_PARAMS', 'unknown agent');
+
+      if (isCombinedProviderId(providerId)) {
+        throwIpcError('INVALID_PARAMS', 'pick a model from the combined list, not the aggregate row');
+      }
 
       const provider = store.getProvider(providerId);
       if (!provider) throwIpcError('NOT_FOUND', 'provider not found');
@@ -432,8 +446,8 @@ export function createProviderManager(
       return announce();
     },
 
-    fetchModels(input) {
-      return fetchProviderModels(
+    async fetchModels(input) {
+      const models = await fetchProviderModels(
         {
           apiFormats: normalizeApiFormats(input.apiFormats),
           baseUrl: input.baseUrl,
@@ -441,6 +455,7 @@ export function createProviderManager(
         },
         fetchImpl,
       );
+      return enrichProviderModels(models, fetchImpl);
     },
 
     detectFormats(input) {
@@ -448,6 +463,18 @@ export function createProviderManager(
         { baseUrl: input.baseUrl, apiKey: resolveProbeKey(input) },
         fetchImpl,
       );
+    },
+
+    async testProvider(providerId) {
+      if (isCombinedProviderId(providerId)) {
+        return { ok: false, latencyMs: null, format: null, error: 'not_found' as const };
+      }
+      const provider = store.getProvider(providerId);
+      if (!provider) {
+        return { ok: false, latencyMs: null, format: null, error: 'not_found' as const };
+      }
+      const apiKey = secrets.get(providerSecretKey(providerId));
+      return testProviderConnectivity(provider, apiKey, fetchImpl);
     },
 
     revealKey(providerId) {

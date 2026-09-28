@@ -261,6 +261,7 @@ const prefs: PreferencesShape = {
 
 // The workbench is shown mid-session. It is fixed data: the harness never runs an agent.
 const workbenchSnapshot: WorkbenchSnapshot = {
+  lastNotify: null,
   status: 'ready',
   issue: null,
   model: { providerName: 'Anthropic', modelId: 'claude-sonnet-4-5', proxied: true },
@@ -413,6 +414,7 @@ const bridge: AiOptBridge = {
     restoreDefault: refused,
     fetchModels: refused,
     detectFormats: refused,
+    test: async () => ({ ok: true, latencyMs: 42, format: 'openai', error: null }),
     revealKey: refused,
     copyProxyConfig: async () => ({ copied: false }),
     refreshProxyPort: async () => ({ port: 47821 }),

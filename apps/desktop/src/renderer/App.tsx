@@ -34,9 +34,12 @@ export function App() {
     else if (command === MENU_COMMANDS.showUsage) {
       setSettingsSection(null);
       setTab('usage');
-    } else if (command === MENU_COMMANDS.showSkills) {
+    }     else if (command === MENU_COMMANDS.showSkills) {
       setSettingsSection(null);
       setTab('skills');
+    } else if (command === MENU_COMMANDS.showWorkbench) {
+      setSettingsSection(null);
+      setTab('workbench');
     } else if (command === MENU_COMMANDS.checkForUpdates) {
       setSettingsSection('updates');
       void window.aiopt.update.check();
@@ -65,7 +68,8 @@ export function App() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        flex: 1,
+        minHeight: 0,
         background: token('bg'),
         color: token('text'),
       }}
@@ -83,9 +87,27 @@ export function App() {
       <UpdateNotice onOpen={() => setSettingsSection('updates')} />
       {/* The ambient lines sit behind the tab screens (transparent roots, opaque cards).
           Settings paints its own opaque ground, so it isn't drawn there at all. */}
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+      <div
+        style={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
         {!settingsOpen && <BackgroundLines />}
-        <div style={{ position: 'relative', height: '100%' }}>
+        <div
+          style={{
+            position: 'relative',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           {settingsSection !== null ? (
             <SettingsView initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
           ) : tab === 'usage' ? (

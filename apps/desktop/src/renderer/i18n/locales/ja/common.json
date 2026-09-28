@@ -126,7 +126,9 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "エージェント"
+      "heading": "エージェント",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
     },
     "proxy": {
       "label": "ローカルプロキシ",
@@ -194,7 +196,18 @@
       "edit": "編集",
       "delete": "削除",
       "confirmDelete": "このプロバイダーを削除しますか？",
-      "confirmYes": "削除"
+      "confirmYes": "削除",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      }
     },
     "agent": {
       "notInstalled": "検出されません",
@@ -243,7 +256,8 @@
       "noModelMatch": "一致するモデルがありません。",
       "bound": "現在のバインド",
       "apply": "適用",
-      "restoreDefaultRow": "デフォルト"
+      "restoreDefaultRow": "デフォルト",
+      "reasoning": "Reasoning"
     },
     "errors": {
       "INVALID_PARAMS": "一部の内容が無効です。項目を確認してもう一度お試しください。",
@@ -255,6 +269,10 @@
       "UNAUTHORIZED": "プロバイダーが API キーを拒否しました。キーを確認してもう一度お試しください。",
       "UPSTREAM_ERROR": "プロバイダーからモデルを読み込めませんでした。Base URL を確認してもう一度お試しください。",
       "INTERNAL": "問題が発生しました。もう一度お試しください。"
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     }
   },
   "usage": {
@@ -382,6 +400,7 @@
     "title": "ワークベンチ",
     "subtitle": "作業をタスクに分割するコーディネーターと対話し、承認した各タスクを herdr セッション内の独立した pi エージェントとして実行します。「プロバイダー」タブで pi に設定したプロバイダーとモデルを使います。",
     "start": "開始",
+    "splitResizeHandle": "コーディネーターとタスクの幅を調整",
     "stop": "停止",
     "cancel": "キャンセル",
     "model": "モデル:",
@@ -462,7 +481,9 @@
       "session_reset": "新しい会話を開始しました。",
       "session_opened": "会話を復元しました。"
     },
-    "plan": { "title": "タスク計画" },
+    "plan": {
+      "title": "タスク計画"
+    },
     "taskChat": {
       "title": "タスクチャット",
       "empty": "タスクを選ぶと、最初のプロンプトがここに表示されます。",

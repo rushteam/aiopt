@@ -5,7 +5,8 @@
 // State is read from the renderer provider store (mirrored from main); all writes
 // go back through it. Dialogs (add/edit provider, bind agent) are local UI state.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { isCombinedProviderId } from '../../../shared/combinedProvider';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
@@ -44,7 +45,15 @@ export function ProvidersHome() {
   // nothing can be bound until it happens. It's also what keeps the two emphasis rules
   // from fighting: AgentCard leaves its button a ghost while the pool is empty, so
   // exactly one filled accent is ever on this screen.
-  const poolEmpty = providers.length === 0;
+  const realProviders = useMemo(
+    () => providers.filter((p) => !isCombinedProviderId(p.id)),
+    [providers],
+  );
+  const poolEmpty = realProviders.length === 0;
+
+  const installedAgents = useMemo(() => agents.filter((a) => a.installed), [agents]);
+  const hiddenAgents = useMemo(() => agents.filter((a) => !a.installed), [agents]);
+  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
 
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
@@ -63,7 +72,7 @@ export function ProvidersHome() {
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
           <ProxyControlBar proxyPort={proxyPort} anyProxied={anyProxied} />
           <div style={gridStyle}>
-            {agents.map((agent) => (
+            {installedAgents.map((agent) => (
               <AgentCard
                 key={agent.id}
                 agent={agent}
@@ -73,6 +82,44 @@ export function ProvidersHome() {
               />
             ))}
           </div>
+          {hiddenAgents.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowHiddenAgents((v) => !v)}
+                {...hoverBackground('transparent', token('surfaceHover'))}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: radius.sm,
+                  border: `1px solid ${token('borderStrong')}`,
+                  background: 'transparent',
+                  color: token('textMuted'),
+                  cursor: 'pointer',
+                  fontSize: fontSize.sm,
+                }}
+              >
+                {showHiddenAgents
+                  ? t('providers.agents.hideNotDetected')
+                  : t('providers.agents.showNotDetected').replace(
+                      '{{count}}',
+                      String(hiddenAgents.length),
+                    )}
+              </button>
+              {showHiddenAgents && (
+                <div style={{ ...gridStyle, marginTop: 12, opacity: 0.92 }}>
+                  {hiddenAgents.map((agent) => (
+                    <AgentCard
+                      key={agent.id}
+                      agent={agent}
+                      providers={providers}
+                      onChange={() => setDialog({ kind: 'bind', agent })}
+                      onViewConfig={() => setDialog({ kind: 'config', agent })}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         <section>
@@ -99,14 +146,18 @@ export function ProvidersHome() {
               {t('providers.addProvider')}
             </button>
           </div>
-          {providers.length === 0 ? (
+          {realProviders.length === 0 ? (
             <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('providers.pool.empty')}</p>
           ) : (
             <div style={gridStyle}>
               {providers.map((provider) => (
                 <ProviderCard
                   key={provider.id}
-                  provider={provider}
+                  provider={
+                    isCombinedProviderId(provider.id)
+                      ? { ...provider, name: t('providers.combined.name') }
+                      : provider
+                  }
                   onEdit={() => setDialog({ kind: 'edit', provider })}
                 />
               ))}

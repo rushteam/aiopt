@@ -126,7 +126,13 @@
       "gemini": "Gemini"
     },
     "agents": {
-      "heading": "Agents"
+      "heading": "Agents",
+      "showNotDetected": "Show {{count}} agents not detected",
+      "hideNotDetected": "Hide agents not detected"
+    },
+    "combined": {
+      "name": "All providers",
+      "description": "Every model from your pool in one list — use it when binding an agent."
     },
     "proxy": {
       "label": "Local proxy",
@@ -193,6 +199,17 @@
       "keyMissing": "No key",
       "edit": "Edit",
       "delete": "Delete",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected · {{ms}} ms · {{format}}",
+      "testErrors": {
+        "not_found": "Provider not found.",
+        "no_key": "Add an API key first.",
+        "no_models": "Add at least one model first.",
+        "unauthorized": "The provider rejected the API key.",
+        "unreachable": "Could not reach the provider.",
+        "upstream": "The provider did not respond as expected."
+      },
       "confirmDelete": "Delete this provider?",
       "confirmYes": "Delete"
     },
@@ -242,6 +259,7 @@
       "searchModels": "Search models…",
       "noModelMatch": "No models match.",
       "bound": "Currently bound",
+      "reasoning": "Reasoning",
       "apply": "Apply",
       "restoreDefaultRow": "Default"
     },
@@ -382,6 +400,7 @@
     "title": "Workbench",
     "subtitle": "Chat with a coordinator that breaks work into tasks, then run each approved task as its own pi agent in a herdr session. Uses pi's provider and model from Providers.",
     "start": "Start",
+    "splitResizeHandle": "Resize coordinator and task panes",
     "stop": "Stop",
     "cancel": "Cancel",
     "model": "Model:",

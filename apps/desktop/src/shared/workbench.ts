@@ -277,10 +277,18 @@ export function pendingDependencies(task: Pick<TaskView, 'dependsOn'>, tasks: re
   return out;
 }
 
+/** Last batch of tasks reported to the coordinator (tray / status hints). */
+export interface WorkbenchNotifyPreview {
+  titles: string[];
+  at: number;
+}
+
 export interface WorkbenchSnapshot {
   status: WorkbenchStatus;
   issue: WorkbenchIssue | null;
   model: WorkbenchModel | null;
+  /** Most recent coordinator notify batch, when notify is enabled. */
+  lastNotify: WorkbenchNotifyPreview | null;
   /** Whether the orchestrator is currently producing a reply. */
   streaming: boolean;
   chat: ChatItem[];

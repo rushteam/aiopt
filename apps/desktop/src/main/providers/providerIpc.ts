@@ -171,6 +171,12 @@ export function registerProviderIpc(
 
   // Probe a base URL for the formats it serves. Same trust shape as fetch-models: the key
   // is sent or resolved main-side and never returned; the result is only a format list.
+  registry.register(IPC_CHANNELS.providersTest, async (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return manager.testProvider(requireString(obj.providerId, 'providerId'));
+  });
+
   registry.register(IPC_CHANNELS.providersDetectFormats, async (payload, meta) => {
     meta.assertTrustedSender();
     const obj = requireObject(payload);

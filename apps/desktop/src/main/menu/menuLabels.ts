@@ -24,6 +24,11 @@ export interface MenuLabels {
   showWindow: string;
   usage: string;
   skills: string;
+  /** Tray workbench section (`{{count}}` / `{{summary}}` replaced in tray.ts). */
+  workbenchOpen: string;
+  workbenchRunning: string;
+  workbenchLastNotify: string;
+  workbenchNoNotify: string;
   checkForUpdates: string;
   about: string;
   /** Native role items whose label we localize. */
@@ -41,6 +46,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'Show AiOpt',
     usage: 'Usage',
     skills: 'Skills',
+    workbenchOpen: 'Open Workbench…',
+    workbenchRunning: 'Running tasks: {{count}}',
+    workbenchLastNotify: 'Last notify: {{summary}}',
+    workbenchNoNotify: 'No recent coordinator notify',
     checkForUpdates: 'Check for Updates…',
     about: 'About',
     quit: 'Quit',
@@ -55,6 +64,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: '显示主界面',
     usage: '统计',
     skills: '技能',
+    workbenchOpen: '打开工作台…',
+    workbenchRunning: '运行中任务：{{count}}',
+    workbenchLastNotify: '最近通知：{{summary}}',
+    workbenchNoNotify: '暂无协调者通知',
     checkForUpdates: '检查更新…',
     about: '关于',
     quit: '退出',
@@ -69,6 +82,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'AiOpt を表示',
     usage: '使用状況',
     skills: 'スキル',
+    workbenchOpen: 'ワークベンチを開く…',
+    workbenchRunning: '実行中のタスク: {{count}}',
+    workbenchLastNotify: '直近の通知: {{summary}}',
+    workbenchNoNotify: '最近のコーディネーター通知はありません',
     checkForUpdates: '更新を確認…',
     about: 'このアプリについて',
     quit: '終了',
@@ -83,6 +100,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'AiOpt 표시',
     usage: '사용량',
     skills: '스킬',
+    workbenchOpen: '워크벤치 열기…',
+    workbenchRunning: '실행 중 작업: {{count}}',
+    workbenchLastNotify: '최근 알림: {{summary}}',
+    workbenchNoNotify: '최근 코디네이터 알림 없음',
     checkForUpdates: '업데이트 확인…',
     about: '정보',
     quit: '종료',
@@ -97,6 +118,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'Afficher AiOpt',
     usage: 'Utilisation',
     skills: 'Compétences',
+    workbenchOpen: 'Ouvrir l’atelier…',
+    workbenchRunning: 'Tâches en cours : {{count}}',
+    workbenchLastNotify: 'Dernière notification : {{summary}}',
+    workbenchNoNotify: 'Aucune notification récente au coordinateur',
     checkForUpdates: 'Rechercher des mises à jour…',
     about: 'À propos',
     quit: 'Quitter',
@@ -111,6 +136,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'AiOpt anzeigen',
     usage: 'Nutzung',
     skills: 'Skills',
+    workbenchOpen: 'Workbench öffnen…',
+    workbenchRunning: 'Laufende Aufgaben: {{count}}',
+    workbenchLastNotify: 'Letzte Benachrichtigung: {{summary}}',
+    workbenchNoNotify: 'Keine kürzliche Koordinator-Benachrichtigung',
     checkForUpdates: 'Nach Updates suchen…',
     about: 'Über',
     quit: 'Beenden',
@@ -125,6 +154,10 @@ export const MENU_LABELS: Record<MenuLocale, MenuLabels> = {
     showWindow: 'Mostrar AiOpt',
     usage: 'Uso',
     skills: 'Habilidades',
+    workbenchOpen: 'Abrir banco de trabajo…',
+    workbenchRunning: 'Tareas en ejecución: {{count}}',
+    workbenchLastNotify: 'Último aviso: {{summary}}',
+    workbenchNoNotify: 'Sin avisos recientes al coordinador',
     checkForUpdates: 'Buscar actualizaciones…',
     about: 'Acerca de',
     quit: 'Salir',

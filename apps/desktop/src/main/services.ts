@@ -35,6 +35,7 @@ import { isRealDirectory } from './skills/skillsLibraryDir';
 import { preferStandardSkillsLibrary } from '../shared/skills';
 import { homeRelativeDisplayPath } from './displayPath';
 import { createWorkbenchManager, type WorkbenchManager } from './workbench/workbenchManager';
+import { syncWorkbenchTrayHint } from './tray/tray';
 import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
 import { resolveWorkbenchModel } from './workbench/resolveModel';
 import { logger } from './logger';
@@ -270,7 +271,10 @@ export function getWorkbenchManager(): WorkbenchManager {
   if (!workbenchManager) {
     let manager: WorkbenchManager | null = null;
     const broadcast = throttle(() => {
-      if (manager) broadcastToRenderers(IPC_EVENTS.workbenchChanged, manager.getSnapshot());
+      if (!manager) return;
+      const snap = manager.getSnapshot();
+      broadcastToRenderers(IPC_EVENTS.workbenchChanged, snap);
+      syncWorkbenchTrayHint(snap);
     }, 150);
     manager = createWorkbenchManager({
       ...createNodeWorkbenchDeps(),
@@ -289,6 +293,7 @@ export function getWorkbenchManager(): WorkbenchManager {
       logger: logger.child('workbench'),
     });
     workbenchManager = manager;
+    syncWorkbenchTrayHint(manager.getSnapshot());
   }
   return workbenchManager;
 }

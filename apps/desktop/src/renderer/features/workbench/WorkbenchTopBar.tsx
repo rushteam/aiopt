@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { WORKBENCH_LIMITS, type FolderView, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { addFolder, installHerdr, removeFolder, updateWorkbenchSettings } from '../../lib/workbenchStore';
+import { formatModelRef } from '../../../shared/modelRef';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
@@ -34,15 +36,56 @@ export function WorkbenchTopBar({
     wb.status === 'error' ||
     wb.folders.length === 0;
 
-  const [envOpen, setEnvOpen] = useState(needsEnvAttention);
+  const [envOpen, setEnvOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 380 });
   const [savingSettings, setSavingSettings] = useState(false);
   const [sshDraft, setSshDraft] = useState(wb.settings.herdrSshTarget ?? '');
-  useEffect(() => {
-    if (needsEnvAttention) setEnvOpen(true);
-  }, [needsEnvAttention]);
+  const envButtonRef = useRef<HTMLButtonElement>(null);
+  const envPanelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setSshDraft(wb.settings.herdrSshTarget ?? '');
   }, [wb.settings.herdrSshTarget]);
+
+  useEffect(() => {
+    if (!envOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (envButtonRef.current?.contains(target)) return;
+      if (envPanelRef.current?.contains(target)) return;
+      setEnvOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setEnvOpen(false);
+    };
+    const timer = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown);
+      document.addEventListener('keydown', onKeyDown);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [envOpen]);
+
+  const toggleEnv = (e: MouseEvent): void => {
+    e.stopPropagation();
+    if (envOpen) {
+      setEnvOpen(false);
+      return;
+    }
+    const rect = envButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const width = Math.min(420, Math.max(280, window.innerWidth - 24));
+      setMenuPos({
+        top: rect.bottom + 4,
+        left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
+        width,
+      });
+    }
+    setEnvOpen(true);
+  };
 
   const attachCmd =
     wb.status === 'ready' && wb.herdrAvailable
@@ -73,13 +116,142 @@ export function WorkbenchTopBar({
         ? wb.folders[0]!.name
         : wb.folders.map((f) => f.name).join(', '));
 
+  const envPanel =
+    envOpen &&
+    createPortal(
+      <div
+        ref={envPanelRef}
+        role="dialog"
+        aria-label={t('workbench.environment.title')}
+        style={{
+          position: 'fixed',
+          top: menuPos.top,
+          left: menuPos.left,
+          width: menuPos.width,
+          maxHeight: 'min(70vh, 520px)',
+          overflowY: 'auto',
+          zIndex: 10_000,
+          padding: space.md,
+          borderRadius: radius.md,
+          border: `1px solid ${token('borderStrong')}`,
+          background: token('surface'),
+          boxShadow: elevation('menu'),
+          display: 'flex',
+          flexDirection: 'column',
+          gap: space.sm,
+          fontSize: fontSize.sm,
+          color: token('textMuted'),
+        }}
+      >
+        {wb.status === 'stopped' && <p style={{ margin: 0, fontSize: fontSize.sm }}>{t('workbench.subtitle')}</p>}
+        {wb.issue && <p style={{ margin: 0, color: token('danger') }}>{t(`workbench.issue.${wb.issue}`)}</p>}
+        {(probe.installed || probe.installing || showInstall) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: space.md }}>
+            <span style={{ fontSize: fontSize.sm }}>
+              {probe.remote
+                ? t('workbench.herdr.remote').replace('{{target}}', probe.displayPath ?? '')
+                : probe.installed
+                  ? t('workbench.herdr.local')
+                      .replace('{{version}}', probe.version ?? '—')
+                      .replace('{{path}}', probe.displayPath ?? '')
+                  : t('workbench.herdr.notFound')}
+            </span>
+            {showInstall && (
+              <button
+                type="button"
+                disabled={probe.installing || wb.status === 'starting'}
+                onClick={() => void run(installHerdr)}
+                {...hoverBackground(token('accent'), token('accentHover'))}
+                style={{
+                  all: 'unset',
+                  cursor: probe.installing ? 'default' : 'pointer',
+                  fontSize: fontSize.xs,
+                  fontWeight: 600,
+                  padding: '3px 8px',
+                  borderRadius: radius.sm,
+                  background: token('accent'),
+                  color: token('accentText'),
+                  opacity: probe.installing ? 0.6 : 1,
+                }}
+              >
+                {probe.installing ? t('workbench.herdr.installing') : t('workbench.herdr.install')}
+              </button>
+            )}
+          </div>
+        )}
+        {tasksBlocked && wb.status !== 'starting' && <p style={{ margin: 0 }}>{t('workbench.herdrMissing')}</p>}
+        {attachCmd && (
+          <p style={{ margin: 0, fontSize: fontSize.xs }}>
+            {t('workbench.attachHint')}{' '}
+            <code
+              style={{
+                fontSize: fontSize.xs,
+                padding: '1px 4px',
+                borderRadius: radius.sm,
+                background: token('bg'),
+                border: `1px solid ${token('border')}`,
+              }}
+            >
+              {attachCmd}
+            </code>
+          </p>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg, paddingTop: space.xs }}>
+          <SettingToggle
+            label={t('workbench.tasks.autoRun')}
+            hint={t('workbench.tasks.autoRunHint')}
+            checked={wb.settings.autoRun}
+            disabled={savingSettings}
+            onChange={(autoRun) => setSetting({ autoRun })}
+          />
+          <SettingToggle
+            label={t('workbench.tasks.notify')}
+            hint={t('workbench.tasks.notifyHint')}
+            checked={wb.settings.notifyCoordinator}
+            disabled={savingSettings}
+            onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
+          />
+          <SettingToggle
+            label={t('workbench.tasks.autoLaunchDependents')}
+            hint={t('workbench.tasks.autoLaunchDependentsHint')}
+            checked={wb.settings.autoLaunchDependents}
+            disabled={savingSettings}
+            onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
+          />
+        </div>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted') }}>
+          {t('workbench.herdr.sshLabel')}
+          <input
+            type="text"
+            value={sshDraft}
+            disabled={savingSettings || wb.status === 'starting'}
+            placeholder={t('workbench.herdr.sshPlaceholder')}
+            onChange={(e) => setSshDraft(e.target.value)}
+            onBlur={() => {
+              const trimmed = sshDraft.trim();
+              const next = trimmed === '' ? null : trimmed;
+              if (next === wb.settings.herdrSshTarget) return;
+              setSetting({ herdrSshTarget: next });
+            }}
+            style={{
+              padding: '4px 8px',
+              borderRadius: radius.sm,
+              border: `1px solid ${token('borderStrong')}`,
+              background: token('bg'),
+              color: token('text'),
+              fontSize: fontSize.sm,
+            }}
+          />
+          <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
+        </label>
+      </div>,
+      document.body,
+    );
+
   return (
     <section
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: envOpen ? space.sm : 0,
-        paddingBottom: envOpen ? space.sm : 0,
+        flexShrink: 0,
         borderBottom: `1px solid ${token('border')}`,
       }}
     >
@@ -101,17 +273,18 @@ export function WorkbenchTopBar({
         {wb.model && on && (
           <>
             <span
-              title={`${wb.model.providerName} / ${wb.model.modelId}`}
+              title={formatModelRef(wb.model.providerName, wb.model.modelId)}
               style={{
                 flexShrink: 1,
                 minWidth: 0,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                maxWidth: 140,
+                maxWidth: 180,
               }}
             >
-              {t('workbench.model')} {wb.model.modelId}
+              {t('workbench.model')}{' '}
+              {formatModelRef(wb.model.providerName, wb.model.modelId)}
             </span>
             <span aria-hidden style={{ color: token('borderStrong'), flexShrink: 0 }}>
               ·
@@ -138,113 +311,22 @@ export function WorkbenchTopBar({
         <AddFolderButton folders={wb.folders} t={t} run={run} />
         <span style={{ flex: 1, minWidth: 4 }} />
         <button
+          ref={envButtonRef}
           type="button"
           aria-expanded={envOpen}
-          onClick={() => setEnvOpen((v) => !v)}
+          aria-haspopup="dialog"
+          onClick={toggleEnv}
+          onPointerDown={(e) => e.stopPropagation()}
           {...hoverBackground('transparent', token('surfaceHover'))}
           style={linkBtnStyle(needsEnvAttention)}
         >
           {t('workbench.environment.title')}
-          <span aria-hidden style={{ opacity: 0.7 }}>{envOpen ? ' ▴' : ' ▾'}</span>
+          <span aria-hidden style={{ opacity: 0.7 }}>
+            {envOpen ? ' ▴' : ' ▾'}
+          </span>
         </button>
       </div>
-      {envOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: space.sm, fontSize: fontSize.sm, color: token('textMuted'), paddingLeft: 2 }}>
-          {wb.status === 'stopped' && <p style={{ margin: 0, fontSize: fontSize.sm }}>{t('workbench.subtitle')}</p>}
-          {wb.issue && <p style={{ margin: 0, color: token('danger') }}>{t(`workbench.issue.${wb.issue}`)}</p>}
-          {(probe.installed || probe.installing || showInstall) && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: space.md }}>
-              <span style={{ fontSize: fontSize.sm }}>
-                {probe.remote
-                  ? t('workbench.herdr.remote').replace('{{target}}', probe.displayPath ?? '')
-                  : probe.installed
-                    ? t('workbench.herdr.local')
-                        .replace('{{version}}', probe.version ?? '—')
-                        .replace('{{path}}', probe.displayPath ?? '')
-                    : t('workbench.herdr.notFound')}
-              </span>
-              {showInstall && (
-                <button
-                  type="button"
-                  disabled={probe.installing || wb.status === 'starting'}
-                  onClick={() => void run(installHerdr)}
-                  {...hoverBackground(token('accent'), token('accentHover'))}
-                  style={{
-                    all: 'unset',
-                    cursor: probe.installing ? 'default' : 'pointer',
-                    fontSize: fontSize.xs,
-                    fontWeight: 600,
-                    padding: '3px 8px',
-                    borderRadius: radius.sm,
-                    background: token('accent'),
-                    color: token('accentText'),
-                    opacity: probe.installing ? 0.6 : 1,
-                  }}
-                >
-                  {probe.installing ? t('workbench.herdr.installing') : t('workbench.herdr.install')}
-                </button>
-              )}
-            </div>
-          )}
-          {tasksBlocked && wb.status !== 'starting' && <p style={{ margin: 0 }}>{t('workbench.herdrMissing')}</p>}
-          {attachCmd && (
-            <p style={{ margin: 0, fontSize: fontSize.xs }}>
-              {t('workbench.attachHint')}{' '}
-              <code style={{ fontSize: fontSize.xs, padding: '1px 4px', borderRadius: radius.sm, background: token('surface'), border: `1px solid ${token('border')}` }}>
-                {attachCmd}
-              </code>
-            </p>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg, paddingTop: space.xs }}>
-            <SettingToggle
-              label={t('workbench.tasks.autoRun')}
-              hint={t('workbench.tasks.autoRunHint')}
-              checked={wb.settings.autoRun}
-              disabled={savingSettings}
-              onChange={(autoRun) => setSetting({ autoRun })}
-            />
-            <SettingToggle
-              label={t('workbench.tasks.notify')}
-              hint={t('workbench.tasks.notifyHint')}
-              checked={wb.settings.notifyCoordinator}
-              disabled={savingSettings}
-              onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
-            />
-            <SettingToggle
-              label={t('workbench.tasks.autoLaunchDependents')}
-              hint={t('workbench.tasks.autoLaunchDependentsHint')}
-              checked={wb.settings.autoLaunchDependents}
-              disabled={savingSettings}
-              onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
-            />
-          </div>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted'), maxWidth: 360 }}>
-            {t('workbench.herdr.sshLabel')}
-            <input
-              type="text"
-              value={sshDraft}
-              disabled={savingSettings || wb.status === 'starting'}
-              placeholder={t('workbench.herdr.sshPlaceholder')}
-              onChange={(e) => setSshDraft(e.target.value)}
-              onBlur={() => {
-                const trimmed = sshDraft.trim();
-                const next = trimmed === '' ? null : trimmed;
-                if (next === wb.settings.herdrSshTarget) return;
-                setSetting({ herdrSshTarget: next });
-              }}
-              style={{
-                padding: '4px 8px',
-                borderRadius: radius.sm,
-                border: `1px solid ${token('borderStrong')}`,
-                background: token('surface'),
-                color: token('text'),
-                fontSize: fontSize.sm,
-              }}
-            />
-            <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
-          </label>
-        </div>
-      )}
+      {envPanel}
     </section>
   );
 }
