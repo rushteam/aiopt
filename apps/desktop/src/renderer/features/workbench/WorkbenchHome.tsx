@@ -561,7 +561,7 @@ function TaskBoard({
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
 
   return (
-    <section aria-label={t('workbench.tasks.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'row', minHeight: 0 }}>
+    <section aria-label={t('workbench.tasks.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <TaskBoardTabRow
         tasks={tasks}
         selectedId={selectedId}
@@ -578,7 +578,6 @@ function TaskBoard({
         runnable={runnable}
         selectedTask={selectedTask}
       />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {wb.status !== 'ready' && (
         <p
           style={{
@@ -661,7 +660,6 @@ function TaskBoard({
             <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.base }}>{t('workbench.tasks.empty')}</p>
           </div>
         )}
-      </div>
       </div>
     </section>
   );

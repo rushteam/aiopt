@@ -1,10 +1,7 @@
 import type { CSSProperties } from 'react';
-import { fontSize, radius, space, token } from '../../themes/tokens';
+import { fontSize, radius, token } from '../../themes/tokens';
 
-/** Width of the vertical task rail (tabs + summary). */
-export const TASK_TAB_RAIL_WIDTH = 152;
-
-/** Shared chrome height for horizontal task tabs (legacy strip). */
+/** Shared chrome height for task tabs and row controls (Chrome-style tab strip). */
 export const TASK_TAB_HEIGHT = 30;
 export const TASK_TAB_MARGIN_TOP = 4;
 export const TASK_TAB_MARGIN_BOTTOM = -1;
@@ -18,7 +15,7 @@ const tabStripLift: CSSProperties = {
   boxSizing: 'border-box',
 };
 
-/** Inactive tab / tool control on a horizontal tab strip. */
+/** Inactive tab / tool control on the tab strip. */
 export function taskTabInactiveChrome(overrides?: CSSProperties): CSSProperties {
   return {
     ...tabStripLift,
@@ -30,24 +27,24 @@ export function taskTabInactiveChrome(overrides?: CSSProperties): CSSProperties 
   };
 }
 
-/** Summary block at the top of the vertical rail. */
-export function taskRailStatBlockStyle(): CSSProperties {
+/** Left summary chip (task count · live slots). */
+export function taskTabStatChipStyle(): CSSProperties {
   return {
+    ...taskTabInactiveChrome(),
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     flexShrink: 0,
-    padding: `${space.sm}px ${space.md}px`,
-    borderBottom: `1px solid ${token('border')}`,
-    fontSize: fontSize.xs,
+    padding: '0 10px',
+    fontSize: fontSize.sm,
     fontVariantNumeric: 'tabular-nums',
     color: token('textMuted'),
     userSelect: 'none',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    lineHeight: 1.3,
   };
 }
 
-/** Icon control on a horizontal tab strip (+, ⋯). */
+/** Icon-sized control on the right (+, ⋯). */
 export function taskTabToolButtonStyle(overrides?: CSSProperties): CSSProperties {
   return {
     all: 'unset',
@@ -58,26 +55,6 @@ export function taskTabToolButtonStyle(overrides?: CSSProperties): CSSProperties
     justifyContent: 'center',
     width: 32,
     flexShrink: 0,
-    color: token('textMuted'),
-    ...overrides,
-  };
-}
-
-/** Footer control on the vertical rail (+, board menu). */
-export function taskRailToolButtonStyle(overrides?: CSSProperties): CSSProperties {
-  return {
-    all: 'unset',
-    boxSizing: 'border-box',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    minHeight: 28,
-    borderRadius: radius.sm,
-    border: `1px solid ${token('borderStrong')}`,
-    background: token('bg'),
-    fontSize: fontSize.sm,
     color: token('textMuted'),
     ...overrides,
   };

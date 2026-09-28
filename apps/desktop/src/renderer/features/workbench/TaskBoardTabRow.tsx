@@ -1,14 +1,19 @@
-import { token, fontSize, space } from '../../themes/tokens';
+import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { WORKBENCH_LIMITS, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { TaskTabBar } from './TaskTabBar';
 import { TaskBoardActionsMenu } from './TaskBoardActionsMenu';
-import { TASK_TAB_RAIL_WIDTH, taskRailStatBlockStyle, taskRailToolButtonStyle } from './taskTabChrome';
+import {
+  TASK_TAB_HEIGHT,
+  TASK_TAB_MARGIN_BOTTOM,
+  TASK_TAB_MARGIN_TOP,
+  taskTabStatChipStyle,
+  taskTabToolButtonStyle,
+} from './taskTabChrome';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
-/** Vertical task rail: summary, tab list, new-task and board actions. */
 export function TaskBoardTabRow({
   tasks,
   selectedId,
@@ -43,29 +48,45 @@ export function TaskBoardTabRow({
   const statTitle = `${t('workbench.tasks.taskTotal').replace('{{count}}', String(tasks.length))} · ${t('workbench.tasks.concurrent')} ${liveCount}/${WORKBENCH_LIMITS.liveTasks}`;
 
   return (
-    <aside
-      aria-label={t('workbench.tasks.title')}
+    <div
       style={{
-        width: TASK_TAB_RAIL_WIDTH,
-        flexShrink: 0,
         display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-        borderRight: `1px solid ${token('border')}`,
+        alignItems: 'flex-end',
+        gap: space.md,
+        minHeight: TASK_TAB_HEIGHT + TASK_TAB_MARGIN_TOP,
+        paddingLeft: space.md,
+        paddingRight: space.md,
+        borderBottom: `1px solid ${token('border')}`,
         background: token('bg'),
+        flexShrink: 0,
       }}
     >
-      <div title={statTitle} aria-label={statTitle} style={taskRailStatBlockStyle()}>
-        <span style={{ color: token('text'), fontWeight: 600, fontSize: fontSize.sm }}>{tasks.length}</span>
-        <span style={{ fontSize: fontSize.xs }}>
-          {t('workbench.tasks.concurrent')} {liveCount}/{WORKBENCH_LIMITS.liveTasks}
+      <div
+        title={statTitle}
+        aria-label={statTitle}
+        style={taskTabStatChipStyle()}
+      >
+        <span style={{ color: token('text'), fontWeight: 600 }}>{tasks.length}</span>
+        <span aria-hidden style={{ width: 1, height: 14, background: token('borderStrong'), opacity: 0.55 }} />
+        <span>
+          {liveCount}/{WORKBENCH_LIMITS.liveTasks}
         </span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div
+        aria-hidden
+        style={{
+          width: 1,
+          height: 18,
+          background: token('border'),
+          flexShrink: 0,
+          marginBottom: 6,
+          alignSelf: 'flex-end',
+        }}
+      />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-end' }}>
         {tasks.length > 0 ? (
           <TaskTabBar
             embedded
-            vertical
             tasks={tasks}
             selectedId={selectedId}
             onSelect={onSelect}
@@ -75,29 +96,18 @@ export function TaskBoardTabRow({
             onEditTask={onEditTask}
           />
         ) : (
-          <p
+          <span
             style={{
-              margin: 0,
-              padding: space.md,
-              fontSize: fontSize.xs,
-              lineHeight: 1.45,
+              fontSize: fontSize.sm,
               color: token('textMuted'),
+              padding: `${TASK_TAB_MARGIN_TOP}px 0 ${Math.max(0, -TASK_TAB_MARGIN_BOTTOM)}px`,
             }}
           >
             {t('workbench.tasks.empty')}
-          </p>
+          </span>
         )}
       </div>
-      <div
-        style={{
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: space.xs,
-          padding: space.sm,
-          borderTop: `1px solid ${token('border')}`,
-        }}
-      >
+      <div style={{ display: 'inline-flex', alignItems: 'flex-end', flexShrink: 0, gap: 0 }}>
         <button
           type="button"
           aria-label={t('workbench.tasks.new')}
@@ -106,8 +116,10 @@ export function TaskBoardTabRow({
           onClick={onNewTask}
           {...hoverBackground(token('bg'), token('surfaceHover'))}
           style={{
-            ...taskRailToolButtonStyle({
+            ...taskTabToolButtonStyle({
               cursor: creating || taskFull ? 'default' : 'pointer',
+              borderRadius: `${radius.sm}px 0 0 0`,
+              borderRight: 'none',
               fontSize: fontSize.lg,
               lineHeight: 1,
               opacity: creating || taskFull ? 0.45 : 1,
@@ -117,18 +129,18 @@ export function TaskBoardTabRow({
           +
         </button>
         <TaskBoardActionsMenu
-          rail
-          wb={wb}
-          t={t}
-          run={run}
-          selectedTask={selectedTask}
-          canRun={canRun}
-          runnable={runnable}
-          onEditTask={() => {
-            if (selectedTask) onEditTask(selectedTask.id);
-          }}
+          paired
+        wb={wb}
+        t={t}
+        run={run}
+        selectedTask={selectedTask}
+        canRun={canRun}
+        runnable={runnable}
+        onEditTask={() => {
+          if (selectedTask) onEditTask(selectedTask.id);
+        }}
         />
       </div>
-    </aside>
+    </div>
   );
 }

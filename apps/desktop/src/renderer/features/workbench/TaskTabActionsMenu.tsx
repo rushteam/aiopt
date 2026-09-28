@@ -16,15 +16,12 @@ export function TaskTabActionsMenu({
   t,
   run,
   onEdit,
-  rail,
 }: {
   task: TaskView;
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
   onEdit: () => void;
-  /** Compact control on the vertical task rail. */
-  rail?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -163,45 +160,27 @@ export function TaskTabActionsMenu({
         aria-expanded={open}
         onClick={toggleMenu}
         onPointerDown={(e) => e.stopPropagation()}
-        {...hoverBackground(rail ? token('surface') : token('surface'), token('surfaceHover'))}
-        style={
-          rail
-            ? {
-                all: 'unset',
-                boxSizing: 'border-box',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 28,
-                flexShrink: 0,
-                alignSelf: 'stretch',
-                borderLeft: `1px solid ${token('border')}`,
-                background: token('surface'),
-                color: token('textMuted'),
-                fontSize: fontSize.xs,
-              }
-            : {
-                all: 'unset',
-                boxSizing: 'border-box',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 26,
-                height: TASK_TAB_HEIGHT,
-                marginTop: TASK_TAB_MARGIN_TOP,
-                marginBottom: TASK_TAB_MARGIN_BOTTOM,
-                borderRadius: `0 ${radius.sm}px 0 0`,
-                border: `1px solid ${token('border')}`,
-                borderLeft: 'none',
-                borderBottom: `1px solid ${token('surface')}`,
-                background: token('surface'),
-                color: token('textMuted'),
-                fontSize: fontSize.xs,
-                flexShrink: 0,
-              }
-        }
+        {...hoverBackground(token('surface'), token('surfaceHover'))}
+        style={{
+          all: 'unset',
+          boxSizing: 'border-box',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 26,
+          height: TASK_TAB_HEIGHT,
+          marginTop: TASK_TAB_MARGIN_TOP,
+          marginBottom: TASK_TAB_MARGIN_BOTTOM,
+          borderRadius: `0 ${radius.sm}px 0 0`,
+          border: `1px solid ${token('border')}`,
+          borderLeft: 'none',
+          borderBottom: `1px solid ${token('surface')}`,
+          background: token('surface'),
+          color: token('textMuted'),
+          fontSize: fontSize.xs,
+          flexShrink: 0,
+        }}
       >
         ▾
       </button>
