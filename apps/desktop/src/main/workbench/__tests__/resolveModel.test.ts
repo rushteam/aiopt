@@ -8,7 +8,7 @@ function snapshot(proxied: boolean, bound = true): ProvidersSnapshot {
       {
         id: 'p1',
         name: 'Acme',
-        apiFormat: 'anthropic',
+        apiFormats: ['anthropic'],
         baseUrl: 'https://api.acme.test',
         models: [{ id: 'claude-x', alias: 'cx' }],
         createdAt: 1,
@@ -50,6 +50,12 @@ describe('resolveWorkbenchModel', () => {
       modelId: 'cx',
       key: 'sk-real',
     });
+  });
+
+  it('uses the format pi shares with a multi-format provider', () => {
+    const snap = snapshot(false);
+    snap.providers[0]!.apiFormats = ['openai', 'anthropic'];
+    expect(resolveWorkbenchModel(sources(snap))?.api).toBe('anthropic-messages');
   });
 
   it('follows the proxy route with its token when pi is routed', () => {
