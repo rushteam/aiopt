@@ -5,7 +5,7 @@
 // routed, straight to the provider otherwise. The credential this returns is secret-class
 // (see ResolvedWorkbenchModel.key) — the manager hands it to child processes by environment.
 
-import { wireModelName, type ApiFormat } from '../../shared/aiProviders';
+import { getAgentDef, resolveBindingRoute, wireModelName, type ApiFormat } from '../../shared/aiProviders';
 import type { ProvidersSnapshot } from '../../shared/ipc-channels';
 import { API_BY_FORMAT } from '../providers/adapters/piAdapter';
 import type { ResolvedWorkbenchModel } from './workbenchManager';
@@ -37,10 +37,14 @@ export function resolveWorkbenchModel(sources: ModelSources): ResolvedWorkbenchM
       key: endpoint.token,
     };
   }
+  // Direct bindings speak a format both sides share. The same route the provider
+  // binding uses, so a multi-format provider does not pick a dialect pi cannot.
+  const route = resolveBindingRoute(getAgentDef('pi')!, provider.apiFormats);
+  if (!route || route.kind !== 'native') return null;
   return {
     view: { providerName: provider.name, modelId: wire, proxied: false },
     baseUrl: provider.baseUrl,
-    api: API_BY_FORMAT[provider.apiFormat],
+    api: API_BY_FORMAT[route.outbound],
     modelId: wire,
     // A keyless provider (a local server) still needs a non-empty value for pi.
     key: sources.resolveUpstreamKey(provider.id) ?? '',
