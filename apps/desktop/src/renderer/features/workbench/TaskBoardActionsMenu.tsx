@@ -11,7 +11,7 @@ import {
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { completeTask, launchTask, runAllTasks, stopTask } from '../../lib/workbenchStore';
-import { taskTabToolButtonStyle } from './taskTabChrome';
+import { taskRailToolButtonStyle, taskTabToolButtonStyle } from './taskTabChrome';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
@@ -24,6 +24,7 @@ export function TaskBoardActionsMenu({
   runnable,
   onEditTask,
   paired,
+  rail,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
@@ -32,8 +33,10 @@ export function TaskBoardActionsMenu({
   canRun: boolean;
   runnable: number;
   onEditTask: () => void;
-  /** Renders flush with the new-task (+) control on the tab strip. */
+  /** Renders flush with the new-task (+) control on a horizontal tab strip. */
   paired?: boolean;
+  /** Full-width control at the bottom of the vertical task rail. */
+  rail?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -185,15 +188,19 @@ export function TaskBoardActionsMenu({
         onClick={toggle}
         onPointerDown={(e) => e.stopPropagation()}
         {...hoverBackground(token('bg'), token('surfaceHover'))}
-        style={taskTabToolButtonStyle(
-          paired
-            ? {
-                borderRadius: `0 ${radius.sm}px 0 0`,
-                fontSize: fontSize.md,
-                letterSpacing: 1,
-              }
-            : { fontSize: fontSize.md, letterSpacing: 1 },
-        )}
+        style={
+          rail
+            ? taskRailToolButtonStyle({ fontSize: fontSize.md, letterSpacing: 1 })
+            : taskTabToolButtonStyle(
+                paired
+                  ? {
+                      borderRadius: `0 ${radius.sm}px 0 0`,
+                      fontSize: fontSize.md,
+                      letterSpacing: 1,
+                    }
+                  : { fontSize: fontSize.md, letterSpacing: 1 },
+              )
+        }
       >
         ⋯
       </button>

@@ -16,7 +16,7 @@ function statusDot(status: TaskStatus): string {
   return token('borderStrong');
 }
 
-const tabBarStyle = {
+const horizontalTabBarStyle = {
   display: 'flex',
   alignItems: 'flex-end',
   gap: 0,
@@ -25,6 +25,17 @@ const tabBarStyle = {
   flex: 1,
   minWidth: 0,
   minHeight: TASK_TAB_HEIGHT + TASK_TAB_MARGIN_TOP,
+  scrollbarGutter: 'stable' as const,
+};
+
+const verticalTabBarStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: 0,
+  overflowX: 'hidden' as const,
+  overflowY: 'auto' as const,
+  flex: 1,
+  minHeight: 0,
   scrollbarGutter: 'stable' as const,
 };
 
@@ -37,6 +48,7 @@ export function TaskTabBar({
   run,
   onEditTask,
   embedded = false,
+  vertical = false,
 }: {
   tasks: readonly TaskView[];
   selectedId: string | null;
@@ -45,11 +57,13 @@ export function TaskTabBar({
   wb: WorkbenchSnapshot;
   run: Runner;
   onEditTask: (taskId: string) => void;
-  /** When true, omit outer chrome (used inside {@link TaskBoardTabRow}). */
   embedded?: boolean;
+  /** Vertical list inside the task rail (default when embedded). */
+  vertical?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
+  const useVertical = vertical || embedded;
 
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -61,11 +75,80 @@ export function TaskTabBar({
     <div
       ref={scrollRef}
       role="tablist"
+      aria-orientation={useVertical ? 'vertical' : 'horizontal'}
       aria-label={t('workbench.tasks.list')}
-      style={embedded ? tabBarStyle : { ...tabBarStyle, flexShrink: 0, padding: `0 ${space.sm}px`, borderBottom: `1px solid ${token('border')}`, background: token('bg') }}
+      style={
+        useVertical
+          ? verticalTabBarStyle
+          : embedded
+            ? horizontalTabBarStyle
+            : {
+                ...horizontalTabBarStyle,
+                flexShrink: 0,
+                padding: `0 ${space.sm}px`,
+                borderBottom: `1px solid ${token('border')}`,
+                background: token('bg'),
+              }
+      }
     >
       {tasks.map((task) => {
         const selected = task.id === selectedId;
+        if (useVertical) {
+          return (
+            <div
+              key={task.id}
+              style={{
+                display: 'flex',
+                alignItems: 'stretch',
+                flexShrink: 0,
+                borderBottom: `1px solid ${token('border')}`,
+              }}
+            >
+              <button
+                ref={selected ? selectedRef : undefined}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                title={`${task.title}\n${t('workbench.tasks.dragMention')}`}
+                onClick={() => onSelect(task.id)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(TASK_MENTION_DRAG_TYPE, JSON.stringify({ id: task.id, title: task.title }));
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                {...hoverBackground(selected ? token('surface') : token('bg'), token('surfaceHover'))}
+                style={{
+                  all: 'unset',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 8px 8px 10px',
+                  borderLeft: `${selected ? 3 : 3}px solid ${selected ? token('accent') : 'transparent'}`,
+                  background: selected ? token('surface') : token('bg'),
+                  fontSize: fontSize.sm,
+                  color: selected ? token('text') : token('textMuted'),
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{ width: 6, height: 6, borderRadius: '50%', background: statusDot(task.status), flexShrink: 0 }}
+                />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {task.title}
+                </span>
+              </button>
+              {selected && (
+                <TaskTabActionsMenu task={task} wb={wb} t={t} run={run} onEdit={() => onEditTask(task.id)} rail />
+              )}
+            </div>
+          );
+        }
+
         const tabButton = (
           <button
             ref={selected ? selectedRef : undefined}
