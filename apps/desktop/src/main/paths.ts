@@ -58,3 +58,12 @@ export function skillsLibraryPath(location: SkillsLibraryLocation): string {
   }
   return path.join(app.getPath('userData'), 'skills');
 }
+
+/**
+ * The workbench's own data: its private pi config dir (models.json references the credential
+ * as `$AIOPT_WB_KEY` and never holds it), the orchestrator's read-only extension and empty cwd,
+ * and the granted-folders list. Never the user's `~/.pi/agent`.
+ */
+export function workbenchDir(): string {
+  return path.join(app.getPath('userData'), 'workbench');
+}

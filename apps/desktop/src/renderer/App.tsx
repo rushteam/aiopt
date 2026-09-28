@@ -1,5 +1,5 @@
-// App root. A top tab bar switches between the three peer screens (Providers /
-// Skills / Usage); a gear on that bar toggles the Settings surface, which floats
+// App root. A top tab bar switches between the peer screens (Providers / Skills /
+// Usage / Workbench); a gear on that bar toggles the Settings surface, which floats
 // above the active tab rather than replacing it. The native menu can also drive
 // both (Settings / Usage / Skills / About commands arrive via `onMenuCommand`).
 
@@ -11,6 +11,7 @@ import { SettingsView, type SettingsSectionId } from './features/settings/Settin
 import { ProvidersHome } from './features/providers/ProvidersHome';
 import { UsageHome } from './features/usage/UsageHome';
 import { SkillsHome } from './features/skills/SkillsHome';
+import { WorkbenchHome } from './features/workbench/WorkbenchHome';
 import { TitleBar } from './components/TitleBar';
 import { BackgroundLines } from './components/background/BackgroundLines';
 import { type AppTab } from './components/TabBar';
@@ -86,6 +87,8 @@ export function App() {
             <UsageHome />
           ) : tab === 'skills' ? (
             <SkillsHome />
+          ) : tab === 'workbench' ? (
+            <WorkbenchHome />
           ) : (
             <ProvidersHome />
           )}

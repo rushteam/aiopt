@@ -367,5 +367,147 @@
       "UNSUPPORTED_CAPABILITY": "Este agente no tiene un directorio de habilidades conocido.",
       "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
     }
+  },
+  "workbench": {
+    "title": "Banco de trabajo",
+    "subtitle": "Conversa con un coordinador que divide el trabajo en tareas y ejecuta cada tarea aprobada como su propio agente pi en una sesión de herdr. Usa el proveedor y el modelo de pi definidos en Proveedores.",
+    "start": "Iniciar",
+    "stop": "Detener",
+    "cancel": "Cancelar",
+    "model": "Modelo:",
+    "proxied": "a través del proxy local",
+    "direct": "conexión directa",
+    "stopConfirm": "¿Detener el banco de trabajo? También se detendrán todas las tareas en curso.",
+    "stopConfirmYes": "Detener todo",
+    "removeConfirm": "¿Quitar esta tarea y su worktree? La rama se conserva. Un worktree con cambios sin confirmar no se quita.",
+    "removeConfirmYes": "Quitar",
+    "herdrMissing": "No se encontró herdr, así que las tareas no pueden ejecutarse. El chat sigue funcionando. Instala herdr y reinicia el banco de trabajo.",
+    "attachHint": "Observa o toma el control de los agentes desde una terminal:",
+    "status": {
+      "stopped": "Detenido",
+      "starting": "Iniciando…",
+      "ready": "En marcha",
+      "error": "No se pudo iniciar"
+    },
+    "issue": {
+      "unsupported_platform": "El banco de trabajo aún no está disponible en Windows.",
+      "pi_missing": "No se encontró pi. Instala la CLI de pi e inténtalo de nuevo.",
+      "herdr_missing": "No se encontró herdr. Instala herdr e inténtalo de nuevo.",
+      "no_binding": "pi no está vinculado a ningún proveedor. Vincula pi primero en la pestaña Proveedores.",
+      "start_failed": "El coordinador no pudo iniciarse. Revisa el proveedor y el modelo de pi e inténtalo de nuevo.",
+      "orchestrator_exited": "El coordinador se detuvo inesperadamente. Vuelve a iniciar el banco de trabajo."
+    },
+    "folders": {
+      "label": "Carpetas",
+      "empty": "Añade una carpeta en la que puedan trabajar los agentes.",
+      "add": "Añadir carpeta…",
+      "remove": "Quitar carpeta",
+      "git": "git",
+      "hint": "Los agentes solo se ejecutan dentro de estas carpetas; el coordinador solo puede leerlas."
+    },
+    "chat": {
+      "title": "Coordinador",
+      "reset": "Nueva conversación",
+      "empty": "Describe lo que quieres hacer. El coordinador propone tareas en el tablero. Ejecutar inicia cada una como un agente propio que puede cambiar archivos en su carpeta, así que nada se ejecuta hasta que pulses Ejecutar (o actives la ejecución automática).",
+      "notRunning": "Inicia el banco de trabajo para conversar con el coordinador.",
+      "placeholder": "Escribe al coordinador",
+      "sendHint": "Intro para enviar · Mayús+Intro para nueva línea",
+      "send": "Enviar",
+      "abort": "Detener respuesta",
+      "you": "Tú:",
+      "thinking": "Razonamiento",
+      "replying": "Respondiendo…",
+      "error": "Error:",
+      "tool": {
+        "running": "en curso",
+        "done": "hecho",
+        "failed": "falló",
+        "args": "Entrada",
+        "result": "Resultado"
+      },
+      "history": "Historial",
+      "historyEmpty": "Aún no hay conversaciones guardadas.",
+      "untitled": "Conversación sin título",
+      "current": "Actual",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar esta conversación?",
+      "taskUpdate": "Actualización de tareas (enviada por la app)"
+    },
+    "notice": {
+      "board_full": "Se descartaron algunas tareas propuestas: el tablero está lleno.",
+      "session_reset": "Se inició una nueva conversación.",
+      "session_opened": "Conversación restaurada."
+    },
+    "tasks": {
+      "title": "Tareas",
+      "running": "En curso",
+      "new": "Nueva tarea",
+      "create": "Añadir tarea",
+      "save": "Guardar",
+      "empty": "Aún no hay tareas. Pídeselas al coordinador o añade una tú.",
+      "titleLabel": "Título",
+      "promptLabel": "Qué hacer (se envía al agente)",
+      "folderLabel": "Carpeta",
+      "noFolder": "Elige una carpeta",
+      "folderGone": "Carpeta quitada",
+      "isolated": "Worktree propio (rama nueva)",
+      "isolatedUnavailable": "Solo una carpeta git puede ejecutar una tarea en su propio worktree.",
+      "needFolder": "Elige primero una carpeta.",
+      "fromCoordinator": "Propuesta por el coordinador",
+      "fromYou": "Añadida por ti",
+      "worktree": "Worktree:",
+      "branch": "Rama:",
+      "attach": "Conectar:",
+      "runAll": "Ejecutar todo",
+      "runAllHint": "Ejecutar todas las tareas propuestas que tengan carpeta.",
+      "autoRun": "Ejecutar propuestas automáticamente",
+      "autoRunHint": "Ejecutar enseguida las propuestas del coordinador que indiquen una carpeta. Solo en respuestas a tus propios mensajes.",
+      "autoLaunchDependents": "Iniciar tareas dependientes",
+      "autoLaunchDependentsHint": "Al marcar una tarea como hecha, inicia las propuestas que dependen de ella y están listas.",
+      "waitingOn": "Esperando a:",
+      "notify": "Informar al coordinador",
+      "notifyHint": "Cuando una tarea necesite revisión o una respuesta, o falle, avisar al coordinador para que lo resuma en el chat.",
+      "promptPlaceholder": "p. ej.: Añade validación al formulario de registro en src/auth, luego ejecuta las pruebas unitarias y corrige los fallos.",
+      "promptHint": "El agente solo ve este texto, no el chat. Indica el objetivo, los archivos implicados y cómo comprobar el resultado."
+    },
+    "taskStatus": {
+      "proposed": "Propuesta",
+      "starting": "Iniciando",
+      "working": "En curso",
+      "blocked": "Necesita respuesta",
+      "review": "Lista para revisar",
+      "done": "Hecha",
+      "stopped": "Detenida",
+      "failed": "Fallida"
+    },
+    "failure": {
+      "herdr_error": "herdr no pudo iniciar el agente.",
+      "folder_missing": "La carpeta ya no existe.",
+      "agent_lost": "Se cerró el panel del agente."
+    },
+    "actions": {
+      "launch": "Ejecutar",
+      "relaunch": "Ejecutar de nuevo",
+      "edit": "Editar",
+      "complete": "Marcar como hecha",
+      "stop": "Detener",
+      "remove": "Quitar",
+      "message": "Enviar",
+      "messagePlaceholder": "Responder al agente",
+      "showOutput": "Mostrar salida",
+      "hideOutput": "Ocultar salida"
+    },
+    "output": {
+      "loading": "Cargando…",
+      "empty": "Aún no hay salida."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Faltan datos o no son válidos.",
+      "NOT_FOUND": "Esa tarea o carpeta ya no existe.",
+      "PRECONDITION_FAILED": "No se puede hacer ahora. Puede que el banco de trabajo esté detenido, haya demasiadas tareas en curso o un worktree tenga cambios sin confirmar.",
+      "UPSTREAM_ERROR": "pi o herdr no respondió. Inténtalo de nuevo.",
+      "PERMISSION_DENIED": "Esa acción no está permitida.",
+      "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+    }
   }
 }

@@ -18,8 +18,8 @@ import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '..
 
 const PI_DEF: AgentDef = getAgentDef('pi')!;
 
-/** apiFormat → pi's model-adapter id. */
-const API_BY_FORMAT: Record<ApiFormat, string> = {
+/** apiFormat → pi's model-adapter id. Also used by the workbench's own pi config. */
+export const API_BY_FORMAT: Record<ApiFormat, string> = {
   openai: 'openai-completions',
   // pi does not accept openai-responses providers (see AGENTS.acceptedFormats), so this
   // entry is never reached; kept for type-completeness, treated as OpenAI-shaped.

@@ -367,5 +367,147 @@
       "UNSUPPORTED_CAPABILITY": "Cet agent n’a pas de répertoire de compétences connu.",
       "INTERNAL": "Une erreur est survenue. Réessayez."
     }
+  },
+  "workbench": {
+    "title": "Atelier",
+    "subtitle": "Discutez avec un coordinateur qui découpe le travail en tâches, puis lancez chaque tâche approuvée comme agent pi distinct dans une session herdr. Utilise le fournisseur et le modèle de pi définis dans Fournisseurs.",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "cancel": "Annuler",
+    "model": "Modèle :",
+    "proxied": "via le proxy local",
+    "direct": "connexion directe",
+    "stopConfirm": "Arrêter l'atelier ? Toutes les tâches en cours seront aussi arrêtées.",
+    "stopConfirmYes": "Tout arrêter",
+    "removeConfirm": "Supprimer cette tâche et son worktree ? La branche est conservée. Un worktree avec des modifications non validées n'est pas supprimé.",
+    "removeConfirmYes": "Supprimer",
+    "herdrMissing": "herdr est introuvable : les tâches ne peuvent pas s'exécuter. Le chat reste disponible. Installez herdr, puis redémarrez l'atelier.",
+    "attachHint": "Suivez ou prenez la main sur les agents depuis un terminal :",
+    "status": {
+      "stopped": "Arrêté",
+      "starting": "Démarrage…",
+      "ready": "En cours",
+      "error": "Démarrage impossible"
+    },
+    "issue": {
+      "unsupported_platform": "L'atelier n'est pas encore disponible sous Windows.",
+      "pi_missing": "pi est introuvable. Installez la CLI pi, puis réessayez.",
+      "herdr_missing": "herdr est introuvable. Installez herdr, puis réessayez.",
+      "no_binding": "pi n'est lié à aucun fournisseur. Liez d'abord pi dans l'onglet Fournisseurs.",
+      "start_failed": "Le coordinateur n'a pas pu démarrer. Vérifiez le fournisseur et le modèle de pi, puis réessayez.",
+      "orchestrator_exited": "Le coordinateur s'est arrêté de façon inattendue. Redémarrez l'atelier."
+    },
+    "folders": {
+      "label": "Dossiers",
+      "empty": "Ajoutez un dossier dans lequel les agents peuvent travailler.",
+      "add": "Ajouter un dossier…",
+      "remove": "Retirer le dossier",
+      "git": "git",
+      "hint": "Les agents ne s'exécutent que dans ces dossiers ; le coordinateur peut seulement les lire."
+    },
+    "chat": {
+      "title": "Coordinateur",
+      "reset": "Nouvelle conversation",
+      "empty": "Décrivez ce que vous voulez faire. Le coordinateur propose des tâches sur le tableau. Lancer démarre chacune comme un agent distinct qui peut modifier les fichiers de son dossier : rien ne s'exécute tant que vous n'appuyez pas sur Lancer (ou n'activez pas le lancement automatique).",
+      "notRunning": "Démarrez l'atelier pour discuter avec le coordinateur.",
+      "placeholder": "Écrire au coordinateur",
+      "sendHint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
+      "send": "Envoyer",
+      "abort": "Arrêter la réponse",
+      "you": "Vous :",
+      "thinking": "Raisonnement",
+      "replying": "Réponse en cours…",
+      "error": "Erreur :",
+      "tool": {
+        "running": "en cours",
+        "done": "terminé",
+        "failed": "échec",
+        "args": "Entrée",
+        "result": "Résultat"
+      },
+      "history": "Historique",
+      "historyEmpty": "Aucune conversation enregistrée pour l'instant.",
+      "untitled": "Conversation sans titre",
+      "current": "Actuelle",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer cette conversation ?",
+      "taskUpdate": "Mise à jour des tâches (envoyée par l'application)"
+    },
+    "notice": {
+      "board_full": "Certaines tâches proposées ont été ignorées : le tableau est plein.",
+      "session_reset": "Nouvelle conversation commencée.",
+      "session_opened": "Conversation restaurée."
+    },
+    "tasks": {
+      "title": "Tâches",
+      "running": "En cours",
+      "new": "Nouvelle tâche",
+      "create": "Ajouter la tâche",
+      "save": "Enregistrer",
+      "empty": "Aucune tâche pour l'instant. Demandez au coordinateur, ou ajoutez-en une vous-même.",
+      "titleLabel": "Titre",
+      "promptLabel": "À faire (envoyé à l'agent)",
+      "folderLabel": "Dossier",
+      "noFolder": "Choisir un dossier",
+      "folderGone": "Dossier retiré",
+      "isolated": "Worktree dédié (nouvelle branche)",
+      "isolatedUnavailable": "Seul un dossier git peut exécuter une tâche dans un worktree dédié.",
+      "needFolder": "Choisissez d'abord un dossier.",
+      "fromCoordinator": "Proposée par le coordinateur",
+      "fromYou": "Ajoutée par vous",
+      "worktree": "Worktree :",
+      "branch": "Branche :",
+      "attach": "Se connecter :",
+      "runAll": "Tout lancer",
+      "runAllHint": "Lancer toutes les tâches proposées qui ont un dossier.",
+      "autoRun": "Lancer les propositions automatiquement",
+      "autoRunHint": "Lancer tout de suite les propositions du coordinateur qui indiquent un dossier. Seulement pour les réponses à vos propres messages.",
+      "autoLaunchDependents": "Lancer les tâches dépendantes",
+      "autoLaunchDependentsHint": "Quand une tâche est marquée terminée, lancer les propositions qui en dépendent et sont prêtes.",
+      "waitingOn": "En attente de :",
+      "notify": "Informer le coordinateur",
+      "notifyHint": "Quand une tâche attend une revue, attend une réponse ou échoue, prévenir le coordinateur pour qu'il résume dans la conversation.",
+      "promptPlaceholder": "Ex. : ajouter la validation des champs au formulaire d'inscription dans src/auth, puis lancer les tests unitaires et corriger les échecs.",
+      "promptHint": "L'agent ne voit que ce texte, pas la conversation. Indiquez l'objectif, les fichiers concernés et comment vérifier le résultat."
+    },
+    "taskStatus": {
+      "proposed": "Proposée",
+      "starting": "Démarrage",
+      "working": "En cours",
+      "blocked": "Attend une réponse",
+      "review": "À relire",
+      "done": "Terminée",
+      "stopped": "Arrêtée",
+      "failed": "Échec"
+    },
+    "failure": {
+      "herdr_error": "herdr n'a pas pu démarrer l'agent.",
+      "folder_missing": "Le dossier n'existe plus.",
+      "agent_lost": "Le volet de l'agent s'est fermé."
+    },
+    "actions": {
+      "launch": "Lancer",
+      "relaunch": "Relancer",
+      "edit": "Modifier",
+      "complete": "Marquer terminée",
+      "stop": "Arrêter",
+      "remove": "Supprimer",
+      "message": "Envoyer",
+      "messagePlaceholder": "Répondre à l'agent",
+      "showOutput": "Afficher la sortie",
+      "hideOutput": "Masquer la sortie"
+    },
+    "output": {
+      "loading": "Chargement…",
+      "empty": "Pas encore de sortie."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Certaines informations manquent ou sont invalides.",
+      "NOT_FOUND": "Cette tâche ou ce dossier n'existe plus.",
+      "PRECONDITION_FAILED": "Impossible pour l'instant. L'atelier est peut-être arrêté, trop de tâches sont en cours, ou un worktree contient des modifications non validées.",
+      "UPSTREAM_ERROR": "pi ou herdr n'a pas répondu. Réessayez.",
+      "PERMISSION_DENIED": "Cette action n'est pas autorisée.",
+      "INTERNAL": "Un problème est survenu. Réessayez."
+    }
   }
 }

@@ -42,6 +42,7 @@ main/        privileged process — the trust boundary
   config/configStore.ts  layered default → override config                [later stage]
   secrets/secretStore.ts safeStorage wrapper                              [later stage]
   demo/*                 the vertical-slice's main side                   [later stage]
+  workbench/*            coordinator (pi RPC) + task agents in AiOpt's own herdr session
 
 preload/preload.ts   minimal contextBridge; strips IpcRendererEvent
 
@@ -50,10 +51,12 @@ renderer/            untrusted UI context — no Node/Electron at runtime
   i18n/locales/<locale>/common.json
   themes/*             semantic tokens, light + dark                      [later stage]
   features/demo/*      the vertical-slice's renderer side                 [later stage]
+  features/workbench/* Workbench tab: coordinator chat + task board
 
 shared/              cross-process protocol only — no side effects
   ipc-errors.ts        generic error codes + isIpcError
   ipc-channels.ts      channel allowlist + payload types
+  workbench.ts         workbench snapshot types + the task action table
 ```
 
 Entries marked `[later stage]` are planned by the scaffold's roadmap and may not exist yet;

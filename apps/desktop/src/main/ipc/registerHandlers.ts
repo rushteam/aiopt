@@ -16,6 +16,7 @@ import { registerUpdateIpc } from '../update/updateIpc';
 import { registerProviderIpc } from '../providers/providerIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
+import { registerWorkbenchIpc } from '../workbench/workbenchIpc';
 import { rebuildAppMenuLabels } from '../menu/appMenu';
 import { rebuildTrayLabels } from '../tray/tray';
 import { installThemeSyncChannel } from '../config/themeSyncChannel';
@@ -34,6 +35,7 @@ import {
   getSkillsStore,
   getUpdateService,
   getUsageStore,
+  getWorkbenchManager,
 } from '../services';
 
 export function registerHandlers(): void {
@@ -74,6 +76,17 @@ export function registerHandlers(): void {
     // `dir` is resolved main-side by the store to a contained skills/library dir.
     openPath: async (dir: string) => {
       await shell.openPath(dir);
+    },
+  });
+  registerWorkbenchIpc(registry, getWorkbenchManager(), {
+    // The folder an agent may work in is chosen here in main via a native picker — never
+    // supplied by the renderer.
+    pickFolder: async () => {
+      const parent = BrowserWindow.getFocusedWindow() ?? undefined;
+      const options = { properties: ['openDirectory' as const, 'createDirectory' as const] };
+      const result = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0] ?? null;
     },
   });
   const appShortcutStore = getAppShortcutStore();

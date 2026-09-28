@@ -7,7 +7,8 @@
 // mock doesn't follow fails typecheck instead of silently drifting.
 //
 // Query parameters: `theme` (light | dark), `lang` (a LanguagePreference), `tab`
-// (providers | usage | skills), `select` (a skill name to open in the Skills detail pane).
+// (providers | usage | skills | workbench), `select` (a skill name to open in the Skills detail
+// pane).
 
 import type { AiOptBridge } from '../src/preload/preload';
 import type {
@@ -19,6 +20,7 @@ import type {
 } from '../src/shared/ipc-channels';
 import type { UsageBucket, UsageDailyPoint, UsageSnapshot, UsageTotals } from '../src/shared/usageStats';
 import type { SkillEntry, SkillMatrixRow, SkillsSnapshot } from '../src/shared/skills';
+import type { WorkbenchSnapshot } from '../src/shared/workbench';
 import { AGENT_SPECS, type AgentId, type AgentSpec } from '../src/shared/aiProviders';
 import { MENU_COMMANDS, type MenuCommand } from '../src/shared/menuCommands';
 
@@ -257,6 +259,102 @@ const prefs: PreferencesShape = {
   warnOnQuitWithProxy: true,
 };
 
+// The workbench is shown mid-session. It is fixed data: the harness never runs an agent.
+const workbenchSnapshot: WorkbenchSnapshot = {
+  status: 'ready',
+  issue: null,
+  model: { providerName: 'Anthropic', modelId: 'claude-sonnet-4-5', proxied: true },
+  streaming: false,
+  chat: [
+    { kind: 'user', id: 'c1', text: 'Add a dark-mode toggle to the docs site, and write a changelog entry for it.' },
+    {
+      kind: 'assistant',
+      id: 'c2',
+      text: 'That splits cleanly into two independent pieces. I proposed one task for each on the board — the toggle runs in its own worktree so it stays off your main branch.',
+      thinking: 'The toggle touches the site theme; the changelog is a single file. No shared edits, so they can run in parallel.',
+      streaming: false,
+    },
+    {
+      kind: 'tool',
+      id: 'c3',
+      name: 'propose_tasks',
+      args: '{"tasks":[{"title":"Dark-mode toggle"},{"title":"Changelog entry"}]}',
+      result: 'Proposed 2 tasks.',
+      isError: false,
+      done: true,
+    },
+    { kind: 'user', id: 'c4', text: 'Also check the broken links report.' },
+    {
+      kind: 'assistant',
+      id: 'c5',
+      text: 'Added a third task for the link report. It only reads files, so it runs in the folder itself.',
+      thinking: '',
+      streaming: false,
+    },
+  ],
+  tasks: [
+    {
+      id: 't1',
+      title: 'Dark-mode toggle',
+      prompt: 'Add a light/dark toggle to the docs site header. Persist the choice, respect prefers-color-scheme by default, and add a test.',
+      status: 'working',
+      origin: 'orchestrator',
+      folderId: 'f1',
+      isolated: true,
+      branch: 'wb/dark-mode-toggle-t1',
+      worktreeDisplay: '~/.herdr/worktrees/docs-site-k2fq',
+      agentName: 'wb-t1',
+      failure: null,
+      dependsOn: [],
+      createdAt: NOW - 40 * 60_000,
+      updatedAt: NOW - 2 * 60_000,
+    },
+    {
+      id: 't2',
+      title: 'Changelog entry',
+      prompt: 'Write a CHANGELOG.md entry for the dark-mode toggle under Unreleased.',
+      status: 'review',
+      origin: 'orchestrator',
+      folderId: 'f1',
+      isolated: false,
+      branch: null,
+      worktreeDisplay: null,
+      agentName: 'wb-t2',
+      failure: null,
+      dependsOn: [],
+      createdAt: NOW - 40 * 60_000,
+      updatedAt: NOW - 5 * 60_000,
+    },
+    {
+      id: 't3',
+      title: 'Broken links report',
+      prompt: 'Read reports/links.txt and list which docs pages link to missing targets.',
+      status: 'proposed',
+      origin: 'orchestrator',
+      folderId: 'f1',
+      isolated: false,
+      branch: null,
+      worktreeDisplay: null,
+      agentName: null,
+      failure: null,
+      dependsOn: ['t2'],
+      createdAt: NOW - 10 * 60_000,
+      updatedAt: NOW - 10 * 60_000,
+    },
+  ],
+  folders: [
+    { id: 'f1', name: 'docs-site', displayPath: '~/code/docs-site', isGitRepo: true },
+    { id: 'f2', name: 'notes', displayPath: '~/notes', isGitRepo: false },
+  ],
+  herdrSession: 'aiopt',
+  herdrAvailable: true,
+  conversations: [
+    { id: '0a1b2c3d-0000-4000-8000-000000000001', title: 'Add a dark-mode toggle to the docs site, and write a changelog entry for it.', updatedAt: NOW - 2 * 60_000, current: true },
+    { id: '0a1b2c3d-0000-4000-8000-000000000002', title: 'Summarize last week’s support tickets', updatedAt: NOW - 26 * 60 * 60_000, current: false },
+  ],
+  settings: { autoRun: false, notifyCoordinator: true, autoLaunchDependents: false },
+};
+
 const noop = (): void => {};
 const unsubscribe = (): (() => void) => noop;
 const refused = (): Promise<never> => Promise.reject(new Error('screenshot harness is read-only'));
@@ -320,6 +418,29 @@ const bridge: AiOptBridge = {
     reveal: refused,
     onChanged: unsubscribe,
   },
+  workbench: {
+    get: async () => workbenchSnapshot,
+    start: refused,
+    stop: refused,
+    send: refused,
+    abort: refused,
+    reset: refused,
+    addFolder: refused,
+    removeFolder: refused,
+    createTask: refused,
+    updateTask: refused,
+    launchTask: refused,
+    messageTask: refused,
+    completeTask: refused,
+    stopTask: refused,
+    removeTask: refused,
+    taskOutput: async () => ({ text: '' }),
+    runAll: refused,
+    openConversation: refused,
+    deleteConversation: refused,
+    updateSettings: refused,
+    onChanged: unsubscribe,
+  },
   getVersions: async () => ({ app: '1.0.0', electron: '41.2.0', chrome: '', node: '' }),
   quit: noop,
   // The tab is picked through the same menu command a user's menu click sends.
@@ -342,6 +463,17 @@ if (select) {
     if (row) {
       clearInterval(timer);
       row.click();
+    }
+  }, 50);
+}
+
+// The workbench has no menu command, so its tab is opened by clicking the tab button.
+if (tab === 'workbench') {
+  const timer = setInterval(() => {
+    const button = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Workbench');
+    if (button) {
+      clearInterval(timer);
+      button.click();
     }
   }, 50);
 }

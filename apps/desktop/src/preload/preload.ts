@@ -28,6 +28,9 @@ import {
   type ProvidersSnapshot,
   type SkillsImportResult,
   type ThemePreference,
+  type WorkbenchSettingsUpdateRequest,
+  type WorkbenchTaskCreateRequest,
+  type WorkbenchTaskUpdateRequest,
   type UpdateStatus,
 } from '../shared/ipc-channels';
 import type {
@@ -38,6 +41,7 @@ import type {
   SkillsSnapshot,
 } from '../shared/skills';
 import type { UsageSnapshot } from '../shared/usageStats';
+import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
@@ -291,6 +295,51 @@ const api = {
     /** Subscribe to sync-matrix changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: SkillsSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.skillsChanged, callback),
+  },
+
+  /**
+   * Workbench (multi-agent work assistant). Folders and tasks are named ONLY by the opaque
+   * ids main minted, and conversations by the uuid main listed; a folder is granted through a
+   * main-side picker (`addFolder` takes no path). Every mutation resolves to the fresh snapshot.
+   */
+  workbench: {
+    get: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchGet),
+    start: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchStart),
+    stop: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchStop),
+    send: (text: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchChatSend, { text }),
+    abort: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchChatAbort),
+    reset: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchChatReset),
+    addFolder: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderAdd),
+    removeFolder: (folderId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderRemove, { folderId }),
+    createTask: (request: WorkbenchTaskCreateRequest): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskCreate, request),
+    updateTask: (request: WorkbenchTaskUpdateRequest): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskUpdate, request),
+    launchTask: (taskId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskLaunch, { taskId }),
+    messageTask: (taskId: string, text: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskMessage, { taskId, text }),
+    completeTask: (taskId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskComplete, { taskId }),
+    stopTask: (taskId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskStop, { taskId }),
+    removeTask: (taskId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskRemove, { taskId }),
+    /** The worker's recent terminal text, control characters stripped. */
+    taskOutput: (taskId: string): Promise<TaskOutput> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId }),
+    runAll: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskRunAll),
+    openConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationOpen, { conversationId }),
+    deleteConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationDelete, { conversationId }),
+    updateSettings: (request: WorkbenchSettingsUpdateRequest): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchSettingsUpdate, request),
+    /** Subscribe to workbench changes pushed from main; returns an unsubscribe fn. */
+    onChanged: (callback: (snapshot: WorkbenchSnapshot) => void): (() => void) =>
+      subscribe(IPC_EVENTS.workbenchChanged, callback),
   },
 
   /** Read the app/runtime version strings for the About page. */

@@ -367,5 +367,147 @@
       "UNSUPPORTED_CAPABILITY": "This agent has no known skills directory.",
       "INTERNAL": "Something went wrong. Try again."
     }
+  },
+  "workbench": {
+    "title": "Workbench",
+    "subtitle": "Chat with a coordinator that breaks work into tasks, then run each approved task as its own pi agent in a herdr session. Uses pi's provider and model from Providers.",
+    "start": "Start",
+    "stop": "Stop",
+    "cancel": "Cancel",
+    "model": "Model:",
+    "proxied": "through the local proxy",
+    "direct": "direct connection",
+    "stopConfirm": "Stop the workbench? Every running task is stopped too.",
+    "stopConfirmYes": "Stop all",
+    "removeConfirm": "Remove this task and its worktree? The branch is kept. A worktree with uncommitted changes isn't removed.",
+    "removeConfirmYes": "Remove",
+    "herdrMissing": "herdr wasn't found, so tasks can't run. Chat still works. Install herdr, then restart the workbench.",
+    "attachHint": "Watch or take over the agents from a terminal:",
+    "status": {
+      "stopped": "Stopped",
+      "starting": "Starting…",
+      "ready": "Running",
+      "error": "Couldn't start"
+    },
+    "issue": {
+      "unsupported_platform": "The workbench isn't available on Windows yet.",
+      "pi_missing": "pi wasn't found. Install the pi CLI, then try again.",
+      "herdr_missing": "herdr wasn't found. Install herdr, then try again.",
+      "no_binding": "pi isn't bound to a provider. Bind pi on the Providers tab first.",
+      "start_failed": "The coordinator couldn't start. Check pi's provider and model, then try again.",
+      "orchestrator_exited": "The coordinator stopped unexpectedly. Start the workbench again."
+    },
+    "folders": {
+      "label": "Folders",
+      "empty": "Add a folder the agents may work in.",
+      "add": "Add folder…",
+      "remove": "Remove folder",
+      "git": "git",
+      "hint": "Workers only run inside these folders; the coordinator can only read them."
+    },
+    "chat": {
+      "title": "Coordinator",
+      "reset": "New conversation",
+      "empty": "Describe what you want done. The coordinator proposes tasks on the board. Run starts each one as its own agent that can change files in its folder, so nothing runs until you press Run (or turn on auto-run).",
+      "notRunning": "Start the workbench to chat with the coordinator.",
+      "placeholder": "Message the coordinator",
+      "sendHint": "Enter to send · Shift+Enter for a new line",
+      "send": "Send",
+      "abort": "Stop reply",
+      "you": "You:",
+      "thinking": "Reasoning",
+      "replying": "Replying…",
+      "error": "Error:",
+      "tool": {
+        "running": "running",
+        "done": "done",
+        "failed": "failed",
+        "args": "Input",
+        "result": "Result"
+      },
+      "history": "History",
+      "historyEmpty": "No saved conversations yet.",
+      "untitled": "Untitled conversation",
+      "current": "Current",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this conversation?",
+      "taskUpdate": "Task update (sent by the app)"
+    },
+    "notice": {
+      "board_full": "Some proposed tasks were dropped: the task board is full.",
+      "session_reset": "New conversation started.",
+      "session_opened": "Conversation restored."
+    },
+    "tasks": {
+      "title": "Tasks",
+      "running": "Running",
+      "new": "New task",
+      "create": "Add task",
+      "save": "Save",
+      "empty": "No tasks yet. Ask the coordinator, or add one yourself.",
+      "titleLabel": "Title",
+      "promptLabel": "What to do (sent to the agent)",
+      "folderLabel": "Folder",
+      "noFolder": "Pick a folder",
+      "folderGone": "Folder removed",
+      "isolated": "Own worktree (new branch)",
+      "isolatedUnavailable": "Only a git folder can run a task in its own worktree.",
+      "needFolder": "Pick a folder first.",
+      "fromCoordinator": "Proposed by the coordinator",
+      "fromYou": "Added by you",
+      "worktree": "Worktree:",
+      "branch": "Branch:",
+      "attach": "Attach:",
+      "runAll": "Run all",
+      "runAllHint": "Run every proposed task that has a folder.",
+      "autoRun": "Auto-run proposals",
+      "autoRunHint": "Run the coordinator's proposals right away when they name a folder. Only for replies to your own messages.",
+      "autoLaunchDependents": "Auto-launch dependents",
+      "autoLaunchDependentsHint": "When a task is marked done, start proposed tasks that depend on it and are otherwise ready.",
+      "waitingOn": "Waiting for:",
+      "notify": "Report back to the coordinator",
+      "notifyHint": "When a task needs review, needs input, or fails, tell the coordinator so it can summarize in the chat.",
+      "promptPlaceholder": "e.g. Add input validation to the signup form in src/auth, then run the unit tests and fix any failures.",
+      "promptHint": "The agent sees only this text, not the chat. Include the goal, the files involved, and how to check the result."
+    },
+    "taskStatus": {
+      "proposed": "Proposed",
+      "starting": "Starting",
+      "working": "Working",
+      "blocked": "Needs input",
+      "review": "Ready for review",
+      "done": "Done",
+      "stopped": "Stopped",
+      "failed": "Failed"
+    },
+    "failure": {
+      "herdr_error": "herdr couldn't start the agent.",
+      "folder_missing": "The folder no longer exists.",
+      "agent_lost": "The agent's pane closed."
+    },
+    "actions": {
+      "launch": "Run",
+      "relaunch": "Run again",
+      "edit": "Edit",
+      "complete": "Mark done",
+      "stop": "Stop",
+      "remove": "Remove",
+      "message": "Send",
+      "messagePlaceholder": "Reply to the agent",
+      "showOutput": "Show output",
+      "hideOutput": "Hide output"
+    },
+    "output": {
+      "loading": "Loading…",
+      "empty": "No output yet."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Some details are missing or invalid.",
+      "NOT_FOUND": "That task or folder no longer exists.",
+      "PRECONDITION_FAILED": "That can't be done right now. The workbench may be stopped, too many tasks may be running, or a worktree has uncommitted changes.",
+      "UPSTREAM_ERROR": "pi or herdr didn't respond. Try again.",
+      "PERMISSION_DENIED": "That action isn't permitted.",
+      "INTERNAL": "Something went wrong. Try again."
+    }
   }
 }

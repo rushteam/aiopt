@@ -367,5 +367,147 @@
       "UNSUPPORTED_CAPABILITY": "Dieser Agent hat kein bekanntes Skill-Verzeichnis.",
       "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
     }
+  },
+  "workbench": {
+    "title": "Werkbank",
+    "subtitle": "Chatten Sie mit einem Koordinator, der Arbeit in Aufgaben aufteilt, und führen Sie jede freigegebene Aufgabe als eigenen pi-Agenten in einer herdr-Sitzung aus. Verwendet den Anbieter und das Modell von pi aus „Anbieter“.",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "cancel": "Abbrechen",
+    "model": "Modell:",
+    "proxied": "über den lokalen Proxy",
+    "direct": "direkte Verbindung",
+    "stopConfirm": "Werkbank stoppen? Alle laufenden Aufgaben werden ebenfalls gestoppt.",
+    "stopConfirmYes": "Alle stoppen",
+    "removeConfirm": "Diese Aufgabe und ihren Worktree entfernen? Der Branch bleibt erhalten. Ein Worktree mit nicht committeten Änderungen wird nicht entfernt.",
+    "removeConfirmYes": "Entfernen",
+    "herdrMissing": "herdr wurde nicht gefunden, daher können keine Aufgaben laufen. Der Chat funktioniert weiterhin. Installieren Sie herdr und starten Sie die Werkbank neu.",
+    "attachHint": "Agenten im Terminal beobachten oder übernehmen:",
+    "status": {
+      "stopped": "Gestoppt",
+      "starting": "Wird gestartet…",
+      "ready": "Läuft",
+      "error": "Start fehlgeschlagen"
+    },
+    "issue": {
+      "unsupported_platform": "Die Werkbank ist unter Windows noch nicht verfügbar.",
+      "pi_missing": "pi wurde nicht gefunden. Installieren Sie die pi-CLI und versuchen Sie es erneut.",
+      "herdr_missing": "herdr wurde nicht gefunden. Installieren Sie herdr und versuchen Sie es erneut.",
+      "no_binding": "pi ist mit keinem Anbieter verbunden. Verbinden Sie pi zuerst im Tab „Anbieter“.",
+      "start_failed": "Der Koordinator konnte nicht starten. Prüfen Sie Anbieter und Modell von pi und versuchen Sie es erneut.",
+      "orchestrator_exited": "Der Koordinator wurde unerwartet beendet. Starten Sie die Werkbank erneut."
+    },
+    "folders": {
+      "label": "Ordner",
+      "empty": "Fügen Sie einen Ordner hinzu, in dem die Agenten arbeiten dürfen.",
+      "add": "Ordner hinzufügen…",
+      "remove": "Ordner entfernen",
+      "git": "git",
+      "hint": "Agenten laufen nur in diesen Ordnern; der Koordinator kann sie nur lesen."
+    },
+    "chat": {
+      "title": "Koordinator",
+      "reset": "Neue Unterhaltung",
+      "empty": "Beschreiben Sie, was erledigt werden soll. Der Koordinator schlägt Aufgaben auf dem Board vor. „Ausführen“ startet jede als eigenen Agenten, der Dateien in seinem Ordner ändern kann – deshalb läuft nichts, bevor Sie auf „Ausführen“ klicken (oder die automatische Ausführung einschalten).",
+      "notRunning": "Starten Sie die Werkbank, um mit dem Koordinator zu chatten.",
+      "placeholder": "Nachricht an den Koordinator",
+      "sendHint": "Eingabe zum Senden · Umschalt+Eingabe für neue Zeile",
+      "send": "Senden",
+      "abort": "Antwort stoppen",
+      "you": "Sie:",
+      "thinking": "Überlegung",
+      "replying": "Antwortet…",
+      "error": "Fehler:",
+      "tool": {
+        "running": "läuft",
+        "done": "fertig",
+        "failed": "fehlgeschlagen",
+        "args": "Eingabe",
+        "result": "Ergebnis"
+      },
+      "history": "Verlauf",
+      "historyEmpty": "Noch keine gespeicherten Unterhaltungen.",
+      "untitled": "Unbenannte Unterhaltung",
+      "current": "Aktuell",
+      "delete": "Löschen",
+      "deleteConfirm": "Diese Unterhaltung löschen?",
+      "taskUpdate": "Aufgaben-Update (von der App gesendet)"
+    },
+    "notice": {
+      "board_full": "Einige vorgeschlagene Aufgaben wurden verworfen: Das Aufgaben-Board ist voll.",
+      "session_reset": "Neue Unterhaltung begonnen.",
+      "session_opened": "Unterhaltung wiederhergestellt."
+    },
+    "tasks": {
+      "title": "Aufgaben",
+      "running": "Laufend",
+      "new": "Neue Aufgabe",
+      "create": "Aufgabe hinzufügen",
+      "save": "Speichern",
+      "empty": "Noch keine Aufgaben. Fragen Sie den Koordinator oder fügen Sie selbst eine hinzu.",
+      "titleLabel": "Titel",
+      "promptLabel": "Was zu tun ist (an den Agenten gesendet)",
+      "folderLabel": "Ordner",
+      "noFolder": "Ordner wählen",
+      "folderGone": "Ordner entfernt",
+      "isolated": "Eigener Worktree (neuer Branch)",
+      "isolatedUnavailable": "Nur ein git-Ordner kann eine Aufgabe in einem eigenen Worktree ausführen.",
+      "needFolder": "Wählen Sie zuerst einen Ordner.",
+      "fromCoordinator": "Vom Koordinator vorgeschlagen",
+      "fromYou": "Von Ihnen hinzugefügt",
+      "worktree": "Worktree:",
+      "branch": "Branch:",
+      "attach": "Verbinden:",
+      "runAll": "Alle ausführen",
+      "runAllHint": "Alle vorgeschlagenen Aufgaben mit Ordner ausführen.",
+      "autoRun": "Vorschläge automatisch ausführen",
+      "autoRunHint": "Vorschläge des Koordinators sofort ausführen, wenn sie einen Ordner nennen. Nur bei Antworten auf Ihre eigenen Nachrichten.",
+      "autoLaunchDependents": "Abhängige Aufgaben starten",
+      "autoLaunchDependentsHint": "Wenn eine Aufgabe als erledigt markiert wird, starten vorgeschlagene abhängige Aufgaben, sofern bereit.",
+      "waitingOn": "Wartet auf:",
+      "notify": "Koordinator informieren",
+      "notifyHint": "Wenn eine Aufgabe eine Prüfung oder Eingabe braucht oder fehlschlägt, den Koordinator benachrichtigen, damit er es im Chat zusammenfasst.",
+      "promptPlaceholder": "z. B. Dem Registrierungsformular in src/auth eine Eingabeprüfung hinzufügen, dann die Unit-Tests ausführen und Fehler beheben.",
+      "promptHint": "Der Agent sieht nur diesen Text, nicht den Chat. Nennen Sie das Ziel, die betroffenen Dateien und wie das Ergebnis geprüft wird."
+    },
+    "taskStatus": {
+      "proposed": "Vorgeschlagen",
+      "starting": "Startet",
+      "working": "In Arbeit",
+      "blocked": "Wartet auf Eingabe",
+      "review": "Bereit zur Prüfung",
+      "done": "Erledigt",
+      "stopped": "Gestoppt",
+      "failed": "Fehlgeschlagen"
+    },
+    "failure": {
+      "herdr_error": "herdr konnte den Agenten nicht starten.",
+      "folder_missing": "Der Ordner existiert nicht mehr.",
+      "agent_lost": "Der Bereich des Agenten wurde geschlossen."
+    },
+    "actions": {
+      "launch": "Ausführen",
+      "relaunch": "Erneut ausführen",
+      "edit": "Bearbeiten",
+      "complete": "Als erledigt markieren",
+      "stop": "Stoppen",
+      "remove": "Entfernen",
+      "message": "Senden",
+      "messagePlaceholder": "Dem Agenten antworten",
+      "showOutput": "Ausgabe anzeigen",
+      "hideOutput": "Ausgabe ausblenden"
+    },
+    "output": {
+      "loading": "Wird geladen…",
+      "empty": "Noch keine Ausgabe."
+    },
+    "errors": {
+      "INVALID_PARAMS": "Einige Angaben fehlen oder sind ungültig.",
+      "NOT_FOUND": "Diese Aufgabe oder dieser Ordner existiert nicht mehr.",
+      "PRECONDITION_FAILED": "Das ist gerade nicht möglich. Die Werkbank ist vielleicht gestoppt, es laufen zu viele Aufgaben, oder ein Worktree hat nicht committete Änderungen.",
+      "UPSTREAM_ERROR": "pi oder herdr hat nicht geantwortet. Versuchen Sie es erneut.",
+      "PERMISSION_DENIED": "Diese Aktion ist nicht erlaubt.",
+      "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    }
   }
 }
