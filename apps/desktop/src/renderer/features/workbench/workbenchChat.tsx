@@ -1,6 +1,6 @@
 // Shared Workbench chat shell — coordinator and task workers use the same composer + bubbles.
 
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
@@ -58,6 +58,8 @@ export function WorkbenchChatComposer({
   sendLabel,
   abortLabel,
   rows = 3,
+  onTaskMentionDrop,
+  dropHint,
 }: {
   draft: string;
   setDraft: (v: string) => void;
@@ -71,7 +73,32 @@ export function WorkbenchChatComposer({
   sendLabel: string;
   abortLabel?: string;
   rows?: number;
+  /** When set, accepts task tabs dragged from the task board. */
+  onTaskMentionDrop?: (taskId: string) => void;
+  dropHint?: string;
 }) {
+  const [dropActive, setDropActive] = useState(false);
+  const onDragOver = (e: DragEvent): void => {
+    if (!onTaskMentionDrop) return;
+    if (e.dataTransfer.types.includes('application/x-aiopt-workbench-task')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDropActive(true);
+    }
+  };
+  const onDragLeave = (): void => setDropActive(false);
+  const onDrop = (e: DragEvent): void => {
+    setDropActive(false);
+    if (!onTaskMentionDrop) return;
+    e.preventDefault();
+    try {
+      const raw = e.dataTransfer.getData('application/x-aiopt-workbench-task');
+      const doc = JSON.parse(raw) as { id?: string };
+      if (typeof doc.id === 'string') onTaskMentionDrop(doc.id);
+    } catch {
+      // ignore bad payload
+    }
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -80,7 +107,21 @@ export function WorkbenchChatComposer({
   };
 
   return (
-    <div style={{ borderTop: `1px solid ${token('border')}`, padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.sm }}>
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      style={{
+        borderTop: `1px solid ${token('border')}`,
+        padding: space.lg,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: space.sm,
+        outline: dropActive ? `2px solid ${token('accent')}` : 'none',
+        outlineOffset: -2,
+        borderRadius: dropActive ? radius.md : 0,
+      }}
+    >
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -105,7 +146,9 @@ export function WorkbenchChatComposer({
         }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
-        <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{sendHint}</span>
+        <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
+          {dropActive && dropHint ? dropHint : sendHint}
+        </span>
         <span style={{ flex: 1 }} />
         {streaming && onAbort && abortLabel && (
           <button

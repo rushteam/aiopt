@@ -857,6 +857,42 @@ describe('workbench coordinator updates', () => {
     expect(updates(s.pis[0]!)).toEqual([]);
   });
 
+  it('tells the coordinator when the user marks a task done', async () => {
+    const s = await withFolder();
+    const id = await toReview(s);
+    const pi = s.pis[0]!;
+    expect(updates(pi).map((c) => c.message)).toEqual([`/${TASK_UPDATE_COMMAND} ${id}`]);
+    await s.wb.completeTask(id);
+    await flush();
+    expect(updates(pi).map((c) => c.message)).toEqual([
+      `/${TASK_UPDATE_COMMAND} ${id}`,
+      `/${TASK_UPDATE_COMMAND} ${id}`,
+    ]);
+    expect(s.wb.getSnapshot().tasks[0]!.status).toBe('done');
+  });
+
+  it('tells the coordinator when the user stops a task', async () => {
+    const s = await withFolder();
+    const id = await toReview(s);
+    const pi = s.pis[0]!;
+    pi.commands.length = 0;
+    await s.wb.stopTask(id);
+    await flush();
+    expect(updates(pi).map((c) => c.message)).toEqual([`/${TASK_UPDATE_COMMAND} ${id}`]);
+    expect(s.wb.getSnapshot().tasks[0]!.status).toBe('stopped');
+  });
+
+  it('does not notify on complete when reporting is off', async () => {
+    const s = await withFolder();
+    const id = await toReview(s);
+    s.wb.updateSettings({ notifyCoordinator: false });
+    const pi = s.pis[0]!;
+    pi.commands.length = 0;
+    await s.wb.completeTask(id);
+    await flush();
+    expect(updates(pi)).toEqual([]);
+  });
+
   it('gives the coordinator the list_tasks tool and the update command', () => {
     expect(ORCHESTRATOR_TOOLS).toContain(LIST_TASKS_TOOL);
     expect(ORCHESTRATOR_EXTENSION_SOURCE).toContain(`registerCommand("${TASK_UPDATE_COMMAND}"`);

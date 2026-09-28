@@ -226,7 +226,7 @@ export interface HerdrProbeView {
 export interface WorkbenchSettings {
   /** Run the coordinator's proposals at once when they have a folder (user-asked turns only). */
   autoRun: boolean;
-  /** Tell the coordinator when a task needs review, needs input, or fails. */
+  /** Tell the coordinator when a task needs review, needs input, fails, or is marked done/stopped. */
   notifyCoordinator: boolean;
   /** When a task reaches `done`, launch proposed dependents that are otherwise ready (user turns only). */
   autoLaunchDependents: boolean;
