@@ -39,9 +39,20 @@ import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
 import { isCombinedProviderId } from '../../shared/combinedProvider';
-import { providerUsesOAuth } from '../../shared/oauthProviders';
+import { isAgentImportAgentId } from '../../shared/agentImport';
+import {
+  isOAuthSubscriptionKind,
+  providerNeedsProxyForUpstreamSecret,
+  providerUsesAgentImport,
+  providerUsesOAuth,
+} from '../../shared/oauthProviders';
 import type { OAuthManager } from '../oauth/oauthManager';
-import { isOAuthSubscriptionKind } from '../../shared/oauthProviders';
+import {
+  agentImportSessionAvailable,
+  readAgentImportAccessTokenSync,
+} from '../agentImport/agentImportService';
+import { scanAgentImportCandidates } from '../agentImport/agentImportService';
+import { templateForAgentImport } from '../agentImport/agentImportService';
 import type { ProviderStore } from './providerStore';
 import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
 import { describeAgentConfig } from './agentConfigView';
@@ -88,6 +99,8 @@ export interface ProviderManager {
    */
   detectFormats(input: ProviderDetectFormatsRequest): Promise<ApiFormat[]>;
   testProvider(providerId: string): Promise<ProviderTestResult>;
+  scanAgentImports(): import('../../shared/agentImport').AgentImportCandidate[];
+  addAgentImportProvider(agentId: import('../../shared/agentImport').AgentImportAgentId): ProvidersSnapshot;
   /**
    * GATED: return a provider's stored key in plaintext. This is the one read that
    * hands a secret back to the caller (and ultimately the renderer) by design —
@@ -174,6 +187,17 @@ export function createProviderManager(
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
+    const importBacked = providerUsesAgentImport(provider.credentialMode);
+    let hasKey = secrets.has(providerSecretKey(provider.id));
+    let importAccountLabel: string | null = null;
+    if (oauthBacked) {
+      hasKey = oauth?.isConnected(provider.id) ?? false;
+    } else if (importBacked && provider.agentImport) {
+      hasKey = agentImportSessionAvailable(provider.agentImport.agentId);
+      importAccountLabel =
+        scanAgentImportCandidates().find((c) => c.agentId === provider.agentImport!.agentId)
+          ?.accountLabel ?? null;
+    }
     return {
       id: provider.id,
       name: provider.name,
@@ -182,12 +206,11 @@ export function createProviderManager(
       models: provider.models,
       notes: provider.notes,
       createdAt: provider.createdAt,
-      hasKey: oauthBacked
-        ? (oauth?.isConnected(provider.id) ?? false)
-        : secrets.has(providerSecretKey(provider.id)),
+      hasKey,
       credentialMode: provider.credentialMode,
       oauth: oauthBacked ? provider.oauth : undefined,
-      oauthAccountLabel: oauthBacked ? (provider.oauth?.accountLabel ?? null) : undefined,
+      oauthAccountLabel: oauthBacked ? (provider.oauth?.accountLabel ?? null) : importAccountLabel,
+      agentImportAgentId: importBacked ? provider.agentImport?.agentId : undefined,
       dropRequestFields: provider.dropRequestFields,
     };
   }
@@ -240,6 +263,9 @@ export function createProviderManager(
     if (probeProvider && providerUsesOAuth(probeProvider.credentialMode)) {
       return oauth?.readAccessTokenSync(input.providerId) ?? null;
     }
+    if (probeProvider?.agentImport && providerUsesAgentImport(probeProvider.credentialMode)) {
+      return readAgentImportAccessTokenSync(probeProvider.agentImport.agentId);
+    }
     return secrets.get(providerSecretKey(input.providerId));
   }
 
@@ -278,9 +304,9 @@ export function createProviderManager(
     // native gemini binding is always direct). Proxy mode ON therefore routes every
     // proxyable binding through the loopback, native or not.
     const proxyable = translationSupported(inbound, outbound);
-    // OAuth tokens never go on disk — always route through the loopback proxy.
-    const oauthBacked = providerUsesOAuth(provider.credentialMode);
-    const direct = sameFormat && (!getProxyMode() || !proxyable) && !oauthBacked;
+    // OAuth / agent-import tokens never go on disk — always route through the loopback proxy.
+    const secretViaProxy = providerNeedsProxyForUpstreamSecret(provider.credentialMode);
+    const direct = sameFormat && (!getProxyMode() || !proxyable) && !secretViaProxy;
 
     if (direct) {
       // Drop any stale route left by a previous proxied binding for this agent.
@@ -324,6 +350,24 @@ export function createProviderManager(
    * (startup / proxy-mode flip) and `refreshProxyPort` (rewrite each agent to a new port).
    * A binding that is no longer bindable is skipped, not fatal.
    */
+  function resolveUpstreamKeyForProvider(provider: Provider): string | null {
+    if (providerUsesOAuth(provider.credentialMode)) {
+      return oauth?.readAccessTokenSync(provider.id) ?? null;
+    }
+    if (provider.agentImport && providerUsesAgentImport(provider.credentialMode)) {
+      return readAgentImportAccessTokenSync(provider.agentImport.agentId);
+    }
+    return secrets.get(providerSecretKey(provider.id));
+  }
+
+  function assertNoDuplicateAgentImport(agentId: import('../../shared/agentImport').AgentImportAgentId): void {
+    for (const p of store.listProviders()) {
+      if (providerUsesAgentImport(p.credentialMode) && p.agentImport?.agentId === agentId) {
+        throwIpcError('PRECONDITION_FAILED', 'a provider already imports this agent session');
+      }
+    }
+  }
+
   function rebuildRoutes(): void {
     for (const def of AGENTS) {
       const binding = store.getBinding(def.id);
@@ -358,6 +402,15 @@ export function createProviderManager(
           throwIpcError('INVALID_PARAMS', 'OAuth providers require a valid oauth.kind');
         }
       }
+      if (providerUsesAgentImport(credentialMode)) {
+        if (!input.agentImport || !isAgentImportAgentId(input.agentImport.agentId)) {
+          throwIpcError('INVALID_PARAMS', 'agent import requires a valid agentId');
+        }
+        if (!agentImportSessionAvailable(input.agentImport.agentId)) {
+          throwIpcError('PRECONDITION_FAILED', 'agent is not signed in or not importable');
+        }
+        assertNoDuplicateAgentImport(input.agentImport.agentId);
+      }
       const provider: Provider = {
         id: randomUUID(),
         name: input.name,
@@ -366,15 +419,44 @@ export function createProviderManager(
         models: input.models,
         notes: input.notes,
         createdAt: Date.now(),
-        credentialMode: providerUsesOAuth(credentialMode) ? 'oauth' : undefined,
+        credentialMode:
+          providerUsesOAuth(credentialMode) || providerUsesAgentImport(credentialMode)
+            ? credentialMode
+            : undefined,
         oauth: providerUsesOAuth(credentialMode) ? input.oauth : undefined,
+        agentImport: providerUsesAgentImport(credentialMode) ? input.agentImport : undefined,
         ...dropFieldsPatch(input.dropRequestFields),
       };
       store.addProvider(provider);
-      if (!providerUsesOAuth(credentialMode) && input.apiKey) {
+      if (
+        !providerUsesOAuth(credentialMode) &&
+        !providerUsesAgentImport(credentialMode) &&
+        input.apiKey
+      ) {
         secrets.set(providerSecretKey(provider.id), input.apiKey);
       }
       return announce();
+    },
+
+    scanAgentImports() {
+      return scanAgentImportCandidates();
+    },
+
+    addAgentImportProvider(agentId) {
+      if (!isAgentImportAgentId(agentId)) throwIpcError('INVALID_PARAMS', 'unknown agent');
+      if (!agentImportSessionAvailable(agentId)) {
+        throwIpcError('PRECONDITION_FAILED', 'agent is not signed in or not importable');
+      }
+      assertNoDuplicateAgentImport(agentId);
+      const tpl = templateForAgentImport(agentId);
+      return this.addProvider({
+        name: tpl.name,
+        apiFormats: [...tpl.apiFormats],
+        baseUrl: tpl.baseUrl,
+        models: tpl.models.map((m) => ({ ...m })),
+        credentialMode: 'agent_import',
+        agentImport: { agentId },
+      });
     },
 
     updateProvider(input) {
@@ -393,13 +475,23 @@ export function createProviderManager(
         baseUrl: input.baseUrl ?? existing.baseUrl,
         models: input.models ?? existing.models,
         notes: input.notes !== undefined ? input.notes : existing.notes,
-        credentialMode: providerUsesOAuth(credentialMode) ? 'oauth' : undefined,
-        oauth: providerUsesOAuth(credentialMode)
-          ? (input.oauth ?? existing.oauth)
+        credentialMode:
+          providerUsesOAuth(credentialMode) || providerUsesAgentImport(credentialMode)
+            ? credentialMode
+            : undefined,
+        oauth: providerUsesOAuth(credentialMode) ? (input.oauth ?? existing.oauth) : undefined,
+        agentImport: providerUsesAgentImport(credentialMode)
+          ? (input.agentImport ?? existing.agentImport)
           : undefined,
       };
       if (providerUsesOAuth(credentialMode) && next.oauth && !isOAuthSubscriptionKind(next.oauth.kind)) {
         throwIpcError('INVALID_PARAMS', 'OAuth providers require a valid oauth.kind');
+      }
+      if (
+        providerUsesAgentImport(credentialMode) &&
+        (!next.agentImport || !isAgentImportAgentId(next.agentImport.agentId))
+      ) {
+        throwIpcError('INVALID_PARAMS', 'agent import requires a valid agentId');
       }
       // Drop-fields is a whole-set replace when present (the form sends a checkbox group,
       // not a patch), so an empty array must CLEAR it rather than read as "unchanged" —
@@ -412,8 +504,8 @@ export function createProviderManager(
       }
       store.replaceProvider(next);
 
-      // apiKey: string replaces, null clears, undefined leaves alone (OAuth providers ignore keys).
-      if (!providerUsesOAuth(credentialMode)) {
+      // apiKey: string replaces, null clears, undefined leaves alone (OAuth/import ignore keys).
+      if (!providerUsesOAuth(credentialMode) && !providerUsesAgentImport(credentialMode)) {
         if (input.apiKey === null) {
           secrets.delete(providerSecretKey(input.id));
         } else if (typeof input.apiKey === 'string' && input.apiKey !== '') {
@@ -433,9 +525,12 @@ export function createProviderManager(
           getProxy().unregisterRoute({ agentId: def.id });
         }
       }
+      const removed = store.getProvider(id);
       store.removeProvider(id);
       secrets.delete(providerSecretKey(id));
-      oauth?.disconnect(id);
+      if (removed && providerUsesOAuth(removed.credentialMode)) {
+        oauth?.disconnect(id);
+      }
       return announce();
     },
 
@@ -511,17 +606,15 @@ export function createProviderManager(
       if (!provider) {
         return { ok: false, latencyMs: null, format: null, error: 'not_found' as const };
       }
-      const apiKey = providerUsesOAuth(provider.credentialMode)
-        ? (oauth?.readAccessTokenSync(providerId) ?? null)
-        : secrets.get(providerSecretKey(providerId));
+      const apiKey = resolveUpstreamKeyForProvider(provider);
       return testProviderConnectivity(provider, apiKey, fetchImpl);
     },
 
     revealKey(providerId) {
       const provider = store.getProvider(providerId);
       if (!provider) throwIpcError('NOT_FOUND', 'provider not found');
-      if (providerUsesOAuth(provider.credentialMode)) {
-        throwIpcError('PRECONDITION_FAILED', 'OAuth providers do not expose a stored API key');
+      if (providerNeedsProxyForUpstreamSecret(provider.credentialMode)) {
+        throwIpcError('PRECONDITION_FAILED', 'this provider does not expose a stored API key');
       }
       // Deliberate plaintext read for the "view saved key" feature. Never log this
       // value; the caller (renderer) must hold it transiently only.
@@ -529,13 +622,9 @@ export function createProviderManager(
     },
 
     resolveUpstreamKey(providerId) {
-      // Main-side-only plaintext read for the proxy's outbound request. Never logged,
-      // never returned across IPC (unlike revealKey, whose value reaches the renderer).
       const provider = store.getProvider(providerId);
-      if (provider && providerUsesOAuth(provider.credentialMode)) {
-        return oauth?.readAccessTokenSync(providerId) ?? null;
-      }
-      return secrets.get(providerSecretKey(providerId));
+      if (!provider) return null;
+      return resolveUpstreamKeyForProvider(provider);
     },
 
     resolveDropFields(providerId) {

@@ -37,6 +37,8 @@
   `docs/dev-rules/credentials-and-local-storage.md`.
 - Before adding or changing OAuth subscription providers (browser login, PKCE, token refresh,
   provider proxy routing): read `docs/dev-rules/oauth-providers.md`.
+- Before importing agent disk sessions as pool providers (Codex / Claude / Copilot sign-ins):
+  read `docs/dev-rules/agent-import-providers.md`.
 - Before changing the SQLite schema, a migration, or runtime DB access: read
   `docs/dev-rules/database-and-migrations.md`.
 - Before touching the update provider / service, or wiring any real update feed, downloader,

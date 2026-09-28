@@ -36,6 +36,8 @@ export function ProviderCard({
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [oauthBusy, setOauthBusy] = useState(false);
   const isOAuth = provider.credentialMode === 'oauth';
+  const isAgentImport = provider.credentialMode === 'agent_import';
+  const sessionBacked = isOAuth || isAgentImport;
 
   async function onTest(): Promise<void> {
     if (provider.virtual) return;
@@ -118,7 +120,7 @@ export function ProviderCard({
       )}
       <p style={metaStyle}>
         {t('providers.card.models')}: {provider.models.length}
-        {isOAuth ? (
+        {sessionBacked ? (
           <>
             {' · '}
             {provider.hasKey
@@ -186,10 +188,15 @@ export function ProviderCard({
                     : t('providers.card.oauthConnect')}
               </button>
             )}
+            {isAgentImport && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.card.agentImportHint')}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void onTest()}
-              disabled={busy || testing || (isOAuth && !provider.hasKey)}
+              disabled={busy || testing || (sessionBacked && !provider.hasKey)}
               {...hoverBackground('transparent', token('surfaceHover'))}
               style={actionStyle('ghost')}
             >

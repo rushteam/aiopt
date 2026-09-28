@@ -417,6 +417,8 @@ const bridge: AiOptBridge = {
     test: async () => ({ ok: true, latencyMs: 42, format: 'openai', error: null }),
     oauthStart: async () => providersSnapshot,
     oauthDisconnect: async () => providersSnapshot,
+    agentImportScan: async () => ({ candidates: [] }),
+    agentImportAdd: async () => providersSnapshot,
     revealKey: refused,
     copyProxyConfig: async () => ({ copied: false }),
     refreshProxyPort: async () => ({ port: 47821 }),

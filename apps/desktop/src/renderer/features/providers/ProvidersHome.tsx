@@ -18,10 +18,13 @@ import { ProviderCard } from './ProviderCard';
 import { BindingPicker } from './BindingPicker';
 import { AgentConfigDialog } from './AgentConfigDialog';
 import { ProviderFormDialog } from './ProviderFormDialog';
+import { ScrollTabScreen, tabScreenIntroStyle, tabScreenSectionStyle } from '../../components/TabScreenShell';
+import { AgentImportDialog } from './AgentImportDialog';
 
 type Dialog =
   | { kind: 'none' }
   | { kind: 'add' }
+  | { kind: 'import' }
   | { kind: 'edit'; provider: ProviderSummary }
   | { kind: 'bind'; agent: AgentSummary }
   | { kind: 'config'; agent: AgentSummary };
@@ -56,19 +59,19 @@ export function ProvidersHome() {
   const [showHiddenAgents, setShowHiddenAgents] = useState(false);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto' }}>
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 24px 48px' }}>
+    <>
+      <ScrollTabScreen>
         {/* The tab above already names this screen, and repeating it ~60px lower said the
             word twice and spent 47px of vertical space to do it. The h1 stays in the DOM
             but visually hidden: it is the document's only top-level heading, so removing
             it outright would leave the page a set of h2s with nothing above them, and a
             screen reader announcing the region would lose the screen's name. */}
         <h1 className="sr-only">{t('providers.title')}</h1>
-        <p style={{ margin: '0 0 24px', color: token('textMuted'), fontSize: fontSize.md }}>
+        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.md }}>
           {t('providers.subtitle')}
         </p>
 
-        <section style={{ marginBottom: 32 }}>
+        <section style={tabScreenSectionStyle}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
           <ProxyControlBar proxyPort={proxyPort} anyProxied={anyProxied} />
           <div style={gridStyle}>
@@ -145,6 +148,14 @@ export function ProvidersHome() {
             >
               {t('providers.addProvider')}
             </button>
+            <button
+              type="button"
+              onClick={() => setDialog({ kind: 'import' })}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={addGhostStyle}
+            >
+              {t('providers.import.scanAction')}
+            </button>
           </div>
           {realProviders.length === 0 ? (
             <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('providers.pool.empty')}</p>
@@ -164,9 +175,10 @@ export function ProvidersHome() {
             </div>
           )}
         </section>
-      </div>
+      </ScrollTabScreen>
 
       {dialog.kind === 'add' && <ProviderFormDialog onClose={close} />}
+      {dialog.kind === 'import' && <AgentImportDialog onClose={close} />}
       {dialog.kind === 'edit' && <ProviderFormDialog provider={dialog.provider} onClose={close} />}
       {dialog.kind === 'bind' && (
         <BindingPicker agent={dialog.agent} providers={providers} onClose={close} />
@@ -179,7 +191,7 @@ export function ProvidersHome() {
           onClose={close}
         />
       )}
-    </div>
+    </>
   );
 }
 

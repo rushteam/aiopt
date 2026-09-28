@@ -145,9 +145,30 @@
       "heading": "Provider pool",
       "empty": "No providers yet. Add one to get started."
     },
+    "import": {
+      "heading": "Import from installed agents",
+      "scanAction": "Scan agents",
+      "empty": "No importable agent sessions found.",
+      "scanning": "Scanning…",
+      "rescan": "Rescan",
+      "signedIn": "Signed in · {{account}}",
+      "add": "Add as provider",
+      "adding": "Adding…",
+      "reason": {
+        "not_installed": "Not installed",
+        "not_signed_in": "Not signed in",
+        "unsupported": "Not supported yet"
+      },
+      "errors": {
+        "restartRequired": "Quit and reopen the app, then scan again."
+      }
+    },
     "credential": {
       "apiKey": "API key",
-      "oauth": "OAuth (PKCE)"
+      "oauth": "Subscription sign-in"
+    },
+    "oauth": {
+      "customPkce": "Custom OAuth (advanced…)"
     },
     "fields": {
       "name": "Name",
@@ -158,6 +179,7 @@
       "oauthAuthorizeUrl": "Authorize URL",
       "oauthTokenUrl": "Token URL",
       "oauthScopes": "Scopes",
+      "oauthService": "Subscription",
       "apiKey": "API key",
       "models": "Models",
       "modelId": "Model ID",
@@ -170,6 +192,8 @@
       "editTitle": "Edit provider",
       "preset": "Preset",
       "presetNone": "Custom…",
+      "presetGroupApi": "API key vendors",
+      "presetGroupOAuth": "Subscription (OAuth)",
       "apiKeyKeep": "Leave blank to keep the stored key",
       "addModel": "Add model",
       "removeModel": "Remove model",
@@ -193,6 +217,7 @@
       "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace.",
       "credentialModeLocked": "Authentication type cannot be changed after the provider is created.",
       "oauthHint": "After saving, use Connect on the provider card to sign in. Tokens stay in the app — they are never written to agent config.",
+      "oauthStubHint": "Built-in ChatGPT / Claude / Copilot sign-in is coming in a gated release. For now use an API key preset or Custom OAuth for your own IdP.",
       "oauthScopesPlaceholder": "space-separated scopes",
       "dropNone": "Nothing stripped",
       "dropHint": "Some upstreams reject a request carrying a parameter they don't recognize instead of ignoring it — a gateway in front of a strict backend is the usual cause. Pick the parameters to strip before AiOpt forwards a request to this provider.",
@@ -215,6 +240,7 @@
       "oauthConnect": "Connect",
       "oauthDisconnect": "Disconnect",
       "oauthBusy": "Working…",
+      "agentImportHint": "Session read from the agent on each request",
       "edit": "Edit",
       "delete": "Delete",
       "test": "Test connection",

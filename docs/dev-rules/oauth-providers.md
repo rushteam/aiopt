@@ -52,8 +52,16 @@ review (ToS / client id policy) — not only UI.
 
 `generic_pkce` is the reference driver (user-supplied authorize/token URLs + client id).
 
-Subscription kinds (`openai_codex`, `anthropic_claude`, `github_copilot`) may ship as stubs
-until endpoints and client policy are approved.
+Subscription kinds (`openai_codex`, `anthropic_claude`, `github_copilot`) use **built-in
+driver metadata** — the add-provider form must not ask for authorize/token URLs for these
+(only pick the subscription preset and Connect). They may ship as stubs until endpoints and
+client policy are approved.
+
+**Relation to agent import:** In-app OAuth (PKCE + loopback) stores tokens under
+`main_oauth_provider_<id>`. **Agent import** (`credentialMode: agent_import`) reuses an
+agent’s on-disk sign-in instead — see `agent-import-providers.md`. The two modes are
+separate; enabling built-in OAuth drivers is not a substitute for import review (and vice
+versa).
 
 ## Review checklist (extends credentials-and-local-storage.md)
 

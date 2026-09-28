@@ -32,6 +32,11 @@ import { skillsErrorMessage } from './errors';
 import { AGENT_NAMES } from '../../../shared/aiProviders';
 import type { AgentId } from '../../../shared/aiProviders';
 import { newerSkillSide, skillsLibraryChoices } from '../../../shared/skills';
+import {
+  ScrollTabScreen,
+  TAB_SCREEN_MAX_WIDTH_WIDE,
+  tabScreenIntroStyle,
+} from '../../components/TabScreenShell';
 import type {
   SkillDiffResult,
   SkillEntry,
@@ -152,11 +157,10 @@ export function SkillsHome() {
   }
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 24px 48px' }}>
+    <ScrollTabScreen maxWidth={TAB_SCREEN_MAX_WIDTH_WIDE}>
         {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
         <h1 className="sr-only">{t('skills.title')}</h1>
-        <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.md }}>
+        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.md }}>
           {t('skills.subtitle')}
         </p>
 
@@ -258,8 +262,7 @@ export function SkillsHome() {
             locale={locale}
           />
         )}
-      </div>
-    </div>
+    </ScrollTabScreen>
   );
 }
 
@@ -1013,7 +1016,7 @@ const toolbarStyle = {
   alignItems: 'flex-end',
   gap: space.md,
   flexWrap: 'wrap',
-  margin: '20px 0 16px',
+  margin: `0 0 ${space.xl}px`,
 } as const;
 
 const pathButtonStyle = {

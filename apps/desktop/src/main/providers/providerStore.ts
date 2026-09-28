@@ -20,6 +20,7 @@ import {
   type Provider,
   type ProviderModel,
 } from '../../shared/aiProviders';
+import { isAgentImportAgentId } from '../../shared/agentImport';
 import { isOAuthSubscriptionKind, providerUsesOAuth } from '../../shared/oauthProviders';
 import { throwIpcError } from '../ipc/validate';
 
@@ -106,6 +107,12 @@ function validProvider(raw: unknown): Provider | null {
     if (typeof oauthRaw.accountLabel === 'string' && oauthRaw.accountLabel.trim() !== '') {
       provider.oauth.accountLabel = oauthRaw.accountLabel.trim();
     }
+  } else if (obj.credentialMode === 'agent_import') {
+    provider.credentialMode = 'agent_import';
+    if (!obj.agentImport || typeof obj.agentImport !== 'object') return null;
+    const aiRaw = obj.agentImport as Record<string, unknown>;
+    if (!isAgentImportAgentId(aiRaw.agentId)) return null;
+    provider.agentImport = { agentId: aiRaw.agentId };
   } else if (obj.credentialMode === 'api_key') {
     provider.credentialMode = 'api_key';
   }

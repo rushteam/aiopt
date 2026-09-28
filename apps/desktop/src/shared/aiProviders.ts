@@ -13,6 +13,7 @@
 // one of the provider's (see resolveBindingRoute); pairs it cannot translate are
 // refused.
 
+import type { AgentImportConfig } from './agentImport';
 import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
 
 /**
@@ -314,6 +315,8 @@ export interface Provider {
   credentialMode?: ProviderCredentialMode;
   /** Public OAuth metadata when `credentialMode` is `oauth`. */
   oauth?: OAuthProviderConfig;
+  /** Which agent session to read when `credentialMode` is `agent_import`. */
+  agentImport?: AgentImportConfig;
   /**
    * The wire formats this provider serves at `baseUrl` — non-empty, de-duplicated, in
    * {@link API_FORMATS} order (see {@link normalizeApiFormats}). A gateway commonly serves

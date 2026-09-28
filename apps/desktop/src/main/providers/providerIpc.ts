@@ -67,7 +67,7 @@ function optionalDropFields(raw: unknown): string[] | undefined {
   return normalizeDropFields(fields);
 }
 
-const CREDENTIAL_MODES = ['api_key', 'oauth'] as const satisfies readonly ProviderCredentialMode[];
+const CREDENTIAL_MODES = ['api_key', 'oauth', 'agent_import'] as const satisfies readonly ProviderCredentialMode[];
 
 function optionalCredentialMode(raw: unknown): ProviderCredentialMode | undefined {
   if (raw === undefined) return undefined;

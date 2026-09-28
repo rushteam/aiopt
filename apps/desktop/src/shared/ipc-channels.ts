@@ -11,6 +11,7 @@ import type {
   AppShortcutOverrides,
 } from './appShortcuts';
 import type { AgentId, ApiFormat, AgentBinding, ProviderModel } from './aiProviders';
+import type { AgentImportConfig } from './agentImport';
 import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
 import type { UsageSnapshot } from './usageStats';
 import type {
@@ -94,6 +95,10 @@ export const IPC_CHANNELS = {
   providersOAuthStart: 'providers:oauth-start',
   /** Clear stored OAuth tokens for a provider. */
   providersOAuthDisconnect: 'providers:oauth-disconnect',
+  /** List agent sessions available to import (metadata only). */
+  providersAgentImportScan: 'providers:agent-import-scan',
+  /** Create a pool provider from an installed agent sign-in. */
+  providersAgentImportAdd: 'providers:agent-import-add',
   // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
   // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
   // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
@@ -486,8 +491,10 @@ export interface ProviderSummary {
   credentialMode?: ProviderCredentialMode;
   /** Public OAuth endpoints (no tokens) when `credentialMode` is `oauth`. */
   oauth?: OAuthProviderConfig;
-  /** Display-only account label when `credentialMode` is `oauth`. */
+  /** Display-only account label when `credentialMode` is `oauth` or `agent_import`. */
   oauthAccountLabel?: string | null;
+  /** Source agent when `credentialMode` is `agent_import`. */
+  agentImportAgentId?: import('./agentImport').AgentImportAgentId;
   /**
    * Request fields the proxy strips before forwarding to this upstream (see
    * `Provider.dropRequestFields`). Not secret — it is a list of well-known API parameter
@@ -568,6 +575,7 @@ export interface ProviderAddRequest {
   apiKey?: string;
   credentialMode?: ProviderCredentialMode;
   oauth?: OAuthProviderConfig;
+  agentImport?: AgentImportConfig;
   /** Fields the proxy should strip for this upstream; validated against the allowlist. */
   dropRequestFields?: string[];
 }
@@ -587,11 +595,20 @@ export interface ProviderUpdateRequest {
   apiKey?: string | null;
   credentialMode?: ProviderCredentialMode;
   oauth?: OAuthProviderConfig;
+  agentImport?: AgentImportConfig;
   /**
    * Replaces the whole set when present (it is a checkbox group, not a patch); omitted
    * leaves it untouched. An empty array clears it.
    */
   dropRequestFields?: string[];
+}
+
+export interface ProviderAgentImportScanResult {
+  candidates: import('./agentImport').AgentImportCandidate[];
+}
+
+export interface ProviderAgentImportAddRequest {
+  agentId: import('./agentImport').AgentImportAgentId;
 }
 
 export interface ProviderOAuthStartRequest {
@@ -887,6 +904,14 @@ export interface IpcContract {
   };
   [IPC_CHANNELS.providersOAuthDisconnect]: {
     request: ProviderOAuthStartRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersAgentImportScan]: {
+    request: void;
+    result: ProviderAgentImportScanResult;
+  };
+  [IPC_CHANNELS.providersAgentImportAdd]: {
+    request: ProviderAgentImportAddRequest;
     result: ProvidersSnapshot;
   };
   [IPC_CHANNELS.providersRevealKey]: {

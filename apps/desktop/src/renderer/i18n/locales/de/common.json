@@ -141,9 +141,30 @@
       "heading": "Anbieter-Pool",
       "empty": "Noch keine Anbieter. Fügen Sie einen hinzu, um zu beginnen."
     },
+    "import": {
+      "heading": "Von installierten Agents importieren",
+      "scanAction": "Agents scannen",
+      "empty": "Keine importierbaren Agent-Sitzungen gefunden.",
+      "scanning": "Scan…",
+      "rescan": "Erneut scannen",
+      "signedIn": "Angemeldet · {{account}}",
+      "add": "Als Anbieter hinzufügen",
+      "adding": "Wird hinzugefügt…",
+      "reason": {
+        "not_installed": "Nicht installiert",
+        "not_signed_in": "Nicht angemeldet",
+        "unsupported": "Noch nicht unterstützt"
+      },
+      "errors": {
+        "restartRequired": "App vollständig beenden, neu öffnen und erneut scannen."
+      }
+    },
     "credential": {
       "apiKey": "API-Schlüssel",
-      "oauth": "OAuth (PKCE)"
+      "oauth": "Abo-Anmeldung"
+    },
+    "oauth": {
+      "customPkce": "Eigenes OAuth (Erweitert…)"
     },
     "fields": {
       "name": "Name",
@@ -154,6 +175,7 @@
       "oauthAuthorizeUrl": "Authorize-URL",
       "oauthTokenUrl": "Token-URL",
       "oauthScopes": "Scopes",
+      "oauthService": "Abo",
       "apiKey": "API-Schlüssel",
       "models": "Modelle",
       "modelId": "Modell-ID",
@@ -166,6 +188,8 @@
       "editTitle": "Anbieter bearbeiten",
       "preset": "Vorlage",
       "presetNone": "Benutzerdefiniert…",
+      "presetGroupApi": "API-Schlüssel-Anbieter",
+      "presetGroupOAuth": "Abo (OAuth)",
       "apiKeyKeep": "Leer lassen, um den gespeicherten Schlüssel beizubehalten",
       "addModel": "Modell hinzufügen",
       "removeModel": "Modell entfernen",
@@ -189,6 +213,7 @@
       "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen.",
       "credentialModeLocked": "Der Authentifizierungstyp kann nach dem Anlegen nicht geändert werden.",
       "oauthHint": "Nach dem Speichern auf der Anbieterkarte „Verbinden“ wählen. Tokens bleiben in der App — sie werden nicht in die Agent-Konfiguration geschrieben.",
+      "oauthStubHint": "ChatGPT-, Claude- und Copilot-Anmeldung kommt in einer späteren Version. Bis dahin API-Schlüssel-Preset oder „Eigenes OAuth“ nutzen.",
       "oauthScopesPlaceholder": "Scopes durch Leerzeichen getrennt",
       "dropNone": "Nichts entfernen",
       "dropHint": "Manche Upstreams lehnen eine Anfrage mit einem unbekannten Parameter ab, statt ihn zu ignorieren — meist ein Gateway vor einem streng prüfenden Backend. Wählen Sie die Parameter, die entfernt werden, bevor AiOpt eine Anfrage an diesen Anbieter weiterleitet.",
@@ -211,6 +236,7 @@
       "oauthConnect": "Verbinden",
       "oauthDisconnect": "Trennen",
       "oauthBusy": "Bitte warten…",
+      "agentImportHint": "Sitzung wird bei jeder Anfrage vom Agent gelesen",
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "confirmDelete": "Diesen Anbieter löschen?",

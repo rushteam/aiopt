@@ -1,7 +1,7 @@
 // OAuth subscription providers — shared types only (no I/O).
 
 /** How the provider authenticates to upstream. */
-export type ProviderCredentialMode = 'api_key' | 'oauth';
+export type ProviderCredentialMode = 'api_key' | 'oauth' | 'agent_import';
 
 /**
  * Built-in OAuth driver ids. `generic_pkce` is user-configured; subscription kinds use
@@ -15,6 +15,15 @@ export const OAUTH_SUBSCRIPTION_KINDS = [
 ] as const;
 
 export type OAuthSubscriptionKind = (typeof OAUTH_SUBSCRIPTION_KINDS)[number];
+
+/** Built-in subscription kinds awaiting gated driver enablement. */
+export const OAUTH_STUB_KINDS = ['openai_codex', 'anthropic_claude', 'github_copilot'] as const;
+
+export type OAuthStubKind = (typeof OAUTH_STUB_KINDS)[number];
+
+export function isOAuthStubKind(kind: OAuthSubscriptionKind): boolean {
+  return (OAUTH_STUB_KINDS as readonly string[]).includes(kind);
+}
 
 /** Public OAuth configuration persisted on the provider (no secrets). */
 export interface OAuthProviderConfig {
@@ -44,4 +53,17 @@ export function providerUsesOAuth(
   credentialMode: ProviderCredentialMode | undefined,
 ): boolean {
   return credentialMode === 'oauth';
+}
+
+export function providerUsesAgentImport(
+  credentialMode: ProviderCredentialMode | undefined,
+): boolean {
+  return credentialMode === 'agent_import';
+}
+
+/** OAuth and agent-import providers never write upstream tokens into agent config. */
+export function providerNeedsProxyForUpstreamSecret(
+  credentialMode: ProviderCredentialMode | undefined,
+): boolean {
+  return providerUsesOAuth(credentialMode) || providerUsesAgentImport(credentialMode);
 }

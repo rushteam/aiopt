@@ -1,9 +1,10 @@
 import { throwIpcError } from '../../ipc/validate';
-import type { OAuthSubscriptionKind } from '../../../shared/oauthProviders';
+import {
+  isOAuthStubKind,
+  type OAuthSubscriptionKind,
+} from '../../../shared/oauthProviders';
 import { genericPkceDriver } from './genericPkce';
 import type { OAuthDriver } from './types';
-
-const STUB_KINDS: OAuthSubscriptionKind[] = ['openai_codex', 'anthropic_claude', 'github_copilot'];
 
 function stubDriver(kind: OAuthSubscriptionKind): OAuthDriver {
   return {
@@ -32,5 +33,5 @@ export function getOAuthDriver(kind: OAuthSubscriptionKind): OAuthDriver {
 }
 
 export function isStubOAuthKind(kind: OAuthSubscriptionKind): boolean {
-  return STUB_KINDS.includes(kind);
+  return isOAuthStubKind(kind);
 }
