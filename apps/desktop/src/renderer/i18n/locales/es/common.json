@@ -403,6 +403,9 @@
       "sshHint": "Ejecuta herdr en esa máquina por SSH (no es el attach TUI --remote de herdr)."
     },
     "attachHint": "Observa o toma el control de los agentes desde una terminal:",
+    "environment": {
+      "title": "Entorno"
+    },
     "status": {
       "stopped": "Detenido",
       "starting": "Iniciando…",
@@ -458,8 +461,20 @@
       "session_reset": "Se inició una nueva conversación.",
       "session_opened": "Conversación restaurada."
     },
+    "plan": { "title": "Plan de tareas" },
+    "taskChat": {
+      "title": "Chat de la tarea",
+      "empty": "Selecciona una tarea para ver el prompt inicial aquí.",
+      "placeholder": "Instrucciones de seguimiento para este agente",
+      "waitLaunch": "Ejecuta la tarea para chatear con su agente."
+    },
     "tasks": {
       "title": "Tareas",
+      "settings": "Ajustes del banco de trabajo",
+      "preferences": "Automatización",
+      "list": "Todas las tareas",
+      "taskTotal": "{{count}} tareas",
+      "concurrent": "Concurrentes",
       "running": "En curso",
       "new": "Nueva tarea",
       "create": "Añadir tarea",
@@ -509,6 +524,7 @@
       "launch": "Ejecutar",
       "relaunch": "Ejecutar de nuevo",
       "edit": "Editar",
+      "editTask": "Editar título e instrucciones",
       "complete": "Marcar como hecha",
       "stop": "Detener",
       "remove": "Quitar",

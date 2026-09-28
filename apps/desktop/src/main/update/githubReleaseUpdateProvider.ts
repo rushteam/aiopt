@@ -16,18 +16,30 @@ export const GITHUB_RELEASES_LATEST_URL =
 const REQUEST_TIMEOUT_MS = 15_000;
 /** Refuse a body large enough to be something other than one release's JSON. */
 const MAX_BODY_CHARS = 64 * 1024;
+/** Same-host redirects only. Past this, treat the response as unpinned. */
+const MAX_REDIRECTS = 3;
 
 export interface ReleaseFetchResponse {
   ok: boolean;
   status: number;
-  /** Final URL after redirects. Empty or off-host is a failed check. */
+  /**
+   * Final URL after redirects. Electron's `net.fetch` leaves this empty even for a
+   * successful response, so an empty URL is not by itself a failure — the request
+   * is pinned and redirects are followed manually. A non-empty URL off the pin is.
+   */
   url: string;
+  headers: { get(name: string): string | null };
   text(): Promise<string>;
 }
 
 export type ReleaseFetch = (
   url: string,
-  init?: { method?: string; headers?: Record<string, string>; signal?: AbortSignal },
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    signal?: AbortSignal;
+    redirect?: 'manual';
+  },
 ) => Promise<ReleaseFetchResponse>;
 
 const STABLE = /^(\d+)\.(\d+)\.(\d+)$/;
@@ -49,6 +61,20 @@ export function compareStableVersion(
     if (left[i] !== right[i]) return left[i]! - right[i]!;
   }
   return 0;
+}
+
+function isRedirect(status: number): boolean {
+  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
+}
+
+/** Resolve a Location header against the URL we just requested. Junk is null. */
+function resolveRedirect(current: string, location: string | null): string | null {
+  if (!location) return null;
+  try {
+    return new URL(location, current).href;
+  } catch {
+    return null;
+  }
 }
 
 function isPinnedReleaseResponse(url: string): boolean {
@@ -84,16 +110,35 @@ export function createGithubReleaseUpdateProvider(fetchImpl: ReleaseFetch): Upda
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       try {
-        const response = await fetchImpl(GITHUB_RELEASES_LATEST_URL, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'AiOpt',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-          signal: controller.signal,
-        });
-        if (!isPinnedReleaseResponse(response.url)) {
+        // `redirect: 'manual'` because Electron's net.fetch reports an empty
+        // response URL, so we cannot see where an automatic redirect landed.
+        // Only a Location that stays on the pinned releases path is followed.
+        let url = GITHUB_RELEASES_LATEST_URL;
+        let response: ReleaseFetchResponse | null = null;
+        for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+          if (!isPinnedReleaseResponse(url)) {
+            logger.warn('update.check_failed', { reason: 'unpinned_response' });
+            return { state: 'error' };
+          }
+          response = await fetchImpl(url, {
+            method: 'GET',
+            redirect: 'manual',
+            headers: {
+              Accept: 'application/vnd.github+json',
+              'User-Agent': 'AiOpt',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+            signal: controller.signal,
+          });
+          if (!isRedirect(response.status)) break;
+          const next = resolveRedirect(url, response.headers.get('location'));
+          if (!next || hop === MAX_REDIRECTS) {
+            logger.warn('update.check_failed', { reason: 'unpinned_response' });
+            return { state: 'error' };
+          }
+          url = next;
+        }
+        if (!response || (response.url && !isPinnedReleaseResponse(response.url))) {
           logger.warn('update.check_failed', { reason: 'unpinned_response' });
           return { state: 'error' };
         }

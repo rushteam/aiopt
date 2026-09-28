@@ -7,18 +7,27 @@ import {
   type ReleaseFetchResponse,
 } from '../githubReleaseUpdateProvider';
 
-function release(body: unknown, status = 200, url = GITHUB_RELEASES_LATEST_URL): ReleaseFetchResponse {
+function release(
+  body: unknown,
+  status = 200,
+  url = GITHUB_RELEASES_LATEST_URL,
+  location: string | null = null,
+): ReleaseFetchResponse {
   return {
     ok: status >= 200 && status < 300,
     status,
     url,
+    headers: {
+      get: (name) => (name.toLowerCase() === 'location' ? location : null),
+    },
     text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
   };
 }
 
 function fetchReturning(response: ReleaseFetchResponse) {
-  return createGithubReleaseUpdateProvider(async (url) => {
+  return createGithubReleaseUpdateProvider(async (url, init) => {
     expect(url).toBe(GITHUB_RELEASES_LATEST_URL);
+    expect(init?.redirect).toBe('manual');
     return response;
   });
 }
@@ -86,6 +95,33 @@ describe('github release update provider', () => {
       ),
     ).toEqual({ state: 'error' });
     expect(await fetchReturning(release(published)).checkForUpdates('dev')).toEqual({ state: 'error' });
+  });
+
+  it('accepts Electron net.fetch, which leaves the response URL empty', async () => {
+    const provider = fetchReturning(release(published, 200, ''));
+    expect(await provider.checkForUpdates('1.0.4')).toEqual({
+      state: 'update-available',
+      nextVersion: '1.0.5',
+    });
+  });
+
+  it('follows a redirect that stays on the pinned releases path', async () => {
+    const provider = createGithubReleaseUpdateProvider(async (url) => {
+      if (url === GITHUB_RELEASES_LATEST_URL) {
+        return release(published, 302, '', 'https://api.github.com/repos/rushteam/aiopt/releases/1');
+      }
+      expect(url).toBe('https://api.github.com/repos/rushteam/aiopt/releases/1');
+      return release(published, 200, '');
+    });
+    expect(await provider.checkForUpdates('1.0.4')).toEqual({
+      state: 'update-available',
+      nextVersion: '1.0.5',
+    });
+  });
+
+  it('refuses a redirect that leaves api.github.com', async () => {
+    const provider = fetchReturning(release(published, 302, '', 'https://evil.example/releases/latest'));
+    expect(await provider.checkForUpdates('1.0.4')).toEqual({ state: 'error' });
   });
 
   it('refuses a response that left api.github.com', async () => {

@@ -393,6 +393,9 @@
     "removeConfirmYes": "Remove",
     "herdrMissing": "herdr wasn't found, so tasks can't run. Chat still works. Install herdr below or restart after installing elsewhere.",
     "attachHint": "Watch or take over the agents from a terminal:",
+    "environment": {
+      "title": "Environment"
+    },
     "herdr": {
       "notFound": "herdr wasn't found. If you installed it already, make sure it's on your PATH—or install it below with AiOpt.",
       "local": "herdr {{version}} · {{path}}",
@@ -458,8 +461,22 @@
       "session_reset": "New conversation started.",
       "session_opened": "Conversation restored."
     },
+    "plan": {
+      "title": "Task plan"
+    },
+    "taskChat": {
+      "title": "Task chat",
+      "empty": "The initial prompt appears here after you select a task.",
+      "placeholder": "Follow-up instructions for this agent",
+      "waitLaunch": "Run the task to chat with its agent."
+    },
     "tasks": {
       "title": "Tasks",
+      "settings": "Workbench settings",
+      "preferences": "Automation",
+      "list": "All tasks",
+      "taskTotal": "{{count}} tasks",
+      "concurrent": "Concurrent",
       "running": "Running",
       "new": "New task",
       "create": "Add task",
@@ -509,6 +526,7 @@
       "launch": "Run",
       "relaunch": "Run again",
       "edit": "Edit",
+      "editTask": "Edit title & prompt",
       "complete": "Mark done",
       "stop": "Stop",
       "remove": "Remove",

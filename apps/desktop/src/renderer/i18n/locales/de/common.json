@@ -403,6 +403,9 @@
       "sshHint": "Führt herdr auf diesem Rechner per SSH aus (nicht herdrs TUI --remote)."
     },
     "attachHint": "Agenten im Terminal beobachten oder übernehmen:",
+    "environment": {
+      "title": "Umgebung"
+    },
     "status": {
       "stopped": "Gestoppt",
       "starting": "Wird gestartet…",
@@ -458,8 +461,20 @@
       "session_reset": "Neue Unterhaltung begonnen.",
       "session_opened": "Unterhaltung wiederhergestellt."
     },
+    "plan": { "title": "Aufgabenplan" },
+    "taskChat": {
+      "title": "Aufgaben-Chat",
+      "empty": "Wählen Sie eine Aufgabe, dann erscheint der Start-Prompt hier.",
+      "placeholder": "Nachfolgende Anweisungen an den Agenten",
+      "waitLaunch": "Starten Sie die Aufgabe, um mit dem Agenten zu chatten."
+    },
     "tasks": {
       "title": "Aufgaben",
+      "settings": "Werkbank-Einstellungen",
+      "preferences": "Automatisierung",
+      "list": "Alle Aufgaben",
+      "taskTotal": "{{count}} Aufgaben",
+      "concurrent": "Parallel",
       "running": "Laufend",
       "new": "Neue Aufgabe",
       "create": "Aufgabe hinzufügen",
@@ -509,6 +524,7 @@
       "launch": "Ausführen",
       "relaunch": "Erneut ausführen",
       "edit": "Bearbeiten",
+      "editTask": "Titel & Prompt bearbeiten",
       "complete": "Als erledigt markieren",
       "stop": "Stoppen",
       "remove": "Entfernen",

@@ -35,6 +35,8 @@ export const WORKBENCH_LIMITS = {
   itemText: 32_000,
   /** Lines of a worker's terminal shown in the task panel. */
   outputLines: 80,
+  /** Follow-up messages stored per task on the board. */
+  taskThreadMessages: 40,
   /** Past conversations listed (newest first); older files stay on disk, unlisted. */
   conversations: 50,
   conversationTitle: 80,
@@ -157,8 +159,18 @@ export interface TaskView {
   failure: TaskFailure | null;
   /** Task ids that must reach `done` before this one may launch. */
   dependsOn: string[];
+  /** Follow-up instructions sent to the worker after launch (initial prompt is {@link prompt}). */
+  thread: readonly TaskThreadMessage[];
+  /** Last captured worker terminal tail (for chat display when not live). */
+  workerOutput: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A user message in a task's worker chat thread (follow-ups after the initial prompt). */
+export interface TaskThreadMessage {
+  text: string;
+  at: number;
 }
 
 export type TaskFailure = 'herdr_error' | 'folder_missing' | 'agent_lost';
@@ -250,6 +262,11 @@ export function taskDependenciesMet(task: Pick<TaskView, 'dependsOn'>, tasks: re
 }
 
 /** Dependencies that still block launch (missing or not done). */
+/** Show the DAG / plan UI when there is more than one task or any dependency edge. */
+export function shouldShowTaskPlan(tasks: readonly Pick<TaskView, 'dependsOn'>[]): boolean {
+  return tasks.length > 1 || tasks.some((task) => task.dependsOn.length > 0);
+}
+
 export function pendingDependencies(task: Pick<TaskView, 'dependsOn'>, tasks: readonly TaskView[]): TaskView[] {
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const out: TaskView[] = [];

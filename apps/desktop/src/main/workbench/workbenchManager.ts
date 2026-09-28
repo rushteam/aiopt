@@ -274,6 +274,7 @@ interface TaskRecord {
   /** The worker's terminal tail when it last stopped for review or input (for the coordinator). */
   outputTail: string;
   dependsOn: string[];
+  thread: { text: string; at: number }[];
 }
 
 interface TasksDoc {
@@ -299,6 +300,7 @@ interface TasksDoc {
     createdAt: number;
     updatedAt: number;
     dependsOn?: string[];
+    thread?: { text: string; at: number }[];
   }[];
 }
 
@@ -317,6 +319,23 @@ interface FoldersDoc {
 function errorCode(err: unknown): string {
   if (err instanceof HerdrError) return err.code;
   return err instanceof Error ? err.name : 'unknown';
+}
+
+function parseTaskThread(raw: unknown): { text: string; at: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { text: string; at: number }[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const text = sanitizeWorkbenchText(String((entry as { text?: unknown }).text ?? '')).slice(
+      0,
+      WORKBENCH_LIMITS.taskPrompt,
+    );
+    const at = (entry as { at?: unknown }).at;
+    if (text === '' || typeof at !== 'number' || !Number.isFinite(at)) continue;
+    out.push({ text, at });
+    if (out.length >= WORKBENCH_LIMITS.taskThreadMessages) break;
+  }
+  return out;
 }
 
 export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
@@ -579,6 +598,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           outputTail:
             typeof r.output === 'string' ? sanitizeWorkbenchText(r.output).slice(-WORKBENCH_LIMITS.taskOutputTail) : '',
           dependsOn: [],
+          thread: parseTaskThread(r.thread),
         });
         dependsRaw.set(r.id as string, r.dependsOn);
         if (out.length >= WORKBENCH_LIMITS.tasks) break;
@@ -615,6 +635,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
         dependsOn: t.dependsOn,
+        thread: t.thread,
       })),
     };
   }
@@ -809,6 +830,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       agentName: t.agentName,
       failure: t.failure,
       dependsOn: [...t.dependsOn],
+      thread: [...t.thread],
+      workerOutput: t.outputTail ? t.outputTail : null,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
     };
@@ -1333,6 +1356,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       promptAt: 0,
       outputTail: '',
       dependsOn: [],
+      thread: [],
     });
     return id;
   }
@@ -1541,9 +1565,11 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       log.warn('workbench.task_message_failed', { code: errorCode(err) });
       throwIpcError('UPSTREAM_ERROR', 'could not reach the worker');
     }
+    const at = deps.now();
+    t.thread = [...t.thread, { text: message, at }].slice(-WORKBENCH_LIMITS.taskThreadMessages);
     t.status = 'working';
-    t.promptAt = deps.now();
-    t.updatedAt = t.promptAt;
+    t.promptAt = at;
+    t.updatedAt = at;
     changed();
   }
 

@@ -14,8 +14,10 @@ highest-blast-radius change in the repo.
 - A **provider seam** (`main/update/updateProvider.ts`): one method, `checkForUpdates(current)`,
   that answers "is there a newer version?" — it does **not** download or install anything.
 - A **check-only GitHub feed** (`githubReleaseUpdateProvider.ts`), wired in production. It
-  GETs the pinned `https://api.github.com/repos/rushteam/aiopt/releases/latest` over HTTPS,
-  refuses a redirect off that host, and reports a stable `vX.Y.Z` tag only when it is strictly
+  GETs the pinned `https://api.github.com/repos/rushteam/aiopt/releases/latest` over HTTPS.
+  Redirects are followed only when they stay on that host and releases path — Electron's
+  `net.fetch` leaves the final URL empty, so an empty URL is not treated as a redirect.
+  It reports a stable `vX.Y.Z` tag only when it is strictly
   newer than the running version. Drafts and prereleases are not announced. The renderer
   cannot choose the URL. The status carries the version, never a download URL.
 - A **local stub** (`localStubUpdateProvider.ts`) that always reports `up-to-date`, kept for tests.

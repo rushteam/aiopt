@@ -403,6 +403,9 @@
       "sshHint": "해당 머신에서 SSH로 herdr을 실행합니다(herdr TUI --remote attach가 아님)."
     },
     "attachHint": "터미널에서 에이전트를 지켜보거나 넘겨받을 수 있습니다:",
+    "environment": {
+      "title": "실행 환경"
+    },
     "status": {
       "stopped": "중지됨",
       "starting": "시작 중…",
@@ -458,8 +461,20 @@
       "session_reset": "새 대화를 시작했습니다.",
       "session_opened": "대화를 복원했습니다."
     },
+    "plan": { "title": "태스크 계획" },
+    "taskChat": {
+      "title": "태스크 채팅",
+      "empty": "태스크를 선택하면 초기 프롬프트가 여기에 표시됩니다.",
+      "placeholder": "이 Agent에게 추가 지시",
+      "waitLaunch": "태스크를 실행한 뒤 Agent와 채팅할 수 있습니다."
+    },
     "tasks": {
       "title": "태스크",
+      "settings": "워크벤치 설정",
+      "preferences": "자동화",
+      "list": "모든 태스크",
+      "taskTotal": "태스크 {{count}}개",
+      "concurrent": "동시 실행",
       "running": "실행 중",
       "new": "새 태스크",
       "create": "태스크 추가",
@@ -509,6 +524,7 @@
       "launch": "실행",
       "relaunch": "다시 실행",
       "edit": "편집",
+      "editTask": "제목 및 지시 편집",
       "complete": "완료로 표시",
       "stop": "중지",
       "remove": "제거",
