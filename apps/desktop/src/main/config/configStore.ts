@@ -12,7 +12,7 @@
 // in-memory adapter instead.
 
 import type { LanguagePreference, PreferencesShape, ThemePreference } from '../../shared/ipc-channels';
-import type { SkillsLibraryLocation } from '../../shared/skills';
+import { SKILLS_LIBRARY_LOCATIONS, type SkillsLibraryLocation } from '../../shared/skills';
 import { throwIpcError } from '../ipc/validate';
 import { readUtf8WithoutBom, writeFileAtomicSync } from '../storeFile';
 
@@ -33,7 +33,6 @@ const LANGUAGE_VALUES: readonly LanguagePreference[] = [
   'de',
   'es',
 ];
-const SKILLS_LIBRARY_VALUES: readonly SkillsLibraryLocation[] = ['app', 'home'];
 
 /** The known preferences: default + runtime validator for each. */
 export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = {
@@ -62,8 +61,11 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
   skillsLibrary: {
     default: 'app',
     validate(raw) {
-      if (typeof raw !== 'string' || !SKILLS_LIBRARY_VALUES.includes(raw as SkillsLibraryLocation)) {
-        throwIpcError('INVALID_PARAMS', 'skillsLibrary must be one of: app | home');
+      if (typeof raw !== 'string' || !(SKILLS_LIBRARY_LOCATIONS as readonly string[]).includes(raw)) {
+        throwIpcError(
+          'INVALID_PARAMS',
+          `skillsLibrary must be one of: ${SKILLS_LIBRARY_LOCATIONS.join(' | ')}`,
+        );
       }
       return raw as SkillsLibraryLocation;
     },

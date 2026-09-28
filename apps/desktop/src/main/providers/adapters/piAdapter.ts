@@ -6,8 +6,8 @@
 //   - models.json  — `{ "providers": { "<slug>": { baseUrl, api, models: [...] } } }`
 //   - settings.json — startup binding: `defaultProvider` + `defaultModel`
 //
-// pi accepts all three wire formats; `api` maps the provider's apiFormat to pi's
-// adapter id. Our slug is namespaced `aiopt-<providerId>` so it never collides with a
+// pi accepts all three wire formats; `api` maps the binding's resolved wire format
+// (WriteLiveInput.apiFormat) to pi's adapter id. Our slug is namespaced `aiopt-<providerId>` so it never collides with a
 // built-in pi provider.
 
 import fs from 'node:fs';
@@ -55,7 +55,7 @@ export function createPiAdapter(): AgentAdapter {
       return fs.existsSync(agentConfigDir('pi'));
     },
 
-    writeLive({ provider, modelId, apiKey }: WriteLiveInput) {
+    writeLive({ provider, apiFormat, modelId, apiKey }: WriteLiveInput) {
       const slug = `aiopt-${provider.id}`;
 
       // auth.json — set our slug's key (or drop it if no key is stored).
@@ -71,7 +71,7 @@ export function createPiAdapter(): AgentAdapter {
       const providers = objectAt(modelsDoc, 'providers');
       providers[slug] = {
         baseUrl: provider.baseUrl,
-        api: API_BY_FORMAT[provider.apiFormat],
+        api: API_BY_FORMAT[apiFormat],
         // Each model is listed by its outward wire name (alias when set, else id) so
         // pi's defaultModel — also the wire name — always resolves to an entry.
         models: provider.models.map((m) => ({ id: wireModelName(m) })),

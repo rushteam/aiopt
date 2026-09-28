@@ -152,6 +152,8 @@ describe('skillsLibrary preference', () => {
     expect(store.get('skillsLibrary')).toBe('app');
     expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'home', proxyMode: false, warnOnQuitWithProxy: true });
     expect(store.get('skillsLibrary')).toBe('home');
+    expect(store.set('skillsLibrary', 'agents')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'agents', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.get('skillsLibrary')).toBe('agents');
   });
 
   it('rejects an invalid location with INVALID_PARAMS', () => {

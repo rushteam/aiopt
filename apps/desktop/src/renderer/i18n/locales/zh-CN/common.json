@@ -140,7 +140,7 @@
     },
     "fields": {
       "name": "名称",
-      "apiFormat": "接口格式",
+      "apiFormats": "接口格式",
       "baseUrl": "Base URL",
       "apiKey": "API 密钥",
       "models": "模型",
@@ -163,6 +163,11 @@
       "loadModels": "加载模型",
       "loadingModels": "加载中…",
       "loadModelsEmpty": "该供应商没有返回任何模型。",
+      "apiFormatsHint": "勾选该地址支持的全部格式。绑定时优先使用 Agent 原生支持的那一种。",
+      "detectFormats": "自动探测",
+      "detecting": "探测中…",
+      "detectFound": "已探测到：",
+      "detectNone": "该地址没有响应任何已知格式。请检查 Base URL（和密钥），或手动勾选。",
       "cancel": "取消",
       "close": "关闭",
       "save": "保存",
@@ -296,7 +301,8 @@
     "library": {
       "label": "中央库",
       "app": "应用内",
-      "home": "~/.aiopt/skills"
+      "home": "~/.aiopt/skills",
+      "agents": "~/.agents/skills"
     },
     "meta": {
       "files": "个文件"

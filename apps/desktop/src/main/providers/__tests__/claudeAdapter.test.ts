@@ -9,7 +9,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'Anthropic',
-  apiFormat: 'anthropic',
+  apiFormats: ['anthropic'],
   baseUrl: 'https://api.anthropic.com',
   models: [{ id: 'claude-opus-5' }],
   createdAt: 0,
@@ -50,7 +50,7 @@ describe('claude adapter — detectInstalled', () => {
 
 describe('claude adapter — writeLive', () => {
   it('writes the three managed env keys into a fresh settings.json', () => {
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk-secret' });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk-secret' });
     const settings = readSettings();
     expect(settings).toEqual({
       env: {
@@ -62,7 +62,7 @@ describe('claude adapter — writeLive', () => {
   });
 
   it('trailing newline is written', () => {
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     expect(fs.readFileSync(settingsFile(), 'utf8').endsWith('}\n')).toBe(true);
   });
 
@@ -76,7 +76,7 @@ describe('claude adapter — writeLive', () => {
       }),
       'utf8',
     );
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     const settings = readSettings();
     expect(settings.theme).toBe('dark');
     expect(settings.env).toEqual({
@@ -101,7 +101,7 @@ describe('claude adapter — writeLive', () => {
       })}`,
       'utf8',
     );
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     const settings = readSettings();
     expect(settings.theme).toBe('dark');
     expect((settings.env as Record<string, unknown>).MY_OWN_VAR).toBe('keep-me');
@@ -116,7 +116,7 @@ describe('claude adapter — writeLive', () => {
       JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: 'old-token' } }),
       'utf8',
     );
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: null });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: null });
     const env = readSettings().env as Record<string, unknown>;
     expect(env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
     expect(env.ANTHROPIC_BASE_URL).toBe('https://api.anthropic.com');
@@ -128,19 +128,19 @@ describe('claude adapter — writeLive', () => {
     fs.writeFileSync(settingsFile(), original, 'utf8');
 
     const adapter = createClaudeAdapter();
-    adapter.writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     const backup = `${settingsFile()}${AGENT_BACKUP_SUFFIX}`;
     expect(fs.readFileSync(backup, 'utf8')).toBe(original);
 
     // A second write must NOT overwrite the pristine backup.
-    adapter.writeLive({ provider, modelId: 'claude-sonnet', apiKey: 'sk2' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-sonnet', apiKey: 'sk2' });
     expect(fs.readFileSync(backup, 'utf8')).toBe(original);
   });
 
   it('recovers from a corrupt existing settings.json (fail-open merge)', () => {
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
     fs.writeFileSync(settingsFile(), '{ this is not json', 'utf8');
-    createClaudeAdapter().writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    createClaudeAdapter().writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     const env = readSettings().env as Record<string, unknown>;
     expect(env.ANTHROPIC_BASE_URL).toBe('https://api.anthropic.com');
     // The corrupt original is preserved in the backup.
@@ -155,7 +155,7 @@ describe('claude adapter — restoreDefault', () => {
     fs.writeFileSync(settingsFile(), original, 'utf8');
 
     const adapter = createClaudeAdapter();
-    adapter.writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     expect(fs.existsSync(`${settingsFile()}${AGENT_BACKUP_SUFFIX}`)).toBe(true);
 
     adapter.restoreDefault();
@@ -167,7 +167,7 @@ describe('claude adapter — restoreDefault', () => {
   it('deletes an AiOpt-created file that had no original to back up', () => {
     // No ~/.claude/settings.json existed → writeLive creates it, no backup taken.
     const adapter = createClaudeAdapter();
-    adapter.writeLive({ provider, modelId: 'claude-opus-5', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'claude-opus-5', apiKey: 'sk' });
     expect(fs.existsSync(settingsFile())).toBe(true);
     expect(fs.existsSync(`${settingsFile()}${AGENT_BACKUP_SUFFIX}`)).toBe(false);
 

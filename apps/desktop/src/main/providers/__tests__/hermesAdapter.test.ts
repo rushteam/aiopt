@@ -10,7 +10,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'My Provider',
-  apiFormat: 'openai',
+  apiFormats: ['openai'],
   baseUrl: 'https://api.example.com/v1',
   models: [{ id: 'gpt-4o' }],
   createdAt: 0,
@@ -60,7 +60,7 @@ describe('hermes adapter — detectInstalled', () => {
 
 describe('hermes adapter — writeLive', () => {
   it('writes a namespaced custom_providers entry and moves the startup pointer', () => {
-    createHermesAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-o' });
+    createHermesAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-o' });
     expect(readConfig()).toEqual({
       custom_providers: [
         {
@@ -78,20 +78,21 @@ describe('hermes adapter — writeLive', () => {
 
   it('maps each accepted apiFormat to the right Hermes api_mode', () => {
     const adapter = createHermesAdapter();
-    adapter.writeLive({ provider: { ...provider, apiFormat: 'anthropic' }, modelId: 'gpt-4o', apiKey: 'k' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'gpt-4o', apiKey: 'k' });
     expect(ourEntry().api_mode).toBe('anthropic_messages');
-    adapter.writeLive({ provider: { ...provider, apiFormat: 'openai-responses' }, modelId: 'gpt-4o', apiKey: 'k' });
+    adapter.writeLive({ provider, apiFormat: 'openai-responses', modelId: 'gpt-4o', apiKey: 'k' });
     expect(ourEntry().api_mode).toBe('codex_responses');
   });
 
   it('omits api_key when no key is stored', () => {
-    createHermesAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: null });
+    createHermesAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: null });
     expect('api_key' in ourEntry()).toBe(false);
   });
 
   it('lists models by outward wire name (alias when set)', () => {
     createHermesAdapter().writeLive({
       provider: { ...provider, models: [{ id: 'long-model-id', alias: 'gpt' }] },
+      apiFormat: 'openai',
       modelId: 'gpt',
       apiKey: 'k',
     });
@@ -125,7 +126,7 @@ describe('hermes adapter — writeLive', () => {
       ].join('\n'),
     );
 
-    createHermesAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-new' });
+    createHermesAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-new' });
 
     const raw = readRaw();
     expect(raw).toContain('# my hermes config'); // comment preserved
@@ -157,7 +158,7 @@ describe('hermes adapter — restoreDefault', () => {
     fs.mkdirSync(path.join(home, '.hermes'), { recursive: true });
     fs.writeFileSync(configFile(), 'custom_providers:\n  - name: theirs\n');
     const adapter = createHermesAdapter();
-    adapter.writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk' });
     adapter.restoreDefault();
     expect(readRaw()).toBe('custom_providers:\n  - name: theirs\n');
     expect(fs.existsSync(configFile() + AGENT_BACKUP_SUFFIX)).toBe(false);
@@ -165,7 +166,7 @@ describe('hermes adapter — restoreDefault', () => {
 
   it('removes an AiOpt-created file when there was no original', () => {
     const adapter = createHermesAdapter();
-    adapter.writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk' });
     adapter.restoreDefault();
     expect(fs.existsSync(configFile())).toBe(false);
   });

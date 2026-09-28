@@ -5,6 +5,11 @@
 // Models are edited as rows: each has an id (the provider's real model name) and an
 // optional alias — the shorter / agent-consistent name written to the agent instead
 // of the id.
+//
+// Formats are a checkbox GROUP, not a single choice: a gateway commonly serves several
+// dialects at one base URL, and a binding later picks whichever the agent speaks
+// natively. "Detect" asks main to probe the base URL and ticks what answered (a union
+// with the current ticks — it never unticks a choice the user made by hand).
 
 import { useState, type FormEvent } from 'react';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
@@ -13,6 +18,7 @@ import { useT } from '../../i18n';
 import {
   API_FORMATS,
   DROPPABLE_REQUEST_FIELDS,
+  normalizeApiFormats,
   normalizeDropFields,
   type ApiFormat,
   type ProviderModel,
@@ -20,6 +26,7 @@ import {
 import type { ProviderSummary } from '../../../shared/ipc-channels';
 import {
   addProvider,
+  detectProviderFormats,
   fetchProviderModels,
   revealProviderKey,
   updateProvider,
@@ -71,7 +78,13 @@ export function ProviderFormDialog({
   const t = useT();
   const editing = provider !== undefined;
   const [name, setName] = useState(provider?.name ?? '');
-  const [apiFormat, setApiFormat] = useState<ApiFormat>(provider?.apiFormat ?? 'anthropic');
+  // Starts EMPTY for a new provider: the user ticks what the endpoint serves (or lets
+  // Detect do it), rather than inheriting a default that may be wrong for the URL.
+  const [apiFormats, setApiFormats] = useState<ApiFormat[]>(provider?.apiFormats ?? []);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMessage, setDetectMessage] = useState<
+    { kind: 'ok' | 'none' | 'error'; text: string } | null
+  >(null);
   const [baseUrl, setBaseUrl] = useState(provider?.baseUrl ?? '');
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<ModelRow[]>(toRows(provider?.models ?? []));
@@ -118,9 +131,50 @@ export function ProviderFormDialog({
     const preset = PROVIDER_PRESETS.find((p) => p.key === key);
     if (!preset) return;
     setName(preset.name);
-    setApiFormat(preset.apiFormat);
+    setApiFormats([...preset.apiFormats]);
+    setDetectMessage(null);
     setBaseUrl(preset.baseUrl);
     setModels(toRows(preset.models));
+  }
+
+  // Keep the selection in the shared allowlist's canonical order, so what we send matches
+  // what main stores and the checkbox set never depends on click order.
+  function toggleFormat(format: ApiFormat): void {
+    setApiFormats((current) =>
+      normalizeApiFormats(
+        current.includes(format) ? current.filter((f) => f !== format) : [...current, format],
+      ),
+    );
+  }
+
+  // Probe the base URL and tick every format that answered. A union, not a replace: a
+  // format the user ticked by hand stays ticked even if the probe could not confirm it
+  // (an auth-fronted gateway answers 401 everywhere, and that is inconclusive, not "no").
+  async function onDetectFormats(): Promise<void> {
+    setDetecting(true);
+    setDetectMessage(null);
+    try {
+      const detected = await detectProviderFormats({
+        baseUrl,
+        apiKey: apiKey === '' ? undefined : apiKey,
+        providerId: editing ? provider.id : undefined,
+      });
+      if (detected.length === 0) {
+        setDetectMessage({ kind: 'none', text: t('providers.form.detectNone') });
+        return;
+      }
+      setApiFormats((current) => normalizeApiFormats([...current, ...detected]));
+      setDetectMessage({
+        kind: 'ok',
+        text: `${t('providers.form.detectFound')} ${detected
+          .map((f) => t(`providers.formats.${f}`))
+          .join(' · ')}`,
+      });
+    } catch (err) {
+      setDetectMessage({ kind: 'error', text: providerErrorMessage(t, err) });
+    } finally {
+      setDetecting(false);
+    }
   }
 
   function updateRow(index: number, patch: Partial<ModelRow>): void {
@@ -150,7 +204,7 @@ export function ProviderFormDialog({
     setModelsError(null);
     try {
       const fetched = await fetchProviderModels({
-        apiFormat,
+        apiFormats,
         baseUrl,
         // A freshly-typed key is sent; when editing and left blank, main resolves
         // the stored key by provider id. The key never comes back to the renderer.
@@ -179,7 +233,7 @@ export function ProviderFormDialog({
         await updateProvider({
           id: provider.id,
           name,
-          apiFormat,
+          apiFormats,
           baseUrl,
           models: parsedModels,
           notes,
@@ -192,7 +246,7 @@ export function ProviderFormDialog({
       } else {
         await addProvider({
           name,
-          apiFormat,
+          apiFormats,
           baseUrl,
           models: parsedModels,
           notes: notes === '' ? undefined : notes,
@@ -209,7 +263,11 @@ export function ProviderFormDialog({
   }
 
   const canSubmit =
-    name.trim() !== '' && baseUrl.trim() !== '' && rowsToModels(models).length > 0 && !busy;
+    name.trim() !== '' &&
+    baseUrl.trim() !== '' &&
+    apiFormats.length > 0 &&
+    rowsToModels(models).length > 0 &&
+    !busy;
 
   return (
     <div style={overlayStyle} role="dialog" aria-modal="true">
@@ -250,20 +308,6 @@ export function ProviderFormDialog({
           <label style={fieldStyle}>
             {t('providers.fields.name')}
             <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
-          </label>
-          <label style={fieldStyle}>
-            {t('providers.fields.apiFormat')}
-            <select
-              value={apiFormat}
-              onChange={(e) => setApiFormat(e.target.value as ApiFormat)}
-              style={inputStyle}
-            >
-              {API_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {t(`providers.formats.${f}`)}
-                </option>
-              ))}
-            </select>
           </label>
           <label style={fieldStyle}>
             {t('providers.fields.baseUrl')}
@@ -313,6 +357,49 @@ export function ProviderFormDialog({
               </span>
             )}
           </div>
+          {/* Formats come AFTER the URL and key they describe: Detect needs both, and the
+              order reads as "here is the endpoint — now, what does it speak?". A native
+              fieldset so the group name is announced with its checkboxes. */}
+          <fieldset style={formatGroupStyle}>
+            <legend style={legendStyle}>{t('providers.fields.apiFormats')}</legend>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.apiFormatsHint')}
+              </span>
+              <button
+                type="button"
+                onClick={() => void onDetectFormats()}
+                disabled={baseUrl.trim() === '' || detecting}
+                {...hoverBackground('transparent', token('surfaceHover'))}
+                style={buttonStyle('ghost')}
+              >
+                {detecting ? t('providers.form.detecting') : t('providers.form.detectFormats')}
+              </button>
+            </div>
+            <div style={checkGridStyle}>
+              {API_FORMATS.map((format) => (
+                <label key={format} style={checkLabelStyle}>
+                  <input
+                    type="checkbox"
+                    checked={apiFormats.includes(format)}
+                    onChange={() => toggleFormat(format)}
+                  />
+                  {t(`providers.formats.${format}`)}
+                </label>
+              ))}
+            </div>
+            {detectMessage && (
+              <span
+                role={detectMessage.kind === 'error' ? 'alert' : 'status'}
+                style={{
+                  fontSize: fontSize.sm,
+                  color: detectMessage.kind === 'error' ? token('danger') : token('textMuted'),
+                }}
+              >
+                {detectMessage.text}
+              </span>
+            )}
+          </fieldset>
           <div style={fieldStyle}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
               <span>{t('providers.fields.models')}</span>
@@ -612,6 +699,19 @@ const compatBodyStyle = {
   padding: `${space.md}px 2px 2px`,
 } as const;
 
+// The formats group sits in the form's main flow, so it takes the same footprint as a
+// labelled field (no box of its own) — the legend IS the field label, and the hairline
+// would otherwise read as a nested section like the collapsed compatibility block.
+const formatGroupStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.xs,
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  minWidth: 0,
+} as const;
+
 // Native <fieldset>/<legend> so each group's name is announced with its checkboxes;
 // the default chrome is stripped in favor of the app's own hairline.
 const groupStyle = {
@@ -624,9 +724,12 @@ const groupStyle = {
   border: `1px solid ${token('border')}`,
 } as const;
 
+// Shared by the formats group (where it stands in for a field label, hence the muted
+// color that matches `fieldStyle`) and the compatibility groups (inside their own box).
 const legendStyle = {
-  padding: `0 ${space.xs}px`,
-  color: token('text'),
+  padding: 0,
+  marginBottom: space.xs,
+  color: token('textMuted'),
   fontSize: fontSize.base,
 } as const;
 

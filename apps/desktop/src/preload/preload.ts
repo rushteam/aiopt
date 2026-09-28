@@ -19,6 +19,8 @@ import {
   type AuthState,
   type PreferencesShape,
   type ProviderAddRequest,
+  type ProviderDetectFormatsRequest,
+  type ProviderDetectFormatsResult,
   type ProviderFetchModelsRequest,
   type ProviderCopyProxyConfigResult,
   type ProviderRefreshProxyPortResult,
@@ -205,6 +207,12 @@ const api = {
      */
     fetchModels: (input: ProviderFetchModelsRequest): Promise<ProviderFetchModelsResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersFetchModels, input),
+    /**
+     * Probe a base URL for the wire formats it serves. Key handling matches fetchModels;
+     * the result is only the detected format list.
+     */
+    detectFormats: (input: ProviderDetectFormatsRequest): Promise<ProviderDetectFormatsResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersDetectFormats, input),
     /**
      * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Unlike every
      * sibling here, this returns the secret (see the channel note). Callers must hold

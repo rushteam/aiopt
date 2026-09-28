@@ -83,6 +83,10 @@ export const IPC_CHANNELS = {
   // A key may be SENT (or resolved main-side from an existing provider), but the
   // result carries ONLY the model list — never the key. See modelCatalog.ts.
   providersFetchModels: 'providers:fetch-models',
+  // Probe which wire formats a base URL serves (main-side outbound calls, one per
+  // format). Same key handling as fetch-models: a key may be SENT or resolved main-side,
+  // and the result carries ONLY the detected format list. See formatProbe.ts.
+  providersDetectFormats: 'providers:detect-formats',
   // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
   // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
   // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
@@ -299,7 +303,8 @@ export interface PreferencesShape {
   language: LanguagePreference;
   /**
    * Where the central Skills library lives. `'app'` = inside userData; `'home'` =
-   * an independent `~/.aiopt/skills`. This is an ENUM, not a path: the renderer
+   * an independent `~/.aiopt/skills`; `'agents'` = `~/.agents/skills`, the
+   * cross-client user skills directory. This is an ENUM, not a path: the renderer
    * never supplies an absolute path — main resolves it (see main/paths.ts).
    */
   skillsLibrary: SkillsLibraryLocation;
@@ -458,7 +463,8 @@ export interface AppShortcutsChangedEvent {
 export interface ProviderSummary {
   id: string;
   name: string;
-  apiFormat: ApiFormat;
+  /** The formats served at `baseUrl` — see `Provider.apiFormats`. Non-empty, canonical order. */
+  apiFormats: ApiFormat[];
   baseUrl: string;
   models: ProviderModel[];
   notes?: string;
@@ -536,7 +542,8 @@ export interface ProvidersSnapshot {
 /** Create a provider. `apiKey` (if present) is stored encrypted main-side, never echoed back. */
 export interface ProviderAddRequest {
   name: string;
-  apiFormat: ApiFormat;
+  /** At least one format; main normalizes to canonical order and de-duplicates. */
+  apiFormats: ApiFormat[];
   baseUrl: string;
   models: ProviderModel[];
   notes?: string;
@@ -552,7 +559,8 @@ export interface ProviderAddRequest {
 export interface ProviderUpdateRequest {
   id: string;
   name?: string;
-  apiFormat?: ApiFormat;
+  /** Replaces the whole set when present (a checkbox group); must stay non-empty. */
+  apiFormats?: ApiFormat[];
   baseUrl?: string;
   models?: ProviderModel[];
   notes?: string;
@@ -591,7 +599,12 @@ export interface ProviderRestoreDefaultRequest {
  * never echoed back — only the discovered models are returned.
  */
 export interface ProviderFetchModelsRequest {
-  apiFormat: ApiFormat;
+  /**
+   * The formats the provider is believed to serve. Main asks each distinct catalog
+   * endpoint in turn and returns the first non-empty list, so a multi-format provider
+   * needs no "which one to ask" choice from the renderer.
+   */
+  apiFormats: ApiFormat[];
   baseUrl: string;
   apiKey?: string;
   providerId?: string;
@@ -599,6 +612,23 @@ export interface ProviderFetchModelsRequest {
 
 export interface ProviderFetchModelsResult {
   models: ProviderModel[];
+}
+
+/**
+ * Probe a base URL for the wire formats it serves. Key handling matches
+ * {@link ProviderFetchModelsRequest}: a typed key wins, else the stored key of
+ * `providerId`. The result is only the detected format list — never the key, never a
+ * response body.
+ */
+export interface ProviderDetectFormatsRequest {
+  baseUrl: string;
+  apiKey?: string;
+  providerId?: string;
+}
+
+export interface ProviderDetectFormatsResult {
+  /** The formats whose endpoint answered, in canonical order. Empty when none did. */
+  formats: ApiFormat[];
 }
 
 /**
@@ -799,6 +829,10 @@ export interface IpcContract {
   [IPC_CHANNELS.providersFetchModels]: {
     request: ProviderFetchModelsRequest;
     result: ProviderFetchModelsResult;
+  };
+  [IPC_CHANNELS.providersDetectFormats]: {
+    request: ProviderDetectFormatsRequest;
+    result: ProviderDetectFormatsResult;
   };
   [IPC_CHANNELS.providersRevealKey]: {
     request: ProviderRevealKeyRequest;

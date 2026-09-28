@@ -31,7 +31,7 @@ import {
 import { skillsErrorMessage } from './errors';
 import { AGENT_NAMES } from '../../../shared/aiProviders';
 import type { AgentId } from '../../../shared/aiProviders';
-import { newerSkillSide } from '../../../shared/skills';
+import { newerSkillSide, SKILLS_LIBRARY_LOCATIONS } from '../../../shared/skills';
 import type {
   SkillDiffResult,
   SkillEntry,
@@ -274,10 +274,10 @@ function LocationToggle({
   onChange: (loc: SkillsLibraryLocation) => void;
   t: TranslateFn;
 }) {
-  const options: SkillsLibraryLocation[] = ['app', 'home'];
+  const options = SKILLS_LIBRARY_LOCATIONS;
   return (
     <div role="group" aria-label={t('skills.library.label')} style={segmentedStyle}>
-      {options.map((opt) => {
+      {options.map((opt, index) => {
         const active = value === opt;
         return (
           <button
@@ -288,6 +288,7 @@ function LocationToggle({
             onClick={() => onChange(opt)}
             style={{
               ...segmentButtonStyle,
+              borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
               background: active ? token('accent') : 'transparent',
               color: active ? token('accentText') : token('text'),
               cursor: active ? 'default' : 'pointer',

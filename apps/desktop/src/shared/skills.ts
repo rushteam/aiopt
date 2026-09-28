@@ -90,8 +90,15 @@ export interface SkillAgentColumn {
   available: boolean;
 }
 
-/** Where the central library points. `'app'` = userData/skills; `'home'` = ~/.aiopt/skills. */
-export type SkillsLibraryLocation = 'app' | 'home';
+/**
+ * Where the central library points. An enum, never a renderer-supplied path.
+ * `'app'` = userData/skills; `'home'` = ~/.aiopt/skills;
+ * `'agents'` = ~/.agents/skills, the cross-client user skills directory from the
+ * Agent Skills client guide (https://agentskills.io). That is the home-level
+ * convention, not a project `.agents/skills/` (which would be git-tracked).
+ */
+export const SKILLS_LIBRARY_LOCATIONS = ['app', 'home', 'agents'] as const;
+export type SkillsLibraryLocation = (typeof SKILLS_LIBRARY_LOCATIONS)[number];
 
 /** The scanned view of the world handed to the renderer. */
 export interface SkillsSnapshot {

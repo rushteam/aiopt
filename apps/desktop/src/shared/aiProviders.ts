@@ -6,11 +6,12 @@
 // they live in the main-only secret store, never in a Provider record.
 //
 // The core idea (vs. cc-switch): a provider is entered ONCE into a global pool and
-// declares its wire format; each agent declares which formats it can consume. A
-// same-format binding is written directly (or through the proxy when proxy mode is
-// on). A cross-format pairing is legal when the translation proxy can carry the
-// agent's format to the provider's (see bindingAvailability); pairs it cannot
-// translate are refused.
+// declares the wire formats it serves; each agent declares which formats it can
+// consume. When the two sets overlap, the binding speaks that shared format natively
+// (written directly, or through the proxy when proxy mode is on). When they do not,
+// the pairing is legal only if the translation proxy can carry the agent's format to
+// one of the provider's (see resolveBindingRoute); pairs it cannot translate are
+// refused.
 
 /**
  * The wire format a provider speaks / an agent consumes.
@@ -194,6 +195,17 @@ export const API_FORMATS: readonly ApiFormat[] = [
   'gemini',
 ];
 
+/**
+ * Normalize an untrusted list of formats: drops unknown names and duplicates, and returns
+ * the survivors in {@link API_FORMATS} order so the persisted value is canonical regardless
+ * of how the caller (a checkbox group, a hand-edited file) ordered it. Fail-closed by
+ * construction — an unrecognized name is discarded, never passed through.
+ */
+export function normalizeApiFormats(raw: readonly unknown[]): ApiFormat[] {
+  const wanted = new Set(raw.filter((f): f is string => typeof f === 'string').map((f) => f.trim()));
+  return API_FORMATS.filter((f) => wanted.has(f));
+}
+
 /** Every known agent id (runtime allowlist for validation) — derived from {@link AGENT_SPECS}. */
 export const AGENT_IDS: readonly AgentId[] = Object.keys(AGENT_SPECS) as AgentId[];
 
@@ -289,7 +301,14 @@ export function normalizeDropFields(raw: readonly string[]): string[] {
 export interface Provider {
   id: string;
   name: string;
-  apiFormat: ApiFormat;
+  /**
+   * The wire formats this provider serves at `baseUrl` — non-empty, de-duplicated, in
+   * {@link API_FORMATS} order (see {@link normalizeApiFormats}). A gateway commonly serves
+   * several (OpenAI Chat Completions + Responses, or Chat Completions + Anthropic
+   * Messages); a binding picks the one the agent speaks natively when it can
+   * (see {@link resolveBindingRoute}).
+   */
+  apiFormats: ApiFormat[];
   baseUrl: string;
   models: ProviderModel[];
   notes?: string;
@@ -344,9 +363,9 @@ export function getAgentDef(id: AgentId): AgentDef | undefined {
   return AGENTS.find((a) => a.id === id);
 }
 
-/** A provider may bind to an agent only when the agent accepts the provider's format. */
+/** A provider may bind to an agent natively when the two declare a shared format. */
 export function isFormatCompatible(agent: AgentDef, provider: Provider): boolean {
-  return agent.acceptedFormats.includes(provider.apiFormat);
+  return provider.apiFormats.some((f) => agent.acceptedFormats.includes(f));
 }
 
 /**
@@ -354,27 +373,74 @@ export function isFormatCompatible(agent: AgentDef, provider: Provider): boolean
  * picker and `providerManager.applyBinding` use, so the UI cannot offer a pairing the
  * main process will refuse (or hide one it would accept).
  *
- * - `direct` — the agent accepts the provider's format natively. Proxy mode may still
- *   route it, but the pairing itself does not depend on translation.
- * - `proxy` — the formats differ, and the translation proxy can carry the agent's first
- *   accepted format to the provider's. Cross-format bindings always take this route,
- *   whether or not proxy mode is on.
- * - `unsupported` — no native match and no translation route (gemini crossed with any
- *   other format, or a cross-format pair whose outbound format is `openai-responses`).
+ * - `native` — the agent and the provider share a format, so the agent speaks it as-is.
+ *   Proxy mode may still route it through the loopback (identity passthrough), but the
+ *   pairing itself does not depend on translation.
+ * - `translated` — no shared format, but the translation proxy can carry the agent's
+ *   first accepted format to one the provider serves. Such a binding always goes through
+ *   the proxy, whether or not proxy mode is on.
+ * - `unsupported` — no shared format and no translation route (gemini crossed with any
+ *   other format, or a cross-format pair whose only outbound is `openai-responses`).
  */
-export type BindingAvailability = 'direct' | 'proxy' | 'unsupported';
+export type BindingAvailability = 'native' | 'translated' | 'unsupported';
+
+/** The directed format pair a binding will use, and how it got there. */
+export interface BindingRoute {
+  kind: 'native' | 'translated';
+  /** The format the agent speaks (its side of the wire). */
+  inbound: ApiFormat;
+  /** The format the provider is called with (the proxy's outbound, or the direct wire). */
+  outbound: ApiFormat;
+}
+
+/**
+ * Resolve which format pair a binding between `agent` and a provider serving
+ * `providerFormats` will use, or null when no route exists.
+ *
+ * Preference order, deliberately from the AGENT's side: walk `acceptedFormats` in the
+ * agent's declared order (its first entry is its primary dialect) and take the first the
+ * provider also serves — a native match. Only when there is none does the route fall back
+ * to translation, from the agent's first format into the first provider format
+ * {@link translationSupported} accepts, tried in the order {@link TRANSLATION_TARGETS}
+ * lists (the most faithful target first). Provider order never decides: `apiFormats` is
+ * canonical, not a preference.
+ */
+export function resolveBindingRoute(
+  agent: { acceptedFormats: readonly ApiFormat[] },
+  providerFormats: readonly ApiFormat[],
+): BindingRoute | null {
+  for (const format of agent.acceptedFormats) {
+    if (providerFormats.includes(format)) return { kind: 'native', inbound: format, outbound: format };
+  }
+  const inbound = agent.acceptedFormats[0];
+  if (inbound === undefined) return null;
+  for (const outbound of TRANSLATION_TARGETS[inbound]) {
+    if (providerFormats.includes(outbound) && translationSupported(inbound, outbound)) {
+      return { kind: 'translated', inbound, outbound };
+    }
+  }
+  return null;
+}
 
 export function bindingAvailability(
   agent: { acceptedFormats: readonly ApiFormat[] },
-  apiFormat: ApiFormat,
+  providerFormats: readonly ApiFormat[],
 ): BindingAvailability {
-  if (agent.acceptedFormats.includes(apiFormat)) return 'direct';
-  // Same inbound choice as applyBinding: a cross-format route speaks the agent's
-  // first accepted format and is translated into the provider's.
-  const inbound = agent.acceptedFormats[0];
-  if (inbound !== undefined && translationSupported(inbound, apiFormat)) return 'proxy';
-  return 'unsupported';
+  return resolveBindingRoute(agent, providerFormats)?.kind ?? 'unsupported';
 }
+
+/**
+ * For each inbound (agent) format, the outbound (provider) formats translation may target,
+ * most faithful first. Mirrors {@link translationSupported}'s cross-format cases: a
+ * Responses client prefers Chat Completions (same vendor shape, no reasoning bridge) over
+ * Anthropic. Gemini is never a translation endpoint on either side.
+ */
+export const TRANSLATION_TARGETS: Readonly<Record<ApiFormat, readonly ApiFormat[]>> = {
+  anthropic: ['openai'],
+  openai: ['anthropic'],
+  'openai-responses': ['openai', 'anthropic'],
+  gemini: [],
+};
 
 /**
  * Whether the loopback proxy can carry an `inbound` agent format to an `outbound`
@@ -432,7 +498,7 @@ export const OFFICIAL_PROVIDER_ID_PREFIX = 'official-';
 export interface OfficialProviderDef {
   id: string;
   name: string;
-  apiFormat: ApiFormat;
+  apiFormats: ApiFormat[];
   baseUrl: string;
   models: ProviderModel[];
 }
@@ -442,28 +508,29 @@ export const OFFICIAL_PROVIDERS: readonly OfficialProviderDef[] = [
   {
     id: 'official-anthropic',
     name: 'Anthropic',
-    apiFormat: 'anthropic',
+    apiFormats: ['anthropic'],
     baseUrl: 'https://api.anthropic.com',
     models: [{ id: 'claude-opus-4-20250514' }, { id: 'claude-sonnet-4-20250514' }],
   },
   {
     id: 'official-openai',
     name: 'OpenAI',
-    apiFormat: 'openai',
+    // The official API serves both OpenAI dialects at the same base.
+    apiFormats: ['openai', 'openai-responses'],
     baseUrl: 'https://api.openai.com/v1',
     models: [{ id: 'gpt-4o' }, { id: 'o3' }],
   },
   {
     id: 'official-deepseek',
     name: 'DeepSeek',
-    apiFormat: 'openai',
+    apiFormats: ['openai'],
     baseUrl: 'https://api.deepseek.com',
     models: [{ id: 'deepseek-chat' }],
   },
   {
     id: 'official-moonshot',
     name: 'Moonshot (Kimi)',
-    apiFormat: 'anthropic',
+    apiFormats: ['anthropic'],
     baseUrl: 'https://api.moonshot.cn/anthropic',
     models: [{ id: 'kimi-k2-0711-preview' }],
     // NOTE: `/anthropic` is Moonshot's messages-only compat shim (what Claude binds

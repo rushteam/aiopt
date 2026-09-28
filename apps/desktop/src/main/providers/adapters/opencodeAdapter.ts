@@ -9,7 +9,7 @@
 //
 // Our provider key is namespaced `aiopt-<providerId>` so it can never collide with a
 // built-in OpenCode provider id (e.g. `openai`, `anthropic`). `npm` selects the
-// AI-SDK adapter from the provider's apiFormat.
+// AI-SDK adapter from the binding's resolved wire format (WriteLiveInput.apiFormat).
 
 import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
@@ -50,7 +50,7 @@ export function createOpenCodeAdapter(): AgentAdapter {
       return fs.existsSync(agentConfigDir('opencode'));
     },
 
-    writeLive({ provider, modelId, apiKey }: WriteLiveInput) {
+    writeLive({ provider, apiFormat, modelId, apiKey }: WriteLiveInput) {
       const file = resolveAgentFile(AGENT_FILES.opencode.config);
       const config = readJsonObject(file);
       const slug = `aiopt-${provider.id}`;
@@ -68,7 +68,7 @@ export function createOpenCodeAdapter(): AgentAdapter {
 
       const providers = objectAt(config, 'provider');
       providers[slug] = {
-        npm: NPM_BY_FORMAT[provider.apiFormat],
+        npm: NPM_BY_FORMAT[apiFormat],
         name: provider.name,
         options,
         models,

@@ -9,9 +9,10 @@
 import { randomUUID } from 'node:crypto';
 import {
   AGENTS,
-  bindingAvailability,
   getAgentDef,
+  normalizeApiFormats,
   normalizeDropFields,
+  resolveBindingRoute,
   translationSupported,
   wireModelName,
   type AgentId,
@@ -21,6 +22,7 @@ import {
 } from '../../shared/aiProviders';
 import type {
   ProviderAddRequest,
+  ProviderDetectFormatsRequest,
   ProviderFetchModelsRequest,
   ProviderSummary,
   ProviderUpdateRequest,
@@ -31,6 +33,7 @@ import { throwIpcError } from '../ipc/validate';
 import { logger } from '../logger';
 import type { AgentAdapter } from './adapters/agentAdapter';
 import { fetchProviderModels, type FetchLike } from './modelCatalog';
+import { detectProviderFormats } from './formatProbe';
 import type { ProviderStore } from './providerStore';
 import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
 import { describeAgentConfig } from './agentConfigView';
@@ -71,6 +74,11 @@ export interface ProviderManager {
   restoreAgentDefault(agentId: AgentId): ProvidersSnapshot;
   /** Ask a provider's API for its model list. Read-only: touches neither store nor secrets writes. */
   fetchModels(input: ProviderFetchModelsRequest): Promise<ProviderModel[]>;
+  /**
+   * Probe a base URL for the wire formats it serves (one cheap request per format). Read-only
+   * like {@link fetchModels}, with the same key resolution; returns only the format list.
+   */
+  detectFormats(input: ProviderDetectFormatsRequest): Promise<ApiFormat[]>;
   /**
    * GATED: return a provider's stored key in plaintext. This is the one read that
    * hands a secret back to the caller (and ultimately the renderer) by design —
@@ -158,7 +166,7 @@ export function createProviderManager(
     return {
       id: provider.id,
       name: provider.name,
-      apiFormat: provider.apiFormat,
+      apiFormats: provider.apiFormats,
       baseUrl: provider.baseUrl,
       models: provider.models,
       notes: provider.notes,
@@ -202,6 +210,16 @@ export function createProviderManager(
   }
 
   /**
+   * The key for a read-only outbound probe (model discovery, format detection), resolved
+   * main-side: a freshly-typed key wins; otherwise the stored key of the named provider
+   * (edit mode with a blank field); otherwise none. The value never crosses back over IPC.
+   */
+  function resolveProbeKey(input: { apiKey?: string; providerId?: string }): string | null {
+    if (input.apiKey && input.apiKey !== '') return input.apiKey;
+    return input.providerId ? secrets.get(providerSecretKey(input.providerId)) : null;
+  }
+
+  /**
    * Point one agent at a provider+model: write the agent's native config and, for a
    * cross-format pairing, register the translation route. Shared by `setBinding` (fresh
    * user action) and `rebuildProxyRoutes` (startup). Does NOT touch the binding store —
@@ -217,34 +235,40 @@ export function createProviderManager(
     // alias when one is set (a gateway's / shortened outward name); otherwise the id.
     const wireModelId = wireModelName(model);
 
-    const outbound = provider.apiFormat;
-    // Shared with the binding picker (bindingAvailability): native format is `direct`,
-    // a translatable cross-format pair is `proxy`, and anything else is refused below.
-    const sameFormat = bindingAvailability(def, outbound) === 'direct';
-    // A same-format binding speaks the provider's own format; a cross-format one speaks
-    // the agent's first accepted format and is translated to the provider's.
-    const inbound = sameFormat ? outbound : def.acceptedFormats[0];
+    // Shared with the binding picker: prefer a format both sides speak (native), else
+    // translate from the agent's primary format into one the provider serves. No route at
+    // all → refused, the same way the picker greys the row.
+    const route = resolveBindingRoute(def, provider.apiFormats);
+    if (!route) {
+      throwIpcError(
+        'UNSUPPORTED_CAPABILITY',
+        'translation between this provider and agent format is not supported',
+      );
+    }
+    const { inbound, outbound } = route;
+    const sameFormat = route.kind === 'native';
 
     // Direct config (real key on disk, no proxy hop) when the formats already match AND
-    // EITHER: proxy mode is off (the default — a same-format binding connects directly),
-    // OR the pair can't be proxied at all (e.g. a gemini binding — gemini has no proxy
-    // dialect, so a same-format gemini binding is always direct).
-    const proxyable = inbound !== undefined && translationSupported(inbound, outbound);
+    // EITHER: proxy mode is off (the default — a native binding connects directly), OR the
+    // pair can't be proxied at all (a gemini binding — gemini has no proxy dialect, so a
+    // native gemini binding is always direct). Proxy mode ON therefore routes every
+    // proxyable binding through the loopback, native or not.
+    const proxyable = translationSupported(inbound, outbound);
     const direct = sameFormat && (!getProxyMode() || !proxyable);
 
     if (direct) {
       // Drop any stale route left by a previous proxied binding for this agent.
       getProxy().unregisterRoute({ agentId });
       const apiKey = secrets.get(providerSecretKey(provider.id));
-      adapter.writeLive({ provider, modelId: wireModelId, apiKey });
+      adapter.writeLive({ provider, apiFormat: outbound, modelId: wireModelId, apiKey });
       return;
     }
 
     // Routed through the proxy — either a cross-format translation (Anthropic ⇄ Chat
     // Completions; Responses → Chat Completions / Anthropic) or a same-format identity
-    // passthrough (so usage is counted and the key stays off disk). Anything the proxy
-    // can't carry is refused here.
-    if (!inbound || !proxyable) {
+    // passthrough (so usage is counted and the key stays off disk). A translated route is
+    // proxyable by construction; this guards the native-gemini case that fell through.
+    if (!proxyable) {
       throwIpcError(
         'UNSUPPORTED_CAPABILITY',
         'translation between this provider and agent format is not supported',
@@ -259,8 +283,14 @@ export function createProviderManager(
       modelId: wireModelId,
     });
     // Write the loopback URL + the per-binding token. The REAL key is never written to
-    // disk; the proxy resolves it main-side (resolveUpstreamKey) at request time.
-    adapter.writeLive({ provider: { ...provider, baseUrl }, modelId: wireModelId, apiKey: token });
+    // disk; the proxy resolves it main-side (resolveUpstreamKey) at request time. The
+    // agent speaks the loopback's INBOUND dialect, so that is the format it is told.
+    adapter.writeLive({
+      provider: { ...provider, baseUrl },
+      apiFormat: inbound,
+      modelId: wireModelId,
+      apiKey: token,
+    });
   }
 
   /**
@@ -294,10 +324,12 @@ export function createProviderManager(
     getSnapshot: snapshot,
 
     addProvider(input) {
+      const apiFormats = normalizeApiFormats(input.apiFormats);
+      if (apiFormats.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
       const provider: Provider = {
         id: randomUUID(),
         name: input.name,
-        apiFormat: input.apiFormat,
+        apiFormats,
         baseUrl: input.baseUrl,
         models: input.models,
         notes: input.notes,
@@ -313,10 +345,14 @@ export function createProviderManager(
       const existing = store.getProvider(input.id);
       if (!existing) throwIpcError('NOT_FOUND', 'provider not found');
 
+      // Formats replace as a whole set (a checkbox group), and may never end up empty.
+      const apiFormats =
+        input.apiFormats !== undefined ? normalizeApiFormats(input.apiFormats) : existing.apiFormats;
+      if (apiFormats.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
       const next: Provider = {
         ...existing,
         name: input.name ?? existing.name,
-        apiFormat: input.apiFormat ?? existing.apiFormat,
+        apiFormats,
         baseUrl: input.baseUrl ?? existing.baseUrl,
         models: input.models ?? existing.models,
         notes: input.notes !== undefined ? input.notes : existing.notes,
@@ -397,20 +433,19 @@ export function createProviderManager(
     },
 
     fetchModels(input) {
-      // Resolve the key main-side: a freshly-typed key wins; otherwise fall back
-      // to the stored key of the named provider (edit mode with a blank field).
-      const apiKey =
-        input.apiKey && input.apiKey !== ''
-          ? input.apiKey
-          : input.providerId
-            ? secrets.get(providerSecretKey(input.providerId))
-            : null;
       return fetchProviderModels(
         {
-          apiFormat: input.apiFormat,
+          apiFormats: normalizeApiFormats(input.apiFormats),
           baseUrl: input.baseUrl,
-          apiKey,
+          apiKey: resolveProbeKey(input),
         },
+        fetchImpl,
+      );
+    },
+
+    detectFormats(input) {
+      return detectProviderFormats(
+        { baseUrl: input.baseUrl, apiKey: resolveProbeKey(input) },
         fetchImpl,
       );
     },

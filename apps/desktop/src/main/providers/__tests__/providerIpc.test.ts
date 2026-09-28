@@ -93,7 +93,7 @@ async function codeOf(fn: () => Promise<unknown>): Promise<IpcErrorCode> {
 
 const addPayload = {
   name: 'Anthropic',
-  apiFormat: 'anthropic',
+  apiFormats: ['anthropic'],
   baseUrl: 'https://api.anthropic.com',
   models: [{ id: 'claude-x' }],
   apiKey: 'sk-secret',
@@ -117,11 +117,11 @@ describe('provider IPC — authorization', () => {
 });
 
 describe('provider IPC — payload validation', () => {
-  it('rejects add with a bad apiFormat (INVALID_PARAMS)', async () => {
+  it('rejects add with a bad apiFormats entry (INVALID_PARAMS)', async () => {
     const { reg } = harness();
     expect(
       await codeOf(() =>
-        reg.invoke(IPC_CHANNELS.providersAdd, { ...addPayload, apiFormat: 'nope' }, trusted),
+        reg.invoke(IPC_CHANNELS.providersAdd, { ...addPayload, apiFormats: ['anthropic', 'nope'] }, trusted),
       ),
     ).toBe('INVALID_PARAMS');
   });
@@ -366,7 +366,7 @@ describe('provider IPC — refreshProxyPort', () => {
 });
 
 describe('provider IPC — fetchModels', () => {
-  const fetchPayload = { apiFormat: 'openai', baseUrl: 'https://api.example.com/v1' };
+  const fetchPayload = { apiFormats: ['openai'], baseUrl: 'https://api.example.com/v1' };
 
   it('rejects an untrusted fetchModels call with PERMISSION_DENIED', async () => {
     const { reg } = harness();
@@ -379,16 +379,16 @@ describe('provider IPC — fetchModels', () => {
     const { reg } = harness();
     expect(
       await codeOf(() =>
-        reg.invoke(IPC_CHANNELS.providersFetchModels, { apiFormat: 'openai' }, trusted),
+        reg.invoke(IPC_CHANNELS.providersFetchModels, { apiFormats: ['openai'] }, trusted),
       ),
     ).toBe('INVALID_PARAMS');
   });
 
-  it('rejects a bad apiFormat (INVALID_PARAMS)', async () => {
+  it('rejects a bad apiFormats value (INVALID_PARAMS)', async () => {
     const { reg } = harness();
     expect(
       await codeOf(() =>
-        reg.invoke(IPC_CHANNELS.providersFetchModels, { ...fetchPayload, apiFormat: 'nope' }, trusted),
+        reg.invoke(IPC_CHANNELS.providersFetchModels, { ...fetchPayload, apiFormats: ['nope'] }, trusted),
       ),
     ).toBe('INVALID_PARAMS');
   });
@@ -403,6 +403,71 @@ describe('provider IPC — fetchModels', () => {
       trusted,
     )) as { models: { id: string }[] };
     expect(result.models).toEqual([{ id: 'gpt-4o' }]);
+  });
+});
+
+describe('provider IPC — detectFormats', () => {
+  const detectPayload = { baseUrl: 'https://api.example.com/v1' };
+
+  it('rejects an untrusted call with PERMISSION_DENIED and never touches the network', async () => {
+    let hits = 0;
+    const fetchImpl: FetchLike = () => {
+      hits += 1;
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    };
+    const { reg } = harness(fetchImpl);
+    expect(
+      await codeOf(() => reg.invoke(IPC_CHANNELS.providersDetectFormats, detectPayload, untrusted)),
+    ).toBe('PERMISSION_DENIED');
+    expect(hits).toBe(0);
+  });
+
+  it('rejects a missing baseUrl with INVALID_PARAMS before any network call', async () => {
+    let hits = 0;
+    const fetchImpl: FetchLike = () => {
+      hits += 1;
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    };
+    const { reg } = harness(fetchImpl);
+    expect(await codeOf(() => reg.invoke(IPC_CHANNELS.providersDetectFormats, {}, trusted))).toBe(
+      'INVALID_PARAMS',
+    );
+    expect(hits).toBe(0);
+  });
+
+  it('returns the served formats for a trusted call, using the typed key', async () => {
+    const seen: string[] = [];
+    const fetchImpl: FetchLike = (url, init) => {
+      seen.push(init?.headers?.authorization ?? init?.headers?.['x-api-key'] ?? '');
+      const served = url.endsWith('/chat/completions') || url.endsWith('/messages');
+      return Promise.resolve({
+        ok: false,
+        status: served ? 400 : 404,
+        json: () => Promise.resolve({}),
+      });
+    };
+    const { reg } = harness(fetchImpl);
+    const result = (await reg.invoke(
+      IPC_CHANNELS.providersDetectFormats,
+      { ...detectPayload, apiKey: 'sk-typed' },
+      trusted,
+    )) as { formats: string[] };
+    expect(result.formats).toEqual(['anthropic', 'openai']);
+    // Every authenticated probe carried the typed key (the gemini GET carries it in the query).
+    expect(seen.filter((h) => h.includes('sk-typed')).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('falls back to the stored key of an existing provider when the field is blank', async () => {
+    const seen: string[] = [];
+    const fetchImpl: FetchLike = (_url, init) => {
+      seen.push(init?.headers?.authorization ?? '');
+      return Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({}) });
+    };
+    const { reg } = harness(fetchImpl);
+    const snap = (await reg.invoke(IPC_CHANNELS.providersAdd, addPayload, trusted)) as ProvidersSnapshot;
+    const providerId = snap.providers[0]!.id;
+    await reg.invoke(IPC_CHANNELS.providersDetectFormats, { ...detectPayload, providerId }, trusted);
+    expect(seen).toContain('Bearer sk-secret');
   });
 });
 

@@ -140,7 +140,7 @@
     },
     "fields": {
       "name": "Name",
-      "apiFormat": "API format",
+      "apiFormats": "API formats",
       "baseUrl": "Base URL",
       "apiKey": "API key",
       "models": "Models",
@@ -163,6 +163,11 @@
       "loadModels": "Load models",
       "loadingModels": "Loading…",
       "loadModelsEmpty": "The provider returned no models.",
+      "apiFormatsHint": "Tick every format this endpoint serves. A binding uses the one the agent speaks natively when it can.",
+      "detectFormats": "Detect",
+      "detecting": "Detecting…",
+      "detectFound": "Detected:",
+      "detectNone": "No supported format answered at this URL. Check the Base URL (and key), or tick the formats by hand.",
       "cancel": "Cancel",
       "close": "Close",
       "save": "Save",
@@ -296,7 +301,8 @@
     "library": {
       "label": "Central library",
       "app": "In app",
-      "home": "~/.aiopt/skills"
+      "home": "~/.aiopt/skills",
+      "agents": "~/.agents/skills"
     },
     "meta": {
       "files": "files"

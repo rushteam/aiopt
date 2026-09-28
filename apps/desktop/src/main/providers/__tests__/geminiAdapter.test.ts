@@ -8,7 +8,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'Gemini',
-  apiFormat: 'gemini',
+  apiFormats: ['gemini'],
   baseUrl: 'https://generativelanguage.example.com',
   models: [{ id: 'gemini-2.5-pro' }],
   createdAt: 0,
@@ -45,7 +45,7 @@ describe('gemini adapter — detectInstalled', () => {
 
 describe('gemini adapter — writeLive', () => {
   it('writes the three env vars alphabetically', () => {
-    createGeminiAdapter().writeLive({ provider, modelId: 'gemini-2.5-pro', apiKey: 'sk-g' });
+    createGeminiAdapter().writeLive({ provider, apiFormat: 'gemini', modelId: 'gemini-2.5-pro', apiKey: 'sk-g' });
     expect(fs.readFileSync(envFile(), 'utf8')).toBe(
       ['GEMINI_API_KEY=sk-g', 'GEMINI_MODEL=gemini-2.5-pro', 'GOOGLE_GEMINI_BASE_URL=https://generativelanguage.example.com', ''].join(
         '\n',
@@ -54,7 +54,7 @@ describe('gemini adapter — writeLive', () => {
   });
 
   it('omits GEMINI_API_KEY when no key is provided', () => {
-    createGeminiAdapter().writeLive({ provider, modelId: 'gemini-2.5-pro', apiKey: null });
+    createGeminiAdapter().writeLive({ provider, apiFormat: 'gemini', modelId: 'gemini-2.5-pro', apiKey: null });
     expect(fs.readFileSync(envFile(), 'utf8')).toBe(
       ['GEMINI_MODEL=gemini-2.5-pro', 'GOOGLE_GEMINI_BASE_URL=https://generativelanguage.example.com', ''].join('\n'),
     );
@@ -67,7 +67,7 @@ describe('gemini adapter — writeLive', () => {
       JSON.stringify({ theme: 'dark', security: { auth: { previous: 'x' } } }),
       'utf8',
     );
-    createGeminiAdapter().writeLive({ provider, modelId: 'gemini-2.5-pro', apiKey: 'sk' });
+    createGeminiAdapter().writeLive({ provider, apiFormat: 'gemini', modelId: 'gemini-2.5-pro', apiKey: 'sk' });
     const settings = readSettings();
     expect(settings.theme).toBe('dark');
     expect(settings.security).toEqual({

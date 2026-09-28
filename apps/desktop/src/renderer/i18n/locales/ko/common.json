@@ -140,7 +140,7 @@
     },
     "fields": {
       "name": "이름",
-      "apiFormat": "API 형식",
+      "apiFormats": "API 형식",
       "baseUrl": "Base URL",
       "apiKey": "API 키",
       "models": "모델",
@@ -163,6 +163,11 @@
       "loadModels": "모델 불러오기",
       "loadingModels": "불러오는 중…",
       "loadModelsEmpty": "공급자가 반환한 모델이 없습니다.",
+      "apiFormatsHint": "이 엔드포인트가 제공하는 형식을 모두 선택하세요. 바인딩 시 Agent가 기본으로 말하는 형식을 우선 사용합니다.",
+      "detectFormats": "자동 감지",
+      "detecting": "감지 중…",
+      "detectFound": "감지됨:",
+      "detectNone": "이 URL에서 응답한 지원 형식이 없습니다. Base URL(및 키)을 확인하거나 직접 선택하세요.",
       "cancel": "취소",
       "close": "닫기",
       "save": "저장",
@@ -296,7 +301,8 @@
     "library": {
       "label": "중앙 라이브러리",
       "app": "앱 내",
-      "home": "~/.aiopt/skills"
+      "home": "~/.aiopt/skills",
+      "agents": "~/.agents/skills"
     },
     "meta": {
       "files": "개 파일"

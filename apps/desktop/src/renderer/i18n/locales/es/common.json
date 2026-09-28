@@ -140,7 +140,7 @@
     },
     "fields": {
       "name": "Nombre",
-      "apiFormat": "Formato de API",
+      "apiFormats": "Formatos de API",
       "baseUrl": "URL base",
       "apiKey": "Clave de API",
       "models": "Modelos",
@@ -163,6 +163,11 @@
       "loadModels": "Cargar modelos",
       "loadingModels": "Cargando…",
       "loadModelsEmpty": "El proveedor no devolvió ningún modelo.",
+      "apiFormatsHint": "Marca todos los formatos que sirve este endpoint. Una vinculación usa el que el Agent habla de forma nativa cuando puede.",
+      "detectFormats": "Detectar",
+      "detecting": "Detectando…",
+      "detectFound": "Detectados:",
+      "detectNone": "Ningún formato compatible respondió en esta URL. Comprueba la URL base (y la clave), o marca los formatos a mano.",
       "cancel": "Cancelar",
       "close": "Cerrar",
       "save": "Guardar",
@@ -296,7 +301,8 @@
     "library": {
       "label": "Biblioteca central",
       "app": "En la aplicación",
-      "home": "~/.aiopt/skills"
+      "home": "~/.aiopt/skills",
+      "agents": "~/.agents/skills"
     },
     "meta": {
       "files": "archivos"

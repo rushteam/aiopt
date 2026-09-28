@@ -141,11 +141,11 @@ function recordingFetch(): { fetchImpl: FetchLike; calls: { url: string; headers
 
 function addProvider(
   manager: ReturnType<typeof harness>['manager'],
-  overrides: Partial<{ apiFormat: ApiFormat; apiKey: string; modelId: string }> = {},
+  overrides: Partial<{ apiFormat: ApiFormat; apiFormats: ApiFormat[]; apiKey: string; modelId: string }> = {},
 ): string {
   const snap = manager.addProvider({
     name: 'Provider',
-    apiFormat: overrides.apiFormat ?? 'anthropic',
+    apiFormats: overrides.apiFormats ?? [overrides.apiFormat ?? 'anthropic'],
     baseUrl: 'https://api.example.com',
     models: [{ id: overrides.modelId ?? 'm1' }],
     notes: undefined,
@@ -249,7 +249,7 @@ describe('provider manager — setBinding (the apply flow)', () => {
     const { manager, calls } = harness(['claude']);
     const snap = manager.addProvider({
       name: 'Gateway',
-      apiFormat: 'anthropic',
+      apiFormats: ['anthropic'],
       baseUrl: 'https://gw.example.com',
       models: [{ id: 'claude-real', alias: 'my-claude' }],
       notes: undefined,
@@ -432,6 +432,76 @@ describe('provider manager — setBinding cross-format (translation proxy)', () 
     manager.setBinding('claude', id, 'm1');
     manager.removeProvider(id);
     expect(unregistered).toContain('claude');
+  });
+});
+
+describe('provider manager — setBinding with a multi-format provider', () => {
+  it('prefers the agent’s native format over translation (proxy off → direct)', () => {
+    const { manager, registered, calls } = harness(['claude']);
+    // The provider serves both; claude speaks anthropic → bind natively, no proxy.
+    const id = addProvider(manager, { apiFormats: ['openai', 'anthropic'], apiKey: 'sk-live', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(0);
+    const write = calls.claude![0]!;
+    expect(write.apiFormat).toBe('anthropic');
+    expect(write.apiKey).toBe('sk-live');
+    expect(write.provider.baseUrl).toBe('https://api.example.com');
+  });
+
+  it('codex picks Responses natively from an OpenAI provider serving Chat + Responses', () => {
+    const { manager, registered, calls } = harness(['codex']);
+    const id = addProvider(manager, { apiFormats: ['openai', 'openai-responses'], apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('codex', id, 'm1');
+    expect(registered).toHaveLength(0);
+    expect(calls.codex![0]!.apiFormat).toBe('openai-responses');
+  });
+
+  it('proxy mode on: the native pick still goes through the proxy as an identity route', () => {
+    const { manager, registered, calls } = harness(['claude'], { proxyMode: true });
+    const id = addProvider(manager, { apiFormats: ['openai', 'anthropic'], apiKey: 'sk-REAL', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(1);
+    expect(registered[0]!).toMatchObject({ inboundFormat: 'anthropic', outboundFormat: 'anthropic' });
+    const write = calls.claude![0]!;
+    expect(write.apiFormat).toBe('anthropic');
+    expect(write.apiKey).toBe('tok-1');
+    expect(JSON.stringify(write)).not.toContain('sk-REAL');
+  });
+
+  it('a multi-format agent gets the wire format it can actually speak written to its config', () => {
+    // hermes accepts openai, anthropic, openai-responses (in that order). An anthropic-only
+    // provider must be written as anthropic — not as the provider's first-listed default.
+    const { manager, registered, calls } = harness(['hermes']);
+    const id = addProvider(manager, { apiFormats: ['anthropic'], apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('hermes', id, 'm1');
+    expect(registered).toHaveLength(0);
+    expect(calls.hermes![0]!.apiFormat).toBe('anthropic');
+  });
+
+  it('translates only when nothing native is served, choosing the preferred outbound', () => {
+    const { manager, registered, calls } = harness(['codex']);
+    const id = addProvider(manager, { apiFormats: ['anthropic', 'openai'], apiKey: 'sk', modelId: 'm1' });
+    manager.setBinding('codex', id, 'm1');
+    expect(registered).toHaveLength(1);
+    expect(registered[0]!).toMatchObject({ inboundFormat: 'openai-responses', outboundFormat: 'openai' });
+    // The agent is written in ITS format; the proxy speaks the provider's on the other side.
+    expect(calls.codex![0]!.apiFormat).toBe('openai-responses');
+  });
+
+  it('addProvider refuses an empty format set with INVALID_PARAMS', () => {
+    const { manager } = harness(['claude']);
+    expect(
+      codeOf(() =>
+        manager.addProvider({ name: 'X', apiFormats: [], baseUrl: 'https://x', models: [{ id: 'm' }], notes: undefined }),
+      ),
+    ).toBe('INVALID_PARAMS');
+  });
+
+  it('updateProvider refuses an empty format set with INVALID_PARAMS and keeps the old formats', () => {
+    const { manager } = harness(['claude']);
+    const id = addProvider(manager, { apiFormats: ['anthropic'], modelId: 'm1' });
+    expect(codeOf(() => manager.updateProvider({ id, apiFormats: [] }))).toBe('INVALID_PARAMS');
+    expect(manager.getSnapshot().providers.find((p) => p.id === id)!.apiFormats).toEqual(['anthropic']);
   });
 });
 
@@ -653,7 +723,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
     const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'stored-key' });
 
     const models = await manager.fetchModels({
-      apiFormat: 'openai',
+      apiFormats: ['openai'],
       baseUrl: 'https://api.example.com/v1',
       apiKey: 'typed-key',
       providerId: id,
@@ -669,7 +739,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
     const id = addProvider(manager, { apiFormat: 'openai', apiKey: 'stored-key' });
 
     await manager.fetchModels({
-      apiFormat: 'openai',
+      apiFormats: ['openai'],
       baseUrl: 'https://api.example.com/v1',
       providerId: id,
     });
@@ -681,7 +751,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
     const { fetchImpl, calls } = recordingFetch();
     const { manager } = harness(['claude'], { fetchImpl });
 
-    await manager.fetchModels({ apiFormat: 'openai', baseUrl: 'https://api.example.com/v1' });
+    await manager.fetchModels({ apiFormats: ['openai'], baseUrl: 'https://api.example.com/v1' });
 
     expect(calls[0]!.headers.authorization).toBeUndefined();
   });

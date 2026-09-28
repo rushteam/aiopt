@@ -12,8 +12,8 @@
 // switches the active provider.
 //
 // Hermes selects its wire protocol per provider via `api_mode`; API_MODE_BY_FORMAT maps
-// our provider's apiFormat onto it. The compatibility gate (AGENTS.acceptedFormats) only
-// routes openai / anthropic / openai-responses providers here.
+// the binding's resolved wire format (WriteLiveInput.apiFormat) onto it. The compatibility
+// gate (AGENTS.acceptedFormats) only routes openai / anthropic / openai-responses here.
 //
 // NOTE: Hermes v12+ also exposes a read-only `providers:` MAP that its own Web UI owns.
 // We never touch it — we only ever write the `custom_providers:` LIST, exactly as
@@ -79,7 +79,7 @@ export function createHermesAdapter(): AgentAdapter {
       return fs.existsSync(agentConfigDir('hermes'));
     },
 
-    writeLive({ provider, modelId, apiKey }: WriteLiveInput) {
+    writeLive({ provider, apiFormat, modelId, apiKey }: WriteLiveInput) {
       const file = resolveAgentFile(AGENT_FILES.hermes.config);
       const doc = readConfigDocument(file);
       const slug = `aiopt-${provider.id}`;
@@ -99,7 +99,7 @@ export function createHermesAdapter(): AgentAdapter {
         seq.add(entry);
       }
       entry.set('base_url', provider.baseUrl);
-      entry.set('api_mode', API_MODE_BY_FORMAT[provider.apiFormat]);
+      entry.set('api_mode', API_MODE_BY_FORMAT[apiFormat]);
       entry.set('model', modelId);
       entry.set('models', models);
       if (apiKey) entry.set('api_key', apiKey);

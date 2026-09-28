@@ -20,13 +20,20 @@ export interface FetchLikeResponse {
 /** The injected transport. Structurally compatible with `fetch` / Electron `net.fetch`. */
 export type FetchLike = (
   url: string,
-  init?: { method?: string; headers?: Record<string, string>; signal?: AbortSignal },
+  init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
 ) => Promise<FetchLikeResponse>;
 
 export interface FetchModelsInput {
-  apiFormat: ApiFormat;
+  /** The formats the provider serves; each distinct catalog endpoint is tried in turn. */
+  apiFormats: readonly ApiFormat[];
   baseUrl: string;
   /** Resolved main-side; may be null when the provider has no stored key. */
+  apiKey: string | null;
+}
+
+/** One catalog call's inputs — a single format, for the per-dialect fetchers below. */
+interface CatalogInput {
+  baseUrl: string;
   apiKey: string | null;
 }
 
@@ -102,7 +109,7 @@ function dedupe(models: (ProviderModel | null)[]): ProviderModel[] {
 
 // OpenAI-compatible: GET {base}/models (base usually already ends in /v1), key as
 // `Authorization: Bearer`. Response: { data: [{ id }] } — no display name.
-async function fetchOpenAiModels(input: FetchModelsInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
+async function fetchOpenAiModels(input: CatalogInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
   const base = normalizeBase(input.baseUrl);
   const url = endsWithVersion(base) ? `${base}/models` : `${base}/v1/models`;
   const headers: Record<string, string> = { accept: 'application/json' };
@@ -114,7 +121,7 @@ async function fetchOpenAiModels(input: FetchModelsInput, fetchImpl: FetchLike):
 
 // Anthropic: GET {base}/v1/models, key as `x-api-key` + `anthropic-version`.
 // Response: { data: [{ id, display_name }] } — we take only the id.
-async function fetchAnthropicModels(input: FetchModelsInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
+async function fetchAnthropicModels(input: CatalogInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
   const base = normalizeBase(input.baseUrl);
   const url = endsWithVersion(base) ? `${base}/models` : `${base}/v1/models`;
   const headers: Record<string, string> = {
@@ -129,7 +136,7 @@ async function fetchAnthropicModels(input: FetchModelsInput, fetchImpl: FetchLik
 
 // Gemini: GET {base}/v1beta/models?key=<key> (key in the query, not a header).
 // Response: { models: [{ name: "models/<id>", displayName }] } — we take only the id.
-async function fetchGeminiModels(input: FetchModelsInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
+async function fetchGeminiModels(input: CatalogInput, fetchImpl: FetchLike): Promise<ProviderModel[]> {
   const base = normalizeBase(input.baseUrl);
   const path = endsWithVersion(base) ? `${base}/models` : `${base}/v1beta/models`;
   const url = input.apiKey ? `${path}?key=${encodeURIComponent(input.apiKey)}` : path;
@@ -139,25 +146,62 @@ async function fetchGeminiModels(input: FetchModelsInput, fetchImpl: FetchLike):
 }
 
 /**
- * Fetch the model catalog for a provider by its declared format. `fetchImpl` is
- * injected (main passes Electron's `net.fetch`; tests pass a stub). Returns the
- * models (possibly empty); throws a coded, key-free error on failure.
+ * The catalog dialect a format discovers models with. Both OpenAI formats share one:
+ * a Responses-native provider (official OpenAI et al.) serves the same `/v1/models` as
+ * Chat Completions, so it discovers models identically.
  */
-export function fetchProviderModels(
-  input: FetchModelsInput,
-  fetchImpl: FetchLike,
-): Promise<ProviderModel[]> {
-  switch (input.apiFormat) {
+type CatalogKind = 'openai' | 'anthropic' | 'gemini';
+
+function catalogKind(format: ApiFormat): CatalogKind {
+  switch (format) {
     case 'openai':
-    // A Responses-native provider (official OpenAI et al.) serves the same
-    // `/v1/models` catalog as Chat Completions, so it discovers models identically.
     case 'openai-responses':
-      return fetchOpenAiModels(input, fetchImpl);
+      return 'openai';
     case 'anthropic':
-      return fetchAnthropicModels(input, fetchImpl);
+      return 'anthropic';
     case 'gemini':
-      return fetchGeminiModels(input, fetchImpl);
+      return 'gemini';
     default:
       throwIpcError('INVALID_PARAMS', 'unsupported api format');
   }
+}
+
+const CATALOG_FETCHERS: Record<
+  CatalogKind,
+  (input: CatalogInput, fetchImpl: FetchLike) => Promise<ProviderModel[]>
+> = {
+  openai: fetchOpenAiModels,
+  anthropic: fetchAnthropicModels,
+  gemini: fetchGeminiModels,
+};
+
+/**
+ * Fetch the model catalog for a provider by its declared formats. `fetchImpl` is
+ * injected (main passes Electron's `net.fetch`; tests pass a stub). Each DISTINCT
+ * catalog dialect among `apiFormats` is asked in turn (canonical order); the first
+ * non-empty list wins. When every dialect fails, the FIRST failure is rethrown — it is
+ * the one for the provider's primary format, so its code (UNAUTHORIZED vs UPSTREAM_ERROR)
+ * is the most useful. An empty list is returned only when every dialect answered empty.
+ * Throws INVALID_PARAMS when `apiFormats` is empty.
+ */
+export async function fetchProviderModels(
+  input: FetchModelsInput,
+  fetchImpl: FetchLike,
+): Promise<ProviderModel[]> {
+  const kinds = [...new Set(input.apiFormats.map(catalogKind))];
+  if (kinds.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
+  const call: CatalogInput = { baseUrl: input.baseUrl, apiKey: input.apiKey };
+  let firstError: unknown;
+  let sawEmpty = false;
+  for (const kind of kinds) {
+    try {
+      const models = await CATALOG_FETCHERS[kind](call, fetchImpl);
+      if (models.length > 0) return models;
+      sawEmpty = true;
+    } catch (err) {
+      if (firstError === undefined) firstError = err;
+    }
+  }
+  if (sawEmpty) return [];
+  throw firstError;
 }

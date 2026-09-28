@@ -10,7 +10,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'My Provider',
-  apiFormat: 'openai',
+  apiFormats: ['openai'],
   baseUrl: 'https://api.example.com/v1',
   models: [{ id: 'gpt-4o' }],
   createdAt: 0,
@@ -86,7 +86,7 @@ describe('dsh adapter — detectInstalled', () => {
 
 describe('dsh adapter — writeLive', () => {
   it('writes a namespaced provider (settings) and its secret (credentials), linked by apiKeyEnv', () => {
-    createDshAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-o' });
+    createDshAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-o' });
 
     expect(readSettings()).toEqual({
       'llm-pi-ai': {
@@ -106,20 +106,20 @@ describe('dsh adapter — writeLive', () => {
   });
 
   it('writes .credentials.yaml owner-only (0600) so dsh will load it', () => {
-    createDshAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-o' });
+    createDshAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-o' });
     expectOwnerOnly(credsFile());
   });
 
   it('maps each accepted apiFormat to the right dsh api', () => {
     const adapter = createDshAdapter();
-    adapter.writeLive({ provider: { ...provider, apiFormat: 'anthropic' }, modelId: 'm', apiKey: 'k' });
+    adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'm', apiKey: 'k' });
     expect(ourEntry().api).toBe('anthropic-messages');
-    adapter.writeLive({ provider: { ...provider, apiFormat: 'openai-responses' }, modelId: 'm', apiKey: 'k' });
+    adapter.writeLive({ provider, apiFormat: 'openai-responses', modelId: 'm', apiKey: 'k' });
     expect(ourEntry().api).toBe('openai-responses');
   });
 
   it('omits apiKeyEnv and the ref when no key is stored', () => {
-    createDshAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: null });
+    createDshAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: null });
     expect('apiKeyEnv' in ourEntry()).toBe(false);
     expect(CRED_REF in refs()).toBe(false);
     expect(readCreds().version).toBe(1); // file is still a valid versioned store
@@ -128,6 +128,7 @@ describe('dsh adapter — writeLive', () => {
   it('lists models by outward wire name (alias when set)', () => {
     createDshAdapter().writeLive({
       provider: { ...provider, models: [{ id: 'long-model-id', alias: 'gpt' }] },
+      apiFormat: 'openai',
       modelId: 'gpt',
       apiKey: 'k',
     });
@@ -155,7 +156,7 @@ describe('dsh adapter — writeLive', () => {
       ['version: 1', 'refs:', '  DEEPSEEK_API_KEY: sk-theirs', '  UNRELATED: keep-me', ''].join('\n'),
     );
 
-    createDshAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-new' });
+    createDshAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-new' });
 
     expect(fs.readFileSync(settingsFile(), 'utf8')).toContain('# my dsh config'); // comment preserved
     // Other provider + unrelated namespace untouched.
@@ -175,7 +176,7 @@ describe('dsh adapter — restoreDefault', () => {
     fs.writeFileSync(settingsFile(), 'llm-pi-ai:\n  providers: {}\n');
     fs.writeFileSync(credsFile(), 'version: 1\nrefs:\n  KEEP: v\n', { mode: 0o600 });
     const adapter = createDshAdapter();
-    adapter.writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk' });
     adapter.restoreDefault();
     expect(fs.readFileSync(settingsFile(), 'utf8')).toBe('llm-pi-ai:\n  providers: {}\n');
     expect(fs.readFileSync(credsFile(), 'utf8')).toBe('version: 1\nrefs:\n  KEEP: v\n');
@@ -186,7 +187,7 @@ describe('dsh adapter — restoreDefault', () => {
 
   it('removes AiOpt-created files when there were no originals', () => {
     const adapter = createDshAdapter();
-    adapter.writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk' });
+    adapter.writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk' });
     adapter.restoreDefault();
     expect(fs.existsSync(settingsFile())).toBe(false);
     expect(fs.existsSync(credsFile())).toBe(false);

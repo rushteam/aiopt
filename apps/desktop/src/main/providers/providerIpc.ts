@@ -21,9 +21,23 @@ import {
   API_FORMATS,
   DROPPABLE_FIELD_NAMES,
   normalizeDropFields,
+  type ApiFormat,
   type ProviderModel,
 } from '../../shared/aiProviders';
 import type { ProviderManager } from './providerManager';
+
+/**
+ * Validate an untrusted formats list: a non-empty array, every entry a known format.
+ * Like drop-fields, an unknown name is REFUSED rather than dropped — the renderer and
+ * main disagreeing about the format set is a bug the user should see, not a silently
+ * shrunk selection. Order/duplicates are left to the manager's normalizer.
+ */
+function requireFormats(raw: unknown, name: string): ApiFormat[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throwIpcError('INVALID_PARAMS', `${name} must be a non-empty array of formats`);
+  }
+  return raw.map((entry, i) => requireEnum(entry, API_FORMATS, `${name}[${i}]`));
+}
 
 /**
  * Validate an untrusted drop-fields list: an array of strings, each on the shared
@@ -89,7 +103,7 @@ export function registerProviderIpc(
     const obj = requireObject(payload);
     return manager.addProvider({
       name: requireString(obj.name, 'name'),
-      apiFormat: requireEnum(obj.apiFormat, API_FORMATS, 'apiFormat'),
+      apiFormats: requireFormats(obj.apiFormats, 'apiFormats'),
       baseUrl: requireString(obj.baseUrl, 'baseUrl'),
       models: requireModels(obj.models),
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
@@ -104,7 +118,8 @@ export function registerProviderIpc(
     return manager.updateProvider({
       id: requireString(obj.id, 'id'),
       name: obj.name !== undefined ? requireString(obj.name, 'name') : undefined,
-      apiFormat: obj.apiFormat !== undefined ? requireEnum(obj.apiFormat, API_FORMATS, 'apiFormat') : undefined,
+      // Present = replace the whole set (must stay non-empty); omitted = unchanged.
+      apiFormats: obj.apiFormats !== undefined ? requireFormats(obj.apiFormats, 'apiFormats') : undefined,
       baseUrl: obj.baseUrl !== undefined ? requireString(obj.baseUrl, 'baseUrl') : undefined,
       models: obj.models !== undefined ? requireModels(obj.models) : undefined,
       notes: typeof obj.notes === 'string' ? obj.notes : undefined,
@@ -146,12 +161,25 @@ export function registerProviderIpc(
     meta.assertTrustedSender();
     const obj = requireObject(payload);
     const models = await manager.fetchModels({
-      apiFormat: requireEnum(obj.apiFormat, API_FORMATS, 'apiFormat'),
+      apiFormats: requireFormats(obj.apiFormats, 'apiFormats'),
       baseUrl: requireString(obj.baseUrl, 'baseUrl'),
       apiKey: optionalString(obj.apiKey),
       providerId: optionalString(obj.providerId),
     });
     return { models };
+  });
+
+  // Probe a base URL for the formats it serves. Same trust shape as fetch-models: the key
+  // is sent or resolved main-side and never returned; the result is only a format list.
+  registry.register(IPC_CHANNELS.providersDetectFormats, async (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const formats = await manager.detectFormats({
+      baseUrl: requireString(obj.baseUrl, 'baseUrl'),
+      apiKey: optionalString(obj.apiKey),
+      providerId: optionalString(obj.providerId),
+    });
+    return { formats };
   });
 
   // GATED: hands the stored key plaintext back to the renderer (see channel note).

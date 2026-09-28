@@ -12,12 +12,11 @@ import { renameSyncWithRetry } from '../fsRetry';
 import { readUtf8WithoutBom } from '../storeFile';
 import {
   AGENT_IDS,
-  API_FORMATS,
   OFFICIAL_PROVIDER_ID_PREFIX,
+  normalizeApiFormats,
   normalizeDropFields,
   type AgentBinding,
   type AgentId,
-  type ApiFormat,
   type Provider,
   type ProviderModel,
 } from '../../shared/aiProviders';
@@ -66,14 +65,20 @@ function validProvider(raw: unknown): Provider | null {
   const obj = raw as Record<string, unknown>;
   if (typeof obj.id !== 'string' || obj.id.trim() === '') return null;
   if (typeof obj.name !== 'string' || obj.name.trim() === '') return null;
-  if (!API_FORMATS.includes(obj.apiFormat as ApiFormat)) return null;
+  // `apiFormats` (v3) is the list; a v2 file carries a single `apiFormat` string, which
+  // migrates to a one-element list on load and is written back as `apiFormats`. Unknown
+  // names are dropped; a record left with no valid format is unusable and is dropped too.
+  const apiFormats = normalizeApiFormats(
+    Array.isArray(obj.apiFormats) ? obj.apiFormats : [obj.apiFormat],
+  );
+  if (apiFormats.length === 0) return null;
   if (typeof obj.baseUrl !== 'string' || obj.baseUrl.trim() === '') return null;
   if (!Array.isArray(obj.models)) return null;
   const models = obj.models.map(validModel).filter((m): m is ProviderModel => m !== null);
   const provider: Provider = {
     id: obj.id,
     name: obj.name,
-    apiFormat: obj.apiFormat as ApiFormat,
+    apiFormats,
     baseUrl: obj.baseUrl,
     models,
     createdAt: typeof obj.createdAt === 'number' ? obj.createdAt : 0,
@@ -205,7 +210,9 @@ export function createFileProviderPersistence(filePath: string): ProviderPersist
     },
     save(doc) {
       const tmp = `${filePath}.tmp`;
-      const contents = `${JSON.stringify({ version: 2, ...doc }, null, 2)}\n`;
+      // v3: providers carry `apiFormats` (a list); v2 files with a single `apiFormat`
+      // are still read (see validProvider) and rewritten in this shape on the next save.
+      const contents = `${JSON.stringify({ version: 3, ...doc }, null, 2)}\n`;
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       try {
         fs.writeFileSync(tmp, contents, 'utf8');

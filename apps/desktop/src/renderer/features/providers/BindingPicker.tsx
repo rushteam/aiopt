@@ -1,11 +1,11 @@
 // Pick which provider+model an agent uses — a master/detail modal over the pool.
 //
-// Left pane: the providers. A provider is selectable when the agent accepts its format
-// natively, or when the translation proxy can carry the agent's format to the
-// provider's (see bindingAvailability) — those rows are labeled as going through the
-// proxy. Pairs the proxy cannot translate stay greyed. Right pane: the models of the
-// provider selected on the left. This scales to a large pool and to providers with
-// long (auto-loaded) model lists — each side scrolls, the model side filters.
+// Left pane: the providers. A provider is selectable when it serves a format the agent
+// speaks natively, or when the translation proxy can carry the agent's format to one it
+// serves (see resolveBindingRoute) — those rows are labeled as going through the proxy.
+// Pairs the proxy cannot translate stay greyed. Right pane: the models of the provider
+// selected on the left. This scales to a large pool and to providers with long
+// (auto-loaded) model lists — each side scrolls, the model side filters.
 //
 // Selecting a provider or a model only STAGES the choice (highlight, no write);
 // nothing touches the agent config until the footer "Apply" button commits it.
@@ -23,7 +23,7 @@ import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
-import { bindingAvailability, type ProviderModel } from '../../../shared/aiProviders';
+import { resolveBindingRoute, type ProviderModel } from '../../../shared/aiProviders';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 
@@ -55,10 +55,11 @@ export function BindingPicker({
 
   // Native matches first, then proxy-translated, then pairs the proxy cannot carry
   // (greyed) — a stable, scannable order.
+  const routeFor = (p: ProviderSummary) => resolveBindingRoute(agent, p.apiFormats);
   const ordered = useMemo(() => {
     const rank = (p: ProviderSummary): number => {
-      const availability = bindingAvailability(agent, p.apiFormat);
-      return availability === 'direct' ? 2 : availability === 'proxy' ? 1 : 0;
+      const route = resolveBindingRoute(agent, p.apiFormats);
+      return route === null ? 0 : route.kind === 'native' ? 2 : 1;
     };
     return [...providers].sort((a, b) => rank(b) - rank(a));
   }, [providers, agent]);
@@ -74,7 +75,7 @@ export function BindingPicker({
   // Open on the currently-bound provider, else the first one that can actually be applied.
   const initialSelected =
     agent.binding?.providerId ??
-    ordered.find((p) => bindingAvailability(agent, p.apiFormat) !== 'unsupported')?.id ??
+    ordered.find((p) => routeFor(p) !== null)?.id ??
     ordered[0]?.id ??
     null;
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected);
@@ -90,9 +91,9 @@ export function BindingPicker({
   const isRestoreSelected = selectedId === RESTORE_ID;
 
   const selected = ordered.find((p) => p.id === selectedId) ?? null;
-  const selectedAvailability = selected ? bindingAvailability(agent, selected.apiFormat) : null;
-  const selectedSelectable =
-    selectedAvailability === 'direct' || selectedAvailability === 'proxy';
+  // The route this binding would take: null when the proxy cannot carry the pair.
+  const selectedRoute = selected ? routeFor(selected) : null;
+  const selectedSelectable = selectedRoute !== null;
 
   const sortedModels = useMemo(
     () => (selected ? [...selected.models].sort(compareModels) : []),
@@ -201,8 +202,8 @@ export function BindingPicker({
                 </li>
               )}
               {ordered.map((provider) => {
-                const availability = bindingAvailability(agent, provider.apiFormat);
-                const selectable = availability !== 'unsupported';
+                const route = routeFor(provider);
+                const selectable = route !== null;
                 const isSelected = provider.id === selectedId;
                 const isBound = agent.binding?.providerId === provider.id;
                 return (
@@ -232,14 +233,24 @@ export function BindingPicker({
                           </>
                         )}
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: space.sm }}>
-                        <span style={badgeStyle}>{t(`providers.formats.${provider.apiFormat}`)}</span>
-                        {availability === 'proxy' && (
+                      <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
+                        {/* Every format the provider serves; the one this binding would use
+                            (route.outbound) is emphasized so a multi-format gateway reads at
+                            a glance as "will talk Anthropic here". */}
+                        {provider.apiFormats.map((format) => (
+                          <span
+                            key={format}
+                            style={badgeStyle(route !== null && route.outbound === format)}
+                          >
+                            {t(`providers.formats.${format}`)}
+                          </span>
+                        ))}
+                        {route?.kind === 'translated' && (
                           <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
                             {t('providers.binding.viaProxy')}
                           </span>
                         )}
-                        {availability === 'unsupported' && (
+                        {route === null && (
                           <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
                             {t('providers.binding.unsupported')}
                           </span>
@@ -267,12 +278,20 @@ export function BindingPicker({
                 </>
               ) : !selected ? (
                 <p style={hintStyle}>{t('providers.binding.selectProviderHint')}</p>
-              ) : selectedAvailability === 'unsupported' ? (
+              ) : selectedRoute === null ? (
                 <p style={hintStyle}>{t('providers.binding.unsupportedHint')}</p>
               ) : (
                 <>
-                  {selectedAvailability === 'proxy' && (
-                    <p style={hintStyle}>{t('providers.binding.viaProxyHint')}</p>
+                  {selectedRoute.kind === 'translated' && (
+                    <p style={hintStyle}>
+                      {t('providers.binding.viaProxyHint')}{' '}
+                      {/* The concrete pair, so "translated" is never abstract: what the agent
+                          sends → what the provider receives. Format labels, not raw ids. */}
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        ({t(`providers.formats.${selectedRoute.inbound}`)} →{' '}
+                        {t(`providers.formats.${selectedRoute.outbound}`)})
+                      </span>
+                    </p>
                   )}
                   <div style={detailHeaderStyle}>
                     <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
@@ -582,13 +601,18 @@ const searchStyle = {
   fontSize: fontSize.base,
 } as const;
 
-const badgeStyle = {
-  fontSize: fontSize.xs,
-  padding: '2px 8px',
-  borderRadius: radius.pill,
-  border: `1px solid ${token('border')}`,
-  color: token('textMuted'),
-} as const;
+// The format this binding would actually use is drawn at full text with a stronger
+// outline; the provider's other formats recede. Same footprint either way, so the row
+// does not reflow as the selection changes.
+function badgeStyle(active: boolean) {
+  return {
+    fontSize: fontSize.xs,
+    padding: '2px 8px',
+    borderRadius: radius.pill,
+    border: `1px solid ${active ? token('borderStrong') : token('border')}`,
+    color: active ? token('text') : token('textMuted'),
+  } as const;
+}
 
 const useDefaultStyle = {
   padding: '4px 12px',

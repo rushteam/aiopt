@@ -9,7 +9,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'xAI',
-  apiFormat: 'openai',
+  apiFormats: ['openai-responses'],
   baseUrl: 'https://api.x.ai/v1',
   models: [{ id: 'grok-4' }],
   createdAt: 0,
@@ -43,7 +43,7 @@ describe('grok adapter — detectInstalled', () => {
 
 describe('grok adapter — writeLive', () => {
   it('writes the exact config.toml with a default pointer and model profile', () => {
-    createGrokAdapter().writeLive({ provider, modelId: 'grok-4', apiKey: 'sk-x' });
+    createGrokAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'grok-4', apiKey: 'sk-x' });
     expect(fs.readFileSync(configFile(), 'utf8')).toBe(
       [
         '[models]',
@@ -62,13 +62,14 @@ describe('grok adapter — writeLive', () => {
   });
 
   it('omits api_key when no key is provided', () => {
-    createGrokAdapter().writeLive({ provider, modelId: 'grok-4', apiKey: null });
+    createGrokAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'grok-4', apiKey: null });
     expect(fs.readFileSync(configFile(), 'utf8')).not.toContain('api_key');
   });
 
   it('quotes a model id containing a dot in the profile header', () => {
     createGrokAdapter().writeLive({
       provider,
+      apiFormat: 'openai-responses',
       modelId: 'grok-2.5',
       apiKey: 'sk',
     });
@@ -79,7 +80,7 @@ describe('grok adapter — writeLive', () => {
     fs.mkdirSync(path.join(home, '.grok'), { recursive: true });
     const original = 'old = true\n';
     fs.writeFileSync(configFile(), original, 'utf8');
-    createGrokAdapter().writeLive({ provider, modelId: 'grok-4', apiKey: 'sk' });
+    createGrokAdapter().writeLive({ provider, apiFormat: 'openai-responses', modelId: 'grok-4', apiKey: 'sk' });
     expect(fs.readFileSync(`${configFile()}${AGENT_BACKUP_SUFFIX}`, 'utf8')).toBe(original);
   });
 });

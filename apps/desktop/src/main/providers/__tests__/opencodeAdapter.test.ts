@@ -8,7 +8,7 @@ import type { Provider } from '../../../shared/aiProviders';
 const provider: Provider = {
   id: 'p1',
   name: 'My Provider',
-  apiFormat: 'openai',
+  apiFormats: ['openai'],
   baseUrl: 'https://api.example.com/v1',
   models: [{ id: 'gpt-4o' }],
   createdAt: 0,
@@ -44,7 +44,7 @@ describe('opencode adapter — detectInstalled', () => {
 
 describe('opencode adapter — writeLive', () => {
   it('writes a namespaced provider entry, the model pointer and the schema', () => {
-    createOpenCodeAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk-o' });
+    createOpenCodeAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk-o' });
     expect(readConfig()).toEqual({
       $schema: 'https://opencode.ai/config.json',
       provider: {
@@ -61,7 +61,8 @@ describe('opencode adapter — writeLive', () => {
 
   it('uses the anthropic npm adapter for an anthropic-format provider', () => {
     createOpenCodeAdapter().writeLive({
-      provider: { ...provider, apiFormat: 'anthropic' },
+      provider,
+      apiFormat: 'anthropic',
       modelId: 'gpt-4o',
       apiKey: 'sk',
     });
@@ -80,7 +81,7 @@ describe('opencode adapter — writeLive', () => {
       }),
       'utf8',
     );
-    createOpenCodeAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: 'sk' });
+    createOpenCodeAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'sk' });
     const config = readConfig();
     const providers = config.provider as Record<string, unknown>;
     expect(providers.openai).toEqual({ npm: '@ai-sdk/openai', name: 'Built-in' });
@@ -89,7 +90,7 @@ describe('opencode adapter — writeLive', () => {
   });
 
   it('omits apiKey from options when no key is provided', () => {
-    createOpenCodeAdapter().writeLive({ provider, modelId: 'gpt-4o', apiKey: null });
+    createOpenCodeAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: null });
     const providers = readConfig().provider as Record<string, { options: Record<string, unknown> }>;
     expect(providers['aiopt-p1']!.options).toEqual({ baseURL: 'https://api.example.com/v1' });
   });

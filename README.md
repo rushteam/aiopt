@@ -102,7 +102,7 @@ usage fields are read from replies — never content.
 
 ### Skills sync
 
-Keep agent skills in one **central library** (inside the app's data, or at `~/.aiopt/skills`)
+Keep agent skills in one **central library** (inside the app's data, at `~/.aiopt/skills`, or at the shared `~/.agents/skills`)
 and sync them to every agent's skills directory:
 
 - **Pull ←** an agent's skill into the library, **Push →** the library copy to an agent, or

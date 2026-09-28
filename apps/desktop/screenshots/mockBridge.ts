@@ -38,7 +38,7 @@ const providers: ProviderSummary[] = [
   {
     id: 'p-anthropic',
     name: 'Anthropic',
-    apiFormat: 'anthropic',
+    apiFormats: ['anthropic'],
     baseUrl: 'https://api.anthropic.com',
     models: [{ id: 'claude-opus-4-5' }, { id: 'claude-sonnet-4-5' }, { id: 'claude-haiku-4-5' }],
     createdAt: NOW - 30 * DAY,
@@ -47,7 +47,7 @@ const providers: ProviderSummary[] = [
   {
     id: 'p-openai',
     name: 'OpenAI',
-    apiFormat: 'openai',
+    apiFormats: ['openai', 'openai-responses'],
     baseUrl: 'https://api.openai.com/v1',
     models: [{ id: 'gpt-5' }, { id: 'gpt-5-mini' }],
     createdAt: NOW - 28 * DAY,
@@ -56,7 +56,7 @@ const providers: ProviderSummary[] = [
   {
     id: 'p-deepseek',
     name: 'DeepSeek',
-    apiFormat: 'openai',
+    apiFormats: ['openai'],
     baseUrl: 'https://api.deepseek.com',
     models: [{ id: 'deepseek-chat' }, { id: 'deepseek-reasoner' }],
     createdAt: NOW - 20 * DAY,
@@ -65,7 +65,7 @@ const providers: ProviderSummary[] = [
   {
     id: 'p-kimi',
     name: 'Moonshot (Kimi)',
-    apiFormat: 'anthropic',
+    apiFormats: ['anthropic'],
     baseUrl: 'https://api.moonshot.cn/anthropic',
     models: [{ id: 'kimi-k2-turbo-preview' }],
     createdAt: NOW - 12 * DAY,
@@ -74,7 +74,7 @@ const providers: ProviderSummary[] = [
   {
     id: 'p-gemini',
     name: 'Google Gemini',
-    apiFormat: 'gemini',
+    apiFormats: ['gemini'],
     baseUrl: 'https://generativelanguage.googleapis.com',
     models: [{ id: 'gemini-2.5-pro' }, { id: 'gemini-2.5-flash' }],
     createdAt: NOW - 6 * DAY,
@@ -398,6 +398,7 @@ const bridge: AiOptBridge = {
     clearBinding: refused,
     restoreDefault: refused,
     fetchModels: refused,
+    detectFormats: refused,
     revealKey: refused,
     copyProxyConfig: async () => ({ copied: false }),
     refreshProxyPort: async () => ({ port: 47821 }),
