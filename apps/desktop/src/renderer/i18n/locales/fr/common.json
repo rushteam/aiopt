@@ -97,6 +97,7 @@
     "title": "Mises à jour",
     "currentVersion": "Version actuelle",
     "check": "Rechercher des mises à jour",
+    "notice": "Une nouvelle version est disponible :",
     "checking": "Recherche…",
     "state": {
       "idle": "Lancez une recherche pour voir si une version plus récente est disponible.",

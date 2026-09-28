@@ -15,7 +15,7 @@ import { createSecretStore, type SecretCryptor, type SecretStore } from './secre
 import { createAuthManager, type AuthManager } from './auth/authManager';
 import { createLocalStubAuthProvider } from './auth/localStubAuthProvider';
 import { createUpdateService, type UpdateService } from './update/updateService';
-import { createLocalStubUpdateProvider } from './update/localStubUpdateProvider';
+import { createGithubReleaseUpdateProvider } from './update/githubReleaseUpdateProvider';
 import { AppShortcutStore } from './app-shortcuts/AppShortcutStore';
 import { broadcastAppShortcutChange } from './app-shortcuts/appShortcutIpc';
 import { broadcastToRenderers } from './ipc/broadcast';
@@ -127,7 +127,9 @@ export function getAuthManager(): AuthManager {
 export function getUpdateService(): UpdateService {
   if (!updateService) {
     updateService = createUpdateService(
-      createLocalStubUpdateProvider(),
+      // Check-only: compares the running version with the newest published GitHub
+      // Release. It never downloads or installs. See docs/dev-rules/updater.md.
+      createGithubReleaseUpdateProvider((url, init) => net.fetch(url, init)),
       () => app.getVersion(),
       (status) => broadcastToRenderers(IPC_EVENTS.updateStatusChanged, status),
     );

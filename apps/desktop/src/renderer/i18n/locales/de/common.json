@@ -97,6 +97,7 @@
     "title": "Updates",
     "currentVersion": "Aktuelle Version",
     "check": "Nach Updates suchen",
+    "notice": "Eine neue Version ist verfügbar:",
     "checking": "Suche läuft…",
     "state": {
       "idle": "Suchen Sie, ob eine neuere Version verfügbar ist.",
