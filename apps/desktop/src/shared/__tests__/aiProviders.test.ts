@@ -7,6 +7,7 @@ import {
   API_FORMATS,
   OFFICIAL_PROVIDERS,
   OFFICIAL_PROVIDER_ID_PREFIX,
+  bindingAvailability,
   getAgentDef,
   isFormatCompatible,
   translationSupported,
@@ -122,6 +123,31 @@ describe('isFormatCompatible', () => {
     expect(isFormatCompatible(opencode, providerWithFormat('openai'))).toBe(true);
     expect(isFormatCompatible(opencode, providerWithFormat('anthropic'))).toBe(true);
     expect(isFormatCompatible(opencode, providerWithFormat('gemini'))).toBe(false);
+  });
+});
+
+describe('bindingAvailability', () => {
+  it('is direct when the agent accepts the provider format', () => {
+    expect(bindingAvailability(getAgentDef('claude')!, 'anthropic')).toBe('direct');
+    expect(bindingAvailability(getAgentDef('opencode')!, 'openai')).toBe('direct');
+    expect(bindingAvailability(getAgentDef('opencode')!, 'anthropic')).toBe('direct');
+  });
+
+  it('is proxy when the formats differ but the agent’s first format can be translated', () => {
+    // Claude speaks anthropic; an OpenAI Chat provider is translated.
+    expect(bindingAvailability(getAgentDef('claude')!, 'openai')).toBe('proxy');
+    // Codex speaks Responses; Chat Completions and Anthropic are both translated.
+    expect(bindingAvailability(getAgentDef('codex')!, 'openai')).toBe('proxy');
+    expect(bindingAvailability(getAgentDef('codex')!, 'anthropic')).toBe('proxy');
+  });
+
+  it('is unsupported when no translation route exists', () => {
+    expect(bindingAvailability(getAgentDef('claude')!, 'gemini')).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('claude')!, 'openai-responses')).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('codex')!, 'gemini')).toBe('unsupported');
+    expect(bindingAvailability(getAgentDef('gemini')!, 'openai')).toBe('unsupported');
+    // pi's first format is anthropic, which cannot be translated into Responses.
+    expect(bindingAvailability(getAgentDef('pi')!, 'openai-responses')).toBe('unsupported');
   });
 });
 

@@ -9,8 +9,8 @@
 import { randomUUID } from 'node:crypto';
 import {
   AGENTS,
+  bindingAvailability,
   getAgentDef,
-  isFormatCompatible,
   normalizeDropFields,
   translationSupported,
   wireModelName,
@@ -218,7 +218,9 @@ export function createProviderManager(
     const wireModelId = wireModelName(model);
 
     const outbound = provider.apiFormat;
-    const sameFormat = isFormatCompatible(def, provider);
+    // Shared with the binding picker (bindingAvailability): native format is `direct`,
+    // a translatable cross-format pair is `proxy`, and anything else is refused below.
+    const sameFormat = bindingAvailability(def, outbound) === 'direct';
     // A same-format binding speaks the provider's own format; a cross-format one speaks
     // the agent's first accepted format and is translated to the provider's.
     const inbound = sameFormat ? outbound : def.acceptedFormats[0];

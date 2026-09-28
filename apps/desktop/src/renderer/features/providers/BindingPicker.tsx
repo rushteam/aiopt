@@ -1,9 +1,11 @@
 // Pick which provider+model an agent uses — a master/detail modal over the pool.
 //
-// Left pane: the providers (compatible ones selectable; incompatible shown greyed
-// with a "needs proxy" note so the constraint stays visible). Right pane: the models
-// of the provider selected on the left. This scales to a large pool and to providers
-// with long (auto-loaded) model lists — each side scrolls, the model side filters.
+// Left pane: the providers. A provider is selectable when the agent accepts its format
+// natively, or when the translation proxy can carry the agent's format to the
+// provider's (see bindingAvailability) — those rows are labeled as going through the
+// proxy. Pairs the proxy cannot translate stay greyed. Right pane: the models of the
+// provider selected on the left. This scales to a large pool and to providers with
+// long (auto-loaded) model lists — each side scrolls, the model side filters.
 //
 // Selecting a provider or a model only STAGES the choice (highlight, no write);
 // nothing touches the agent config until the footer "Apply" button commits it.
@@ -21,7 +23,7 @@ import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
-import type { ProviderModel } from '../../../shared/aiProviders';
+import { bindingAvailability, type ProviderModel } from '../../../shared/aiProviders';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 
@@ -51,11 +53,15 @@ export function BindingPicker({
   const [error, setError] = useState<string | null>(null);
   const [modelQuery, setModelQuery] = useState('');
 
-  // Compatible providers first, then incompatible (greyed) — a stable, scannable order.
+  // Native matches first, then proxy-translated, then pairs the proxy cannot carry
+  // (greyed) — a stable, scannable order.
   const ordered = useMemo(() => {
-    const ok = (p: ProviderSummary) => agent.acceptedFormats.includes(p.apiFormat);
-    return [...providers].sort((a, b) => Number(ok(b)) - Number(ok(a)));
-  }, [providers, agent.acceptedFormats]);
+    const rank = (p: ProviderSummary): number => {
+      const availability = bindingAvailability(agent, p.apiFormat);
+      return availability === 'direct' ? 2 : availability === 'proxy' ? 1 : 0;
+    };
+    return [...providers].sort((a, b) => rank(b) - rank(a));
+  }, [providers, agent]);
 
   // The default model to stage for a provider: keep the live one if this is the bound
   // provider (don't clobber the user's pick), otherwise the first (sorted) model — so
@@ -65,10 +71,10 @@ export function BindingPicker({
     return live ?? [...models].sort(compareModels)[0]?.id;
   }
 
-  // Open on the currently-bound provider, else the first compatible one.
+  // Open on the currently-bound provider, else the first one that can actually be applied.
   const initialSelected =
     agent.binding?.providerId ??
-    ordered.find((p) => agent.acceptedFormats.includes(p.apiFormat))?.id ??
+    ordered.find((p) => bindingAvailability(agent, p.apiFormat) !== 'unsupported')?.id ??
     ordered[0]?.id ??
     null;
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected);
@@ -84,9 +90,9 @@ export function BindingPicker({
   const isRestoreSelected = selectedId === RESTORE_ID;
 
   const selected = ordered.find((p) => p.id === selectedId) ?? null;
-  const selectedCompatible = selected
-    ? agent.acceptedFormats.includes(selected.apiFormat)
-    : false;
+  const selectedAvailability = selected ? bindingAvailability(agent, selected.apiFormat) : null;
+  const selectedSelectable =
+    selectedAvailability === 'direct' || selectedAvailability === 'proxy';
 
   const sortedModels = useMemo(
     () => (selected ? [...selected.models].sort(compareModels) : []),
@@ -136,7 +142,7 @@ export function BindingPicker({
   // entry is selected — the config handback. Enabled once we have a valid target and idle.
   const canApply = isRestoreSelected
     ? !busy
-    : selectedCompatible && pendingModelId !== undefined && !busy;
+    : selectedSelectable && pendingModelId !== undefined && !busy;
   function apply(): void {
     if (isRestoreSelected) {
       void doRestore();
@@ -195,7 +201,8 @@ export function BindingPicker({
                 </li>
               )}
               {ordered.map((provider) => {
-                const compatible = agent.acceptedFormats.includes(provider.apiFormat);
+                const availability = bindingAvailability(agent, provider.apiFormat);
+                const selectable = availability !== 'unsupported';
                 const isSelected = provider.id === selectedId;
                 const isBound = agent.binding?.providerId === provider.id;
                 return (
@@ -212,7 +219,7 @@ export function BindingPicker({
                         isSelected ? token('surfaceHover') : 'transparent',
                         token('surfaceHover'),
                       )}
-                      style={providerRowStyle(isSelected, compatible)}
+                      style={providerRowStyle(isSelected, selectable)}
                     >
                       <span style={providerNameRowStyle}>
                         <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -227,9 +234,14 @@ export function BindingPicker({
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: space.sm }}>
                         <span style={badgeStyle}>{t(`providers.formats.${provider.apiFormat}`)}</span>
-                        {!compatible && (
+                        {availability === 'proxy' && (
                           <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
-                            {t('providers.binding.needsProxy')}
+                            {t('providers.binding.viaProxy')}
+                          </span>
+                        )}
+                        {availability === 'unsupported' && (
+                          <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
+                            {t('providers.binding.unsupported')}
                           </span>
                         )}
                       </span>
@@ -255,10 +267,13 @@ export function BindingPicker({
                 </>
               ) : !selected ? (
                 <p style={hintStyle}>{t('providers.binding.selectProviderHint')}</p>
-              ) : !selectedCompatible ? (
-                <p style={hintStyle}>{t('providers.binding.needsProxy')}</p>
+              ) : selectedAvailability === 'unsupported' ? (
+                <p style={hintStyle}>{t('providers.binding.unsupportedHint')}</p>
               ) : (
                 <>
+                  {selectedAvailability === 'proxy' && (
+                    <p style={hintStyle}>{t('providers.binding.viaProxyHint')}</p>
+                  )}
                   <div style={detailHeaderStyle}>
                     <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                       {t('providers.binding.modelHint')}
@@ -463,7 +478,7 @@ const providerListStyle = {
   paddingRight: 8,
 } as const;
 
-function providerRowStyle(selected: boolean, compatible: boolean) {
+function providerRowStyle(selected: boolean, selectable: boolean) {
   return {
     display: 'flex',
     flexDirection: 'column',
@@ -477,7 +492,7 @@ function providerRowStyle(selected: boolean, compatible: boolean) {
     color: token('text'),
     cursor: 'pointer',
     fontSize: fontSize.base,
-    opacity: compatible ? 1 : 0.5,
+    opacity: selectable ? 1 : 0.5,
   } as const;
 }
 

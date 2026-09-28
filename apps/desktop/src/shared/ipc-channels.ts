@@ -536,7 +536,7 @@ export interface ProviderRemoveRequest {
   id: string;
 }
 
-/** Point an agent at a provider+model. Rejected (PRECONDITION_FAILED) if formats are incompatible. */
+/** Point an agent at a provider+model. Rejected (UNSUPPORTED_CAPABILITY) when the translation proxy cannot carry the agent's format to the provider's. */
 export interface ProviderSetBindingRequest {
   agentId: AgentId;
   providerId: string;
