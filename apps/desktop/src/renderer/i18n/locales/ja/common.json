@@ -458,8 +458,17 @@
       "session_reset": "新しい会話を開始しました。",
       "session_opened": "会話を復元しました。"
     },
+    "plan": { "title": "タスク計画" },
+    "taskChat": {
+      "title": "タスクチャット",
+      "empty": "タスクを選ぶと、最初のプロンプトがここに表示されます。",
+      "placeholder": "この Agent への追加指示",
+      "waitLaunch": "タスクを実行してから Agent とチャットできます。"
+    },
     "tasks": {
       "title": "タスク",
+      "settings": "ワークベンチ設定",
+      "list": "すべてのタスク",
       "running": "実行中",
       "new": "新しいタスク",
       "create": "タスクを追加",

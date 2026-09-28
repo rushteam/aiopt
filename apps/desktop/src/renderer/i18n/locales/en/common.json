@@ -458,8 +458,19 @@
       "session_reset": "New conversation started.",
       "session_opened": "Conversation restored."
     },
+    "plan": {
+      "title": "Task plan"
+    },
+    "taskChat": {
+      "title": "Task chat",
+      "empty": "The initial prompt appears here after you select a task.",
+      "placeholder": "Follow-up instructions for this agent",
+      "waitLaunch": "Run the task to chat with its agent."
+    },
     "tasks": {
       "title": "Tasks",
+      "settings": "Workbench settings",
+      "list": "All tasks",
       "running": "Running",
       "new": "New task",
       "create": "Add task",

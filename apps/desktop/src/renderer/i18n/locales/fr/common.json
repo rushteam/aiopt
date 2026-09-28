@@ -458,8 +458,17 @@
       "session_reset": "Nouvelle conversation commencée.",
       "session_opened": "Conversation restaurée."
     },
+    "plan": { "title": "Plan des tâches" },
+    "taskChat": {
+      "title": "Chat de la tâche",
+      "empty": "Sélectionnez une tâche pour afficher le prompt initial ici.",
+      "placeholder": "Instructions de suivi pour cet agent",
+      "waitLaunch": "Lancez la tâche pour discuter avec son agent."
+    },
     "tasks": {
       "title": "Tâches",
+      "settings": "Réglages de l'atelier",
+      "list": "Toutes les tâches",
       "running": "En cours",
       "new": "Nouvelle tâche",
       "create": "Ajouter la tâche",

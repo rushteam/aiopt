@@ -458,8 +458,17 @@
       "session_reset": "새 대화를 시작했습니다.",
       "session_opened": "대화를 복원했습니다."
     },
+    "plan": { "title": "태스크 계획" },
+    "taskChat": {
+      "title": "태스크 채팅",
+      "empty": "태스크를 선택하면 초기 프롬프트가 여기에 표시됩니다.",
+      "placeholder": "이 Agent에게 추가 지시",
+      "waitLaunch": "태스크를 실행한 뒤 Agent와 채팅할 수 있습니다."
+    },
     "tasks": {
       "title": "태스크",
+      "settings": "워크벤치 설정",
+      "list": "모든 태스크",
       "running": "실행 중",
       "new": "새 태스크",
       "create": "태스크 추가",

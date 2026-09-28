@@ -8,7 +8,7 @@
 // The renderer holds no capability here: every action is a named IPC call carrying an opaque
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
@@ -16,20 +16,14 @@ import { useWorkbench } from '../../hooks/useWorkbench';
 import {
   abortChat,
   addFolder,
-  completeTask,
   createTask,
   deleteConversation,
-  launchTask,
-  messageTask,
   openConversation,
-  readTaskOutput,
   removeFolder,
-  removeTask,
   resetChat,
   runAllTasks,
   sendChat,
   startWorkbench,
-  stopTask,
   stopWorkbench,
   updateTask,
   installHerdr,
@@ -47,12 +41,14 @@ import {
   type TaskStatus,
   type TaskView,
   type WorkbenchSnapshot,
-  pendingDependencies,
   taskDependenciesMet,
 } from '../../../shared/workbench';
-
-/** How often an open output panel re-reads the worker's terminal. */
-const OUTPUT_POLL_MS = 2000;
+import { TaskDagView } from './TaskDagView';
+import { TaskChatPane } from './TaskChatPane';
+import { TaskTabBar } from './TaskTabBar';
+import { TaskDetailToolbar } from './TaskDetailToolbar';
+import { StatusLabel } from './TaskStatusLabel';
+import { WorkbenchChatComposer } from './workbenchChat';
 
 export function WorkbenchHome() {
   const t = useT();
@@ -111,7 +107,7 @@ export function WorkbenchHome() {
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+          gridTemplateColumns: 'minmax(260px, 2fr) minmax(340px, 3fr)',
           gap: space.xl,
           padding: '16px 24px 24px',
         }}
@@ -314,14 +310,6 @@ function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: 
     if (await run(() => sendChat(text))) setDraft('');
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Enter sends; Shift+Enter is a newline; an IME composition's Enter is left alone.
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      void send();
-    }
-  };
-
   return (
     <section aria-label={t('workbench.chat.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={paneHeaderStyle}>
@@ -382,42 +370,19 @@ function ChatPane({ wb, t, run }: { wb: WorkbenchSnapshot; t: TranslateFn; run: 
           <ChatEntry key={item.id} item={item} t={t} />
         ))}
       </div>
-      <div style={{ borderTop: `1px solid ${token('border')}`, padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.sm }}>
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={!ready}
-          maxLength={WORKBENCH_LIMITS.chatText}
-          rows={3}
-          placeholder={t('workbench.chat.placeholder')}
-          aria-label={t('workbench.chat.placeholder')}
-          style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit', opacity: ready ? 1 : 0.5 }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
-          <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('workbench.chat.sendHint')}</span>
-          <span style={{ flex: 1 }} />
-          {wb.streaming && (
-            <button
-              type="button"
-              onClick={() => void run(abortChat)}
-              {...hoverBackground('transparent', token('surfaceHover'))}
-              style={smallGhostStyle}
-            >
-              {t('workbench.chat.abort')}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={!ready || draft.trim() === ''}
-            {...hoverBackground(token('accent'), token('accentHover'))}
-            style={{ ...smallAccentStyle, opacity: !ready || draft.trim() === '' ? 0.5 : 1 }}
-          >
-            {t('workbench.chat.send')}
-          </button>
-        </div>
-      </div>
+      <WorkbenchChatComposer
+        draft={draft}
+        setDraft={setDraft}
+        onSend={() => void send()}
+        disabled={!ready}
+        streaming={wb.streaming}
+        onAbort={() => void run(abortChat)}
+        maxLength={WORKBENCH_LIMITS.chatText}
+        placeholder={t('workbench.chat.placeholder')}
+        sendHint={t('workbench.chat.sendHint')}
+        sendLabel={t('workbench.chat.send')}
+        abortLabel={t('workbench.chat.abort')}
+      />
     </section>
   );
 }
@@ -668,7 +633,9 @@ function TaskBoard({
   liveCount: number;
 }) {
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sshDraft, setSshDraft] = useState(wb.settings.herdrSshTarget ?? '');
   useEffect(() => {
     setSshDraft(wb.settings.herdrSshTarget ?? '');
@@ -686,6 +653,14 @@ function TaskBoard({
       wb.folders.some((f) => f.id === task.folderId) &&
       taskDependenciesMet(task, wb.tasks),
   ).length;
+  useEffect(() => {
+    if (tasks.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !tasks.some((task) => task.id === selectedId)) setSelectedId(tasks[0]!.id);
+  }, [tasks, selectedId]);
+  const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
   const setSetting = (patch: {
     autoRun?: boolean;
     notifyCoordinator?: boolean;
@@ -727,67 +702,78 @@ function TaskBoard({
           {t('workbench.tasks.new')}
         </button>
       </div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: space.lg,
-          flexWrap: 'wrap',
-          padding: '6px 12px',
-          borderBottom: `1px solid ${token('border')}`,
-        }}
-      >
-        <SettingToggle
-          label={t('workbench.tasks.autoRun')}
-          hint={t('workbench.tasks.autoRunHint')}
-          checked={wb.settings.autoRun}
-          disabled={savingSettings}
-          onChange={(autoRun) => setSetting({ autoRun })}
-        />
-        <SettingToggle
-          label={t('workbench.tasks.notify')}
-          hint={t('workbench.tasks.notifyHint')}
-          checked={wb.settings.notifyCoordinator}
-          disabled={savingSettings}
-          onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
-        />
-        <SettingToggle
-          label={t('workbench.tasks.autoLaunchDependents')}
-          hint={t('workbench.tasks.autoLaunchDependentsHint')}
-          checked={wb.settings.autoLaunchDependents}
-          disabled={savingSettings}
-          onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
-        />
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted') }}>
-          {t('workbench.herdr.sshLabel')}
-          <input
-            type="text"
-            value={sshDraft}
-            disabled={savingSettings || wb.status === 'starting'}
-            placeholder={t('workbench.herdr.sshPlaceholder')}
-            onChange={(e) => setSshDraft(e.target.value)}
-            onBlur={() => {
-              const trimmed = sshDraft.trim();
-              const next = trimmed === '' ? null : trimmed;
-              if (next === wb.settings.herdrSshTarget) return;
-              setSetting({ herdrSshTarget: next });
-            }}
-            style={{
-              minWidth: 180,
-              maxWidth: 280,
-              padding: '4px 8px',
-              borderRadius: radius.sm,
-              border: `1px solid ${token('border')}`,
-              background: token('surface'),
-              color: token('text'),
-              fontSize: fontSize.sm,
-            }}
-          />
-          <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
-        </label>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.lg }}>
-        {creating && (
+      <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
+        <summary
+          style={{
+            padding: '6px 12px',
+            fontSize: fontSize.sm,
+            color: token('textMuted'),
+            cursor: 'pointer',
+            listStyle: 'none',
+          }}
+        >
+          {t('workbench.tasks.settings')}
+        </summary>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: space.md,
+            padding: '8px 12px 12px',
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg }}>
+            <SettingToggle
+              label={t('workbench.tasks.autoRun')}
+              hint={t('workbench.tasks.autoRunHint')}
+              checked={wb.settings.autoRun}
+              disabled={savingSettings}
+              onChange={(autoRun) => setSetting({ autoRun })}
+            />
+            <SettingToggle
+              label={t('workbench.tasks.notify')}
+              hint={t('workbench.tasks.notifyHint')}
+              checked={wb.settings.notifyCoordinator}
+              disabled={savingSettings}
+              onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
+            />
+            <SettingToggle
+              label={t('workbench.tasks.autoLaunchDependents')}
+              hint={t('workbench.tasks.autoLaunchDependentsHint')}
+              checked={wb.settings.autoLaunchDependents}
+              disabled={savingSettings}
+              onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
+            />
+          </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted'), maxWidth: 360 }}>
+            {t('workbench.herdr.sshLabel')}
+            <input
+              type="text"
+              value={sshDraft}
+              disabled={savingSettings || wb.status === 'starting'}
+              placeholder={t('workbench.herdr.sshPlaceholder')}
+              onChange={(e) => setSshDraft(e.target.value)}
+              onBlur={() => {
+                const trimmed = sshDraft.trim();
+                const next = trimmed === '' ? null : trimmed;
+                if (next === wb.settings.herdrSshTarget) return;
+                setSetting({ herdrSshTarget: next });
+              }}
+              style={{
+                padding: '4px 8px',
+                borderRadius: radius.sm,
+                border: `1px solid ${token('borderStrong')}`,
+                background: token('surface'),
+                color: token('text'),
+                fontSize: fontSize.sm,
+              }}
+            />
+            <span style={{ fontSize: fontSize.xs }}>{t('workbench.herdr.sshHint')}</span>
+          </label>
+        </div>
+      </details>
+      {creating && (
+        <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
           <TaskForm
             t={t}
             folders={wb.folders}
@@ -798,22 +784,72 @@ function TaskBoard({
               if (await run(() => createTask(draft))) setCreating(false);
             }}
           />
-        )}
-        {tasks.length === 0 && !creating && (
-          <p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>
-            {t('workbench.tasks.empty')}
-          </p>
-        )}
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
+        </div>
+      )}
+      <TaskTabBar tasks={tasks} selectedId={selectedId} onSelect={setSelectedId} t={t} />
+      {tasks.length > 0 && (
+        <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
+          <summary
+            style={{
+              padding: '4px 12px',
+              fontSize: fontSize.xs,
+              color: token('textMuted'),
+              cursor: 'pointer',
+              listStyle: 'none',
+            }}
+          >
+            {t('workbench.plan.title')}
+          </summary>
+          <TaskDagView tasks={wb.tasks} selectedId={selectedId} onSelect={setSelectedId} t={t} />
+        </details>
+      )}
+      {selectedTask && editingId === selectedTask.id ? (
+        <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
+          <TaskForm
+            t={t}
+            folders={wb.folders}
+            submitLabel={t('workbench.tasks.save')}
+            lockPlace={selectedTask.worktreeDisplay !== null}
+            initial={{
+              title: selectedTask.title,
+              prompt: selectedTask.prompt,
+              folderId: selectedTask.folderId,
+              isolated: selectedTask.isolated,
+            }}
+            onCancel={() => setEditingId(null)}
+            onSubmit={async (draft) => {
+              const placeLocked = selectedTask.worktreeDisplay !== null;
+              const ok = await run(() =>
+                updateTask(
+                  placeLocked
+                    ? { taskId: selectedTask.id, title: draft.title, prompt: draft.prompt }
+                    : { taskId: selectedTask.id, ...draft },
+                ),
+              );
+              if (ok) setEditingId(null);
+            }}
+          />
+        </div>
+      ) : (
+        selectedTask && (
+          <TaskDetailToolbar
+            task={selectedTask}
             wb={wb}
             t={t}
             run={run}
             canLaunch={canRun}
+            onEdit={() => setEditingId(selectedTask.id)}
           />
-        ))}
+        )
+      )}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {selectedTask ? (
+          <TaskChatPane task={selectedTask} wb={wb} t={t} run={run} />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: space.lg, flex: 1 }}>
+            <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.base }}>{t('workbench.tasks.empty')}</p>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -987,283 +1023,6 @@ function PlacePicker({
   );
 }
 
-function TaskCard({
-  task,
-  wb,
-  t,
-  run,
-  canLaunch,
-}: {
-  task: TaskView;
-  wb: WorkbenchSnapshot;
-  t: TranslateFn;
-  run: Runner;
-  canLaunch: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [showOutput, setShowOutput] = useState(false);
-  const [reply, setReply] = useState('');
-  const [confirmRemove, setConfirmRemove] = useState(false);
-  const folder = wb.folders.find((f) => f.id === task.folderId) ?? null;
-  const live = isLiveTaskStatus(task.status);
-  // Once a worktree exists, relaunch reuses that checkout, so the place is fixed.
-  const placeLocked = task.worktreeDisplay !== null;
-  const editable = taskAllows('edit', task.status);
-  const depsReady = taskDependenciesMet(task, wb.tasks);
-  const waitingOn = pendingDependencies(task, wb.tasks);
-  const launchable = taskAllows('launch', task.status) && canLaunch && folder !== null && depsReady;
-
-  if (editing) {
-    return (
-      <TaskForm
-        t={t}
-        folders={wb.folders}
-        submitLabel={t('workbench.tasks.save')}
-        lockPlace={placeLocked}
-        initial={{ title: task.title, prompt: task.prompt, folderId: task.folderId, isolated: task.isolated }}
-        onCancel={() => setEditing(false)}
-        onSubmit={async (draft) => {
-          const ok = await run(() =>
-            updateTask(
-              placeLocked
-                ? { taskId: task.id, title: draft.title, prompt: draft.prompt }
-                : { taskId: task.id, ...draft },
-            ),
-          );
-          if (ok) setEditing(false);
-        }}
-      />
-    );
-  }
-
-  const sendReply = async (): Promise<void> => {
-    const text = reply.trim();
-    if (!text) return;
-    if (await run(() => messageTask(task.id, text))) setReply('');
-  };
-
-  const meta = [
-    folder?.name ?? (task.folderId ? t('workbench.tasks.folderGone') : null),
-    task.branch,
-    t(task.origin === 'orchestrator' ? 'workbench.tasks.fromCoordinator' : 'workbench.tasks.fromYou'),
-  ].filter((part): part is string => part !== null);
-
-  return (
-    <article style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: space.md }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md }}>
-        <h3 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: fontSize.md, fontWeight: 600, overflowWrap: 'anywhere' }}>
-          {task.title}
-        </h3>
-        <StatusLabel status={task.status} t={t} />
-      </div>
-      <div style={{ fontSize: fontSize.sm, color: token('textMuted'), overflowWrap: 'anywhere' }}>{meta.join(' · ')}</div>
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-        style={{
-          all: 'unset',
-          cursor: 'pointer',
-          fontSize: fontSize.base,
-          whiteSpace: 'pre-wrap',
-          overflowWrap: 'anywhere',
-          ...(expanded
-            ? {}
-            : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-        }}
-      >
-        {task.prompt}
-      </button>
-      {task.failure && (
-        <p style={{ margin: 0, fontSize: fontSize.sm, color: token('danger') }}>{t(`workbench.failure.${task.failure}`)}</p>
-      )}
-      {waitingOn.length > 0 && (
-        <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
-          {t('workbench.tasks.waitingOn')} {waitingOn.map((d) => d.title).join(', ')}
-        </p>
-      )}
-      {editable && !placeLocked && (
-        <PlacePicker
-          t={t}
-          folders={wb.folders}
-          folderId={task.folderId}
-          isolated={task.isolated}
-          onChange={(folderId, isolated) => void run(() => updateTask({ taskId: task.id, folderId, isolated }))}
-        />
-      )}
-      {placeLocked && task.worktreeDisplay && (
-        <div style={{ fontSize: fontSize.sm, color: token('textMuted'), overflowWrap: 'anywhere' }}>
-          {t('workbench.tasks.worktree')} <code style={codeStyle}>{task.worktreeDisplay}</code>
-        </div>
-      )}
-      {live && task.agentName && (
-        <div style={{ fontSize: fontSize.sm, color: token('textMuted'), overflowWrap: 'anywhere' }}>
-          {t('workbench.tasks.attach')}{' '}
-          <code style={codeStyle}>
-            herdr --session {wb.herdrSession} agent attach {task.agentName}
-          </code>
-        </div>
-      )}
-      {taskAllows('message', task.status) && (
-        <div style={{ display: 'flex', gap: space.md }}>
-          <input
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void sendReply();
-              }
-            }}
-            maxLength={WORKBENCH_LIMITS.chatText}
-            placeholder={t('workbench.actions.messagePlaceholder')}
-            aria-label={t('workbench.actions.messagePlaceholder')}
-            style={{ ...inputStyle, flex: 1, minWidth: 0, padding: '4px 8px', fontSize: fontSize.sm }}
-          />
-          <button
-            type="button"
-            onClick={() => void sendReply()}
-            disabled={reply.trim() === ''}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{ ...actionButtonStyle, opacity: reply.trim() === '' ? 0.5 : 1 }}
-          >
-            {t('workbench.actions.message')}
-          </button>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: space.md, flexWrap: 'wrap' }}>
-        {taskAllows('launch', task.status) && (
-          <button
-            type="button"
-            onClick={() => void run(() => launchTask(task.id))}
-            disabled={!launchable}
-            title={folder === null ? t('workbench.tasks.needFolder') : undefined}
-            {...hoverBackground(token('accent'), token('accentHover'))}
-            style={{ ...smallAccentStyle, opacity: launchable ? 1 : 0.5, cursor: launchable ? 'pointer' : 'default' }}
-          >
-            {task.status === 'proposed' ? t('workbench.actions.launch') : t('workbench.actions.relaunch')}
-          </button>
-        )}
-        {editable && (
-          <button type="button" onClick={() => setEditing(true)} {...hoverBackground('transparent', token('surfaceHover'))} style={actionButtonStyle}>
-            {t('workbench.actions.edit')}
-          </button>
-        )}
-        {taskAllows('complete', task.status) && (
-          <button
-            type="button"
-            onClick={() => void run(() => completeTask(task.id))}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={actionButtonStyle}
-          >
-            {t('workbench.actions.complete')}
-          </button>
-        )}
-        {live && task.status !== 'starting' && (
-          <button
-            type="button"
-            onClick={() => setShowOutput(!showOutput)}
-            aria-expanded={showOutput}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={actionButtonStyle}
-          >
-            {showOutput ? t('workbench.actions.hideOutput') : t('workbench.actions.showOutput')}
-          </button>
-        )}
-        <span style={{ flex: 1 }} />
-        {taskAllows('stop', task.status) && (
-          <button
-            type="button"
-            onClick={() => void run(() => stopTask(task.id))}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={dangerActionButtonStyle}
-          >
-            {t('workbench.actions.stop')}
-          </button>
-        )}
-        {taskAllows('remove', task.status) && (
-          <button
-            type="button"
-            onClick={() => (task.worktreeDisplay ? setConfirmRemove(true) : void run(() => removeTask(task.id)))}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={dangerActionButtonStyle}
-          >
-            {t('workbench.actions.remove')}
-          </button>
-        )}
-      </div>
-      {showOutput && live && <TaskOutputPanel taskId={task.id} t={t} />}
-      {confirmRemove && (
-        <ConfirmDialog
-          title={t('workbench.removeConfirm')}
-          message={task.branch ? `${t('workbench.tasks.branch')} ${task.branch}` : undefined}
-          confirmLabel={t('workbench.removeConfirmYes')}
-          cancelLabel={t('workbench.cancel')}
-          danger
-          onConfirm={() => {
-            setConfirmRemove(false);
-            void run(() => removeTask(task.id));
-          }}
-          onCancel={() => setConfirmRemove(false)}
-        />
-      )}
-    </article>
-  );
-}
-
-function StatusLabel({ status, t }: { status: TaskStatus; t: TranslateFn }) {
-  // Color rides on the dot only; the label stays in a text token so it reads in both modes.
-  const dot =
-    status === 'working' || status === 'starting'
-      ? token('accent')
-      : status === 'blocked' || status === 'failed'
-        ? token('danger')
-        : status === 'review' || status === 'done'
-          ? token('success')
-          : token('borderStrong');
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: space.xs, flexShrink: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
-      <span aria-hidden style={{ ...dotStyle, background: dot }} />
-      {t(`workbench.taskStatus.${status}`)}
-    </span>
-  );
-}
-
-function TaskOutputPanel({ taskId, t }: { taskId: string; t: TranslateFn }) {
-  const [text, setText] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let alive = true;
-    const read = (): void => {
-      readTaskOutput(taskId)
-        .then((next) => {
-          if (alive) setText(next);
-        })
-        .catch(() => {
-          if (alive) setText('');
-        });
-    };
-    read();
-    const timer = setInterval(read, OUTPUT_POLL_MS);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [taskId]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [text]);
-
-  return (
-    <div ref={ref} style={{ ...preStyle, maxHeight: 220, overflowY: 'auto' }}>
-      {text === null ? t('workbench.output.loading') : text === '' ? t('workbench.output.empty') : text}
-    </div>
-  );
-}
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 

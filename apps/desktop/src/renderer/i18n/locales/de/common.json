@@ -458,8 +458,17 @@
       "session_reset": "Neue Unterhaltung begonnen.",
       "session_opened": "Unterhaltung wiederhergestellt."
     },
+    "plan": { "title": "Aufgabenplan" },
+    "taskChat": {
+      "title": "Aufgaben-Chat",
+      "empty": "Wählen Sie eine Aufgabe, dann erscheint der Start-Prompt hier.",
+      "placeholder": "Nachfolgende Anweisungen an den Agenten",
+      "waitLaunch": "Starten Sie die Aufgabe, um mit dem Agenten zu chatten."
+    },
     "tasks": {
       "title": "Aufgaben",
+      "settings": "Werkbank-Einstellungen",
+      "list": "Alle Aufgaben",
       "running": "Laufend",
       "new": "Neue Aufgabe",
       "create": "Aufgabe hinzufügen",

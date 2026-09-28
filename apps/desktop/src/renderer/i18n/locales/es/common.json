@@ -458,8 +458,17 @@
       "session_reset": "Se inició una nueva conversación.",
       "session_opened": "Conversación restaurada."
     },
+    "plan": { "title": "Plan de tareas" },
+    "taskChat": {
+      "title": "Chat de la tarea",
+      "empty": "Selecciona una tarea para ver el prompt inicial aquí.",
+      "placeholder": "Instrucciones de seguimiento para este agente",
+      "waitLaunch": "Ejecuta la tarea para chatear con su agente."
+    },
     "tasks": {
       "title": "Tareas",
+      "settings": "Ajustes del banco de trabajo",
+      "list": "Todas las tareas",
       "running": "En curso",
       "new": "Nueva tarea",
       "create": "Añadir tarea",
