@@ -101,7 +101,10 @@ export function ProviderFormDialog({
   const [oauthKind, setOauthKind] = useState<OAuthSubscriptionKind>(
     provider?.oauth?.kind ?? 'openai_codex',
   );
+  const [presetKey, setPresetKey] = useState('');
   const usesOAuth = credentialMode === 'oauth';
+  const presetSelected = !editing && presetKey !== '';
+  const showManualCredential = !editing && !presetSelected;
   const oauthSubscriptionPresets = PROVIDER_PRESETS.filter((p) => p.credentialMode === 'oauth');
   const apiKeyPresets = PROVIDER_PRESETS.filter((p) => p.credentialMode === 'api_key');
   const [apiKey, setApiKey] = useState('');
@@ -145,18 +148,9 @@ export function ProviderFormDialog({
     setShowKey((v) => !v);
   }
 
-  function applyOAuthKindPreset(kind: OAuthSubscriptionKind): void {
-    if (kind === 'generic_pkce') return;
-    const preset = PROVIDER_PRESETS.find((p) => p.oauthKind === kind);
-    if (!preset) return;
-    setName(preset.name);
-    setApiFormats([...preset.apiFormats]);
-    setDetectMessage(null);
-    setBaseUrl(preset.baseUrl);
-    setModels(toRows(preset.models));
-  }
-
   function applyPreset(key: string): void {
+    setPresetKey(key);
+    if (key === '') return;
     const preset = PROVIDER_PRESETS.find((p) => p.key === key);
     if (!preset) return;
     setName(preset.name);
@@ -174,11 +168,6 @@ export function ProviderFormDialog({
     } else {
       setOauthKind('openai_codex');
     }
-  }
-
-  function onOAuthKindChange(kind: OAuthSubscriptionKind): void {
-    setOauthKind(kind);
-    applyOAuthKindPreset(kind);
   }
 
   // Keep the selection in the shared allowlist's canonical order, so what we send matches
@@ -389,7 +378,7 @@ export function ProviderFormDialog({
             <label style={fieldStyle}>
               {t('providers.form.preset')}
               <select
-                defaultValue=""
+                value={presetKey}
                 onChange={(e) => applyPreset(e.target.value)}
                 style={inputStyle}
               >
@@ -404,63 +393,77 @@ export function ProviderFormDialog({
                 <optgroup label={t('providers.form.presetGroupOAuth')}>
                   {oauthSubscriptionPresets.map((p) => (
                     <option key={p.key} value={p.key}>
-                      {p.name}
+                      {p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name}
                     </option>
                   ))}
                 </optgroup>
               </select>
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {presetSelected
+                  ? usesOAuth
+                    ? t('providers.form.presetOAuthHint')
+                    : t('providers.form.presetApiHint')
+                  : t('providers.form.presetCustomHint')}
+              </span>
             </label>
           )}
-          <label style={fieldStyle}>
-            {t('providers.fields.credentialMode')}
-            <select
-              value={credentialMode}
-              onChange={(e) => {
-                const mode = e.target.value as ProviderCredentialMode;
-                setCredentialMode(mode);
-                if (mode === 'oauth' && oauthKind === 'generic_pkce' && !editing) {
-                  setOauthKind('openai_codex');
-                  applyOAuthKindPreset('openai_codex');
-                }
-              }}
-              disabled={editing}
-              style={inputStyle}
-            >
-              <option value="api_key">{t('providers.credential.apiKey')}</option>
-              <option value="oauth">{t('providers.credential.oauth')}</option>
-            </select>
-            {editing && (
+          {showManualCredential && (
+            <label style={fieldStyle}>
+              {t('providers.fields.credentialMode')}
+              <select
+                value={credentialMode}
+                onChange={(e) => {
+                  const mode = e.target.value as ProviderCredentialMode;
+                  setCredentialMode(mode);
+                  if (mode === 'oauth') {
+                    setOauthKind('generic_pkce');
+                    setOauthClientId('');
+                    setOauthAuthorizeUrl('');
+                    setOauthTokenUrl('');
+                    setOauthScopes('');
+                  }
+                }}
+                style={inputStyle}
+              >
+                <option value="api_key">{t('providers.credential.apiKey')}</option>
+                <option value="oauth">{t('providers.oauth.customPkce')}</option>
+              </select>
+            </label>
+          )}
+          {editing && (
+            <label style={fieldStyle}>
+              {t('providers.fields.credentialMode')}
+              <select value={credentialMode} disabled style={inputStyle}>
+                <option value="api_key">{t('providers.credential.apiKey')}</option>
+                <option value="oauth">{t('providers.credential.oauth')}</option>
+              </select>
               <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                 {t('providers.form.credentialModeLocked')}
               </span>
-            )}
-          </label>
+            </label>
+          )}
           {usesOAuth && (
             <>
-              <label style={fieldStyle}>
-                {t('providers.fields.oauthService')}
-                <select
-                  value={oauthKind}
-                  onChange={(e) => onOAuthKindChange(e.target.value as OAuthSubscriptionKind)}
-                  disabled={editing}
-                  style={inputStyle}
-                >
-                  {oauthSubscriptionPresets.map((p) =>
-                    p.oauthKind ? (
-                      <option key={p.key} value={p.oauthKind}>
-                        {p.name}
-                      </option>
-                    ) : null,
-                  )}
-                  <option value="generic_pkce">{t('providers.oauth.customPkce')}</option>
-                </select>
-              </label>
+              {editing && (
+                <label style={fieldStyle}>
+                  {t('providers.fields.oauthService')}
+                  <select value={oauthKind} disabled style={inputStyle}>
+                    {oauthSubscriptionPresets.map((p) =>
+                      p.oauthKind ? (
+                        <option key={p.key} value={p.oauthKind}>
+                          {p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name}
+                        </option>
+                      ) : null,
+                    )}
+                  </select>
+                </label>
+              )}
               {isOAuthStubKind(oauthKind) && (
                 <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
                   {t('providers.form.oauthStubHint')}
                 </p>
               )}
-              {oauthKind === 'generic_pkce' && (
+              {oauthKind === 'generic_pkce' && (showManualCredential || presetKey === 'oauth-generic-pkce') && (
                 <>
                   <label style={fieldStyle}>
                     {t('providers.fields.oauthClientId')}
