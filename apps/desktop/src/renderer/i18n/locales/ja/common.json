@@ -403,6 +403,9 @@
       "sshHint": "そのマシン上で SSH 経由で herdr を実行します（herdr TUI の --remote ではありません）。"
     },
     "attachHint": "ターミナルからエージェントを確認・操作できます:",
+    "environment": {
+      "title": "実行環境"
+    },
     "status": {
       "stopped": "停止中",
       "starting": "起動中…",
@@ -468,7 +471,10 @@
     "tasks": {
       "title": "タスク",
       "settings": "ワークベンチ設定",
+      "preferences": "自動化",
       "list": "すべてのタスク",
+      "taskTotal": "タスク {{count}} 件",
+      "concurrent": "同時実行",
       "running": "実行中",
       "new": "新しいタスク",
       "create": "タスクを追加",
@@ -518,6 +524,7 @@
       "launch": "実行",
       "relaunch": "再実行",
       "edit": "編集",
+      "editTask": "タイトルと指示を編集",
       "complete": "完了にする",
       "stop": "停止",
       "remove": "削除",

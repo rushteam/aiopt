@@ -403,6 +403,9 @@
       "sshHint": "Führt herdr auf diesem Rechner per SSH aus (nicht herdrs TUI --remote)."
     },
     "attachHint": "Agenten im Terminal beobachten oder übernehmen:",
+    "environment": {
+      "title": "Umgebung"
+    },
     "status": {
       "stopped": "Gestoppt",
       "starting": "Wird gestartet…",
@@ -468,7 +471,10 @@
     "tasks": {
       "title": "Aufgaben",
       "settings": "Werkbank-Einstellungen",
+      "preferences": "Automatisierung",
       "list": "Alle Aufgaben",
+      "taskTotal": "{{count}} Aufgaben",
+      "concurrent": "Parallel",
       "running": "Laufend",
       "new": "Neue Aufgabe",
       "create": "Aufgabe hinzufügen",
@@ -518,6 +524,7 @@
       "launch": "Ausführen",
       "relaunch": "Erneut ausführen",
       "edit": "Bearbeiten",
+      "editTask": "Titel & Prompt bearbeiten",
       "complete": "Als erledigt markieren",
       "stop": "Stoppen",
       "remove": "Entfernen",

@@ -15,18 +15,15 @@ import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
 import {
   abortChat,
-  addFolder,
   createTask,
   deleteConversation,
   openConversation,
-  removeFolder,
   resetChat,
   runAllTasks,
   sendChat,
   startWorkbench,
   stopWorkbench,
   updateTask,
-  installHerdr,
   updateWorkbenchSettings,
 } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -41,9 +38,11 @@ import {
   type TaskStatus,
   type TaskView,
   type WorkbenchSnapshot,
+  shouldShowTaskPlan,
   taskDependenciesMet,
 } from '../../../shared/workbench';
 import { TaskDagView } from './TaskDagView';
+import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { TaskChatPane } from './TaskChatPane';
 import { TaskTabBar } from './TaskTabBar';
 import { TaskDetailToolbar } from './TaskDetailToolbar';
@@ -93,9 +92,8 @@ export function WorkbenchHome() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
-      <div style={{ padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: space.lg }}>
-        <StatusBar wb={wb} t={t} busy={busy} run={run} onToggle={() => void toggle()} />
-        <FolderStrip folders={wb.folders} t={t} run={run} />
+      <div style={{ padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: space.md }}>
+        <WorkbenchTopBar wb={wb} t={t} busy={busy} run={run} onToggle={() => void toggle()} />
         {error && (
           <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
             {error}
@@ -137,155 +135,6 @@ export function WorkbenchHome() {
 }
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
-
-// ─── Status bar ──────────────────────────────────────────────────────────────
-
-function StatusBar({
-  wb,
-  t,
-  busy,
-  run,
-  onToggle,
-}: {
-  wb: WorkbenchSnapshot;
-  t: TranslateFn;
-  busy: boolean;
-  run: Runner;
-  onToggle: () => void;
-}) {
-  const probe = wb.herdrProbe;
-  const showInstall = !probe.remote && !probe.installed && wb.status !== 'error';
-  const tasksBlocked =
-    (wb.status === 'ready' && !wb.herdrAvailable) || (!probe.installed && wb.status === 'stopped');
-  const on = wb.status === 'ready' || wb.status === 'starting';
-  const dot =
-    wb.status === 'ready' ? token('success') : wb.status === 'error' ? token('danger') : token('borderStrong');
-  return (
-    <section style={{ ...panelStyle, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: space.sm }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, fontSize: fontSize.md, fontWeight: 600 }}>
-          <span aria-hidden style={{ ...dotStyle, background: dot }} />
-          {t(`workbench.status.${wb.status}`)}
-        </span>
-        {wb.model && (
-          <span style={{ fontSize: fontSize.base, color: token('textMuted'), minWidth: 0 }}>
-            {t('workbench.model')}{' '}
-            <span style={{ color: token('text') }}>
-              {wb.model.providerName} / {wb.model.modelId}
-            </span>{' '}
-            · {wb.model.proxied ? t('workbench.proxied') : t('workbench.direct')}
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={busy}
-          {...(on
-            ? hoverBackground('transparent', token('surfaceHover'))
-            : hoverBackground(token('accent'), token('accentHover')))}
-          style={{ ...(on ? ghostStyle : accentStyle), opacity: busy ? 0.5 : 1, cursor: busy ? 'default' : 'pointer' }}
-        >
-          {on ? t('workbench.stop') : t('workbench.start')}
-        </button>
-      </div>
-      {wb.status === 'stopped' && (
-        <p style={{ margin: 0, fontSize: fontSize.base, color: token('textMuted') }}>{t('workbench.subtitle')}</p>
-      )}
-      {wb.issue && (
-        <p style={{ margin: 0, fontSize: fontSize.base, color: token('danger') }}>{t(`workbench.issue.${wb.issue}`)}</p>
-      )}
-      {(probe.installed || probe.installing || showInstall) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: space.md }}>
-          <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
-            {probe.remote
-              ? t('workbench.herdr.remote').replace('{{target}}', probe.displayPath ?? '')
-              : probe.installed
-                ? t('workbench.herdr.local')
-                    .replace('{{version}}', probe.version ?? '—')
-                    .replace('{{path}}', probe.displayPath ?? '')
-                : t('workbench.herdr.notFound')}
-          </span>
-          {showInstall && (
-            <button
-              type="button"
-              disabled={probe.installing || busy}
-              onClick={() => void run(installHerdr)}
-              {...hoverBackground(token('accent'), token('accentHover'))}
-              style={{ ...accentStyle, fontSize: fontSize.sm, padding: '4px 10px', opacity: probe.installing ? 0.6 : 1 }}
-            >
-              {probe.installing ? t('workbench.herdr.installing') : t('workbench.herdr.install')}
-            </button>
-          )}
-        </div>
-      )}
-      {tasksBlocked && wb.status !== 'starting' && (
-        <p style={{ margin: 0, fontSize: fontSize.base, color: token('textMuted') }}>{t('workbench.herdrMissing')}</p>
-      )}
-      {wb.status === 'ready' && wb.herdrAvailable && (
-        <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
-          {t('workbench.attachHint')}{' '}
-          <code style={codeStyle}>
-            {probe.remote ? `ssh ${wb.settings.herdrSshTarget} herdr --session ${wb.herdrSession}` : `herdr --session ${wb.herdrSession}`}
-          </code>
-        </p>
-      )}
-    </section>
-  );
-}
-
-// ─── Folders ─────────────────────────────────────────────────────────────────
-
-function FolderStrip({ folders, t, run }: { folders: readonly FolderView[]; t: TranslateFn; run: Runner }) {
-  return (
-    <section aria-label={t('workbench.folders.label')} style={{ display: 'flex', alignItems: 'center', gap: space.md, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: fontSize.sm, fontWeight: 600, color: token('textMuted') }}>{t('workbench.folders.label')}</span>
-      {folders.length === 0 && (
-        <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>{t('workbench.folders.empty')}</span>
-      )}
-      {folders.map((f) => (
-        <span
-          key={f.id}
-          title={f.displayPath}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: space.xs,
-            maxWidth: 260,
-            padding: '2px 4px 2px 10px',
-            borderRadius: radius.pill,
-            border: `1px solid ${token('border')}`,
-            background: token('surface'),
-            fontSize: fontSize.sm,
-          }}
-        >
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-          {f.isGitRepo && <span style={{ color: token('textMuted') }}>{t('workbench.folders.git')}</span>}
-          <button
-            type="button"
-            aria-label={`${t('workbench.folders.remove')}: ${f.name}`}
-            title={t('workbench.folders.remove')}
-            onClick={() => void run(() => removeFolder(f.id))}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={chipCloseStyle}
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      <button
-        type="button"
-        onClick={() => void run(addFolder)}
-        disabled={folders.length >= WORKBENCH_LIMITS.folders}
-        {...hoverBackground('transparent', token('surfaceHover'))}
-        style={smallGhostStyle}
-      >
-        {t('workbench.folders.add')}
-      </button>
-      <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('workbench.folders.hint')}</span>
-    </section>
-  );
-}
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
@@ -675,8 +524,10 @@ function TaskBoard({
     <section aria-label={t('workbench.tasks.title')} style={{ ...panelStyle, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={paneHeaderStyle}>
         <h2 style={paneTitleStyle}>{t('workbench.tasks.title')}</h2>
-        <span style={{ fontSize: fontSize.sm, color: token('textMuted'), fontVariantNumeric: 'tabular-nums' }}>
-          {t('workbench.tasks.running')} {liveCount}/{WORKBENCH_LIMITS.liveTasks}
+        <span style={{ fontSize: fontSize.sm, color: token('textMuted'), fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {t('workbench.tasks.taskTotal').replace('{{count}}', String(tasks.length))}
+          {' · '}
+          {t('workbench.tasks.concurrent')} {liveCount}/{WORKBENCH_LIMITS.liveTasks}
         </span>
         <span style={{ flex: 1 }} />
         <button
@@ -712,7 +563,7 @@ function TaskBoard({
             listStyle: 'none',
           }}
         >
-          {t('workbench.tasks.settings')}
+          {t('workbench.tasks.preferences')}
         </summary>
         <div
           style={{
@@ -787,7 +638,7 @@ function TaskBoard({
         </div>
       )}
       <TaskTabBar tasks={tasks} selectedId={selectedId} onSelect={setSelectedId} t={t} />
-      {tasks.length > 0 && (
+      {shouldShowTaskPlan(wb.tasks) && (
         <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
           <summary
             style={{
@@ -1050,8 +901,6 @@ const paneHeaderStyle: CSSProperties = {
 
 const paneTitleStyle: CSSProperties = { margin: 0, fontSize: fontSize.lg, fontWeight: 600 };
 
-const dotStyle: CSSProperties = { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 };
-
 const codeStyle: CSSProperties = {
   fontFamily: 'ui-monospace, monospace',
   fontSize: fontSize.xs,
@@ -1082,24 +931,6 @@ const inputStyle: CSSProperties = {
   borderRadius: radius.sm,
   border: `1px solid ${token('borderStrong')}`,
   background: token('bg'),
-  color: token('text'),
-  fontSize: fontSize.md,
-};
-
-const accentStyle: CSSProperties = {
-  padding: '6px 16px',
-  borderRadius: radius.md,
-  border: `1px solid ${token('accent')}`,
-  background: token('accent'),
-  color: token('accentText'),
-  fontSize: fontSize.md,
-};
-
-const ghostStyle: CSSProperties = {
-  padding: '6px 16px',
-  borderRadius: radius.md,
-  border: `1px solid ${token('borderStrong')}`,
-  background: 'transparent',
   color: token('text'),
   fontSize: fontSize.md,
 };

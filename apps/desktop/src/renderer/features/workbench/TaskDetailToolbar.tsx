@@ -125,7 +125,7 @@ export function TaskDetailToolbar({
       <span style={{ flex: 1, minWidth: 8 }} />
       {editable && (
         <button type="button" onClick={onEdit} {...hoverBackground('transparent', token('surfaceHover'))} style={{ ...ghostBtn, flexShrink: 0 }}>
-          {t('workbench.actions.edit')}
+          {t('workbench.actions.editTask')}
         </button>
       )}
       {taskAllows('remove', task.status) && (

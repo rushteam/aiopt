@@ -262,6 +262,11 @@ export function taskDependenciesMet(task: Pick<TaskView, 'dependsOn'>, tasks: re
 }
 
 /** Dependencies that still block launch (missing or not done). */
+/** Show the DAG / plan UI when there is more than one task or any dependency edge. */
+export function shouldShowTaskPlan(tasks: readonly Pick<TaskView, 'dependsOn'>[]): boolean {
+  return tasks.length > 1 || tasks.some((task) => task.dependsOn.length > 0);
+}
+
 export function pendingDependencies(task: Pick<TaskView, 'dependsOn'>, tasks: readonly TaskView[]): TaskView[] {
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const out: TaskView[] = [];

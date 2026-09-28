@@ -393,6 +393,9 @@
     "removeConfirmYes": "移除",
     "herdrMissing": "未找到 herdr，任务无法运行，但对话仍可使用。可在下方一键安装，或在别处安装后重启工作台。",
     "attachHint": "可在终端中查看或接管这些 Agent：",
+    "environment": {
+      "title": "运行环境"
+    },
     "herdr": {
       "notFound": "未检测到 herdr。若你已安装，请确认在 PATH 中；也可点击下方由 AiOpt 安装。",
       "local": "herdr {{version}} · {{path}}",
@@ -470,7 +473,10 @@
     "tasks": {
       "title": "任务",
       "settings": "工作台设置",
+      "preferences": "自动化偏好",
       "list": "全部任务",
+      "taskTotal": "共 {{count}} 个任务",
+      "concurrent": "并发",
       "running": "运行中",
       "new": "新建任务",
       "create": "添加任务",
@@ -520,6 +526,7 @@
       "launch": "运行",
       "relaunch": "重新运行",
       "edit": "编辑",
+      "editTask": "编辑标题与提示",
       "complete": "标记完成",
       "stop": "停止",
       "remove": "移除",

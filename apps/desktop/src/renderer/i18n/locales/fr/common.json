@@ -403,6 +403,9 @@
       "sshHint": "Exécute herdr sur cette machine via SSH (pas l'attache TUI --remote de herdr)."
     },
     "attachHint": "Suivez ou prenez la main sur les agents depuis un terminal :",
+    "environment": {
+      "title": "Environnement"
+    },
     "status": {
       "stopped": "Arrêté",
       "starting": "Démarrage…",
@@ -468,7 +471,10 @@
     "tasks": {
       "title": "Tâches",
       "settings": "Réglages de l'atelier",
+      "preferences": "Automatisation",
       "list": "Toutes les tâches",
+      "taskTotal": "{{count}} tâches",
+      "concurrent": "En parallèle",
       "running": "En cours",
       "new": "Nouvelle tâche",
       "create": "Ajouter la tâche",
@@ -518,6 +524,7 @@
       "launch": "Lancer",
       "relaunch": "Relancer",
       "edit": "Modifier",
+      "editTask": "Modifier titre et consigne",
       "complete": "Marquer terminée",
       "stop": "Arrêter",
       "remove": "Supprimer",
