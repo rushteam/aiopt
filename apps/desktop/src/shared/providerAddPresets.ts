@@ -57,6 +57,15 @@ const OAUTH_PRESETS: AddProviderPreset[] = [
     credentialMode: 'oauth',
     oauthKind: 'github_copilot',
   },
+  {
+    key: 'oauth-generic-pkce',
+    name: 'Custom OAuth',
+    apiFormats: ['openai'],
+    baseUrl: '',
+    models: [{ id: 'gpt-4o' }],
+    credentialMode: 'oauth',
+    oauthKind: 'generic_pkce',
+  },
 ];
 
 export const ADD_PROVIDER_PRESETS: readonly AddProviderPreset[] = [...API_PRESETS, ...OAUTH_PRESETS];
