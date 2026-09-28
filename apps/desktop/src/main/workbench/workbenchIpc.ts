@@ -73,6 +73,19 @@ export function registerWorkbenchIpc(
 
   registry.register(IPC_CHANNELS.workbenchGet, (_payload, meta) => {
     meta.assertTrustedSender();
+    void manager.refreshHerdrProbe();
+    return snapshot();
+  });
+
+  registry.register(IPC_CHANNELS.workbenchHerdrProbe, async (_payload, meta) => {
+    meta.assertTrustedSender();
+    await manager.refreshHerdrProbe();
+    return snapshot();
+  });
+
+  registry.register(IPC_CHANNELS.workbenchHerdrInstall, async (_payload, meta) => {
+    meta.assertTrustedSender();
+    await manager.installHerdr();
     return snapshot();
   });
 
@@ -205,10 +218,18 @@ export function registerWorkbenchIpc(
   registry.register(IPC_CHANNELS.workbenchSettingsUpdate, (payload, meta) => {
     meta.assertTrustedSender();
     const obj = requireObject(payload);
+    const sshRaw = obj.herdrSshTarget;
+    let herdrSshTarget: string | null | undefined;
+    if (sshRaw !== undefined) {
+      if (sshRaw === null) herdrSshTarget = null;
+      else if (typeof sshRaw === 'string') herdrSshTarget = sshRaw.trim() === '' ? null : sshRaw.trim();
+      else throwIpcError('INVALID_PARAMS', 'herdrSshTarget must be a string');
+    }
     manager.updateSettings({
       autoRun: optionalBoolean(obj.autoRun, 'autoRun'),
       notifyCoordinator: optionalBoolean(obj.notifyCoordinator, 'notifyCoordinator'),
       autoLaunchDependents: optionalBoolean(obj.autoLaunchDependents, 'autoLaunchDependents'),
+      herdrSshTarget,
     });
     return snapshot();
   });

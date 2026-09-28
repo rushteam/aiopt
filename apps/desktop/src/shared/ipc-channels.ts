@@ -156,6 +156,8 @@ export const IPC_CHANNELS = {
   workbenchConversationOpen: 'workbench:conversation-open',
   workbenchConversationDelete: 'workbench:conversation-delete',
   workbenchSettingsUpdate: 'workbench:settings-update',
+  workbenchHerdrProbe: 'workbench:herdr-probe',
+  workbenchHerdrInstall: 'workbench:herdr-install',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -698,6 +700,8 @@ export interface WorkbenchSettingsUpdateRequest {
   autoRun?: boolean;
   notifyCoordinator?: boolean;
   autoLaunchDependents?: boolean;
+  /** Empty string clears the target. */
+  herdrSshTarget?: string | null;
 }
 
 // --- Skills wire contract -------------------------------------------------
@@ -848,4 +852,6 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchConversationDelete]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchHerdrProbe]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchHerdrInstall]: { request: void; result: WorkbenchSnapshot };
 }

@@ -348,11 +348,19 @@ const workbenchSnapshot: WorkbenchSnapshot = {
   ],
   herdrSession: 'aiopt',
   herdrAvailable: true,
+  herdrProbe: {
+    installed: true,
+    source: 'path',
+    displayPath: '/opt/bin/herdr',
+    version: '0.8.0',
+    installing: false,
+    remote: false,
+  },
   conversations: [
     { id: '0a1b2c3d-0000-4000-8000-000000000001', title: 'Add a dark-mode toggle to the docs site, and write a changelog entry for it.', updatedAt: NOW - 2 * 60_000, current: true },
     { id: '0a1b2c3d-0000-4000-8000-000000000002', title: 'Summarize last week’s support tickets', updatedAt: NOW - 26 * 60 * 60_000, current: false },
   ],
-  settings: { autoRun: false, notifyCoordinator: true, autoLaunchDependents: false },
+  settings: { autoRun: false, notifyCoordinator: true, autoLaunchDependents: false, herdrSshTarget: null },
 };
 
 const noop = (): void => {};
@@ -439,6 +447,8 @@ const bridge: AiOptBridge = {
     openConversation: refused,
     deleteConversation: refused,
     updateSettings: refused,
+    refreshHerdrProbe: async () => workbenchSnapshot,
+    installHerdr: refused,
     onChanged: unsubscribe,
   },
   getVersions: async () => ({ app: '1.0.0', electron: '41.2.0', chrome: '', node: '' }),

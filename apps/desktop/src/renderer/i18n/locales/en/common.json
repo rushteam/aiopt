@@ -381,8 +381,18 @@
     "stopConfirmYes": "Stop all",
     "removeConfirm": "Remove this task and its worktree? The branch is kept. A worktree with uncommitted changes isn't removed.",
     "removeConfirmYes": "Remove",
-    "herdrMissing": "herdr wasn't found, so tasks can't run. Chat still works. Install herdr, then restart the workbench.",
+    "herdrMissing": "herdr wasn't found, so tasks can't run. Chat still works. Install herdr below or restart after installing elsewhere.",
     "attachHint": "Watch or take over the agents from a terminal:",
+    "herdr": {
+      "notFound": "herdr isn't installed yet (AiOpt checks its own copy first, then your PATH).",
+      "local": "herdr {{version}} · {{path}}",
+      "remote": "Remote herdr via SSH · {{target}}",
+      "install": "Install herdr",
+      "installing": "Installing herdr…",
+      "sshLabel": "Remote herdr (SSH)",
+      "sshPlaceholder": "user@host",
+      "sshHint": "Runs herdr on that machine over SSH (not herdr's TUI --remote attach)."
+    },
     "status": {
       "stopped": "Stopped",
       "starting": "Starting…",

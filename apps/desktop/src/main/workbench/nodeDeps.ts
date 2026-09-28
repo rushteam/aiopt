@@ -103,7 +103,17 @@ function execNode(
 
 export type NodeWorkbenchDeps = Pick<
   WorkbenchDeps,
-  'fs' | 'findBinary' | 'exec' | 'spawnDetached' | 'spawnPi' | 'isGitRepo' | 'now' | 'sleep' | 'every' | 'randomId'
+  | 'fs'
+  | 'findBinary'
+  | 'isExecutableFile'
+  | 'exec'
+  | 'spawnDetached'
+  | 'spawnPi'
+  | 'isGitRepo'
+  | 'now'
+  | 'sleep'
+  | 'every'
+  | 'randomId'
 >;
 
 export function createNodeWorkbenchDeps(): NodeWorkbenchDeps {
@@ -111,6 +121,7 @@ export function createNodeWorkbenchDeps(): NodeWorkbenchDeps {
   return {
     fs: nodeWorkbenchFs,
     findBinary: (name, dirs) => findIn(name, dirs, isExecutable),
+    isExecutableFile: isExecutable,
     exec: execNode,
     spawnDetached: (file, args, env, cwd) => {
       const child = spawn(file, [...args], { detached: true, stdio: 'ignore', env, cwd });

@@ -255,6 +255,7 @@ export function getWorkbenchManager(): WorkbenchManager {
     manager = createWorkbenchManager({
       ...createNodeWorkbenchDeps(),
       platform: process.platform,
+      arch: process.arch,
       dataDir: workbenchDir(),
       homeDir: app.getPath('home'),
       env: process.env,
