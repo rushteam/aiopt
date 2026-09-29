@@ -133,7 +133,22 @@
     "agents": {
       "heading": "エージェント",
       "showNotDetected": "Show {{count}} agents not detected",
-      "hideNotDetected": "Hide agents not detected"
+      "hideNotDetected": "Hide agents not detected",
+      "waitingForProvider": "先にプロバイダーを追加してから、ここで各エージェントをバインドしてください。",
+      "emptyInstalled": "このマシンではエージェントが検出されていません。対応 CLI をインストールするか、下で未検出のエージェントを表示してください。"
+    },
+    "setup": {
+      "title": "はじめる",
+      "step1Title": "プロバイダーを追加",
+      "step1Hint": "API を手入力するか、このコンピューター上のエージェントログインからインポートします。",
+      "customProvider": "カスタムプロバイダー",
+      "scanAgentLogins": "エージェントログインをスキャン",
+      "step2Title": "エージェントをバインド",
+      "step2Hint": "プールとモデルを使うエージェントを選びます。",
+      "step2Waiting": "ステップ 1 の後、下の一覧からバインドしてください。",
+      "bindAgent": "{{name}} を設定",
+      "noAgentsTitle": "エージェント未検出",
+      "noAgentsHint": "対応するエージェント CLI（Codex、Claude Code、Copilot など）をインストールしてサインインしてください。先にプロバイダーだけ追加し、後からバインドできます。"
     },
     "proxy": {
       "label": "ローカルプロキシ",

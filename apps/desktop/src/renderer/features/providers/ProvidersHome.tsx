@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { isCombinedProviderId } from '../../../shared/combinedProvider';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
-import { useT } from '../../i18n';
+import { useT, type TranslateFn } from '../../i18n';
 import { useProviders } from '../../hooks/useProviders';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
 import { AgentCard } from './AgentCard';
@@ -21,6 +21,8 @@ import { ProviderFormDialog } from './ProviderFormDialog';
 import { ScrollTabScreen, tabScreenIntroStyle, tabScreenSectionStyle } from '../../components/TabScreenShell';
 import { BindingProfileSwitcher } from './BindingProfileSwitcher';
 import { AgentImportDialog } from './AgentImportDialog';
+import { ProvidersSetupGuide } from './ProvidersSetupGuide';
+import { shouldShowProvidersSetupGuide } from './providersSetupState';
 
 type Dialog =
   | { kind: 'none' }
@@ -57,7 +59,13 @@ export function ProvidersHome() {
 
   const installedAgents = useMemo(() => agents.filter((a) => a.installed), [agents]);
   const hiddenAgents = useMemo(() => agents.filter((a) => !a.installed), [agents]);
+  const unboundInstalled = useMemo(
+    () => installedAgents.filter((a) => !a.binding),
+    [installedAgents],
+  );
   const [showHiddenAgents, setShowHiddenAgents] = useState(false);
+
+  const showSetupGuide = shouldShowProvidersSetupGuide({ poolEmpty });
 
   return (
     <>
@@ -94,9 +102,45 @@ export function ProvidersHome() {
           <BindingProfileSwitcher />
         </div>
 
+        {showSetupGuide && (
+          <ProvidersSetupGuide
+            poolEmpty={poolEmpty}
+            installedAgents={installedAgents}
+            unboundInstalled={unboundInstalled}
+            hiddenAgentCount={hiddenAgents.length}
+            onAddCustom={() => setDialog({ kind: 'add' })}
+            onScanImport={() => setDialog({ kind: 'import' })}
+            onBindAgent={(agent) => setDialog({ kind: 'bind', agent })}
+            onShowHiddenAgents={() => setShowHiddenAgents(true)}
+          />
+        )}
+
+        {poolEmpty && (
+          <section style={tabScreenSectionStyle}>
+            <PoolSection
+              t={t}
+              poolEmpty={poolEmpty}
+              realProviders={realProviders}
+              hideHeaderActions={showSetupGuide}
+              onAdd={() => setDialog({ kind: 'add' })}
+              onImport={() => setDialog({ kind: 'import' })}
+            />
+          </section>
+        )}
+
         <section style={tabScreenSectionStyle}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
           <ProxyControlBar proxyPort={proxyPort} anyProxied={anyProxied} />
+          {poolEmpty && installedAgents.length === 0 && (
+            <p style={{ margin: '0 0 12px', fontSize: fontSize.sm, color: token('textMuted') }}>
+              {t('providers.agents.waitingForProvider')}
+            </p>
+          )}
+          {installedAgents.length === 0 && !poolEmpty && (
+            <p style={{ margin: '0 0 12px', fontSize: fontSize.sm, color: token('textMuted') }}>
+              {t('providers.agents.emptyInstalled')}
+            </p>
+          )}
           <div style={gridStyle}>
             {installedAgents.map((agent) => (
               <AgentCard
@@ -148,51 +192,19 @@ export function ProvidersHome() {
           )}
         </section>
 
-        <section>
-          {/* The button sits NEXT TO its heading, not pushed to the far edge. `space-between`
-              on the tab content column left a huge gap between the two, which is far past
-              the distance at which a control still reads as belonging to the thing it acts on. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
-            <h2 style={{ ...sectionHeadingStyle, margin: 0 }}>{t('providers.pool.heading')}</h2>
-            {/* Ghost while the pool has entries: adding another provider is maintenance,
-                not what a user opened this screen to do, and as the page's only filled
-                accent it was drawing the eye to the bottom-right corner while every
-                unconfigured agent above sat silent. It fills in only when the pool is
-                EMPTY — then it genuinely is the one thing to do first, and the agent
-                cards deliberately stay ghosts so this is the single emphasis on screen. */}
-            <button
-              type="button"
-              onClick={() => setDialog({ kind: 'add' })}
-              {...(poolEmpty
-                ? hoverBackground(token('accent'), token('accentHover'))
-                : hoverBackground('transparent', token('surfaceHover')))}
-              style={poolEmpty ? addPrimaryStyle : addGhostStyle}
-            >
-              {t('providers.addProvider')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setDialog({ kind: 'import' })}
-              {...hoverBackground('transparent', token('surfaceHover'))}
-              style={addGhostStyle}
-            >
-              {t('providers.import.scanAction')}
-            </button>
-          </div>
-          {realProviders.length === 0 ? (
-            <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('providers.pool.empty')}</p>
-          ) : (
-            <div style={gridStyle}>
-              {realProviders.map((provider) => (
-                <ProviderCard
-                  key={provider.id}
-                  provider={provider}
-                  onEdit={() => setDialog({ kind: 'edit', provider })}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        {!poolEmpty && (
+          <section>
+            <PoolSection
+              t={t}
+              poolEmpty={poolEmpty}
+              realProviders={realProviders}
+              hideHeaderActions={false}
+              onAdd={() => setDialog({ kind: 'add' })}
+              onImport={() => setDialog({ kind: 'import' })}
+              onEdit={(provider) => setDialog({ kind: 'edit', provider })}
+            />
+          </section>
+        )}
       </ScrollTabScreen>
 
       {dialog.kind === 'add' && <ProviderFormDialog onClose={close} />}
@@ -217,6 +229,67 @@ export function ProvidersHome() {
 // and at 16px against a bold 15px card name the ratio was 1.07x — below any usable step,
 // while the eight bold card titles out-shouted the one heading by sheer repetition. 18px
 // against 15px is 1.20x, and the explicit 600 keeps it ahead of `<strong>` card names.
+function PoolSection({
+  t,
+  poolEmpty,
+  realProviders,
+  hideHeaderActions,
+  onAdd,
+  onImport,
+  onEdit,
+}: {
+  t: TranslateFn;
+  poolEmpty: boolean;
+  realProviders: ProviderSummary[];
+  hideHeaderActions: boolean;
+  onAdd: () => void;
+  onImport: () => void;
+  onEdit?: (provider: ProviderSummary) => void;
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
+        <h2 style={{ ...sectionHeadingStyle, margin: 0 }}>{t('providers.pool.heading')}</h2>
+        {!hideHeaderActions && (
+          <>
+            <button
+              type="button"
+              onClick={onAdd}
+              {...(poolEmpty
+                ? hoverBackground(token('accent'), token('accentHover'))
+                : hoverBackground('transparent', token('surfaceHover')))}
+              style={poolEmpty ? addPrimaryStyle : addGhostStyle}
+            >
+              {t('providers.addProvider')}
+            </button>
+            <button
+              type="button"
+              onClick={onImport}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={addGhostStyle}
+            >
+              {t('providers.import.scanAction')}
+            </button>
+          </>
+        )}
+      </div>
+      {realProviders.length === 0 ? (
+        <p style={{ fontSize: fontSize.md, color: token('textMuted'), margin: 0 }}>{t('providers.pool.empty')}</p>
+      ) : (
+        <div style={gridStyle}>
+          {realProviders.map((provider) => (
+            <ProviderCard
+              key={provider.id}
+              provider={provider}
+              onEdit={() => onEdit?.(provider)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 const sectionHeadingStyle = {
   margin: '0 0 12px',
   fontSize: fontSize['2xl'],

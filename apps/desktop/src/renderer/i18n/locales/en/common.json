@@ -133,7 +133,22 @@
     "agents": {
       "heading": "Agents",
       "showNotDetected": "Show {{count}} agents not detected",
-      "hideNotDetected": "Hide agents not detected"
+      "hideNotDetected": "Hide agents not detected",
+      "waitingForProvider": "Add a provider first — then bind each detected agent here.",
+      "emptyInstalled": "No agents detected on this machine yet. Install a supported CLI or show not-detected agents below."
+    },
+    "setup": {
+      "title": "Get started",
+      "step1Title": "Add a provider",
+      "step1Hint": "Enter API details yourself, or import a subscription login already on this computer.",
+      "customProvider": "Custom provider",
+      "scanAgentLogins": "Scan agent logins",
+      "step2Title": "Bind an agent",
+      "step2Hint": "Pick which agent should use your provider pool and model.",
+      "step2Waiting": "Complete step 1 first, then bind agents from the list below.",
+      "bindAgent": "Configure {{name}}",
+      "noAgentsTitle": "No agents detected",
+      "noAgentsHint": "Install and sign in to a supported agent CLI (Codex, Claude Code, Copilot, …). You can still add providers now and bind later."
     },
     "combined": {
       "name": "Combined provider",

@@ -133,7 +133,22 @@
     "agents": {
       "heading": "Agent",
       "showNotDetected": "显示 {{count}} 个未检测到的 Agent",
-      "hideNotDetected": "隐藏未检测到的 Agent"
+      "hideNotDetected": "隐藏未检测到的 Agent",
+      "waitingForProvider": "请先添加供应商，再在此为各 Agent 绑定模型。",
+      "emptyInstalled": "本机尚未检测到 Agent。可安装支持的 CLI，或在下方展开「未检测到」列表。"
+    },
+    "setup": {
+      "title": "开始使用",
+      "step1Title": "添加供应商",
+      "step1Hint": "手动填写 API，或从本机已登录的 Agent 扫描并导入订阅。",
+      "customProvider": "自定义供应商",
+      "scanAgentLogins": "扫描 Agent 登录",
+      "step2Title": "绑定 Agent",
+      "step2Hint": "选择要使用供应商池与模型的 Agent。",
+      "step2Waiting": "先完成第 1 步，再在下方列表中为 Agent 绑定。",
+      "bindAgent": "配置 {{name}}",
+      "noAgentsTitle": "未检测到 Agent",
+      "noAgentsHint": "请安装并登录支持的 Agent CLI（如 Codex、Claude Code、Copilot 等）。可先添加供应商，稍后再绑定。"
     },
     "combined": {
       "name": "联合提供商",

@@ -133,7 +133,22 @@
     "agents": {
       "heading": "에이전트",
       "showNotDetected": "Show {{count}} agents not detected",
-      "hideNotDetected": "Hide agents not detected"
+      "hideNotDetected": "Hide agents not detected",
+      "waitingForProvider": "먼저 공급자를 추가한 뒤, 여기서 각 에이전트를 바인딩하세요.",
+      "emptyInstalled": "이 Mac에서 에이전트가 감지되지 않았습니다. 지원 CLI를 설치하거나 아래에서 미감지 에이전트를 표시하세요."
+    },
+    "setup": {
+      "title": "시작하기",
+      "step1Title": "공급자 추가",
+      "step1Hint": "API를 직접 입력하거나, 이 컴퓨터의 에이전트 로그인을 스캔해 가져옵니다.",
+      "customProvider": "사용자 정의 공급자",
+      "scanAgentLogins": "에이전트 로그인 스캔",
+      "step2Title": "에이전트 바인딩",
+      "step2Hint": "공급자 풀과 모델을 사용할 에이전트를 선택하세요.",
+      "step2Waiting": "1단계를 마친 뒤 아래 목록에서 바인딩하세요.",
+      "bindAgent": "{{name}} 구성",
+      "noAgentsTitle": "에이전트 없음",
+      "noAgentsHint": "지원되는 에이전트 CLI(Codex, Claude Code, Copilot 등)를 설치하고 로그인하세요. 공급자만 먼저 추가하고 나중에 바인딩할 수 있습니다."
     },
     "proxy": {
       "label": "로컬 프록시",

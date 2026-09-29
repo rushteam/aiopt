@@ -133,7 +133,22 @@
     "agents": {
       "heading": "Agentes",
       "showNotDetected": "Show {{count}} agents not detected",
-      "hideNotDetected": "Hide agents not detected"
+      "hideNotDetected": "Hide agents not detected",
+      "waitingForProvider": "Añade primero un proveedor y luego vincula cada agente aquí.",
+      "emptyInstalled": "No se detectaron agentes en este equipo. Instala un CLI compatible o muestra los no detectados abajo."
+    },
+    "setup": {
+      "title": "Primeros pasos",
+      "step1Title": "Añadir un proveedor",
+      "step1Hint": "Introduce la API manualmente o importa un inicio de sesión de agente en este equipo.",
+      "customProvider": "Proveedor personalizado",
+      "scanAgentLogins": "Escanear inicios de agente",
+      "step2Title": "Vincular un agente",
+      "step2Hint": "Elige qué agente usará tu pool y modelo.",
+      "step2Waiting": "Completa el paso 1 y luego vincula agentes en la lista de abajo.",
+      "bindAgent": "Configurar {{name}}",
+      "noAgentsTitle": "Ningún agente detectado",
+      "noAgentsHint": "Instala e inicia sesión en un CLI de agente compatible (Codex, Claude Code, Copilot…). Puedes añadir proveedores ahora y vincular después."
     },
     "proxy": {
       "label": "Proxy local",
