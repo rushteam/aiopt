@@ -16,6 +16,7 @@ import * as path from 'node:path';
 import { renameSyncWithRetry, rmrfSyncWithRetry } from '../fsRetry';
 import { throwIpcError } from '../ipc/validate';
 import {
+  SKILL_IMPORT_FAIL,
   SKILL_MAX_BYTES,
   SKILL_MAX_FILES,
   type SkillFileContent,
@@ -110,6 +111,35 @@ function looksBinary(buf: Buffer): boolean {
 
 // --- real implementation -----------------------------------------------------------------------
 
+/** Subdirectories ignored when copying/measuring a skill (VCS / deps — often contain symlinks). */
+const SKIP_SKILL_SUBDIRS = new Set([
+  '.git',
+  '.hg',
+  '.svn',
+  'node_modules',
+  '__pycache__',
+  '.venv',
+  'venv',
+]);
+
+/** Name of the marker file at the skill root, if present (case-insensitive on case-insensitive FS). */
+function skillMarkerRelAtRoot(skillDir: string): string | null {
+  const direct = path.join(skillDir, SKILL_MARKER);
+  const stDirect = statType(direct);
+  if (stDirect?.isFile()) return SKILL_MARKER;
+  try {
+    for (const name of fs.readdirSync(skillDir)) {
+      if (name === SKILL_MARKER) continue;
+      if (name.toLowerCase() !== SKILL_MARKER.toLowerCase()) continue;
+      const st = statType(path.join(skillDir, name));
+      if (st?.isFile()) return name;
+    }
+  } catch {
+    /* unreadable root — treated as no marker */
+  }
+  return null;
+}
+
 /**
  * Walk `root` collecting file paths relative to it, refusing any symlink and enforcing the caps.
  * Returns the relative paths so a copier can recreate the tree deterministically. Throws a coded
@@ -125,23 +155,24 @@ function collectFiles(root: string): string[] {
       const abs = path.join(dir, entry.name);
       const childRel = rel === '' ? entry.name : `${rel}/${entry.name}`;
       if (entry.isSymbolicLink()) {
-        throwIpcError('PERMISSION_DENIED', `symbolic links are not allowed in a skill: ${childRel}`);
+        throwIpcError('PERMISSION_DENIED', SKILL_IMPORT_FAIL.symlinkInTree);
       }
       if (entry.isDirectory()) {
+        if (SKIP_SKILL_SUBDIRS.has(entry.name)) continue;
         walk(abs, childRel);
         continue;
       }
       if (!entry.isFile()) {
         // Sockets, FIFOs, devices — refuse anything that is not a plain file.
-        throwIpcError('PERMISSION_DENIED', `unsupported file type in a skill: ${childRel}`);
+        throwIpcError('PERMISSION_DENIED', SKILL_IMPORT_FAIL.unsupportedFileType);
       }
       rels.push(childRel);
       if (rels.length > SKILL_MAX_FILES) {
-        throwIpcError('PRECONDITION_FAILED', `skill has too many files (limit ${SKILL_MAX_FILES})`);
+        throwIpcError('PRECONDITION_FAILED', SKILL_IMPORT_FAIL.tooManyFiles);
       }
       bytes += fs.statSync(abs).size;
       if (bytes > SKILL_MAX_BYTES) {
-        throwIpcError('PRECONDITION_FAILED', `skill is too large (limit ${SKILL_MAX_BYTES} bytes)`);
+        throwIpcError('PRECONDITION_FAILED', SKILL_IMPORT_FAIL.tooLarge);
       }
     }
   };
@@ -195,16 +226,18 @@ export function createNodeSkillsFs(): SkillsFs {
       const names: string[] = [];
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const marker = statType(path.join(baseDir, entry.name, SKILL_MARKER));
-        if (marker && marker.isFile()) names.push(entry.name);
+        const skillDir = path.join(baseDir, entry.name);
+        if (skillMarkerRelAtRoot(skillDir) !== null) names.push(entry.name);
       }
       names.sort();
       return names;
     },
 
     readMeta(skillDir: string): SkillMeta | null {
+      const markerRel = skillMarkerRelAtRoot(skillDir);
+      if (!markerRel) return null;
       try {
-        const text = fs.readFileSync(path.join(skillDir, SKILL_MARKER), 'utf8');
+        const text = fs.readFileSync(path.join(skillDir, markerRel), 'utf8');
         return parseSkillFrontmatter(text);
       } catch {
         return null;
@@ -229,8 +262,7 @@ export function createNodeSkillsFs(): SkillsFs {
     },
 
     hasMarker(skillDir: string): boolean {
-      const st = statType(path.join(skillDir, SKILL_MARKER));
-      return st !== null && st.isFile();
+      return skillMarkerRelAtRoot(skillDir) !== null;
     },
 
     compare(centralDir: string, agentDir: string): SkillFileDiff[] {

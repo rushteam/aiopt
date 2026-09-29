@@ -111,6 +111,21 @@ export const space = {
   '2xl': 24,
 } as const;
 
+/**
+ * Fixed heights (px) for inline controls — buttons, selects, segmented segments,
+ * and toolbar actions share one row when sizes match.
+ */
+export const controlHeight = {
+  sm: 28,
+  md: 32,
+} as const;
+
+/** Horizontal padding inside fixed-height controls (px). */
+export const controlPaddingX = {
+  sm: 8,
+  md: 12,
+} as const;
+
 // ─── Elevation (drop shadows) ─────────────────────────────────────────────────
 // The app's depth language. UNLIKE the scales above, a shadow is mode-aware — one
 // tuned for a light page vanishes on a dark one, so dark is heavier — so it rides

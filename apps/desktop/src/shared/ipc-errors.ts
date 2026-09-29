@@ -62,3 +62,30 @@ export function decodeIpcError(message: string): IpcError {
   }
   return { code: 'INTERNAL', message };
 }
+
+/** True when `message` uses the `[CODE] …` IPC wire prefix. */
+export function isIpcWireMessage(message: string): boolean {
+  const match = WIRE_PREFIX.exec(message);
+  return match !== null && isIpcErrorCode(match[1]);
+}
+
+/**
+ * Extract the IPC wire message from a renderer-side rejection. Electron often rejects
+ * `invoke()` with a plain `{ message }` object rather than an `Error` instance.
+ */
+export function ipcWireMessageFromUnknown(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (err !== null && typeof err === 'object' && 'message' in err) {
+    const message = (err as { message: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return '';
+}
+
+/** Decode an IPC error from an `invoke()` rejection (Error, string, or Electron plain object). */
+export function ipcErrorFromUnknown(err: unknown): IpcError {
+  const wire = ipcWireMessageFromUnknown(err);
+  if (!wire) return { code: 'INTERNAL', message: '' };
+  return decodeIpcError(wire);
+}

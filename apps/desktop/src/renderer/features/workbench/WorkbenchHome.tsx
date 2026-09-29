@@ -26,6 +26,8 @@ import {
   updateTask,
 } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { CheckboxField } from '../../components/ui/Checkbox';
+import { Select } from '../../components/ui/Select';
 import { workbenchErrorMessage } from './errors';
 import {
   WORKBENCH_LIMITS,
@@ -771,41 +773,29 @@ function PlacePicker({
     <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, flexWrap: 'wrap' }}>
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, minWidth: 0 }}>
         <span style={labelStyle}>{t('workbench.tasks.folderLabel')}</span>
-        <select
+        <Select
           value={folder?.id ?? ''}
           disabled={disabled}
-          onChange={(e) => {
-            const next = folders.find((f) => f.id === e.target.value) ?? null;
+          size="sm"
+          style={{ maxWidth: 220 }}
+          onChange={(value) => {
+            const next = folders.find((f) => f.id === value) ?? null;
             onChange(next?.id ?? null, next?.isGitRepo ? isolated : false);
           }}
-          style={{ ...inputStyle, padding: '4px 8px', fontSize: fontSize.sm, maxWidth: 220 }}
-        >
-          <option value="">{t('workbench.tasks.noFolder')}</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label
-        title={canIsolate ? undefined : t('workbench.tasks.isolatedUnavailable')}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: space.sm,
-          fontSize: fontSize.sm,
-          color: canIsolate ? token('text') : token('textMuted'),
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={isolated && canIsolate}
-          disabled={disabled || !canIsolate}
-          onChange={(e) => onChange(folderId, e.target.checked)}
+          options={[
+            { value: '', label: t('workbench.tasks.noFolder') },
+            ...folders.map((f) => ({ value: f.id, label: f.name })),
+          ]}
         />
-        {t('workbench.tasks.isolated')}
       </label>
+      <CheckboxField
+        title={canIsolate ? undefined : t('workbench.tasks.isolatedUnavailable')}
+        label={t('workbench.tasks.isolated')}
+        checked={isolated && canIsolate}
+        disabled={disabled || !canIsolate}
+        onChange={(next) => onChange(folderId, next)}
+        style={{ fontSize: fontSize.sm }}
+      />
     </div>
   );
 }

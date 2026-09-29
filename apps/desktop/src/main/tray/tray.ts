@@ -91,6 +91,7 @@ export function syncWorkbenchTrayHint(snapshot: WorkbenchSnapshot | null): void 
 }
 
 function workbenchItems(labels: MenuLabels): MenuItemConstructorOptions[] {
+  if (!getConfigStore().get('experimentalMode')) return [];
   if (!workbenchHint) return [];
   const live = workbenchHint.tasks.filter((t) => isLiveTaskStatus(t.status)).length;
   const items: MenuItemConstructorOptions[] = [

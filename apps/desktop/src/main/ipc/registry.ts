@@ -8,7 +8,7 @@
 
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { assertTrustedAppRendererEvent } from '../security/trustedSender';
-import { encodeIpcError, isIpcError } from '../../shared/ipc-errors';
+import { decodeIpcError, encodeIpcError, isIpcError, isIpcWireMessage } from '../../shared/ipc-errors';
 import { logger } from '../logger';
 
 const log = logger.child('ipc');
@@ -76,11 +76,10 @@ export function createElectronIpcRegistry(ipcMain: IpcMain): IpcHandlerRegistry 
         try {
           return await handler(payload, meta);
         } catch (err) {
-          if (isIpcError(err)) {
-            // Coded, intentional error — log the code, re-surface the safe wire
-            // message only.
-            log.warn('ipc.handler_error', { channel, code: err.code });
-            throw new Error(err.message);
+          if (err instanceof Error && (isIpcError(err) || isIpcWireMessage(err.message))) {
+            const decoded = decodeIpcError(err.message);
+            log.warn('ipc.handler_error', { channel, code: decoded.code });
+            throw new Error(encodeIpcError(decoded.code, decoded.message));
           }
           // Unexpected error — log detail in main, return a generic INTERNAL to
           // the renderer. Never leak the original message/stack.

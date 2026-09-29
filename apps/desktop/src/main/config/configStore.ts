@@ -94,6 +94,15 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
       return raw;
     },
   },
+  experimentalMode: {
+    default: false,
+    validate(raw) {
+      if (typeof raw !== 'boolean') {
+        throwIpcError('INVALID_PARAMS', 'experimentalMode must be a boolean');
+      }
+      return raw;
+    },
+  },
 };
 
 export const PREFERENCE_KEYS = Object.keys(PREFERENCES) as (keyof PreferencesShape)[];

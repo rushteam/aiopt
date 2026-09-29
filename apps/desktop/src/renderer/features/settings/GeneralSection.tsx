@@ -21,6 +21,7 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
+import { Select } from '../../components/ui/Select';
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark'];
 
@@ -46,6 +47,7 @@ export function GeneralSection() {
   // The persisted flag behind the "quit while proxied" confirmation dialog. Its
   // "Don't ask again" checkbox writes this false, so this toggle is the way back on.
   const [warnOnQuitWithProxy, setWarnOnQuitWithProxy] = useState<boolean | null>(null);
+  const [experimentalMode, setExperimentalMode] = useState<boolean | null>(null);
 
   // The language and quit-warning preferences live in the same layered config as the
   // theme, but have no dedicated provider — read once, then track the config:changed push.
@@ -55,10 +57,12 @@ export function GeneralSection() {
       if (!active) return;
       setLanguage(prefs.language);
       setWarnOnQuitWithProxy(prefs.warnOnQuitWithProxy);
+      setExperimentalMode(prefs.experimentalMode);
     });
     const unsubscribe = window.aiopt.config.onChanged((prefs) => {
       setLanguage(prefs.language);
       setWarnOnQuitWithProxy(prefs.warnOnQuitWithProxy);
+      setExperimentalMode(prefs.experimentalMode);
     });
     return () => {
       active = false;
@@ -97,6 +101,18 @@ export function GeneralSection() {
           const next = !warnOnQuitWithProxy;
           setWarnOnQuitWithProxy(next); // optimistic; the config:changed echo confirms
           void window.aiopt.config.set('warnOnQuitWithProxy', next);
+        }}
+      />
+      <Switch
+        title={t('general.experimentalMode.label')}
+        help={t('general.experimentalMode.help')}
+        checked={experimentalMode === true}
+        loading={experimentalMode === null}
+        onToggle={() => {
+          if (experimentalMode === null) return;
+          const next = !experimentalMode;
+          setExperimentalMode(next);
+          void window.aiopt.config.set('experimentalMode', next);
         }}
       />
     </section>
@@ -225,8 +241,7 @@ function Choice<T extends string>({
 }
 
 // A titled dropdown — used by the language control, where the option set grows as
-// locales are added and a segmented row would overflow. A native <select> so it
-// stays keyboard- and screen-reader-native; styled to match the segmented buttons.
+// locales are added and a segmented row would overflow.
 function LanguagePicker({
   title,
   help,
@@ -244,28 +259,16 @@ function LanguagePicker({
     <div>
       <h2 style={{ margin: '0 0 4px', fontSize: fontSize['2xl'] }}>{title}</h2>
       <p style={{ margin: '0 0 16px', color: token('textMuted'), fontSize: fontSize.base }}>{help}</p>
-      <select
+      <Select
         aria-label={title}
         value={selected}
-        onChange={(event) => onSelect(event.target.value as LanguagePreference)}
-        style={{
-          appearance: 'none',
-          minWidth: 200,
-          padding: '10px 12px',
-          borderRadius: radius.md,
-          cursor: 'pointer',
-          fontSize: fontSize.md,
-          color: token('text'),
-          background: token('surface'),
-          border: `1px solid ${token('borderStrong')}`,
-        }}
-      >
-        {LANGUAGE_MENU.map(({ value, endonym }) => (
-          <option key={value} value={value}>
-            {endonym ?? systemLabel}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => onSelect(value as LanguagePreference)}
+        style={{ minWidth: 200, maxWidth: 280 }}
+        options={LANGUAGE_MENU.map(({ value, endonym }) => ({
+          value,
+          label: endonym ?? systemLabel,
+        }))}
+      />
     </div>
   );
 }

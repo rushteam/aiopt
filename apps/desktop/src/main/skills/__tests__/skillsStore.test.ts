@@ -7,6 +7,7 @@ import { createNodeSkillsFs, SKILL_MARKER } from '../skillsFs';
 import { AGENT_SKILL_DIRS } from '../../../shared/skills';
 import { AGENT_IDS } from '../../../shared/aiProviders';
 import { decodeIpcError, isIpcError } from '../../../shared/ipc-errors';
+import { SKILL_IMPORT_FAIL } from '../../../shared/skills';
 import type { AgentId } from '../../../shared/aiProviders';
 
 let root: string;
@@ -162,18 +163,63 @@ describe('importFromDir', () => {
     expect(fs.existsSync(path.join(central, 'imported', SKILL_MARKER))).toBe(true);
   });
 
+  it('imports a skill folder that contains a .git directory (VCS is skipped)', () => {
+    const src = path.join(root, 'external', 'with-git');
+    fs.mkdirSync(path.join(src, '.git', 'objects'), { recursive: true });
+    fs.writeFileSync(path.join(src, SKILL_MARKER), '---\nname: with-git\n---\n');
+    fs.writeFileSync(path.join(src, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+    const name = store.importFromDir(src);
+    expect(name).toBe('with-git');
+    expect(fs.existsSync(path.join(central, 'with-git', SKILL_MARKER))).toBe(true);
+    expect(fs.existsSync(path.join(central, 'with-git', '.git'))).toBe(false);
+  });
+
   it('rejects a folder without a SKILL.md', () => {
     const src = path.join(root, 'external', 'plain');
     fs.mkdirSync(src, { recursive: true });
     fs.writeFileSync(path.join(src, 'readme.md'), 'not a skill');
     expect(codeOf(() => store.importFromDir(src))).toBe('INVALID_PARAMS');
+    expect(importFailMessage(() => store.importFromDir(src))).toBe(SKILL_IMPORT_FAIL.missingMarker);
+  });
+
+  it('rejects a parent folder when subfolders are skills', () => {
+    const parent = path.join(root, 'external', 'bundle');
+    const child = path.join(parent, 'nested-skill');
+    fs.mkdirSync(child, { recursive: true });
+    fs.writeFileSync(path.join(child, SKILL_MARKER), '---\nname: nested-skill\n---\n');
+    expect(codeOf(() => store.importFromDir(parent))).toBe('INVALID_PARAMS');
+    expect(importFailMessage(() => store.importFromDir(parent))).toBe(SKILL_IMPORT_FAIL.parentFolder);
+  });
+
+  it('rejects a folder whose basename is not a valid skill name', () => {
+    const src = path.join(root, 'external', '.hidden-skill');
+    fs.mkdirSync(src, { recursive: true });
+    fs.writeFileSync(path.join(src, SKILL_MARKER), '---\nname: hidden\n---\n');
+    expect(codeOf(() => store.importFromDir(src))).toBe('INVALID_PARAMS');
+    expect(importFailMessage(() => store.importFromDir(src))).toBe(SKILL_IMPORT_FAIL.invalidFolderName);
   });
 
   it('rejects a missing source and a relative path', () => {
     expect(codeOf(() => store.importFromDir(path.join(root, 'nope')))).toBe('NOT_FOUND');
+    expect(importFailMessage(() => store.importFromDir(path.join(root, 'nope')))).toBe(
+      SKILL_IMPORT_FAIL.sourceUnreachable,
+    );
     expect(codeOf(() => store.importFromDir('relative/path'))).toBe('INVALID_PARAMS');
+    expect(importFailMessage(() => store.importFromDir('relative/path'))).toBe(
+      SKILL_IMPORT_FAIL.sourceUnreachable,
+    );
   });
 });
+
+function importFailMessage(fn: () => void): string {
+  try {
+    fn();
+    return '';
+  } catch (err) {
+    if (!isIpcError(err)) throw err;
+    return decodeIpcError(err.message).message;
+  }
+}
 
 describe('fileContent', () => {
   it('returns a differing file\'s content from the requested side', () => {

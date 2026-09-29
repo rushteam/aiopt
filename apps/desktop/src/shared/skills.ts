@@ -178,6 +178,31 @@ export const SKILL_MAX_BYTES = 25 * 1024 * 1024;
 /** Max bytes returned for a single-file diff preview; larger text is truncated with a marker. */
 export const SKILL_PREVIEW_MAX_BYTES = 256 * 1024;
 
+/**
+ * Stable tags carried in IPC error messages when a main-side skill folder import fails. The
+ * renderer maps each tag to a specific `skills.errors.import*` string — not shown verbatim.
+ */
+export const SKILL_IMPORT_FAIL = {
+  missingMarker: 'skill-import:missing-marker',
+  parentFolder: 'skill-import:parent-folder',
+  invalidFolderName: 'skill-import:invalid-folder-name',
+  sourceNotDirectory: 'skill-import:source-not-directory',
+  sourceUnreachable: 'skill-import:source-unreachable',
+  symlinkInTree: 'skill-import:symlink-in-tree',
+  unsupportedFileType: 'skill-import:unsupported-file-type',
+  tooManyFiles: 'skill-import:too-many-files',
+  tooLarge: 'skill-import:too-large',
+  destinationFailed: 'skill-import:destination-failed',
+} as const;
+
+export type SkillImportFailTag = (typeof SKILL_IMPORT_FAIL)[keyof typeof SKILL_IMPORT_FAIL];
+
+const SKILL_IMPORT_FAIL_TAGS: ReadonlySet<string> = new Set(Object.values(SKILL_IMPORT_FAIL));
+
+export function isSkillImportFailTag(message: string): message is SkillImportFailTag {
+  return SKILL_IMPORT_FAIL_TAGS.has(message.trim());
+}
+
 /** True if `s` contains any C0 control char (0x00–0x1F) or DEL (0x7F). Uses codes, no char literals. */
 function hasControlChar(s: string): boolean {
   for (let i = 0; i < s.length; i += 1) {

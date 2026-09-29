@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
+import { CheckboxField } from '../../components/ui/Checkbox';
 import { WORKBENCH_LIMITS, type FolderView, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { addFolder, installHerdr, removeFolder, updateWorkbenchSettings } from '../../lib/workbenchStore';
 import { formatModelRef } from '../../../shared/modelRef';
@@ -345,10 +346,14 @@ function SettingToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label title={hint} style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, fontSize: fontSize.sm, color: token('text') }}>
-      <input type="checkbox" checked={checked} disabled={disabled} aria-description={hint} onChange={(e) => onChange(e.target.checked)} />
-      {label}
-    </label>
+    <CheckboxField
+      title={hint}
+      label={label}
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      style={{ fontSize: fontSize.sm }}
+    />
   );
 }
 

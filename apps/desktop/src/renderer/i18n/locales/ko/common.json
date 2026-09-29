@@ -26,7 +26,8 @@
       "shortcuts": "단축키",
       "updates": "업데이트",
       "about": "정보",
-      "general": "일반"
+      "general": "일반",
+      "providers": "공급자"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "프록시 연결 중 종료 전 경고",
       "help": "켜기(기본값): 에이전트가 AiOpt 프록시를 통해 연결 중이면 종료 전에 확인합니다——AiOpt를 다시 실행할 때까지 연결할 수 없습니다. 끄기: 묻지 않고 종료합니다."
+    },
+    "experimentalMode": {
+      "label": "실험 모드",
+      "help": "끄기(기본값): 진행 중인 기능(예: 워크벤치)을 숨깁니다. 켜기: 실험적 탭과 트레이 항목을 표시합니다."
     }
   },
   "account": {
@@ -237,6 +242,13 @@
     "profiles": {
       "heading": "바인딩 프로필",
       "hint": "모든 Agent의 현재 바인딩을 이름으로 저장하고 한 번에 전환합니다.",
+      "switchLabel": "프로필",
+      "defaultLive": "default",
+      "menuAria": "프로필 작업",
+      "menuSaveDefault": "default에 저장",
+      "menuSaveAs": "다른 이름으로 저장…",
+      "menuDelete": "프로필 삭제",
+      "saveAsPrompt": "프로필 이름",
       "namePlaceholder": "프로필 이름",
       "save": "현재 바인딩 저장",
       "empty": "저장된 프로필이 없습니다.",
@@ -337,16 +349,17 @@
       "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
     },
     "combined": {
-      "name": "All providers",
-      "description": "Every model from your pool in one list — use it when binding an agent."
+      "name": "통합 공급자",
+      "description": "풀의 모든 모델을 하나의 목록으로 — Agent 바인딩 시 선택합니다.",
+      "helpTooltip": "통합 공급자는 풀의 모델을 하나의 목록으로 묶습니다. 가상 항목이며 아래 공급자 카드 목록에는 나타나지 않습니다.",
+      "settingsStatus": "사용 중 · {{count}}개 모델",
+      "settingsDisabled": "공급자를 하나 이상 추가하면 활성화됩니다."
     }
   },
   "usage": {
     "title": "사용량",
-    "subtitle": "AiOpt가 번역 프록시를 통해 전달한 트래픽의 토큰 및 요청 수입니다.",
-    "scopeNote": "트래픽은 프록시를 통해 실행될 때 집계됩니다. 프록시 모드가 켜져 있으면 모든 바인딩이 프록시를 거치므로 사용량이 측정됩니다. 기본값(프록시 모드 꺼짐)에서는 같은 형식의 바인딩이 직접 연결되어 집계되지 않으며, Gemini 바인딩은 항상 직접 연결되어 집계되지 않습니다.",
     "close": "닫기",
-    "empty": "아직 기록된 사용량이 없습니다. 프록시 모드를 켜고, 에이전트를 공급자에 바인딩한 다음, 요청을 실행하세요. 기본값(프록시 모드 꺼짐)에서는 같은 형식의 바인딩이 프록시를 우회하여 측정되지 않으며, Gemini 바인딩은 절대 측정되지 않습니다.",
+    "empty": "아직 기록이 없습니다. AiOpt 프록시를 거친 요청만 여기에 표시됩니다. 설정에서 프록시 모드를 켜고 에이전트를 바인딩한 뒤 요청을 보내세요. 일부 바인딩(Gemini 포함)은 항상 직접 연결되어 여기에 나타나지 않습니다.",
     "totals": {
       "requests": "요청 수",
       "successRate": "성공률",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "스킬",
-    "subtitle": "각 에이전트의 홈 디렉터리에 있는 스킬을 하나의 중앙 라이브러리로 모은 다음 다시 동기화하세요.",
     "close": "닫기",
     "skill": "스킬",
     "central": "라이브러리",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "파일 관리자에서 표시",
       "import": "폴더에서 가져오기…",
+      "importing": "가져오는 중…",
       "rescan": "다시 검색",
+      "rescanning": "검색 중…",
       "pull": "가져오기 ←",
       "push": "내보내기 →",
       "pushAll": "모든 에이전트로 내보내기",
@@ -454,6 +468,16 @@
       "previewTruncated": "미리 보기가 잘렸습니다 (파일이 큼)."
     },
     "errors": {
+      "importMissingMarker": "이 폴더는 스킬이 아닙니다. SKILL.md가 있는 폴더 자체를 선택하세요(하위 폴더만 있는 상위 폴더가 아닙니다).",
+      "importParentFolder": "상위 폴더를 선택했습니다. 루트에 SKILL.md가 있는 스킬 폴더로 들어가 그 폴더를 선택한 뒤 다시 가져오세요.",
+      "importInvalidFolderName": "폴더 이름을 스킬 이름으로 사용할 수 없습니다(“.”로 시작하거나 “/”, “\\”를 포함할 수 없음). 폴더 이름을 바꾼 뒤 다시 시도하세요.",
+      "importSourceNotDirectory": "폴더가 아닙니다. SKILL.md가 있는 스킬 디렉터리를 선택하세요.",
+      "importSourceUnreachable": "폴더를 읽을 수 없습니다(이동되었거나 삭제되었을 수 있음). 스킬 폴더를 다시 선택하세요.",
+      "importSymlinkInTree": "스킬에 심볼릭 링크가 있습니다. 제거하거나 링크 없는 복사본을 가져오세요.(.git 등은 자동으로 건너뜁니다.)",
+      "importUnsupportedFileType": "일반 파일이 아닌 항목(장치, 파이프 등)이 있습니다. 제거한 뒤 다시 시도하세요.",
+      "importTooManyFiles": "파일이 너무 많아 가져올 수 없습니다. 불필요한 파일을 제거한 뒤 다시 시도하세요.",
+      "importTooLarge": "크기가 너무 커서 가져올 수 없습니다. 큰 파일을 제거하거나 줄인 뒤 다시 시도하세요.",
+      "importDestinationFailed": "라이브러리 폴더에 쓸 수 없습니다. AiOpt가 데이터 폴더에 접근할 수 있는지 확인한 뒤 다시 시도하세요.",
       "INVALID_PARAMS": "일부 정보가 올바르지 않습니다. 다시 시도하세요.",
       "NOT_FOUND": "해당 스킬이 더 이상 존재하지 않습니다.",
       "PERMISSION_DENIED": "허용되지 않는 동작이거나, 스킬에 안전하게 동기화할 수 없는 파일이 포함되어 있습니다.",

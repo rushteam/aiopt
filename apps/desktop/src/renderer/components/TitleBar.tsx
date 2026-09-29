@@ -59,15 +59,24 @@ export function TitleBar({
   tab,
   onSelectTab,
   settingsOpen,
+  experimentalMode,
 }: {
   onCommand: (command: MenuCommand) => void;
   onQuit: () => void;
   tab: AppTab;
   onSelectTab: (tab: AppTab) => void;
   settingsOpen: boolean;
+  experimentalMode: boolean;
 }) {
   const isMac = window.aiopt.platform === 'darwin';
-  const nav = <TabBar active={tab} onSelect={onSelectTab} settingsOpen={settingsOpen} />;
+  const nav = (
+    <TabBar
+      active={tab}
+      onSelect={onSelectTab}
+      settingsOpen={settingsOpen}
+      experimentalMode={experimentalMode}
+    />
+  );
 
   return (
     <div

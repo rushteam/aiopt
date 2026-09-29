@@ -17,6 +17,8 @@ import type { AgentId } from '../../shared/aiProviders';
 // a skills-only agent like `cursor` participates in sync but is absent from AGENTS.
 import { AGENT_IDS, AGENT_NAMES } from '../../shared/aiProviders';
 import {
+  isValidSkillName,
+  SKILL_IMPORT_FAIL,
   computeSyncState,
   SKILL_PREVIEW_MAX_BYTES,
   type SkillAgentColumn,
@@ -29,9 +31,11 @@ import {
   type SkillsLibraryLocation,
   type SkillsSnapshot,
 } from '../../shared/skills';
+import { isIpcError } from '../../shared/ipc-errors';
 import { throwIpcError } from '../ipc/validate';
 import { createSkillPaths, type SkillPaths } from './skillsPaths';
 import { SKILL_MARKER, type SkillsFs } from './skillsFs';
+import * as nodeFs from 'node:fs';
 import path from 'node:path';
 
 export interface SkillsStoreDeps {
@@ -180,19 +184,37 @@ export function createSkillsStore(deps: SkillsStoreDeps): SkillsStore {
     importFromDir(srcAbsPath) {
       // The source is a folder the user picked in a main-side dialog; treat it as one skill.
       if (typeof srcAbsPath !== 'string' || !path.isAbsolute(srcAbsPath)) {
-        throwIpcError('INVALID_PARAMS', 'import source must be an absolute path');
+        throwIpcError('INVALID_PARAMS', SKILL_IMPORT_FAIL.sourceUnreachable);
       }
-      if (!fs.isSkillDir(srcAbsPath)) {
-        throwIpcError('NOT_FOUND', 'import source is not a directory');
+      let resolved = srcAbsPath;
+      try {
+        resolved = nodeFs.realpathSync.native(srcAbsPath);
+      } catch {
+        throwIpcError('NOT_FOUND', SKILL_IMPORT_FAIL.sourceUnreachable);
+      }
+      if (!fs.isSkillDir(resolved)) {
+        throwIpcError('NOT_FOUND', SKILL_IMPORT_FAIL.sourceNotDirectory);
       }
       // Require a SKILL.md so an arbitrary folder (e.g. ~/Documents) can't be slurped in.
-      if (!fs.hasMarker(srcAbsPath)) {
-        throwIpcError('INVALID_PARAMS', `not a skill: the folder has no ${SKILL_MARKER}`);
+      if (!fs.hasMarker(resolved)) {
+        const nested = fs.listSkillNames(resolved);
+        if (nested.length > 0) {
+          throwIpcError('INVALID_PARAMS', SKILL_IMPORT_FAIL.parentFolder);
+        }
+        throwIpcError('INVALID_PARAMS', SKILL_IMPORT_FAIL.missingMarker);
       }
       const { paths } = currentPaths();
-      const name = path.basename(srcAbsPath);
-      const dst = paths.centralSkillPath(name); // throws INVALID_PARAMS on a bad name
-      fs.replaceDir(srcAbsPath, dst);
+      const name = path.basename(resolved);
+      if (!isValidSkillName(name)) {
+        throwIpcError('INVALID_PARAMS', SKILL_IMPORT_FAIL.invalidFolderName);
+      }
+      const dst = paths.centralSkillPath(name);
+      try {
+        fs.replaceDir(resolved, dst);
+      } catch (err) {
+        if (isIpcError(err)) throw err;
+        throwIpcError('PRECONDITION_FAILED', SKILL_IMPORT_FAIL.destinationFailed);
+      }
       notify();
       return name;
     },

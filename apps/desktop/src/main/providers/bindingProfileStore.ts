@@ -75,6 +75,18 @@ export function createBindingProfileStore(persistence: BindingProfilePersistence
     saveFromBindings(name: string, bindings: Partial<Record<AgentId, AgentBinding>>): BindingProfile {
       const trimmed = name.trim();
       if (trimmed === '') throwIpcError('INVALID_PARAMS', 'profile name is required');
+      const existing = doc.profiles.find((p) => p.name === trimmed);
+      if (existing) {
+        const updated: BindingProfile = {
+          ...existing,
+          bindings: { ...bindings },
+        };
+        doc = {
+          profiles: doc.profiles.map((p) => (p.id === existing.id ? updated : p)),
+        };
+        persist();
+        return updated;
+      }
       const profile: BindingProfile = {
         id: randomUUID(),
         name: trimmed,

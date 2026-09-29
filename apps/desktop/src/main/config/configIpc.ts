@@ -29,6 +29,8 @@ export interface ConfigIpcHooks {
    * the next launch. Best-effort, same as above.
    */
   onLanguageChange?: () => void;
+  /** Called after `experimentalMode` is set or reset (tray workbench items depend on it). */
+  onExperimentalModeChange?: () => void;
 }
 
 export function registerConfigIpc(
@@ -57,6 +59,15 @@ export function registerConfigIpc(
     }
   };
 
+  const reactToExperimentalMode = (): void => {
+    if (!hooks.onExperimentalModeChange) return;
+    try {
+      hooks.onExperimentalModeChange();
+    } catch {
+      // Tray rebuild is best-effort; the preference is already persisted and broadcast.
+    }
+  };
+
   registry.register(IPC_CHANNELS.configGetAll, (_payload, meta) => {
     meta.assertTrustedSender();
     return store.getEffective();
@@ -71,6 +82,7 @@ export function registerConfigIpc(
     broadcast(IPC_EVENTS.configChanged, next);
     if (key === 'proxyMode') reactToProxyMode(next);
     if (key === 'language') reactToLanguage();
+    if (key === 'experimentalMode') reactToExperimentalMode();
     return next;
   });
 
@@ -82,6 +94,7 @@ export function registerConfigIpc(
     broadcast(IPC_EVENTS.configChanged, next);
     if (key === 'proxyMode') reactToProxyMode(next);
     if (key === 'language') reactToLanguage();
+    if (key === 'experimentalMode') reactToExperimentalMode();
     return next;
   });
 }

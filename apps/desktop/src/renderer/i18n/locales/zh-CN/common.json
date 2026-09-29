@@ -26,7 +26,8 @@
       "shortcuts": "快捷键",
       "updates": "更新",
       "about": "关于",
-      "general": "通用"
+      "general": "通用",
+      "providers": "供应商"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "有代理连接时退出前提醒",
       "help": "开启（默认）：若有 agent 正经 AiOpt 代理连接，退出前会先确认——在 AiOpt 再次运行前它们将无法连接。关闭：退出时不再询问。"
+    },
+    "experimentalMode": {
+      "label": "实验模式",
+      "help": "关闭（默认）：隐藏进行中的功能（例如工作台）。开启：显示实验性标签页与托盘入口。"
     }
   },
   "account": {
@@ -132,7 +137,10 @@
     },
     "combined": {
       "name": "联合提供商",
-      "description": "池中所有提供商的模型合并为一个列表，绑定 Agent 时可直接选用。"
+      "description": "池中所有供应商的模型合并为一个列表，绑定 Agent 时可直接选用。",
+      "helpTooltip": "联合提供商会把供应商池里所有模型合成一份列表，供绑定 Agent 时选择；它是虚拟项，不会出现在下方供应商卡片列表中。",
+      "settingsStatus": "已启用 · 共 {{count}} 个模型可选",
+      "settingsDisabled": "添加至少一个供应商后自动启用。"
     },
     "proxy": {
       "label": "本地代理",
@@ -241,6 +249,13 @@
     "profiles": {
       "heading": "绑定配置",
       "hint": "将当前所有 Agent 的绑定保存为配置名，可一键切换整套环境。",
+      "switchLabel": "绑定配置",
+      "defaultLive": "default",
+      "menuAria": "配置操作",
+      "menuSaveDefault": "保存到 default",
+      "menuSaveAs": "另存为…",
+      "menuDelete": "删除当前配置",
+      "saveAsPrompt": "配置名称",
       "namePlaceholder": "配置名称",
       "save": "保存当前绑定",
       "empty": "尚无保存的配置。",
@@ -343,10 +358,8 @@
   },
   "usage": {
     "title": "统计",
-    "subtitle": "AiOpt 经翻译代理转发的流量的 Token 与请求数统计。",
-    "scopeNote": "流量经代理转发时才会计入。开启代理模式后所有绑定都经代理，因此均会统计。默认（代理模式关闭）下同格式绑定直连、不计入；Gemini 绑定始终直连且不计入。",
     "close": "关闭",
-    "empty": "还没有用量记录。开启代理模式、把某个 Agent 绑定到供应商并发起一次请求即可。默认（代理模式关闭）下同格式绑定不经代理、无法统计；Gemini 绑定始终不计入。",
+    "empty": "还没有记录。此处仅显示经 AiOpt 代理的请求。可在设置中开启代理模式，完成 Agent 绑定后再发请求；部分绑定（含 Gemini）始终直连，不会出现在这里。",
     "totals": {
       "requests": "请求数",
       "successRate": "成功率",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "技能",
-    "subtitle": "把各 Agent 家目录中的技能收集到一个中央库，再同步回各处。",
     "close": "关闭",
     "skill": "技能",
     "central": "中央库",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "在文件管理器中显示",
       "import": "从文件夹导入…",
+      "importing": "导入中…",
       "rescan": "重新扫描",
+      "rescanning": "扫描中…",
       "pull": "拉取 ←",
       "push": "推送 →",
       "pushAll": "推送到全部 Agent",
@@ -454,10 +468,20 @@
       "previewTruncated": "预览已截断（文件较大）。"
     },
     "errors": {
+      "importMissingMarker": "所选文件夹不是技能目录——请选中「含有 SKILL.md 的那一层」文件夹，而不是只包含多个子文件夹的上级目录。",
+      "importParentFolder": "你选的是上级目录。请进入具体技能文件夹（根目录下有 SKILL.md），选中该文件夹后再导入。",
+      "importInvalidFolderName": "文件夹名称不能作为技能名（不能以「.」开头，不能含「/」或「\\」）。请重命名文件夹后再试。",
+      "importSourceNotDirectory": "所选路径不是文件夹。请选择技能目录（内含 SKILL.md 的文件夹）。",
+      "importSourceUnreachable": "无法读取该文件夹（可能已被移动或删除）。请重新选择技能目录。",
+      "importSymlinkInTree": "技能目录内含有符号链接。请删除或改为普通文件后再导入。（.git 等版本库目录会自动跳过。）",
+      "importUnsupportedFileType": "技能目录内含有非常规文件（非普通文件）。请移除设备文件、管道等后再试。",
+      "importTooManyFiles": "技能文件过多，无法导入。请删除不需要的文件后再试。",
+      "importTooLarge": "技能体积过大，无法导入。请删除或缩小大文件后再试。",
+      "importDestinationFailed": "无法写入中央库目录。请确认 AiOpt 有权限访问其数据目录后再试。",
       "INVALID_PARAMS": "部分信息无效，请重试。",
       "NOT_FOUND": "该技能已不存在。",
       "PERMISSION_DENIED": "该操作不被允许，或该技能包含无法安全同步的文件。",
-      "PRECONDITION_FAILED": "该技能过大，无法同步。",
+      "PRECONDITION_FAILED": "当前无法同步该技能。",
       "UNSUPPORTED_CAPABILITY": "该 Agent 没有已知的技能目录。",
       "INTERNAL": "出了点问题，请重试。"
     }

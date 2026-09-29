@@ -94,3 +94,27 @@ body {
     display: none;
   }
 }
+
+/* Inline loading indicator for buttons (see components/ui/Spinner.tsx). */
+@keyframes aiopt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aiopt-spinner {
+  display: inline-block;
+  box-sizing: border-box;
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: aiopt-spin 0.65s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiopt-spinner {
+    animation: none;
+    border-top-color: var(--color-accent);
+    opacity: 0.85;
+  }
+}

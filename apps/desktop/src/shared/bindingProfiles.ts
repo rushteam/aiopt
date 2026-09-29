@@ -2,6 +2,9 @@
 
 import type { AgentBinding, AgentId } from './aiProviders';
 
+/** Default profile name when the user saves without picking another label. */
+export const DEFAULT_BINDING_PROFILE_NAME = 'default';
+
 export interface BindingProfile {
   id: string;
   name: string;

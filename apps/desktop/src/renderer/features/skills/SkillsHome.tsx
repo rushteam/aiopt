@@ -32,11 +32,14 @@ import { skillsErrorMessage } from './errors';
 import { AGENT_NAMES } from '../../../shared/aiProviders';
 import type { AgentId } from '../../../shared/aiProviders';
 import { newerSkillSide, skillsLibraryChoices } from '../../../shared/skills';
+import { ScrollTabScreen } from '../../components/TabScreenShell';
 import {
-  ScrollTabScreen,
-  TAB_SCREEN_MAX_WIDTH_WIDE,
-  tabScreenIntroStyle,
-} from '../../components/TabScreenShell';
+  buttonAccentChrome,
+  buttonGhostChrome,
+  segmentButtonChrome,
+  segmentedRootStyle,
+} from '../../components/ui/controlStyles';
+import { LoadingButton } from '../../components/ui/LoadingButton';
 import type {
   SkillDiffResult,
   SkillEntry,
@@ -49,6 +52,11 @@ import type {
 } from '../../../shared/skills';
 
 const numberFormat = new Intl.NumberFormat();
+
+/** Keep toolbar loading visible long enough to read (rescans are often sub-100ms). */
+const MIN_TOOLBAR_FEEDBACK_MS = 320;
+
+type ToolbarLoading = 'import' | 'rescan';
 
 function formatBytes(n: number): string {
   if (n <= 0) return '0 B';
@@ -94,6 +102,7 @@ export function SkillsHome() {
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [toolbarLoading, setToolbarLoading] = useState<ToolbarLoading | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [diff, setDiff] = useState<{ agentId: AgentId; result: SkillDiffResult } | null>(null);
 
@@ -131,15 +140,20 @@ export function SkillsHome() {
     }
   }
 
-  async function onImport(): Promise<void> {
+  async function withToolbarFeedback(kind: ToolbarLoading, fn: () => Promise<void>): Promise<void> {
+    if (toolbarLoading !== null) return;
     setBusy(true);
+    setToolbarLoading(kind);
     setError(null);
+    const started = Date.now();
     try {
-      const name = await importSkill();
-      if (name) setSelected(name);
+      await fn();
     } catch (err) {
       setError(skillsErrorMessage(t, err));
     } finally {
+      const wait = MIN_TOOLBAR_FEEDBACK_MS - (Date.now() - started);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      setToolbarLoading(null);
       setBusy(false);
     }
   }
@@ -157,12 +171,9 @@ export function SkillsHome() {
   }
 
   return (
-    <ScrollTabScreen maxWidth={TAB_SCREEN_MAX_WIDTH_WIDE}>
+    <ScrollTabScreen>
         {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
         <h1 className="sr-only">{t('skills.title')}</h1>
-        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.md }}>
-          {t('skills.subtitle')}
-        </p>
 
         {/* Toolbar: central library path + location toggle + import + rescan. */}
         <section style={toolbarStyle}>
@@ -186,24 +197,31 @@ export function SkillsHome() {
             onChange={(loc) => void act(() => setLibraryLocation(loc))}
             t={t}
           />
-          <button
-            type="button"
-            onClick={() => void onImport()}
-            disabled={busy}
-            {...hoverBackground(token('accent'), token('accentHover'))}
-            style={accentStyle}
+          <LoadingButton
+            variant="accent"
+            size="md"
+            loading={toolbarLoading === 'import'}
+            loadingLabel={t('skills.actions.importing')}
+            disabled={busy && toolbarLoading !== 'import'}
+            onClick={() =>
+              void withToolbarFeedback('import', async () => {
+                const name = await importSkill();
+                if (name) setSelected(name);
+              })
+            }
           >
             {t('skills.actions.import')}
-          </button>
-          <button
-            type="button"
-            onClick={() => void act(() => refreshSkills())}
-            disabled={busy}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={ghostStyle}
+          </LoadingButton>
+          <LoadingButton
+            variant="ghost"
+            size="md"
+            loading={toolbarLoading === 'rescan'}
+            loadingLabel={t('skills.actions.rescanning')}
+            disabled={busy && toolbarLoading !== 'rescan'}
+            onClick={() => void withToolbarFeedback('rescan', () => refreshSkills())}
           >
             {t('skills.actions.rescan')}
-          </button>
+          </LoadingButton>
         </section>
 
         {error && (
@@ -279,7 +297,7 @@ function LocationToggle({
 }) {
   const options = skillsLibraryChoices(value);
   return (
-    <div role="group" aria-label={t('skills.library.label')} style={segmentedStyle}>
+    <div role="group" aria-label={t('skills.library.label')} style={segmentedRootStyle}>
       {options.map((opt, index) => {
         const active = value === opt;
         return (
@@ -290,11 +308,12 @@ function LocationToggle({
             disabled={disabled || active}
             onClick={() => onChange(opt)}
             style={{
-              ...segmentButtonStyle,
+              ...segmentButtonChrome('md'),
               borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
               background: active ? token('accent') : 'transparent',
               color: active ? token('accentText') : token('text'),
-              cursor: active ? 'default' : 'pointer',
+              cursor: active || disabled ? 'default' : 'pointer',
+              opacity: disabled && !active ? 0.55 : 1,
             }}
           >
             {t(`skills.library.${opt}`)}
@@ -780,9 +799,7 @@ function DiffPanel({
               onClick={() => onMerge(agentPicks)}
               {...hoverBackground(token('accent'), token('accentHover'))}
               style={{
-                ...accentStyle,
-                fontSize: fontSize.sm,
-                padding: '6px 14px',
+                ...buttonAccentChrome('sm'),
                 opacity: busy || agentPicks.length === 0 ? 0.5 : 1,
                 cursor: busy || agentPicks.length === 0 ? 'default' : 'pointer',
               }}
@@ -813,8 +830,8 @@ function PickToggle({
     { side: 'agent', label: t('skills.diff.useAgent') },
   ];
   return (
-    <div role="group" style={segmentedStyle}>
-      {options.map(({ side, label }) => {
+    <div role="group" style={segmentedRootStyle}>
+      {options.map(({ side, label }, index) => {
         const active = value === side;
         return (
           <button
@@ -824,9 +841,8 @@ function PickToggle({
             disabled={disabled}
             onClick={() => onChange(side)}
             style={{
-              ...segmentButtonStyle,
-              fontSize: fontSize.xs,
-              padding: '4px 10px',
+              ...segmentButtonChrome('sm'),
+              borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
               background: active ? token('accent') : 'transparent',
               color: active ? token('accentText') : token('text'),
               cursor: disabled ? 'default' : active ? 'default' : 'pointer',
@@ -1013,7 +1029,7 @@ function diffColor(status: SkillDiffResult['files'][number]['status']): string {
 
 const toolbarStyle = {
   display: 'flex',
-  alignItems: 'flex-end',
+  alignItems: 'center',
   gap: space.md,
   flexWrap: 'wrap',
   margin: `0 0 ${space.xl}px`,
@@ -1035,47 +1051,9 @@ const pathButtonStyle = {
   fontFamily: 'monospace',
 } as const;
 
-const segmentedStyle = {
-  display: 'inline-flex',
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.md,
-  overflow: 'hidden',
-} as const;
-
-const segmentButtonStyle = {
-  padding: '6px 12px',
-  border: 'none',
-  fontSize: fontSize.sm,
-} as const;
-
-const accentStyle = {
-  padding: '8px 16px',
-  borderRadius: radius.md,
-  border: `1px solid ${token('accent')}`,
-  background: token('accent'),
-  color: token('accentText'),
-  cursor: 'pointer',
-  fontSize: fontSize.md,
-} as const;
-
-const ghostStyle = {
-  padding: '8px 16px',
-  borderRadius: radius.md,
-  border: `1px solid ${token('border')}`,
-  background: 'transparent',
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.md,
-} as const;
-
 const smallGhostStyle = {
-  padding: '6px 12px',
+  ...buttonGhostChrome('sm'),
   borderRadius: radius.sm,
-  border: `1px solid ${token('border')}`,
-  background: 'transparent',
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
 } as const;
 
 const actionButtonStyle = {

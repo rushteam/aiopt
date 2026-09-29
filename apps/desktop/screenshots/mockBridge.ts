@@ -257,6 +257,7 @@ const prefs: PreferencesShape = {
   skillsLibrary: 'home',
   proxyMode: false,
   warnOnQuitWithProxy: true,
+  experimentalMode: params.get('experimental') === '1',
 };
 
 // The workbench is shown mid-session. It is fixed data: the harness never runs an agent.

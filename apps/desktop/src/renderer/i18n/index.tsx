@@ -59,7 +59,7 @@ function lookup(tree: unknown, key: string): string | undefined {
 
 export type TranslateFn = (key: string) => string;
 
-function makeTranslate(locale: Locale): TranslateFn {
+export function makeTranslate(locale: Locale): TranslateFn {
   return (key) => lookup(MESSAGES[locale], key) ?? lookup(MESSAGES.en, key) ?? key;
 }
 

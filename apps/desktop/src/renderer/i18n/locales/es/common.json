@@ -26,7 +26,8 @@
       "shortcuts": "Atajos de teclado",
       "updates": "Actualizaciones",
       "about": "Acerca de",
-      "general": "General"
+      "general": "General",
+      "providers": "Proveedores"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "Avisar antes de salir con el proxy activo",
       "help": "Activado (predeterminado): si hay agentes enrutados a través del proxy de AiOpt, confirmar antes de salir — no podrán conectarse hasta que AiOpt vuelva a ejecutarse. Desactivado: salir sin preguntar."
+    },
+    "experimentalMode": {
+      "label": "Modo experimental",
+      "help": "Desactivado (predeterminado): oculta funciones en desarrollo (p. ej. Workbench). Activado: muestra pestañas y entradas de bandeja experimentales."
     }
   },
   "account": {
@@ -237,6 +242,13 @@
     "profiles": {
       "heading": "Perfiles de enlace",
       "hint": "Guarda los enlaces actuales de todos los agentes y cambia el conjunto de un paso.",
+      "switchLabel": "Perfil",
+      "defaultLive": "default",
+      "menuAria": "Acciones del perfil",
+      "menuSaveDefault": "Guardar en default",
+      "menuSaveAs": "Guardar como…",
+      "menuDelete": "Eliminar perfil",
+      "saveAsPrompt": "Nombre del perfil",
       "namePlaceholder": "Nombre del perfil",
       "save": "Guardar enlaces actuales",
       "empty": "Aún no hay perfiles.",
@@ -337,16 +349,17 @@
       "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
     },
     "combined": {
-      "name": "All providers",
-      "description": "Every model from your pool in one list — use it when binding an agent."
+      "name": "Proveedor combinado",
+      "description": "Todos los modelos del pool en una lista — elígelo al enlazar un agent.",
+      "helpTooltip": "El proveedor combinado une todos los modelos del pool en una sola lista para enlazar. Es virtual: no aparece como tarjeta editable en el pool.",
+      "settingsStatus": "Activo · {{count}} modelos disponibles",
+      "settingsDisabled": "Se activa al añadir al menos un proveedor."
     }
   },
   "usage": {
     "title": "Uso",
-    "subtitle": "Recuentos de tokens y solicitudes del tráfico que AiOpt enrutó a través del proxy de traducción.",
-    "scopeNote": "El tráfico se contabiliza cuando pasa por el proxy. Con el modo proxy activado, todas las vinculaciones lo hacen, por lo que el uso se mide. De forma predeterminada (modo proxy desactivado), las vinculaciones del mismo formato se conectan directamente y no se contabilizan; las vinculaciones de Gemini siempre son directas y nunca se contabilizan.",
     "close": "Cerrar",
-    "empty": "Aún no hay uso registrado. Activa el modo proxy, vincula un agente a un proveedor y realiza una solicitud. De forma predeterminada (modo proxy desactivado), las vinculaciones del mismo formato omiten el proxy y no se miden; las vinculaciones de Gemini nunca se miden.",
+    "empty": "Aún no hay registros. Solo aparecen aquí las solicitudes que pasan por el proxy de AiOpt. Activa el modo proxy en Ajustes, vincula un agente y envía una solicitud. Algunas vinculaciones (incluido Gemini) siguen siendo directas y no aparecerán aquí.",
     "totals": {
       "requests": "Solicitudes",
       "successRate": "Tasa de éxito",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "Habilidades",
-    "subtitle": "Reúne las habilidades del directorio de inicio de cada agente en una biblioteca central y luego vuelve a sincronizarlas.",
     "close": "Cerrar",
     "skill": "Habilidad",
     "central": "Biblioteca",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "Mostrar en el gestor de archivos",
       "import": "Importar desde carpeta…",
+      "importing": "Importando…",
       "rescan": "Volver a escanear",
+      "rescanning": "Escaneando…",
       "pull": "Extraer ←",
       "push": "Enviar →",
       "pushAll": "Enviar a todos los agentes",
@@ -454,6 +468,16 @@
       "previewTruncated": "Vista previa truncada (el archivo es grande)."
     },
     "errors": {
+      "importMissingMarker": "Esta carpeta no es una skill: elige la carpeta que tiene SKILL.md en la raíz (no una carpeta padre que solo contiene subcarpetas).",
+      "importParentFolder": "Elegiste una carpeta padre. Abre la carpeta de la skill (SKILL.md en la raíz), selecciónala e importa de nuevo.",
+      "importInvalidFolderName": "El nombre de la carpeta no puede usarse como nombre de skill (no empiece por «.», sin «/» ni «\\»). Renombra la carpeta e inténtalo de nuevo.",
+      "importSourceNotDirectory": "Esa ruta no es una carpeta. Elige el directorio de la skill (con SKILL.md).",
+      "importSourceUnreachable": "No se pudo leer la carpeta (puede haberse movido o eliminado). Vuelve a elegir la carpeta de la skill.",
+      "importSymlinkInTree": "La skill contiene un enlace simbólico. Elimínalo o importa una copia sin enlaces. (Carpetas VCS como .git se omiten automáticamente.)",
+      "importUnsupportedFileType": "La skill contiene un archivo especial (no un archivo normal). Elimina sockets, dispositivos, etc., e inténtalo de nuevo.",
+      "importTooManyFiles": "Demasiados archivos para importar. Elimina archivos innecesarios e inténtalo de nuevo.",
+      "importTooLarge": "La skill es demasiado grande para importar. Elimina o reduce archivos grandes e inténtalo de nuevo.",
+      "importDestinationFailed": "No se pudo escribir en la carpeta de la biblioteca. Comprueba que AiOpt puede acceder a su carpeta de datos e inténtalo de nuevo.",
       "INVALID_PARAMS": "Algunos datos no son válidos. Inténtalo de nuevo.",
       "NOT_FOUND": "Esa habilidad ya no existe.",
       "PERMISSION_DENIED": "Esa acción no está permitida, o la habilidad contiene archivos que no se pueden sincronizar de forma segura.",

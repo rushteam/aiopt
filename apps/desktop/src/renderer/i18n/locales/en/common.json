@@ -26,7 +26,8 @@
       "shortcuts": "Keyboard Shortcuts",
       "updates": "Updates",
       "about": "About",
-      "general": "General"
+      "general": "General",
+      "providers": "Providers"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "Warn before quitting with proxy active",
       "help": "On (default): if agents are routed through AiOpt’s proxy, confirm before quitting — they can’t connect until AiOpt runs again. Off: quit without asking."
+    },
+    "experimentalMode": {
+      "label": "Experimental mode",
+      "help": "Off (default): hides in-progress features such as Workbench. On: shows experimental tabs and tray entries."
     }
   },
   "account": {
@@ -131,8 +136,11 @@
       "hideNotDetected": "Hide agents not detected"
     },
     "combined": {
-      "name": "All providers",
-      "description": "Every model from your pool in one list — use it when binding an agent."
+      "name": "Combined provider",
+      "description": "Every model from your pool in one list — pick it when binding an agent.",
+      "helpTooltip": "The combined provider merges every pool entry into one model list for binding. It is virtual — not an editable card in the provider pool.",
+      "settingsStatus": "Enabled · {{count}} models available",
+      "settingsDisabled": "Add at least one provider to enable it."
     },
     "proxy": {
       "label": "Local proxy",
@@ -241,6 +249,13 @@
     "profiles": {
       "heading": "Binding profiles",
       "hint": "Save every agent's current binding under a name and switch the whole setup in one step.",
+      "switchLabel": "Profile",
+      "defaultLive": "default",
+      "menuAria": "Profile actions",
+      "menuSaveDefault": "Save to default",
+      "menuSaveAs": "Save as…",
+      "menuDelete": "Delete profile",
+      "saveAsPrompt": "Profile name",
       "namePlaceholder": "Profile name",
       "save": "Save current bindings",
       "empty": "No profiles yet.",
@@ -343,10 +358,8 @@
   },
   "usage": {
     "title": "Usage",
-    "subtitle": "Token and request counts for traffic AiOpt routed through the translation proxy.",
-    "scopeNote": "Traffic is counted when it runs through the proxy. With proxy mode on, every binding does, so usage is measured. By default (proxy mode off) same-format bindings connect directly and aren’t counted; Gemini bindings are always direct and never counted.",
     "close": "Close",
-    "empty": "No usage recorded yet. Turn on proxy mode, bind an agent to a provider, and run a request. By default (proxy mode off) same-format bindings bypass the proxy and aren’t measured; Gemini bindings are never measured.",
+    "empty": "No usage recorded yet. Only requests that go through AiOpt's proxy appear here. Turn on Proxy mode in Settings, bind an agent, and send a request—or use a binding that routes through AiOpt. Some bindings (including Gemini) stay direct and won't show up.",
     "totals": {
       "requests": "Requests",
       "successRate": "Success rate",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "Skills",
-    "subtitle": "Collect skills from each agent's home directory into one central library, then sync them back out.",
     "close": "Close",
     "skill": "Skill",
     "central": "Library",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "Reveal in file manager",
       "import": "Import from folder…",
+      "importing": "Importing…",
       "rescan": "Rescan",
+      "rescanning": "Rescanning…",
       "pull": "Pull ←",
       "push": "Push →",
       "pushAll": "Push to all agents",
@@ -454,10 +468,20 @@
       "previewTruncated": "Preview truncated (file is large)."
     },
     "errors": {
+      "importMissingMarker": "This folder is not a skill — put SKILL.md in the folder you select (not a parent folder that only contains subfolders).",
+      "importParentFolder": "You selected a parent folder. Open the skill folder itself — the one that contains SKILL.md at its root — then import again.",
+      "importInvalidFolderName": "The folder name can't be used as a skill name (don't start with “.”, and don't use “/” or “\\”). Rename the folder and try again.",
+      "importSourceNotDirectory": "That path isn't a folder. Select the skill directory (the folder that contains SKILL.md).",
+      "importSourceUnreachable": "That folder couldn't be read (it may have been moved or deleted). Pick the skill folder again.",
+      "importSymlinkInTree": "This skill contains a symbolic link. Remove symlinks from the skill folder, or copy the skill without them, then import again. (Version-control folders like .git are skipped automatically.)",
+      "importUnsupportedFileType": "This skill contains a special file (not a regular file). Remove sockets, devices, or similar entries and try again.",
+      "importTooManyFiles": "This skill has too many files to import. Remove unneeded files and try again.",
+      "importTooLarge": "This skill is too large to import. Remove or shrink large files and try again.",
+      "importDestinationFailed": "Couldn't write the skill into the library folder. Check that AiOpt can access its data folder and try again.",
       "INVALID_PARAMS": "Some details are invalid. Try again.",
       "NOT_FOUND": "That skill no longer exists.",
       "PERMISSION_DENIED": "That action isn't permitted, or the skill contains files that can't be synced safely.",
-      "PRECONDITION_FAILED": "That skill is too large to sync.",
+      "PRECONDITION_FAILED": "That skill can't be synced right now.",
       "UNSUPPORTED_CAPABILITY": "This agent has no known skills directory.",
       "INTERNAL": "Something went wrong. Try again."
     }

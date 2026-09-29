@@ -19,7 +19,7 @@ import { BindingPicker } from './BindingPicker';
 import { AgentConfigDialog } from './AgentConfigDialog';
 import { ProviderFormDialog } from './ProviderFormDialog';
 import { ScrollTabScreen, tabScreenIntroStyle, tabScreenSectionStyle } from '../../components/TabScreenShell';
-import { BindingProfilesPanel } from './BindingProfilesPanel';
+import { BindingProfileSwitcher } from './BindingProfileSwitcher';
 import { AgentImportDialog } from './AgentImportDialog';
 
 type Dialog =
@@ -68,11 +68,31 @@ export function ProvidersHome() {
             it outright would leave the page a set of h2s with nothing above them, and a
             screen reader announcing the region would lose the screen's name. */}
         <h1 className="sr-only">{t('providers.title')}</h1>
-        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.md }}>
-          {t('providers.subtitle')}
-        </p>
-
-        <BindingProfilesPanel />
+        {/* Page-level: intro + binding profile (not tied to the Agent section below). */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: space.lg,
+            marginBottom: space['2xl'],
+            flexWrap: 'wrap',
+          }}
+        >
+          <p
+            style={{
+              ...tabScreenIntroStyle,
+              margin: 0,
+              flex: '1 1 240px',
+              minWidth: 0,
+              color: token('textMuted'),
+              fontSize: fontSize.md,
+            }}
+          >
+            {t('providers.subtitle')}
+          </p>
+          <BindingProfileSwitcher />
+        </div>
 
         <section style={tabScreenSectionStyle}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
@@ -130,9 +150,8 @@ export function ProvidersHome() {
 
         <section>
           {/* The button sits NEXT TO its heading, not pushed to the far edge. `space-between`
-              on an 832px content column left ~660px of empty space between the two (575px
-              even in German), which is far past the distance at which a control still reads
-              as belonging to the thing it acts on. */}
+              on the tab content column left a huge gap between the two, which is far past
+              the distance at which a control still reads as belonging to the thing it acts on. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
             <h2 style={{ ...sectionHeadingStyle, margin: 0 }}>{t('providers.pool.heading')}</h2>
             {/* Ghost while the pool has entries: adding another provider is maintenance,
@@ -164,14 +183,10 @@ export function ProvidersHome() {
             <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('providers.pool.empty')}</p>
           ) : (
             <div style={gridStyle}>
-              {providers.map((provider) => (
+              {realProviders.map((provider) => (
                 <ProviderCard
                   key={provider.id}
-                  provider={
-                    isCombinedProviderId(provider.id)
-                      ? { ...provider, name: t('providers.combined.name') }
-                      : provider
-                  }
+                  provider={provider}
                   onEdit={() => setDialog({ kind: 'edit', provider })}
                 />
               ))}

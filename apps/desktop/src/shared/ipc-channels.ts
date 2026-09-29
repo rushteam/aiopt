@@ -353,6 +353,11 @@ export interface PreferencesShape {
    * gates only the warning — it never changes a config or writes a key.
    */
   warnOnQuitWithProxy: boolean;
+  /**
+   * When `false` (default), experimental surfaces (e.g. Workbench) stay hidden in the
+   * tab bar, tray, and menu-driven navigation. When `true`, those surfaces are shown.
+   */
+  experimentalMode: boolean;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry

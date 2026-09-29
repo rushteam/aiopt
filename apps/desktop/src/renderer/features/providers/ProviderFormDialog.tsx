@@ -15,6 +15,8 @@ import { useState, type FormEvent } from 'react';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
+import { Checkbox } from '../../components/ui/Checkbox';
+import { Select } from '../../components/ui/Select';
 import {
   API_FORMATS,
   DROPPABLE_REQUEST_FIELDS,
@@ -402,27 +404,24 @@ export function ProviderFormDialog({
           {!editing && (
             <label style={fieldStyle}>
               {t('providers.form.preset')}
-              <select
+              <Select
                 value={presetKey}
-                onChange={(e) => applyPreset(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">{t('providers.form.presetNone')}</option>
-                <optgroup label={t('providers.form.presetGroupApi')}>
-                  {apiKeyPresets.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label={t('providers.form.presetGroupOAuth')}>
-                  {oauthSubscriptionPresets.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+                onChange={applyPreset}
+                options={[{ value: '', label: t('providers.form.presetNone') }]}
+                groups={[
+                  {
+                    label: t('providers.form.presetGroupApi'),
+                    options: apiKeyPresets.map((p) => ({ value: p.key, label: p.name })),
+                  },
+                  {
+                    label: t('providers.form.presetGroupOAuth'),
+                    options: oauthSubscriptionPresets.map((p) => ({
+                      value: p.key,
+                      label: p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name,
+                    })),
+                  },
+                ]}
+              />
               <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                 {presetSelected
                   ? usesOAuth
@@ -435,10 +434,10 @@ export function ProviderFormDialog({
           {showManualCredential && (
             <label style={fieldStyle}>
               {t('providers.fields.credentialMode')}
-              <select
+              <Select
                 value={credentialMode}
-                onChange={(e) => {
-                  const mode = e.target.value as ProviderCredentialMode;
+                onChange={(next) => {
+                  const mode = next as ProviderCredentialMode;
                   setCredentialMode(mode);
                   if (mode === 'oauth') {
                     setOauthKind('generic_pkce');
@@ -448,20 +447,25 @@ export function ProviderFormDialog({
                     setOauthScopes('');
                   }
                 }}
-                style={inputStyle}
-              >
-                <option value="api_key">{t('providers.credential.apiKey')}</option>
-                <option value="oauth">{t('providers.oauth.customPkce')}</option>
-              </select>
+                options={[
+                  { value: 'api_key', label: t('providers.credential.apiKey') },
+                  { value: 'oauth', label: t('providers.oauth.customPkce') },
+                ]}
+              />
             </label>
           )}
           {editing && (
             <label style={fieldStyle}>
               {t('providers.fields.credentialMode')}
-              <select value={credentialMode} disabled style={inputStyle}>
-                <option value="api_key">{t('providers.credential.apiKey')}</option>
-                <option value="oauth">{t('providers.credential.oauth')}</option>
-              </select>
+              <Select
+                value={credentialMode}
+                disabled
+                options={[
+                  { value: 'api_key', label: t('providers.credential.apiKey') },
+                  { value: 'oauth', label: t('providers.credential.oauth') },
+                ]}
+                onChange={() => {}}
+              />
               <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                 {t('providers.form.credentialModeLocked')}
               </span>
@@ -472,15 +476,17 @@ export function ProviderFormDialog({
               {editing && (
                 <label style={fieldStyle}>
                   {t('providers.fields.oauthService')}
-                  <select value={oauthKind} disabled style={inputStyle}>
-                    {oauthSubscriptionPresets.map((p) =>
-                      p.oauthKind ? (
-                        <option key={p.key} value={p.oauthKind}>
-                          {p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name}
-                        </option>
-                      ) : null,
-                    )}
-                  </select>
+                  <Select
+                    value={oauthKind}
+                    disabled
+                    onChange={() => {}}
+                    options={oauthSubscriptionPresets
+                      .filter((p) => p.oauthKind)
+                      .map((p) => ({
+                        value: p.oauthKind!,
+                        label: p.oauthKind === 'generic_pkce' ? t('providers.oauth.customPkce') : p.name,
+                      }))}
+                  />
                 </label>
               )}
               {isOAuthStubKind(oauthKind) && (
@@ -596,10 +602,10 @@ export function ProviderFormDialog({
             <div style={checkGridStyle}>
               {API_FORMATS.map((format) => (
                 <label key={format} style={checkLabelStyle}>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={apiFormats.includes(format)}
                     onChange={() => toggleFormat(format)}
+                    aria-label={t(`providers.formats.${format}`)}
                   />
                   {t(`providers.formats.${format}`)}
                 </label>
@@ -746,10 +752,10 @@ export function ProviderFormDialog({
                     <div style={checkGridStyle}>
                       {DROPPABLE_REQUEST_FIELDS[group].map((field) => (
                         <label key={field} style={checkLabelStyle}>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={dropFields.includes(field)}
                             onChange={() => toggleDropField(field)}
+                            aria-label={field}
                           />
                           <code style={codeStyle}>{field}</code>
                         </label>

@@ -25,6 +25,25 @@ export function App() {
   // to show. It's a separate axis from `tab` so closing Settings returns you to
   // wherever you were, not to a fixed "home".
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId | null>(null);
+  const [experimentalMode, setExperimentalMode] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void window.aiopt.config.getAll().then((prefs) => {
+      if (active) setExperimentalMode(prefs.experimentalMode);
+    });
+    const unsubscribe = window.aiopt.config.onChanged((prefs) => {
+      setExperimentalMode(prefs.experimentalMode);
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!experimentalMode && tab === 'workbench') setTab('providers');
+  }, [experimentalMode, tab]);
 
   // One handler for the menu-command vocabulary, shared by the two entry points:
   // the native OS menu (pushed via `onMenuCommand`, already allowlist-validated in
@@ -38,6 +57,7 @@ export function App() {
       setSettingsSection(null);
       setTab('skills');
     } else if (command === MENU_COMMANDS.showWorkbench) {
+      if (!experimentalMode) return;
       setSettingsSection(null);
       setTab('workbench');
     } else if (command === MENU_COMMANDS.checkForUpdates) {
@@ -45,7 +65,7 @@ export function App() {
       void window.aiopt.update.check();
     }
     else if (command === MENU_COMMANDS.showAbout) setSettingsSection('about');
-  }, []);
+  }, [experimentalMode]);
 
   useEffect(() => window.aiopt.onMenuCommand(handleMenuCommand), [handleMenuCommand]);
 
@@ -83,6 +103,7 @@ export function App() {
           setTab(next);
         }}
         settingsOpen={settingsOpen}
+        experimentalMode={experimentalMode}
       />
       <UpdateNotice onOpen={() => setSettingsSection('updates')} />
       {/* The ambient lines sit behind the tab screens (transparent roots, opaque cards).

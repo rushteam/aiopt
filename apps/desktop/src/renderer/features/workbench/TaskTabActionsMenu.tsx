@@ -6,6 +6,8 @@ import type { TranslateFn } from '../../i18n';
 import { taskAllows, type FolderView, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { removeTask, updateTask } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { CheckboxField } from '../../components/ui/Checkbox';
+import { Select } from '../../components/ui/Select';
 import { TASK_TAB_HEIGHT, TASK_TAB_MARGIN_BOTTOM, TASK_TAB_MARGIN_TOP } from './taskTabChrome';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
@@ -234,48 +236,28 @@ function PlacePicker({
     <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs }}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: fontSize.sm }}>
         <span style={{ color: token('textMuted') }}>{t('workbench.tasks.folderLabel')}</span>
-        <select
+        <Select
           value={folder?.id ?? ''}
-          onChange={(e) => {
-            const next = folders.find((f) => f.id === e.target.value) ?? null;
+          size="sm"
+          style={{ width: '100%' }}
+          onChange={(value) => {
+            const next = folders.find((f) => f.id === value) ?? null;
             onChange(next?.id ?? null, next?.isGitRepo ? isolated : false);
           }}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            borderRadius: radius.sm,
-            border: `1px solid ${token('borderStrong')}`,
-            background: token('bg'),
-            color: token('text'),
-            fontSize: fontSize.sm,
-          }}
-        >
-          <option value="">{t('workbench.tasks.noFolder')}</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label
-        title={canIsolate ? undefined : t('workbench.tasks.isolatedUnavailable')}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: space.sm,
-          fontSize: fontSize.sm,
-          color: canIsolate ? token('text') : token('textMuted'),
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={isolated && canIsolate}
-          disabled={!canIsolate}
-          onChange={(e) => onChange(folderId, e.target.checked)}
+          options={[
+            { value: '', label: t('workbench.tasks.noFolder') },
+            ...folders.map((f) => ({ value: f.id, label: f.name })),
+          ]}
         />
-        {t('workbench.tasks.isolated')}
       </label>
+      <CheckboxField
+        title={canIsolate ? undefined : t('workbench.tasks.isolatedUnavailable')}
+        label={t('workbench.tasks.isolated')}
+        checked={isolated && canIsolate}
+        disabled={!canIsolate}
+        onChange={(next) => onChange(folderId, next)}
+        style={{ fontSize: fontSize.sm }}
+      />
     </div>
   );
 }

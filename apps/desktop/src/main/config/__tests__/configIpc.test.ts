@@ -64,7 +64,7 @@ describe('config IPC', () => {
   it('get-all returns the effective snapshot for a trusted sender', async () => {
     const { reg } = harness({ theme: 'dark' });
     const result = (await reg.invoke(IPC_CHANNELS.configGetAll, undefined, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'dark', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(result).toEqual({ theme: 'dark', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true, experimentalMode: false });
   });
 
   it('set persists the override and broadcasts the new snapshot', async () => {
@@ -74,19 +74,19 @@ describe('config IPC', () => {
       { key: 'theme', value: 'light' },
       trusted,
     )) as PreferencesShape;
-    expect(result).toEqual({ theme: 'light', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(result).toEqual({ theme: 'light', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true, experimentalMode: false });
     expect(broadcasts).toEqual([
-      { channel: IPC_EVENTS.configChanged, payload: { theme: 'light', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true } },
+      { channel: IPC_EVENTS.configChanged, payload: { theme: 'light', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true, experimentalMode: false } },
     ]);
   });
 
   it('reset restores the default and broadcasts', async () => {
     const { reg, broadcasts } = harness({ theme: 'light' });
     const result = (await reg.invoke(IPC_CHANNELS.configReset, { key: 'theme' }, trusted)) as PreferencesShape;
-    expect(result).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(result).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true, experimentalMode: false });
     expect(broadcasts.at(-1)).toEqual({
       channel: IPC_EVENTS.configChanged,
-      payload: { theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true },
+      payload: { theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true, experimentalMode: false },
     });
   });
 
@@ -98,7 +98,7 @@ describe('config IPC', () => {
       trusted,
     )) as PreferencesShape;
     expect(result.proxyMode).toBe(true);
-    expect(broadcasts.at(-1)!.payload).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: true, warnOnQuitWithProxy: true });
+    expect(broadcasts.at(-1)!.payload).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: true, warnOnQuitWithProxy: true, experimentalMode: false });
     expect(proxyModeCalls).toEqual([true]);
   });
 

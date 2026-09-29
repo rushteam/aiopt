@@ -53,6 +53,7 @@ export function registerHandlers(): void {
       rebuildAppMenuLabels();
       rebuildTrayLabels();
     },
+    onExperimentalModeChange: () => rebuildTrayLabels(),
   });
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);

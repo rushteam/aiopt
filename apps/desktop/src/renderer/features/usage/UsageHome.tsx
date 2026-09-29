@@ -17,12 +17,7 @@ import { useUsage } from '../../hooks/useUsage';
 import { useProviders } from '../../hooks/useProviders';
 import { clearUsage } from '../../lib/usageStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import {
-  ScrollTabScreen,
-  tabScreenIntroSecondaryStyle,
-  tabScreenIntroStyle,
-  tabScreenSectionStyle,
-} from '../../components/TabScreenShell';
+import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
 import { AGENTS } from '../../../shared/aiProviders';
 import type { UsageBucket, UsageDailyPoint } from '../../../shared/usageStats';
 
@@ -50,12 +45,6 @@ export function UsageHome() {
       <ScrollTabScreen>
         {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
         <h1 className="sr-only">{t('usage.title')}</h1>
-        <p style={{ ...tabScreenIntroSecondaryStyle, color: token('textMuted'), fontSize: fontSize.md }}>
-          {t('usage.subtitle')}
-        </p>
-        <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.sm }}>
-          {t('usage.scopeNote')}
-        </p>
 
         {usage.eventCount === 0 ? (
           <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.empty')}</p>

@@ -26,7 +26,8 @@
       "shortcuts": "Raccourcis clavier",
       "updates": "Mises à jour",
       "about": "À propos",
-      "general": "Général"
+      "general": "Général",
+      "providers": "Fournisseurs"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "Avertir avant de quitter avec le proxy actif",
       "help": "Activé (par défaut) : si des agents passent par le proxy d’AiOpt, confirmer avant de quitter — ils ne pourront pas se connecter tant qu’AiOpt n’est pas relancé. Désactivé : quitter sans demander."
+    },
+    "experimentalMode": {
+      "label": "Mode expérimental",
+      "help": "Désactivé (par défaut) : masque les fonctions en cours (par ex. Workbench). Activé : affiche les onglets et entrées de barre d’état expérimentaux."
     }
   },
   "account": {
@@ -237,6 +242,13 @@
     "profiles": {
       "heading": "Profils de liaison",
       "hint": "Enregistrez les liaisons actuelles de tous les agents et basculez en une action.",
+      "switchLabel": "Profil",
+      "defaultLive": "default",
+      "menuAria": "Actions du profil",
+      "menuSaveDefault": "Enregistrer dans default",
+      "menuSaveAs": "Enregistrer sous…",
+      "menuDelete": "Supprimer le profil",
+      "saveAsPrompt": "Nom du profil",
       "namePlaceholder": "Nom du profil",
       "save": "Enregistrer les liaisons actuelles",
       "empty": "Aucun profil pour l'instant.",
@@ -337,16 +349,17 @@
       "INTERNAL": "Une erreur est survenue. Réessayez."
     },
     "combined": {
-      "name": "All providers",
-      "description": "Every model from your pool in one list — use it when binding an agent."
+      "name": "Fournisseur combiné",
+      "description": "Tous les modèles du pool dans une liste — à choisir lors de la liaison d’un agent.",
+      "helpTooltip": "Le fournisseur combiné regroupe tous les modèles du pool pour la liaison. Il est virtuel et n’apparaît pas comme carte modifiable dans le pool.",
+      "settingsStatus": "Activé · {{count}} modèles disponibles",
+      "settingsDisabled": "S’active dès qu’au moins un fournisseur est ajouté."
     }
   },
   "usage": {
     "title": "Utilisation",
-    "subtitle": "Nombre de tokens et de requêtes pour le trafic acheminé par AiOpt via le proxy de traduction.",
-    "scopeNote": "Le trafic est comptabilisé lorsqu’il passe par le proxy. Avec le mode proxy activé, toutes les liaisons y passent, l’utilisation est donc mesurée. Par défaut (mode proxy désactivé), les liaisons de même format se connectent directement et ne sont pas comptabilisées ; les liaisons Gemini sont toujours directes et jamais comptabilisées.",
     "close": "Fermer",
-    "empty": "Aucune utilisation enregistrée pour l’instant. Activez le mode proxy, liez un agent à un fournisseur et lancez une requête. Par défaut (mode proxy désactivé), les liaisons de même format contournent le proxy et ne sont pas mesurées ; les liaisons Gemini ne sont jamais mesurées.",
+    "empty": "Aucune donnée pour l’instant. Seules les requêtes passant par le proxy d’AiOpt apparaissent ici. Activez le mode proxy dans Réglages, liez un agent et envoyez une requête. Certaines liaisons (dont Gemini) restent directes et n’apparaissent pas ici.",
     "totals": {
       "requests": "Requêtes",
       "successRate": "Taux de réussite",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "Compétences",
-    "subtitle": "Rassemblez les compétences du répertoire personnel de chaque agent dans une bibliothèque centrale, puis resynchronisez-les.",
     "close": "Fermer",
     "skill": "Compétence",
     "central": "Bibliothèque",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "Afficher dans le gestionnaire de fichiers",
       "import": "Importer depuis un dossier…",
+      "importing": "Importation…",
       "rescan": "Réanalyser",
+      "rescanning": "Analyse…",
       "pull": "Récupérer ←",
       "push": "Envoyer →",
       "pushAll": "Envoyer à tous les agents",
@@ -454,6 +468,16 @@
       "previewTruncated": "Aperçu tronqué (fichier volumineux)."
     },
     "errors": {
+      "importMissingMarker": "Ce dossier n’est pas une compétence — sélectionnez le dossier qui contient SKILL.md à sa racine (pas un dossier parent qui ne contient que des sous-dossiers).",
+      "importParentFolder": "Vous avez sélectionné un dossier parent. Ouvrez le dossier de la compétence (SKILL.md à la racine), sélectionnez-le, puis réimportez.",
+      "importInvalidFolderName": "Le nom du dossier ne peut pas servir de nom de compétence (pas de « . » en tête, pas de « / » ni « \\ »). Renommez le dossier et réessayez.",
+      "importSourceNotDirectory": "Ce chemin n’est pas un dossier. Sélectionnez le répertoire de la compétence (celui qui contient SKILL.md).",
+      "importSourceUnreachable": "Impossible de lire ce dossier (déplacé ou supprimé ?). Choisissez à nouveau le dossier de la compétence.",
+      "importSymlinkInTree": "Cette compétence contient un lien symbolique. Supprimez-le ou importez une copie sans liens. (Les dossiers VCS comme .git sont ignorés automatiquement.)",
+      "importUnsupportedFileType": "Cette compétence contient un fichier spécial (pas un fichier ordinaire). Supprimez les sockets, périphériques, etc., puis réessayez.",
+      "importTooManyFiles": "Trop de fichiers pour importer. Supprimez les fichiers inutiles et réessayez.",
+      "importTooLarge": "Compétence trop volumineuse pour importer. Supprimez ou réduisez les gros fichiers et réessayez.",
+      "importDestinationFailed": "Impossible d’écrire dans le dossier de la bibliothèque. Vérifiez qu’AiOpt peut accéder à son dossier de données, puis réessayez.",
       "INVALID_PARAMS": "Certaines informations sont invalides. Réessayez.",
       "NOT_FOUND": "Cette compétence n’existe plus.",
       "PERMISSION_DENIED": "Cette action n’est pas autorisée, ou la compétence contient des fichiers qui ne peuvent pas être synchronisés en toute sécurité.",

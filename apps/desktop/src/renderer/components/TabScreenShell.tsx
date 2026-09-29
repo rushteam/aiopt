@@ -18,11 +18,11 @@ export const TAB_SCREEN_SCROLL_BOTTOM = space['2xl'] * 2;
 /** Bottom inset on workspace screens — matches side inset. */
 export const TAB_SCREEN_WORKSPACE_BOTTOM = space['2xl'];
 
-/** Default readable width for card/list screens. */
-export const TAB_SCREEN_MAX_WIDTH = 880;
+/** Max content width for all scroll tab screens (Providers / Skills / Usage). */
+export const TAB_SCREEN_MAX_WIDTH = 980;
 
-/** Wider column for data-heavy tables (skills sync matrix). */
-export const TAB_SCREEN_MAX_WIDTH_WIDE = 980;
+/** @deprecated Use {@link TAB_SCREEN_MAX_WIDTH} — kept as alias during migration. */
+export const TAB_SCREEN_MAX_WIDTH_WIDE = TAB_SCREEN_MAX_WIDTH;
 
 /** Primary intro line under the (visually hidden) page title. */
 export const tabScreenIntroStyle: CSSProperties = {

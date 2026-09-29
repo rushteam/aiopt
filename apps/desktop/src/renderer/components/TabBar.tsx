@@ -29,17 +29,21 @@ export function TabBar({
   active,
   onSelect,
   settingsOpen,
+  experimentalMode,
 }: {
   active: AppTab;
   onSelect: (tab: AppTab) => void;
   /** When Settings is showing, no tab is the active page (selecting one leaves it). */
   settingsOpen: boolean;
+  /** Workbench tab is shown only when experimental mode is enabled in Settings. */
+  experimentalMode: boolean;
 }) {
   const t = useT();
+  const tabs = TABS.filter((tab) => tab.id !== 'workbench' || experimentalMode);
   return (
     <div style={{ display: 'flex', flex: 1, minWidth: 0, alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: space.md }}>
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           // The active tab reads at full `accent` with an underline; the rest recede
           // to `textMuted` and lift to `text` on hover (color carries the state, not a
           // filled background — restrained, matching the rest of the chrome).

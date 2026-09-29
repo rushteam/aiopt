@@ -40,7 +40,8 @@ describe('config store (layered defaults + overrides)', () => {
   it('reads the default when no override is set', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('theme')).toBe('system');
-    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
     expect(store.getOverrides()).toEqual({});
   });
 
@@ -48,7 +49,8 @@ describe('config store (layered defaults + overrides)', () => {
     const persistence = memoryPersistence();
     const store = createConfigStore(persistence);
     const next = store.set('theme', 'dark');
-    expect(next).toEqual({ theme: 'dark', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(next).toEqual({ theme: 'dark', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
     expect(store.get('theme')).toBe('dark');
     expect(persistence.saved).toEqual({ theme: 'dark' });
   });
@@ -58,7 +60,8 @@ describe('config store (layered defaults + overrides)', () => {
     const store = createConfigStore(persistence);
     expect(store.get('theme')).toBe('light');
     const next = store.reset('theme');
-    expect(next).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(next).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
     // The override key is gone from the persisted blob — not persisted as 'system'.
     expect(persistence.saved).toEqual({});
     expect(store.getOverrides()).toEqual({});
@@ -116,7 +119,8 @@ describe('file preference persistence', () => {
   it('reads a missing file as no overrides', () => {
     const file = path.join(dir, 'does-not-exist.json');
     const store = createConfigStore(createFilePreferencePersistence(file));
-    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
   });
 
   // A BOM (Notepad, PowerShell 5.1) made JSON.parse throw, so every override silently reset.
@@ -142,7 +146,8 @@ describe('file preference persistence', () => {
     const file = path.join(dir, 'preferences.json');
     fs.writeFileSync(file, '{ this is not json', 'utf8');
     const store = createConfigStore(createFilePreferencePersistence(file));
-    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
   });
 });
 
@@ -150,9 +155,11 @@ describe('skillsLibrary preference', () => {
   it('defaults to app and round-trips a valid override', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('skillsLibrary')).toBe('app');
-    expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'home', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'home', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
     expect(store.get('skillsLibrary')).toBe('home');
-    expect(store.set('skillsLibrary', 'agents')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'agents', proxyMode: false, warnOnQuitWithProxy: true });
+    expect(store.set('skillsLibrary', 'agents')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'agents', proxyMode: false, warnOnQuitWithProxy: true,
+      experimentalMode: false });
     expect(store.get('skillsLibrary')).toBe('agents');
   });
 
@@ -179,6 +186,7 @@ describe('language preference', () => {
       skillsLibrary: 'app',
       proxyMode: false,
       warnOnQuitWithProxy: true,
+      experimentalMode: false,
     });
     expect(store.get('language')).toBe('zh-CN');
   });
@@ -222,6 +230,27 @@ describe('warnOnQuitWithProxy preference', () => {
   it('drops a corrupt persisted value and falls back to true', () => {
     const store = createConfigStore(memoryPersistence({ warnOnQuitWithProxy: 'yes' }));
     expect(store.get('warnOnQuitWithProxy')).toBe(true);
+    expect(store.getOverrides()).toEqual({});
+  });
+});
+
+describe('experimentalMode preference', () => {
+  it('defaults to false and round-trips a valid override', () => {
+    const store = createConfigStore(memoryPersistence());
+    expect(store.get('experimentalMode')).toBe(false);
+    expect(store.set('experimentalMode', true).experimentalMode).toBe(true);
+    expect(store.get('experimentalMode')).toBe(true);
+  });
+
+  it('rejects a non-boolean with INVALID_PARAMS', () => {
+    const store = createConfigStore(memoryPersistence());
+    expect(codeOf(() => store.set('experimentalMode', 1))).toBe('INVALID_PARAMS');
+    expect(store.get('experimentalMode')).toBe(false);
+  });
+
+  it('drops a corrupt persisted value and falls back to false', () => {
+    const store = createConfigStore(memoryPersistence({ experimentalMode: 'on' }));
+    expect(store.get('experimentalMode')).toBe(false);
     expect(store.getOverrides()).toEqual({});
   });
 });

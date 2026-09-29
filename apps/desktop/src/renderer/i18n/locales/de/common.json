@@ -26,7 +26,8 @@
       "shortcuts": "Tastenkürzel",
       "updates": "Updates",
       "about": "Über",
-      "general": "Allgemein"
+      "general": "Allgemein",
+      "providers": "Anbieter"
     }
   },
   "appearance": {
@@ -50,6 +51,10 @@
     "warnOnQuitWithProxy": {
       "label": "Vor dem Beenden bei aktivem Proxy warnen",
       "help": "An (Standard): Wenn Agenten über den Proxy von AiOpt laufen, vor dem Beenden bestätigen — sie können sich erst wieder verbinden, wenn AiOpt erneut läuft. Aus: ohne Nachfrage beenden."
+    },
+    "experimentalMode": {
+      "label": "Experimenteller Modus",
+      "help": "Aus (Standard): blendet Funktionen in Entwicklung (z. B. Workbench) aus. An: zeigt experimentelle Tabs und Tray-Einträge."
     }
   },
   "account": {
@@ -237,6 +242,13 @@
     "profiles": {
       "heading": "Binding-Profile",
       "hint": "Alle Agent-Bindungen unter einem Namen speichern und das Setup in einem Schritt wechseln.",
+      "switchLabel": "Profil",
+      "defaultLive": "default",
+      "menuAria": "Profilaktionen",
+      "menuSaveDefault": "Als default speichern",
+      "menuSaveAs": "Speichern unter…",
+      "menuDelete": "Profil löschen",
+      "saveAsPrompt": "Profilname",
       "namePlaceholder": "Profilname",
       "save": "Aktuelle Bindungen speichern",
       "empty": "Noch keine Profile.",
@@ -337,16 +349,17 @@
       "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
     },
     "combined": {
-      "name": "All providers",
-      "description": "Every model from your pool in one list — use it when binding an agent."
+      "name": "Kombinierter Anbieter",
+      "description": "Alle Modelle aus dem Pool in einer Liste — beim Binden eines Agenten wählen.",
+      "helpTooltip": "Der kombinierte Anbieter führt alle Pool-Einträge in einer Modellliste zusammen. Er ist virtuell und erscheint nicht als bearbeitbare Karte im Anbieter-Pool.",
+      "settingsStatus": "Aktiv · {{count}} Modelle verfügbar",
+      "settingsDisabled": "Wird aktiviert, sobald mindestens ein Anbieter existiert."
     }
   },
   "usage": {
     "title": "Nutzung",
-    "subtitle": "Token- und Anfragezahlen für den Datenverkehr, den AiOpt über den Übersetzungs-Proxy geleitet hat.",
-    "scopeNote": "Datenverkehr wird gezählt, wenn er über den Proxy läuft. Bei aktiviertem Proxy-Modus läuft jede Bindung darüber, sodass die Nutzung gemessen wird. Standardmäßig (Proxy-Modus aus) verbinden sich Bindungen im selben Format direkt und werden nicht gezählt; Gemini-Bindungen sind immer direkt und werden nie gezählt.",
     "close": "Schließen",
-    "empty": "Noch keine Nutzung erfasst. Aktivieren Sie den Proxy-Modus, binden Sie einen Agenten an einen Anbieter und führen Sie eine Anfrage aus. Standardmäßig (Proxy-Modus aus) umgehen Bindungen im selben Format den Proxy und werden nicht gemessen; Gemini-Bindungen werden nie gemessen.",
+    "empty": "Noch keine Einträge. Nur Anfragen über den AiOpt-Proxy erscheinen hier. Aktivieren Sie den Proxy-Modus in den Einstellungen, binden Sie einen Agenten und senden Sie eine Anfrage. Einige Bindungen (einschließlich Gemini) bleiben direkt und erscheinen nicht hier.",
     "totals": {
       "requests": "Anfragen",
       "successRate": "Erfolgsrate",
@@ -377,7 +390,6 @@
   },
   "skills": {
     "title": "Skills",
-    "subtitle": "Sammeln Sie Skills aus dem Home-Verzeichnis jedes Agenten in einer zentralen Bibliothek und synchronisieren Sie sie dann wieder zurück.",
     "close": "Schließen",
     "skill": "Skill",
     "central": "Bibliothek",
@@ -410,7 +422,9 @@
     "actions": {
       "reveal": "Im Dateimanager anzeigen",
       "import": "Aus Ordner importieren…",
+      "importing": "Import…",
       "rescan": "Erneut scannen",
+      "rescanning": "Scan…",
       "pull": "Abrufen ←",
       "push": "Übertragen →",
       "pushAll": "An alle Agenten übertragen",
@@ -454,6 +468,16 @@
       "previewTruncated": "Vorschau gekürzt (Datei ist groß)."
     },
     "errors": {
+      "importMissingMarker": "Dieser Ordner ist kein Skill — wählen Sie den Ordner, in dem SKILL.md direkt liegt (nicht einen übergeordneten Ordner mit nur Unterordnern).",
+      "importParentFolder": "Sie haben einen übergeordneten Ordner gewählt. Öffnen Sie den Skill-Ordner (SKILL.md in der Wurzel), wählen Sie diesen und importieren Sie erneut.",
+      "importInvalidFolderName": "Der Ordnername kann kein Skill-Name sein (nicht mit „.“ beginnen, kein „/“ oder „\\“). Benennen Sie den Ordner um und versuchen Sie es erneut.",
+      "importSourceNotDirectory": "Das ist kein Ordner. Wählen Sie das Skill-Verzeichnis (mit SKILL.md).",
+      "importSourceUnreachable": "Der Ordner konnte nicht gelesen werden (verschoben oder gelöscht?). Wählen Sie den Skill-Ordner erneut.",
+      "importSymlinkInTree": "Der Skill enthält eine symbolische Verknüpfung. Entfernen Sie sie oder importieren Sie eine Kopie ohne Links. (.git usw. werden automatisch übersprungen.)",
+      "importUnsupportedFileType": "Der Skill enthält eine Sondere Datei (keine reguläre Datei). Entfernen Sie Sockets, Gerätedateien usw. und versuchen Sie es erneut.",
+      "importTooManyFiles": "Zu viele Dateien zum Importieren. Entfernen Sie unnötige Dateien und versuchen Sie es erneut.",
+      "importTooLarge": "Der Skill ist zu groß zum Importieren. Entfernen oder verkleinern Sie große Dateien und versuchen Sie es erneut.",
+      "importDestinationFailed": "Der Skill konnte nicht in den Bibliotheksordner geschrieben werden. Prüfen Sie, ob AiOpt auf seinen Datenordner zugreifen kann, und versuchen Sie es erneut.",
       "INVALID_PARAMS": "Einige Angaben sind ungültig. Versuchen Sie es erneut.",
       "NOT_FOUND": "Dieser Skill existiert nicht mehr.",
       "PERMISSION_DENIED": "Diese Aktion ist nicht zulässig, oder der Skill enthält Dateien, die nicht sicher synchronisiert werden können.",

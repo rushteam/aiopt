@@ -16,6 +16,7 @@ import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { GeneralSection } from './GeneralSection';
+import { ProvidersSettingsSection } from './ProvidersSettingsSection';
 import { ShortcutsSection } from './ShortcutsSection';
 import { UpdateSection } from './UpdateSection';
 import { AboutSection } from './AboutSection';
@@ -24,7 +25,7 @@ import { AboutSection } from './AboutSection';
 // intentionally not wired up yet — appearance lives under General, and Account is
 // hidden until the sign-in feature ships. Both components are kept on disk so the
 // entries can be restored without rebuilding them.
-export type SettingsSectionId = 'general' | 'shortcuts' | 'updates' | 'about';
+export type SettingsSectionId = 'general' | 'providers' | 'shortcuts' | 'updates' | 'about';
 
 interface SectionDef {
   id: SettingsSectionId;
@@ -35,6 +36,7 @@ interface SectionDef {
 
 const SECTIONS = [
   { id: 'general', labelKey: 'general', Component: GeneralSection },
+  { id: 'providers', labelKey: 'providers', Component: ProvidersSettingsSection },
   { id: 'shortcuts', labelKey: 'shortcuts', Component: ShortcutsSection },
   { id: 'updates', labelKey: 'updates', Component: UpdateSection },
   { id: 'about', labelKey: 'about', Component: AboutSection },
