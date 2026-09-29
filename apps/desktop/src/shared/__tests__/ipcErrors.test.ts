@@ -32,4 +32,14 @@ describe('ipc-errors — upstream codes round-trip', () => {
       message: SKILL_IMPORT_FAIL.missingMarker,
     });
   });
+
+  it('decodeIpcError finds a wire segment inside an Electron invoke wrapper', () => {
+    const wrapped =
+      "Error invoking remote method 'skills:import': Error: [INVALID_PARAMS] not a skill: the folder has no SKILL.md";
+    expect(decodeIpcError(wrapped)).toEqual({
+      code: 'INVALID_PARAMS',
+      message: 'not a skill: the folder has no SKILL.md',
+    });
+    expect(ipcErrorFromUnknown(new Error(wrapped)).code).toBe('INVALID_PARAMS');
+  });
 });

@@ -48,25 +48,34 @@ export function isIpcError(err: unknown): err is Error & { code: IpcErrorCode } 
 // Errors are encoded on the wire as `[CODE] message` so the renderer can recover
 // the code even if the structured-clone of a custom Error property is dropped.
 const WIRE_PREFIX = /^\[([A-Z_]+)\]\s?(.*)$/s;
+/** Electron wraps handler throws: `Error invoking remote method '…': Error: [CODE] msg`. */
+const WIRE_EMBEDDED = /\[([A-Z_]+)\]\s*(.*)$/s;
 
 /** Encode a code + message into the wire form. */
 export function encodeIpcError(code: IpcErrorCode, message: string): string {
   return `[${code}] ${message}`;
 }
 
-/** Recover an IpcError from a wire message, defaulting to INTERNAL. */
-export function decodeIpcError(message: string): IpcError {
-  const match = WIRE_PREFIX.exec(message);
-  if (match && isIpcErrorCode(match[1])) {
-    return { code: match[1], message: match[2] ?? '' };
+function decodeIpcErrorFromWireText(text: string): IpcError | null {
+  const direct = WIRE_PREFIX.exec(text);
+  if (direct && isIpcErrorCode(direct[1])) {
+    return { code: direct[1], message: direct[2] ?? '' };
   }
-  return { code: 'INTERNAL', message };
+  const embedded = WIRE_EMBEDDED.exec(text);
+  if (embedded && isIpcErrorCode(embedded[1])) {
+    return { code: embedded[1], message: (embedded[2] ?? '').trim() };
+  }
+  return null;
 }
 
-/** True when `message` uses the `[CODE] …` IPC wire prefix. */
+/** Recover an IpcError from a wire message, defaulting to INTERNAL. */
+export function decodeIpcError(message: string): IpcError {
+  return decodeIpcErrorFromWireText(message.trim()) ?? { code: 'INTERNAL', message };
+}
+
+/** True when `message` contains a recognizable `[CODE] …` IPC wire segment. */
 export function isIpcWireMessage(message: string): boolean {
-  const match = WIRE_PREFIX.exec(message);
-  return match !== null && isIpcErrorCode(match[1]);
+  return decodeIpcErrorFromWireText(message.trim()) !== null;
 }
 
 /**

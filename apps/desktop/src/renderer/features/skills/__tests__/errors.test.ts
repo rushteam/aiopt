@@ -19,4 +19,12 @@ describe('skillsErrorMessage', () => {
     const msg = skillsErrorMessage(t, new Error(wire));
     expect(msg).toContain('SKILL.md');
   });
+
+  it('maps legacy import errors through an Electron invoke wrapper', () => {
+    const wrapped =
+      "Error invoking remote method 'skills:import': Error: [INVALID_PARAMS] not a skill: the folder has no SKILL.md";
+    const msg = skillsErrorMessage(t, new Error(wrapped));
+    expect(msg).toContain('SKILL.md');
+    expect(msg).not.toBe(t('skills.errors.INTERNAL'));
+  });
 });
