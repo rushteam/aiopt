@@ -807,8 +807,10 @@ const overlayStyle = {
 
 const panelStyle = {
   width: 'min(560px, 100%)',
+  minWidth: 0,
   maxHeight: '100%',
   overflowY: 'auto',
+  boxSizing: 'border-box',
   background: token('bg'),
   color: token('text'),
   border: `1px solid ${token('border')}`,
@@ -961,6 +963,8 @@ const groupStyle = {
   padding: space.md,
   borderRadius: radius.sm,
   border: `1px solid ${token('border')}`,
+  minWidth: 0,
+  boxSizing: 'border-box',
 } as const;
 
 // Shared by the formats group (where it stands in for a field label, hence the muted
@@ -976,14 +980,17 @@ const legendStyle = {
 const checkGridStyle = {
   display: 'flex',
   flexWrap: 'wrap',
-  gap: `${space.xs}px ${space.xl}px`,
+  gap: `${space.sm}px ${space.lg}px`,
   marginTop: space.xs,
+  minWidth: 0,
 } as const;
 
 const checkLabelStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: space.sm,
+  flex: '1 1 148px',
+  maxWidth: '100%',
   color: token('text'),
   fontSize: fontSize.base,
   cursor: 'pointer',

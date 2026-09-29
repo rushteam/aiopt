@@ -37,6 +37,18 @@ The wire protocol a provider speaks and an agent accepts — one of anthropic, o
 
 - **zh-CN**: 接口格式
 
+### Binding profile (`binding-profile`)
+
+A named snapshot of every agent's provider+model binding. The user saves the live setup under a name and can apply a saved profile to switch the whole binding set in one step. Not 'binding config' or 'binding settings' in UI copy — it is a saved preset, not the mechanics of binding. In zh-CN UI prefer 配置方案, not 绑定方案/绑定配置.
+
+- **zh-CN**: 配置方案
+  - forbidden: `绑定配置`, `绑定方案`
+- **ja**: バインドプロファイル
+- **ko**: 바인딩 프로필
+- **fr**: Profil de liaison
+- **de**: Binding-Profil
+- **es**: Perfil de enlace
+
 ### Coordinator (`coordinator`)
 
 The single chat agent on the workbench. It breaks a request into tasks and proposes them on the board; it never starts a task itself — the user presses Run on each one. The code calls it the orchestrator; UI copy says coordinator. Not 'manager', 'boss', or 'master agent' in UI copy. Term still under discussion.

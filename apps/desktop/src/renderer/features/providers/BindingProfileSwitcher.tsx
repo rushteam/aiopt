@@ -144,9 +144,12 @@ export function BindingProfileSwitcher() {
     const rect = menuBtnRef.current?.getBoundingClientRect();
     if (!rect) return;
     const width = 200;
+    const margin = 8;
+    let left = rect.right - width;
+    left = Math.min(left, window.innerWidth - width - margin);
     setMenuPos({
       top: rect.bottom + 4,
-      left: Math.max(8, rect.right - width),
+      left: Math.max(margin, left),
     });
     setMenuOpen(true);
   }
@@ -155,7 +158,7 @@ export function BindingProfileSwitcher() {
 
   return (
     <div style={rootStyle}>
-      <label style={labelStyle} htmlFor="binding-profile-select">
+      <label id="binding-profile-select-label" style={labelStyle} htmlFor="binding-profile-select">
         {t('providers.profiles.switchLabel')}
       </label>
       <Select
@@ -163,7 +166,8 @@ export function BindingProfileSwitcher() {
         value={selected}
         disabled={busy}
         size="sm"
-        style={{ maxWidth: 160, minWidth: 96 }}
+        style={{ maxWidth: 200, minWidth: 112, flex: '1 1 112px' }}
+        aria-labelledby="binding-profile-select-label"
         onChange={(value) => void onSelect(value)}
         options={[
           ...(!savedDefault

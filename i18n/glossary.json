@@ -100,6 +100,14 @@
       "forbidden": { "zh-CN": ["极速模式", "代理服务器模式", "加速模式"] }
     },
     {
+      "id": "binding-profile",
+      "en": "Binding profile",
+      "status": "proposed",
+      "note": "A named snapshot of every agent's provider+model binding. The user saves the live setup under a name and can apply a saved profile to switch the whole binding set in one step. Not 'binding config' or 'binding settings' in UI copy — it is a saved preset, not the mechanics of binding. In zh-CN UI prefer 配置方案, not 绑定方案/绑定配置.",
+      "translations": { "zh-CN": "配置方案", "ja": "バインドプロファイル", "ko": "바인딩 프로필", "fr": "Profil de liaison", "de": "Binding-Profil", "es": "Perfil de enlace" },
+      "forbidden": { "zh-CN": ["绑定配置", "绑定方案"] }
+    },
+    {
       "id": "upstream-compatibility",
       "en": "Upstream compatibility",
       "status": "proposed",

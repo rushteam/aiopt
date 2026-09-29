@@ -103,7 +103,19 @@ export function Select({
     if (disabled) return;
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    const margin = 8;
+    const listWidth = Math.max(rect.width, 200);
+    let left = rect.left;
+    if (left + listWidth > window.innerWidth - margin) {
+      left = window.innerWidth - listWidth - margin;
+    }
+    left = Math.max(margin, left);
+    let top = rect.bottom + 4;
+    const maxHeight = 280;
+    if (top + maxHeight > window.innerHeight - margin) {
+      top = Math.max(margin, rect.top - 4 - Math.min(maxHeight, 240));
+    }
+    setPos({ top, left, width: listWidth });
     setOpen(true);
   }
 
@@ -203,7 +215,7 @@ export function Select({
                   >
                     <span style={{ flex: 1, textAlign: 'left' }}>{entry.option.label}</span>
                     {isSelected && (
-                      <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden>
+                      <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden style={{ flexShrink: 0 }}>
                         <path
                           d="M3 7.2 5.8 10 11 4.5"
                           fill="none"
