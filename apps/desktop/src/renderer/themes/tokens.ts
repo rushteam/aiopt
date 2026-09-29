@@ -43,12 +43,22 @@ export const TOKENS = {
   // — a hovered control moves AWAY from the page background in either mode.
   accentHover: { light: '#1f4dc2', dark: '#a8c0fb' },
   accentText: { light: '#ffffff', dark: '#0d1117' },
-  danger: { light: '#c8362f', dark: '#f06962' },
+  // Like `accent`, this is spent BOTH ways — as a fill under `accentText` (destructive
+  // confirm button) and as text itself (every role="alert" message, a destructive menu
+  // item's label) — so it carries the same 4.5:1-in-both-directions burden. The worst
+  // ground is `surfaceHover`, because a destructive menu item is body-colored text that
+  // turns `danger` and sits on the hover fill at the same time; the original #c8362f was
+  // 4.37:1 there, i.e. the label dropped below AA at the exact moment the user aimed at
+  // an irreversible action. Hue and saturation are unchanged, only the value came down.
+  danger: { light: '#c2342e', dark: '#f06962' },
   // Hover state for a filled danger control (same move-away logic as accentHover).
   dangerHover: { light: '#ad2b25', dark: '#f4837d' },
-  // Positive / healthy state — the running-proxy status dot. Slightly brighter in
-  // dark mode so the small dot reads against the darker surface.
-  success: { light: '#2ea043', dark: '#3fb950' },
+  // Positive / healthy state — the running-proxy status dot, a task's review/done dot.
+  // Those dots are state indicators, so §1.1's 3:1 applies the same way it does to the
+  // switch thumb. The dots sit inside rows that take `surfaceHover`, and the original
+  // #2ea043 was 2.83:1 on it — passing at rest, failing under the cursor. Slightly
+  // brighter in dark mode so the small dot reads against the darker surface.
+  success: { light: '#2b953f', dark: '#3fb950' },
   // Tracks `accent` — one emphasis hue, so a focused control and an active one agree.
   focusRing: { light: '#295fe3', dark: '#84a5f5' },
   // Modal scrim. A dark panel on a dark page needs a heavier scrim to separate
