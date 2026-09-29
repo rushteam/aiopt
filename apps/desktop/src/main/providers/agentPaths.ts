@@ -13,7 +13,12 @@
 
 import os from 'node:os';
 import path from 'node:path';
-import { AGENT_SPECS, type AgentId, type AgentSpec } from '../../shared/aiProviders';
+import {
+  AGENT_SPECS,
+  type AgentId,
+  type AgentSpec,
+  type BindableAgentId,
+} from '../../shared/aiProviders';
 
 /**
  * The home directory agent configs live under. `AIOPT_AGENT_HOME` (dev/test
@@ -23,11 +28,6 @@ export function agentHome(): string {
   const override = process.env.AIOPT_AGENT_HOME;
   return override && override.trim() !== '' ? override : os.homedir();
 }
-
-/** Agent ids whose spec declares a binding (its config files exist). */
-type BindableAgentId = {
-  [K in keyof typeof AGENT_SPECS]: (typeof AGENT_SPECS)[K]['binding'] extends null ? never : K;
-}[keyof typeof AGENT_SPECS];
 
 /**
  * The write allowlist, DERIVED from {@link AGENT_SPECS}: each bindable agent's `files`

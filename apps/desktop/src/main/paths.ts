@@ -32,6 +32,16 @@ export function providersFilePath(): string {
   return path.join(app.getPath('userData'), 'providers.json');
 }
 
+/** Named snapshots of all agent bindings. */
+export function bindingProfilesFilePath(): string {
+  return path.join(app.getPath('userData'), 'binding-profiles.json');
+}
+
+/** Last binding AiOpt wrote per agent (for config drift detection). */
+export function bindingAppliedFilePath(): string {
+  return path.join(app.getPath('userData'), 'binding-applied.json');
+}
+
 /** Append-only usage-statistics log (counts + identifiers only; no content/keys/tokens). */
 export function usageHistoryFilePath(): string {
   return path.join(app.getPath('userData'), 'usage-history.jsonl');

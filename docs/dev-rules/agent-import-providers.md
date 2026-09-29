@@ -14,30 +14,31 @@ into that file** so the agent stays signed in).
 | Stored where | What |
 | --- | --- |
 | Provider record | `credentialMode: 'agent_import'`, `agentImport: { agentId }` |
-| Agent files | Access / refresh tokens (Codex `~/.codex/auth.json`, Claude `~/.claude/.credentials.json`) |
+| Agent files | Access / refresh tokens (see supported sources) |
 | AiOpt secret store | **Nothing** for import providers |
 
-## Supported sources (initial)
+## Supported sources
 
-| Agent | File | Refresh write-back |
+| Agent | Source | Refresh write-back |
 | --- | --- | --- |
 | Codex | `.codex/auth.json` (`tokens`, not `auth_mode: apikey`) | Yes — OpenAI OAuth refresh |
-| Claude Code | `.claude/.credentials.json` (`claudeAiOauth`) | Yes — Claude OAuth refresh |
-| Copilot | (future) editor `apps.json` | Not implemented |
+| Claude Code | `.claude/.credentials.json` (`claudeAiOauth`), or macOS Keychain item `Claude Code-credentials` when the file is absent | Yes — writes `.credentials.json` when refreshing |
+| Copilot | `~/.config/github-copilot/apps.json` and/or Copilot CLI `~/.copilot/config.json` + macOS Keychain `copilot-cli` | Best-effort; upstream is GitHub OAuth |
 
-macOS Claude Keychain-only sign-ins are **not** imported yet (file path only).
+macOS Keychain reads use `security find-generic-password` main-side only; tokens never cross IPC.
 
 ## Outbound / proxy
 
 Same as OAuth providers: **always proxied** — upstream tokens never written into other
 agents' config files. `resolveUpstreamKey` calls the agent-import reader synchronously;
 near-expiry refresh runs on async test paths and token refresh helpers write back to the
-agent file only.
+agent file when applicable.
 
 ## Renderer surface
 
 - `providers:agent-import-scan` — metadata only (`AgentImportCandidate[]`).
 - `providers:agent-import-add` — creates a provider from {@link AGENT_IMPORT_PROVIDER_TEMPLATES}.
+- Provider cards show **signed in as** when import session is available (account label when known).
 - No reveal-key; no token in IPC.
 
 ## Review checklist
@@ -45,4 +46,4 @@ agent file only.
 1. Are reads limited to documented agent paths (never arbitrary renderer paths)?
 2. Did any token appear in logs, IPC, or Git?
 3. Does write-back preserve unrelated fields in the credential JSON (merge, not replace)?
-4. Is Copilot / keychain import explicitly gated before enabling?
+4. For new Keychain sources: macOS-only, no token in IPC, document the service name.

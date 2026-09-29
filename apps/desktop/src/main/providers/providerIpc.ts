@@ -205,13 +205,12 @@ export function registerProviderIpc(
   registry.register(IPC_CHANNELS.providersFetchModels, async (payload, meta) => {
     meta.assertTrustedSender();
     const obj = requireObject(payload);
-    const models = await manager.fetchModels({
+    return manager.fetchModels({
       apiFormats: requireFormats(obj.apiFormats, 'apiFormats'),
       baseUrl: requireString(obj.baseUrl, 'baseUrl'),
       apiKey: optionalString(obj.apiKey),
       providerId: optionalString(obj.providerId),
     });
-    return { models };
   });
 
   // Probe a base URL for the formats it serves. Same trust shape as fetch-models: the key
@@ -256,6 +255,40 @@ export function registerProviderIpc(
   registry.register(IPC_CHANNELS.providersRefreshProxyPort, (_payload, meta) => {
     meta.assertTrustedSender();
     return manager.refreshProxyPort();
+  });
+
+  registry.register(IPC_CHANNELS.providersBindingProfilesList, (_payload, meta) => {
+    meta.assertTrustedSender();
+    return { profiles: manager.listBindingProfiles() };
+  });
+
+  registry.register(IPC_CHANNELS.providersBindingProfileSave, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return { profiles: manager.saveBindingProfile(requireString(obj.name, 'name')) };
+  });
+
+  registry.register(IPC_CHANNELS.providersBindingProfileApply, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return manager.applyBindingProfile(requireString(obj.profileId, 'profileId'));
+  });
+
+  registry.register(IPC_CHANNELS.providersBindingProfileDelete, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return { profiles: manager.deleteBindingProfile(requireString(obj.profileId, 'profileId')) };
+  });
+
+  registry.register(IPC_CHANNELS.providersResyncBinding, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return manager.resyncBinding(requireEnum(obj.agentId, AGENT_IDS, 'agentId'));
+  });
+
+  registry.register(IPC_CHANNELS.providersRefreshModelsDev, async (_payload, meta) => {
+    meta.assertTrustedSender();
+    return manager.refreshModelsDevCatalog();
   });
 
   // Open one of an agent's config files in the OS file manager. The renderer sends only

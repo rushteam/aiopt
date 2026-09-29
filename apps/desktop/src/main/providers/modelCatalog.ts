@@ -9,6 +9,12 @@
 
 import type { ApiFormat, ProviderModel } from '../../shared/aiProviders';
 import { throwIpcError } from '../ipc/validate';
+import {
+  enrichProviderModels,
+  getModelsDevCacheStatus,
+  listModelsFromModelsDevFallback,
+  type ModelsDevCatalogSource,
+} from './modelsDev';
 
 /** The minimal Response shape we depend on — satisfied by both `fetch` and `net.fetch`. */
 export interface FetchLikeResponse {
@@ -184,10 +190,16 @@ const CATALOG_FETCHERS: Record<
  * is the most useful. An empty list is returned only when every dialect answered empty.
  * Throws INVALID_PARAMS when `apiFormats` is empty.
  */
-export async function fetchProviderModels(
+export interface FetchProviderModelsOutcome {
+  models: ProviderModel[];
+  catalogSource: ModelsDevCatalogSource;
+  modelsDev: { fetchedAt: number | null; stale: boolean };
+}
+
+export async function fetchProviderModelsWithMeta(
   input: FetchModelsInput,
   fetchImpl: FetchLike,
-): Promise<ProviderModel[]> {
+): Promise<FetchProviderModelsOutcome> {
   const kinds = [...new Set(input.apiFormats.map(catalogKind))];
   if (kinds.length === 0) throwIpcError('INVALID_PARAMS', 'at least one apiFormat is required');
   const call: CatalogInput = { baseUrl: input.baseUrl, apiKey: input.apiKey };
@@ -196,12 +208,41 @@ export async function fetchProviderModels(
   for (const kind of kinds) {
     try {
       const models = await CATALOG_FETCHERS[kind](call, fetchImpl);
-      if (models.length > 0) return models;
+      if (models.length > 0) {
+        const enriched = await enrichProviderModels(models, fetchImpl);
+        return {
+          models: enriched,
+          catalogSource: 'vendor',
+          modelsDev: getModelsDevCacheStatus(),
+        };
+      }
       sawEmpty = true;
     } catch (err) {
       if (firstError === undefined) firstError = err;
     }
   }
-  if (sawEmpty) return [];
+  const fallback = await listModelsFromModelsDevFallback(
+    { baseUrl: input.baseUrl, apiFormats: input.apiFormats },
+    fetchImpl,
+  );
+  if (fallback.length > 0) {
+    const enriched = await enrichProviderModels(fallback, fetchImpl);
+    return {
+      models: enriched,
+      catalogSource: 'models_dev',
+      modelsDev: getModelsDevCacheStatus(),
+    };
+  }
+  if (sawEmpty) {
+    return { models: [], catalogSource: 'vendor', modelsDev: getModelsDevCacheStatus() };
+  }
   throw firstError;
+}
+
+export async function fetchProviderModels(
+  input: FetchModelsInput,
+  fetchImpl: FetchLike,
+): Promise<ProviderModel[]> {
+  const outcome = await fetchProviderModelsWithMeta(input, fetchImpl);
+  return outcome.models;
 }

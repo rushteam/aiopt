@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
-import { copyProxyConfig } from '../../lib/providerStore';
+import { copyProxyConfig, resyncAgentBinding } from '../../lib/providerStore';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
 import { formatModelRef } from '../../../shared/modelRef';
 
@@ -31,6 +31,7 @@ export function AgentCard({
 }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
+  const [resyncBusy, setResyncBusy] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clear the pending "Copied" reset on unmount so it never fires on a gone component.
@@ -77,6 +78,11 @@ export function AgentCard({
             )
           : t('providers.agent.unbound')}
       </p>
+      {agent.bindingDrift && (
+        <p style={{ margin: 0, fontSize: fontSize.sm, color: token('danger') }}>
+          {t('providers.agent.drift')}
+        </p>
+      )}
 
       {/* Wraps rather than compressing: with the proxy action present, three labels
           exceed the card's inner width in EVERY locale (German is ~1.8x it), and a
@@ -118,6 +124,20 @@ export function AgentCard({
             style={actionStyle}
           >
             {copied ? t('providers.agent.copied') : t('providers.agent.copyProxyConfig')}
+          </button>
+        )}
+        {agent.bindingDrift && (
+          <button
+            type="button"
+            disabled={resyncBusy}
+            onClick={() => {
+              setResyncBusy(true);
+              void resyncAgentBinding(agent.id).finally(() => setResyncBusy(false));
+            }}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={actionStyle}
+          >
+            {resyncBusy ? t('providers.agent.resyncBusy') : t('providers.agent.resync')}
           </button>
         )}
       </div>

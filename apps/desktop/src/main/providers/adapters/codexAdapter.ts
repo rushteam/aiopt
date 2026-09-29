@@ -16,7 +16,10 @@ import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { readTomlScalar } from './bindingLive';
 import { tomlLine, tomlTableHeader } from '../tomlLite';
 
 const CODEX_DEF: AgentDef = getAgentDef('codex')!;
@@ -64,6 +67,23 @@ export function createCodexAdapter(): AgentAdapter {
       writeAgentConfigFile(authFile, `${JSON.stringify(auth, null, 2)}\n`);
 
       writeAgentConfigFile(resolveAgentFile(AGENT_FILES.codex.config), renderConfigToml(input));
+    },
+
+    readLiveBinding(_applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const configFile = resolveAgentFile(AGENT_FILES.codex.config);
+      let text = '';
+      try {
+        text = fs.readFileSync(configFile, 'utf8');
+      } catch {
+        return null;
+      }
+      const modelId = readTomlScalar(text, 'model') ?? '';
+      const baseUrl = readTomlScalar(text, 'base_url') ?? '';
+      const auth = readJsonObject(resolveAgentFile(AGENT_FILES.codex.auth));
+      const authTokenSet =
+        typeof auth[API_KEY_FIELD] === 'string' && auth[API_KEY_FIELD].trim() !== '';
+      if (baseUrl === '' && modelId === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

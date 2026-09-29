@@ -55,9 +55,10 @@ export interface AgentBindingSpec {
 
 /**
  * The single source of truth for one AI coding agent AiOpt knows about. Adding an
- * agent is one record here (+ its adapter + a line in adapters/registry.ts); the id
- * union, the runtime id list, display names, the binding registry, the skills map,
- * and the write allowlist are all DERIVED from this table below.
+ * agent is one {@link AGENT_SPECS} record + one adapter module + one entry in
+ * `BINDABLE_ADAPTER_FACTORIES` in `adapters/registry.ts` (see `docs/dev-rules/add-bindable-agent.md`).
+ * The id union, runtime id list, display names, binding registry, skills map, and
+ * write allowlist are all DERIVED from this table.
  */
 export interface AgentSpec {
   /** Canonical display name (the one label used everywhere). */
@@ -104,6 +105,12 @@ export const AGENT_SPECS = {
       installDir: '.codex',
       files: { auth: '.codex/auth.json', config: '.codex/config.toml' },
     },
+  },
+  // Copilot CLI / editor sign-in — import-only (no pool binding adapter yet).
+  copilot: {
+    name: 'GitHub Copilot',
+    skillsDir: null,
+    binding: null,
   },
   // Cursor can't bind a pool provider (no base-URL override), so `binding` is null; its
   // CLI still keeps skills under ~/.cursor/skills, so it joins the sync matrix.
@@ -190,6 +197,11 @@ export const AGENT_SPECS = {
 /** Every agent id AiOpt knows about — the keys of {@link AGENT_SPECS}. */
 export type AgentId = keyof typeof AGENT_SPECS;
 
+/** Agent ids that declare a non-null {@link AgentSpec.binding} (pool bindable). */
+export type BindableAgentId = {
+  [K in AgentId]: (typeof AGENT_SPECS)[K]['binding'] extends null ? never : K;
+}[AgentId];
+
 /** Every known API format (runtime allowlist for validation). */
 export const API_FORMATS: readonly ApiFormat[] = [
   'anthropic',
@@ -211,6 +223,13 @@ export function normalizeApiFormats(raw: readonly unknown[]): ApiFormat[] {
 
 /** Every known agent id (runtime allowlist for validation) — derived from {@link AGENT_SPECS}. */
 export const AGENT_IDS: readonly AgentId[] = Object.keys(AGENT_SPECS) as AgentId[];
+
+export function isBindableAgentId(id: AgentId): id is BindableAgentId {
+  return AGENT_SPECS[id].binding !== null;
+}
+
+/** Bindable agents in {@link AGENT_SPECS} table order. */
+export const BINDABLE_AGENT_IDS: readonly BindableAgentId[] = AGENT_IDS.filter(isBindableAgentId);
 
 /**
  * Canonical display name for every agent — derived from {@link AGENT_SPECS}, so the

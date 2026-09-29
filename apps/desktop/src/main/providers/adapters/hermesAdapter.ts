@@ -24,7 +24,10 @@ import { parseDocument, isSeq, isMap, type Document, type YAMLMap, type YAMLSeq 
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { aioptProviderSlug, readYamlConfigDocument } from './bindingLive';
 
 const HERMES_DEF: AgentDef = getAgentDef('hermes')!;
 
@@ -110,6 +113,38 @@ export function createHermesAdapter(): AgentAdapter {
       doc.setIn(['model', 'provider'], slug);
 
       writeAgentConfigFile(file, doc.toString());
+    },
+
+    readLiveBinding(applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const file = resolveAgentFile(AGENT_FILES.hermes.config);
+      const doc = readYamlConfigDocument(file);
+      const slugFromDoc = doc.getIn(['model', 'provider']);
+      const slug =
+        aioptProviderSlug(applied) ??
+        (typeof slugFromDoc === 'string' && slugFromDoc.startsWith('aiopt-') ? slugFromDoc : null);
+      if (!slug) return null;
+
+      const seq = doc.get('custom_providers');
+      if (!isSeq(seq)) return null;
+      let baseUrl = '';
+      let entryModel = '';
+      let authTokenSet = false;
+      for (const item of seq.items) {
+        if (isMap(item) && item.get('name') === slug) {
+          baseUrl = typeof item.get('base_url') === 'string' ? (item.get('base_url') as string) : '';
+          entryModel = typeof item.get('model') === 'string' ? (item.get('model') as string) : '';
+          authTokenSet =
+            typeof item.get('api_key') === 'string' && (item.get('api_key') as string).trim() !== '';
+          break;
+        }
+      }
+      if (baseUrl === '' && entryModel === '' && !authTokenSet) return null;
+
+      const modelId =
+        typeof doc.getIn(['model', 'default']) === 'string'
+          ? (doc.getIn(['model', 'default']) as string)
+          : entryModel;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

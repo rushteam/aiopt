@@ -20,10 +20,16 @@ import {
   readCodexAccessToken,
   readCodexAccessTokenSync,
 } from './codexSession';
+import {
+  copilotInstallDirExists,
+  copilotSessionSnapshot,
+  readCopilotAccessTokenSync,
+} from './copilotSession';
 
 export type AgentImportFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 function agentInstalled(agentId: AgentImportAgentId): boolean {
+  if (agentId === 'copilot') return copilotInstallDirExists();
   try {
     return fs.existsSync(agentConfigDir(agentId));
   } catch {
@@ -70,6 +76,16 @@ export function scanAgentImportCandidates(): AgentImportCandidate[] {
         reason: snap.available ? undefined : 'not_signed_in',
       };
     }
+    if (agentId === 'copilot') {
+      const snap = copilotSessionSnapshot();
+      return {
+        agentId,
+        agentName,
+        available: snap.available,
+        accountLabel: snap.accountLabel,
+        reason: snap.available ? undefined : 'not_signed_in',
+      };
+    }
     return { agentId, agentName, available: false, accountLabel: null, reason: 'unsupported' };
   });
 }
@@ -82,6 +98,7 @@ export function agentImportSessionAvailable(agentId: AgentImportAgentId): boolea
 export function readAgentImportAccessTokenSync(agentId: AgentImportAgentId): string | null {
   if (agentId === 'codex') return readCodexAccessTokenSync();
   if (agentId === 'claude') return readClaudeAccessTokenSync();
+  if (agentId === 'copilot') return readCopilotAccessTokenSync();
   return null;
 }
 
@@ -91,6 +108,7 @@ export async function readAgentImportAccessToken(
 ): Promise<string | null> {
   if (agentId === 'codex') return readCodexAccessToken(fetchImpl);
   if (agentId === 'claude') return readClaudeAccessToken(fetchImpl);
+  if (agentId === 'copilot') return readCopilotAccessTokenSync();
   return null;
 }
 

@@ -25,6 +25,16 @@ import {
   type ProviderStore,
 } from './providers/providerStore';
 import { createProviderManager, type ProviderManager } from './providers/providerManager';
+import {
+  createBindingAppliedStore,
+  createFileBindingAppliedPersistence,
+  type BindingAppliedStore,
+} from './providers/bindingAppliedStore';
+import {
+  createBindingProfileStore,
+  createFileBindingProfilePersistence,
+  type BindingProfileStore,
+} from './providers/bindingProfileStore';
 import { createOAuthManager, type OAuthManager } from './oauth/oauthManager';
 import { createAdapterRegistry } from './providers/adapters/registry';
 import { createTranslationProxy, type TranslationProxy } from './proxy/translationProxy';
@@ -45,6 +55,8 @@ import {
   appShortcutsFilePath,
   preferencesFilePath,
   providersFilePath,
+  bindingProfilesFilePath,
+  bindingAppliedFilePath,
   proxyStateFilePath,
   secretsDir,
   skillsLibraryPath,
@@ -161,6 +173,27 @@ function getProviderStore(): ProviderStore {
   return providerStore;
 }
 
+let bindingProfileStore: BindingProfileStore | null = null;
+let bindingAppliedStore: BindingAppliedStore | null = null;
+
+function getBindingProfileStore(): BindingProfileStore {
+  if (!bindingProfileStore) {
+    bindingProfileStore = createBindingProfileStore(
+      createFileBindingProfilePersistence(bindingProfilesFilePath()),
+    );
+  }
+  return bindingProfileStore;
+}
+
+function getBindingAppliedStore(): BindingAppliedStore {
+  if (!bindingAppliedStore) {
+    bindingAppliedStore = createBindingAppliedStore(
+      createFileBindingAppliedPersistence(bindingAppliedFilePath()),
+    );
+  }
+  return bindingAppliedStore;
+}
+
 export function getOAuthManager(): OAuthManager {
   if (!oauthManager) {
     oauthManager = createOAuthManager({
@@ -197,6 +230,8 @@ export function getProviderManager(): ProviderManager {
       // main-side, so the token never crosses IPC back to the renderer.
       (text) => clipboard.writeText(text),
       getOAuthManager(),
+      getBindingProfileStore(),
+      getBindingAppliedStore(),
     );
   }
   return providerManager;

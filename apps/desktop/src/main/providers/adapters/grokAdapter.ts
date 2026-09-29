@@ -13,7 +13,10 @@ import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { escapeRegExp, grokModelTableHeader, readTomlTable } from './bindingLive';
 import { tomlLine, tomlString } from '../tomlLite';
 
 const GROK_DEF: AgentDef = getAgentDef('grok')!;
@@ -53,6 +56,25 @@ export function createGrokAdapter(): AgentAdapter {
 
     writeLive(input: WriteLiveInput) {
       writeAgentConfigFile(resolveAgentFile(AGENT_FILES.grok.config), renderConfigToml(input));
+    },
+
+    readLiveBinding(_applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const configFile = resolveAgentFile(AGENT_FILES.grok.config);
+      let text = '';
+      try {
+        text = fs.readFileSync(configFile, 'utf8');
+      } catch {
+        return null;
+      }
+      const modelsTable = readTomlTable(text, /^\s*\[models\]\s*$/m);
+      const modelId = modelsTable.default ?? '';
+      if (modelId === '') return null;
+      const header = grokModelTableHeader(modelId);
+      const profile = readTomlTable(text, new RegExp(`^\\s*${escapeRegExp(header)}\\s*$`, 'm'));
+      const baseUrl = profile.base_url ?? '';
+      const authTokenSet = typeof profile.api_key === 'string' && profile.api_key.trim() !== '';
+      if (baseUrl === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

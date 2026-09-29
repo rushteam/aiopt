@@ -10,7 +10,9 @@
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { agentConfigDir, claudeSettingsPath } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
 import fs from 'node:fs';
 
 const CLAUDE_DEF: AgentDef = getAgentDef('claude')!;
@@ -54,6 +56,20 @@ export function createClaudeAdapter(): AgentAdapter {
 
       const next = { ...existing, env };
       writeAgentConfigFile(file, `${JSON.stringify(next, null, 2)}\n`);
+    },
+
+    readLiveBinding(_applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const doc = readJsonObject(claudeSettingsPath());
+      const env =
+        doc.env && typeof doc.env === 'object' && !Array.isArray(doc.env)
+          ? (doc.env as Record<string, unknown>)
+          : {};
+      const baseUrl = typeof env[BASE_URL_KEY] === 'string' ? env[BASE_URL_KEY] : '';
+      const modelId = typeof env[MODEL_KEY] === 'string' ? env[MODEL_KEY] : '';
+      const authTokenSet =
+        typeof env[AUTH_TOKEN_KEY] === 'string' && env[AUTH_TOKEN_KEY].trim() !== '';
+      if (baseUrl === '' && modelId === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

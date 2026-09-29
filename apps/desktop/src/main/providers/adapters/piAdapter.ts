@@ -14,7 +14,10 @@ import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { aioptProviderSlug } from './bindingLive';
 
 const PI_DEF: AgentDef = getAgentDef('pi')!;
 
@@ -82,6 +85,39 @@ export function createPiAdapter(): AgentAdapter {
       const settingsFile = resolveAgentFile(AGENT_FILES.pi.settings);
       const settings = readJsonObject(settingsFile);
       writeJson(settingsFile, { ...settings, defaultProvider: slug, defaultModel: modelId });
+    },
+
+    readLiveBinding(applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const settings = readJsonObject(resolveAgentFile(AGENT_FILES.pi.settings));
+      const defaultProvider =
+        typeof settings.defaultProvider === 'string' ? settings.defaultProvider : '';
+      const modelId = typeof settings.defaultModel === 'string' ? settings.defaultModel : '';
+      const slug =
+        aioptProviderSlug(applied) ??
+        (defaultProvider.startsWith('aiopt-') ? defaultProvider : null);
+      if (!slug) return null;
+
+      const modelsDoc = readJsonObject(resolveAgentFile(AGENT_FILES.pi.models));
+      const providers = objectAt(modelsDoc, 'providers');
+      const entry = providers[slug];
+      const entryObj =
+        entry && typeof entry === 'object' && !Array.isArray(entry)
+          ? (entry as Record<string, unknown>)
+          : null;
+      const baseUrl = typeof entryObj?.baseUrl === 'string' ? entryObj.baseUrl : '';
+
+      const auth = readJsonObject(resolveAgentFile(AGENT_FILES.pi.auth));
+      const authEntry = auth[slug];
+      const authEntryObj =
+        authEntry && typeof authEntry === 'object' && !Array.isArray(authEntry)
+          ? (authEntry as Record<string, unknown>)
+          : null;
+      const authTokenSet = Boolean(
+        typeof authEntryObj?.key === 'string' && authEntryObj.key.trim() !== '',
+      );
+
+      if (baseUrl === '' && modelId === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

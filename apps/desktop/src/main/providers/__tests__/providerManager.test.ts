@@ -41,6 +41,7 @@ function fakeAdapter(id: AgentId, installed = true) {
     restoreDefault: () => {
       restores += 1;
     },
+    readLiveBinding: () => null,
   };
   return { adapter, calls, restoreCount: () => restores };
 }
@@ -735,7 +736,7 @@ describe('provider manager — fetchModels (key resolution)', () => {
 
     const catalog = calls.find((c) => c.url.includes('api.example.com'));
     expect(catalog!.headers.authorization).toBe('Bearer typed-key');
-    expect(models).toEqual([{ id: 'm-a' }]);
+    expect(models.models).toEqual([{ id: 'm-a' }]);
   });
 
   it('falls back to the stored key when the field is blank (edit mode)', async () => {

@@ -227,6 +227,24 @@ const api = {
       agentId: import('../shared/agentImport').AgentImportAgentId,
     ): Promise<ProvidersSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersAgentImportAdd, { agentId }),
+    bindingProfilesList: (): Promise<
+      import('../shared/ipc-channels').ProviderBindingProfilesListResult
+    > => ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfilesList),
+    bindingProfileSave: (
+      name: string,
+    ): Promise<import('../shared/ipc-channels').ProviderBindingProfilesListResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileSave, { name }),
+    bindingProfileApply: (profileId: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileApply, { profileId }),
+    bindingProfileDelete: (
+      profileId: string,
+    ): Promise<import('../shared/ipc-channels').ProviderBindingProfilesListResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileDelete, { profileId }),
+    resyncBinding: (agentId: AgentId): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersResyncBinding, { agentId }),
+    refreshModelsDev: (): Promise<
+      import('../shared/ipc-channels').ProviderRefreshModelsDevResult
+    > => ipcRenderer.invoke(IPC_CHANNELS.providersRefreshModelsDev),
     /**
      * GATED: fetch a provider's stored key in PLAINTEXT for viewing. Unlike every
      * sibling here, this returns the secret (see the channel note). Callers must hold

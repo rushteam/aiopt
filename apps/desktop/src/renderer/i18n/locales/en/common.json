@@ -206,6 +206,11 @@
       "loadModels": "Load models",
       "loadingModels": "Loading…",
       "loadModelsEmpty": "The provider returned no models.",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "Tick every format this endpoint serves. A binding uses the one the agent speaks natively when it can.",
       "detectFormats": "Detect",
       "detecting": "Detecting…",
@@ -233,8 +238,19 @@
         "sensitive": "Removing these changes what comes back: without response_format, guaranteed JSON becomes free text; without thinking or reasoning, the model is quietly downgraded. Use only when the upstream rejects them outright."
       }
     },
+    "profiles": {
+      "heading": "Binding profiles",
+      "hint": "Save every agent's current binding under a name and switch the whole setup in one step.",
+      "namePlaceholder": "Profile name",
+      "save": "Save current bindings",
+      "empty": "No profiles yet.",
+      "boundCount": "{{count}} agents bound",
+      "apply": "Apply",
+      "delete": "Delete"
+    },
     "card": {
       "models": "Models",
+      "signedInAs": "Signed in as {{account}}",
       "keySet": "Key stored",
       "keyMissing": "No key",
       "oauthConnected": "Signed in · {{account}}",
@@ -263,6 +279,9 @@
     "agent": {
       "notInstalled": "Not detected",
       "unbound": "Not configured",
+      "drift": "Config on disk no longer matches this binding.",
+      "resync": "Re-sync config",
+      "resyncBusy": "Syncing…",
       "configure": "Configure",
       "change": "Change",
       "viewConfig": "View config",
