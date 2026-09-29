@@ -6,7 +6,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
@@ -90,7 +90,7 @@ export function AccountSection() {
           {...hoverBackground(token('accent'), token('accentHover'))}
           style={{
             ...buttonStyle('accent'),
-            opacity: busy || username.trim() === '' || password.trim() === '' ? 0.5 : 1,
+            opacity: busy || username.trim() === '' || password.trim() === '' ? disabledOpacity : 1,
           }}
         >
           {busy ? t('account.loggingIn') : t('account.logIn')}

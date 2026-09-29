@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type CSSProperties } from 'react';
-import { elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { controlInputStyle } from './controlStyles';
 
@@ -89,7 +89,7 @@ export function PromptDialog({
             onClick={onCancel}
             disabled={busy}
             {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{ ...ghostStyle, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1 }}
+            style={{ ...ghostStyle, cursor: busy ? 'default' : 'pointer', opacity: busy ? disabledOpacity : 1 }}
           >
             {cancelLabel}
           </button>
@@ -101,7 +101,7 @@ export function PromptDialog({
             style={{
               ...accentStyle,
               cursor: busy ? 'default' : 'pointer',
-              opacity: busy ? 0.5 : 1,
+              opacity: busy ? disabledOpacity : 1,
             }}
           >
             {confirmLabel}

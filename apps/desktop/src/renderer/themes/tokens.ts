@@ -136,6 +136,24 @@ export const controlPaddingX = {
   md: 12,
 } as const;
 
+/**
+ * How far a control dims when the user cannot act on it right now — disabled,
+ * busy, at capacity, or still waiting on required input. ONE value, because
+ * there is one meaning. The app had 0.4, 0.45, 0.5 and 0.55 all saying "not
+ * available", and `Select` spent two of them in a single file: 0.55 on the
+ * trigger, 0.45 on the options inside it. Nothing distinguished those numbers
+ * except who typed them.
+ *
+ * Mode-invariant like the scales above — a dimmed control is dimmed by the same
+ * fraction on either ground — so it is a plain number, not a light/dark pair.
+ *
+ * Dimming pushes text under the AA floor on purpose; WCAG 1.4.3 exempts inactive
+ * controls. That exemption only holds while the state has a non-visual channel
+ * too, so pair this with the real `disabled` attribute (or `aria-disabled`) and
+ * `cursor: 'default'` — never let opacity be the only thing saying "you can't".
+ */
+export const disabledOpacity = 0.5;
+
 // ─── Elevation (drop shadows) ─────────────────────────────────────────────────
 // The app's depth language. UNLIKE the scales above, a shadow is mode-aware — one
 // tuned for a light page vanishes on a dark one, so dark is heavier — so it rides

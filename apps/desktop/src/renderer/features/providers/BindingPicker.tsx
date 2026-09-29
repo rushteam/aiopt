@@ -19,7 +19,7 @@
 // detail pane spells out the consequence and the Apply button turns danger-colored.
 
 import { useMemo, useState } from 'react';
-import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { AgentSummary, ProviderSummary } from '../../../shared/ipc-channels';
@@ -479,7 +479,7 @@ export function BindingPicker({
               ...applyStyle,
               border: `1px solid ${isRestoreSelected ? token('danger') : token('accent')}`,
               background: isRestoreSelected ? token('danger') : token('accent'),
-              opacity: canApply ? 1 : 0.5,
+              opacity: canApply ? 1 : disabledOpacity,
               cursor: canApply ? 'pointer' : 'default',
             }}
           >
@@ -573,7 +573,7 @@ function providerRowShellStyle(selected: boolean, selectable: boolean) {
     borderRadius: radius.md,
     border: `1px solid ${selected ? token('accent') : 'transparent'}`,
     background: selected ? token('surfaceHover') : 'transparent',
-    opacity: selectable ? 1 : 0.5,
+    opacity: selectable ? 1 : disabledOpacity,
   } as const;
 }
 

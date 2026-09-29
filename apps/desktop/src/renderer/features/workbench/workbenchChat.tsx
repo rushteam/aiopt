@@ -1,7 +1,7 @@
 // Shared Workbench chat shell — coordinator and task workers use the same composer + bubbles.
 
 import { useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 
@@ -142,7 +142,7 @@ export function WorkbenchChatComposer({
           resize: 'none',
           fontFamily: 'inherit',
           fontSize: fontSize.base,
-          opacity: disabled ? 0.5 : 1,
+          opacity: disabled ? disabledOpacity : 1,
         }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
@@ -165,7 +165,7 @@ export function WorkbenchChatComposer({
           onClick={onSend}
           disabled={disabled || draft.trim() === ''}
           {...hoverBackground(token('accent'), token('accentHover'))}
-          style={{ ...smallAccentStyle, opacity: disabled || draft.trim() === '' ? 0.5 : 1 }}
+          style={{ ...smallAccentStyle, opacity: disabled || draft.trim() === '' ? disabledOpacity : 1 }}
         >
           {sendLabel}
         </button>

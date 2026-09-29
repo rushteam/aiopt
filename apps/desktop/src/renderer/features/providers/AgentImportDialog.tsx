@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import type { AgentImportCandidate } from '../../../shared/agentImport';
@@ -70,7 +70,7 @@ export function AgentImportDialog({ onClose }: { onClose: () => void }) {
               {...hoverBackground('transparent', token('surfaceHover'))}
               style={{
                 ...ghostBtn,
-                opacity: rescanDisabled ? 0.45 : 1,
+                opacity: rescanDisabled ? disabledOpacity : 1,
                 cursor: rescanDisabled ? 'default' : 'pointer',
               }}
             >
@@ -170,7 +170,7 @@ function importBtnStyle(available: boolean, busy: boolean): CSSProperties {
     background: 'transparent',
     color: token('textMuted'),
     cursor: 'default',
-    opacity: 0.5,
+    opacity: disabledOpacity,
   };
 }
 
