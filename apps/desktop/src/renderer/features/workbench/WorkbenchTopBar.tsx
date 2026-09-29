@@ -106,16 +106,17 @@ export function WorkbenchTopBar({
   };
 
   const taskFolder = selectedTask ? (wb.folders.find((f) => f.id === selectedTask.folderId) ?? null) : null;
-  const taskWorkspace = selectedTask
-    ? selectedTask.worktreeDisplay ?? taskFolder?.name ?? t('workbench.tasks.noFolder')
-    : null;
-  const workspaceDisplay =
-    taskWorkspace ??
-    (wb.folders.length === 0
+  // Folder chips already show each workspace name — only add a "active workspace" line when it
+  // carries extra context (no folders yet, an isolated worktree path, or which folder a task uses
+  // when several are registered).
+  const workspaceDetail: string | null =
+    wb.folders.length === 0
       ? t('workbench.tasks.noFolder')
-      : wb.folders.length === 1
-        ? wb.folders[0]!.name
-        : wb.folders.map((f) => f.name).join(', '));
+      : selectedTask?.worktreeDisplay?.trim()
+        ? selectedTask.worktreeDisplay
+        : selectedTask && wb.folders.length > 1 && taskFolder
+          ? taskFolder.name
+          : null;
 
   const envPanel =
     envOpen &&
@@ -292,19 +293,21 @@ export function WorkbenchTopBar({
             </span>
           </>
         )}
-        <span
-          title={taskFolder?.displayPath ?? selectedTask?.worktreeDisplay ?? t('workbench.folders.hint')}
-          style={{
-            flexShrink: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {t('workbench.tasks.activeWorkspace')}:{' '}
-          <span style={{ color: token('text') }}>{workspaceDisplay}</span>
-        </span>
+        {workspaceDetail !== null && (
+          <span
+            title={taskFolder?.displayPath ?? selectedTask?.worktreeDisplay ?? t('workbench.folders.hint')}
+            style={{
+              flexShrink: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t('workbench.tasks.activeWorkspace')}:{' '}
+            <span style={{ color: token('text') }}>{workspaceDetail}</span>
+          </span>
+        )}
         <FolderChips folders={wb.folders} t={t} run={run} />
         <span aria-hidden style={{ color: token('borderStrong'), flexShrink: 0 }}>
           ·
