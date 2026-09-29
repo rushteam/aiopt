@@ -15,7 +15,10 @@ import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { aioptProviderSlug } from './bindingLive';
 
 const OPENCODE_DEF: AgentDef = getAgentDef('opencode')!;
 
@@ -81,6 +84,27 @@ export function createOpenCodeAdapter(): AgentAdapter {
         model: `${slug}/${modelId}`,
       };
       writeAgentConfigFile(file, `${JSON.stringify(next, null, 2)}\n`);
+    },
+
+    readLiveBinding(applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const config = readJsonObject(resolveAgentFile(AGENT_FILES.opencode.config));
+      const modelPtr = typeof config.model === 'string' ? config.model : '';
+      const slash = modelPtr.indexOf('/');
+      const slugFromPtr = slash > 0 ? modelPtr.slice(0, slash) : '';
+      const modelFromPtr = slash > 0 ? modelPtr.slice(slash + 1) : '';
+      const slug =
+        aioptProviderSlug(applied) ?? (slugFromPtr.startsWith('aiopt-') ? slugFromPtr : null);
+      if (!slug) return null;
+
+      const providers = objectAt(config, 'provider');
+      const entry = providers[slug];
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+      const options = objectAt(entry as Record<string, unknown>, 'options');
+      const baseUrl = typeof options.baseURL === 'string' ? options.baseURL : '';
+      const authTokenSet = typeof options.apiKey === 'string' && options.apiKey.trim() !== '';
+      const modelId = modelFromPtr || applied.modelId;
+      if (baseUrl === '' && modelId === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

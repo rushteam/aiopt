@@ -188,7 +188,15 @@ export function ProviderCard({
                     : t('providers.card.oauthConnect')}
               </button>
             )}
-            {isAgentImport && (
+            {isAgentImport && provider.hasKey && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.card.signedInAs').replace(
+                  '{{account}}',
+                  provider.oauthAccountLabel?.trim() || t('providers.card.oauthAccountUnknown'),
+                )}
+              </span>
+            )}
+            {isAgentImport && !provider.hasKey && (
               <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                 {t('providers.card.agentImportHint')}
               </span>

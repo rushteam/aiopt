@@ -202,6 +202,11 @@
       "loadModels": "Cargar modelos",
       "loadingModels": "Cargando…",
       "loadModelsEmpty": "El proveedor no devolvió ningún modelo.",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "Marca todos los formatos que sirve este endpoint. Una vinculación usa el que el Agent habla de forma nativa cuando puede.",
       "detectFormats": "Detectar",
       "detecting": "Detectando…",
@@ -229,8 +234,19 @@
         "sensitive": "Quitarlos cambia lo que se recibe: sin response_format, un JSON garantizado pasa a ser texto libre; sin thinking ni reasoning, el modelo se degrada en silencio. Úsalo solo si el upstream los rechaza."
       }
     },
+    "profiles": {
+      "heading": "Perfiles de enlace",
+      "hint": "Guarda los enlaces actuales de todos los agentes y cambia el conjunto de un paso.",
+      "namePlaceholder": "Nombre del perfil",
+      "save": "Guardar enlaces actuales",
+      "empty": "Aún no hay perfiles.",
+      "boundCount": "{{count}} agentes enlazados",
+      "apply": "Aplicar",
+      "delete": "Eliminar"
+    },
     "card": {
       "models": "Modelos",
+      "signedInAs": "Sesión iniciada como {{account}}",
       "keySet": "Clave guardada",
       "keyMissing": "Sin clave",
       "oauthConnected": "Sesión iniciada · {{account}}",
@@ -259,6 +275,9 @@
     "agent": {
       "notInstalled": "No detectado",
       "unbound": "Sin configurar",
+      "drift": "La configuración en disco ya no coincide con este enlace.",
+      "resync": "Resincronizar config",
+      "resyncBusy": "Sincronizando…",
       "configure": "Configurar",
       "change": "Cambiar",
       "viewConfig": "Ver configuración",

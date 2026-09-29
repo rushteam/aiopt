@@ -16,7 +16,10 @@ import fs from 'node:fs';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { readEnvFileVars } from './bindingLive';
 
 const GEMINI_DEF: AgentDef = getAgentDef('gemini')!;
 
@@ -62,6 +65,15 @@ export function createGeminiAdapter(): AgentAdapter {
         security: { ...security, auth: { ...auth, selectedType: 'gemini-api-key' } },
       };
       writeAgentConfigFile(settingsFile, `${JSON.stringify(next, null, 2)}\n`);
+    },
+
+    readLiveBinding(_applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const env = readEnvFileVars(resolveAgentFile(AGENT_FILES.gemini.env));
+      const baseUrl = env.GOOGLE_GEMINI_BASE_URL ?? '';
+      const modelId = env.GEMINI_MODEL ?? '';
+      const authTokenSet = typeof env.GEMINI_API_KEY === 'string' && env.GEMINI_API_KEY.trim() !== '';
+      if (baseUrl === '' && modelId === '' && !authTokenSet) return null;
+      return { baseUrl, modelId, authTokenSet };
     },
 
     restoreDefault() {

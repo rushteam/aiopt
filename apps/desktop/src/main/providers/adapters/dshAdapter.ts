@@ -28,7 +28,10 @@ import { parseDocument, isMap, type Document, type YAMLMap } from 'yaml';
 import type { AgentAdapter, WriteLiveInput } from './agentAdapter';
 import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import type { LiveBindingSnapshot } from './bindingLive';
+import { aioptProviderSlug, dshCredentialRefName, readYamlConfigDocument } from './bindingLive';
 
 const DSH_DEF: AgentDef = getAgentDef('dsh')!;
 
@@ -117,6 +120,38 @@ export function createDshAdapter(): AgentAdapter {
       if (apiKey) refs.set(credRef, apiKey);
       else refs.delete(credRef);
       writeAgentConfigFile(credFile, creds.toString(), CREDENTIALS_MODE);
+    },
+
+    readLiveBinding(applied: AppliedBindingRecord): LiveBindingSnapshot | null {
+      const slug = aioptProviderSlug(applied);
+      if (!slug || !applied.providerId) return null;
+
+      const settings = readYamlConfigDocument(resolveAgentFile(AGENT_FILES.dsh.settings));
+      const entry = settings.getIn(['llm-pi-ai', 'providers', slug]);
+      if (!isMap(entry)) return null;
+
+      const baseUrl = typeof entry.get('baseURL') === 'string' ? (entry.get('baseURL') as string) : '';
+      const credRef = typeof entry.get('apiKeyEnv') === 'string' ? (entry.get('apiKeyEnv') as string) : '';
+      const expectedRef = dshCredentialRefName(applied.providerId);
+
+      let secretPresent = false;
+      if (credRef !== '') {
+        const creds = readYamlConfigDocument(resolveAgentFile(AGENT_FILES.dsh.credentials));
+        const refVal = creds.getIn(['refs', credRef]);
+        secretPresent = typeof refVal === 'string' && refVal.trim() !== '';
+      }
+
+      if (baseUrl === '' && !secretPresent && credRef === '') return null;
+
+      const liveAuth = applied.authTokenSet && credRef === expectedRef && secretPresent;
+      const liveNoAuth = !applied.authTokenSet && credRef === '';
+
+      return {
+        baseUrl,
+        modelId: applied.modelId,
+        authTokenSet: applied.authTokenSet ? liveAuth : liveNoAuth,
+        compareModel: false,
+      };
     },
 
     restoreDefault() {

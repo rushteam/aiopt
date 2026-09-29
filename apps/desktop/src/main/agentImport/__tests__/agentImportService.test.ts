@@ -22,7 +22,7 @@ describe('scanAgentImportCandidates', () => {
 
   it('lists codex and claude with not_installed when agent dirs are absent', () => {
     const out = scanAgentImportCandidates();
-    expect(out.map((c) => c.agentId)).toEqual(['codex', 'claude']);
+    expect(out.map((c) => c.agentId)).toEqual(['codex', 'claude', 'copilot']);
     expect(out.every((c) => c.available === false)).toBe(true);
     expect(out.find((c) => c.agentId === 'codex')?.reason).toBe('not_installed');
   });

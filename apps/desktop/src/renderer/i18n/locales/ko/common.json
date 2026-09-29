@@ -202,6 +202,11 @@
       "loadModels": "모델 불러오기",
       "loadingModels": "불러오는 중…",
       "loadModelsEmpty": "공급자가 반환한 모델이 없습니다.",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "이 엔드포인트가 제공하는 형식을 모두 선택하세요. 바인딩 시 Agent가 기본으로 말하는 형식을 우선 사용합니다.",
       "detectFormats": "자동 감지",
       "detecting": "감지 중…",
@@ -229,8 +234,19 @@
         "sensitive": "제거하면 돌아오는 내용이 바뀝니다. response_format이 없으면 보장된 JSON이 자유 텍스트가 되고, thinking이나 reasoning이 없으면 모델이 조용히 downgrade됩니다. 업스트림이 명확히 거부할 때만 사용하세요."
       }
     },
+    "profiles": {
+      "heading": "바인딩 프로필",
+      "hint": "모든 Agent의 현재 바인딩을 이름으로 저장하고 한 번에 전환합니다.",
+      "namePlaceholder": "프로필 이름",
+      "save": "현재 바인딩 저장",
+      "empty": "저장된 프로필이 없습니다.",
+      "boundCount": "{{count}}개 Agent 바인딩",
+      "apply": "적용",
+      "delete": "삭제"
+    },
     "card": {
       "models": "모델",
+      "signedInAs": "로그인 · {{account}}",
       "keySet": "키 저장됨",
       "keyMissing": "키 없음",
       "oauthConnected": "로그인됨 · {{account}}",
@@ -259,6 +275,9 @@
     "agent": {
       "notInstalled": "감지되지 않음",
       "unbound": "구성 안 됨",
+      "drift": "디스크 설정이 이 바인딩과 더 이상 일치하지 않습니다.",
+      "resync": "설정 다시 동기화",
+      "resyncBusy": "동기화 중…",
       "configure": "구성",
       "change": "변경",
       "viewConfig": "설정 보기",

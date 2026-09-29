@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { agentHome } from '../providers/agentPaths';
 import { writeAgentConfigFile } from '../providers/fsutil';
+import { readClaudeCredentialsFromKeychain } from './claudeKeychain';
 
 const CLAUDE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
 const CLAUDE_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
@@ -23,6 +24,16 @@ function readRaw(): Record<string, unknown> | null {
   try {
     const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
     const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // fall through — try macOS keychain below
+  }
+  const keychainJson = readClaudeCredentialsFromKeychain();
+  if (!keychainJson) return null;
+  try {
+    const parsed: unknown = JSON.parse(keychainJson);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
     }
@@ -58,7 +69,11 @@ export function claudeSessionSnapshot(): ClaudeSessionSnapshot {
   if (!raw) return { available: false, accountLabel: null };
   const oauth = readOAuth(raw);
   if (!oauth) return { available: false, accountLabel: null };
-  return { available: true, accountLabel: 'Claude Code' };
+  const email =
+    typeof (raw as Record<string, unknown>).email === 'string'
+      ? ((raw as Record<string, unknown>).email as string)
+      : null;
+  return { available: true, accountLabel: email?.trim() || 'Claude Code' };
 }
 
 export function readClaudeAccessTokenSync(): string | null {
@@ -116,8 +131,9 @@ export async function readClaudeAccessToken(
 
 export function claudeCredentialsFileExists(): boolean {
   try {
-    return fs.existsSync(credentialsPath());
+    if (fs.existsSync(credentialsPath())) return true;
   } catch {
-    return false;
+    return readClaudeCredentialsFromKeychain() !== null;
   }
+  return readClaudeCredentialsFromKeychain() !== null;
 }

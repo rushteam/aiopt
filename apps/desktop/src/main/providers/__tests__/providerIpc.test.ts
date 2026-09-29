@@ -50,6 +50,7 @@ function fakeClaudeAdapter() {
     detectInstalled: () => true,
     writeLive: (input) => void written.push(input),
     restoreDefault: () => void (restores += 1),
+    readLiveBinding: () => null,
   };
   return { adapter, written, restoreCount: () => restores };
 }

@@ -202,6 +202,11 @@
       "loadModels": "Modelle laden",
       "loadingModels": "Wird geladen…",
       "loadModelsEmpty": "Der Anbieter hat keine Modelle zurückgegeben.",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "Alle Formate ankreuzen, die dieser Endpunkt bereitstellt. Eine Bindung nutzt nach Möglichkeit das Format, das der Agent nativ spricht.",
       "detectFormats": "Erkennen",
       "detecting": "Erkennen…",
@@ -229,8 +234,19 @@
         "sensitive": "Ihr Entfernen ändert, was zurückkommt: ohne response_format wird garantiertes JSON zu freiem Text, ohne thinking oder reasoning wird das Modell still herabgestuft. Nur verwenden, wenn der Upstream sie ausdrücklich ablehnt."
       }
     },
+    "profiles": {
+      "heading": "Binding-Profile",
+      "hint": "Alle Agent-Bindungen unter einem Namen speichern und das Setup in einem Schritt wechseln.",
+      "namePlaceholder": "Profilname",
+      "save": "Aktuelle Bindungen speichern",
+      "empty": "Noch keine Profile.",
+      "boundCount": "{{count}} Agenten gebunden",
+      "apply": "Anwenden",
+      "delete": "Löschen"
+    },
     "card": {
       "models": "Modelle",
+      "signedInAs": "Angemeldet als {{account}}",
       "keySet": "Schlüssel gespeichert",
       "keyMissing": "Kein Schlüssel",
       "oauthConnected": "Angemeldet · {{account}}",
@@ -259,6 +275,9 @@
     "agent": {
       "notInstalled": "Nicht erkannt",
       "unbound": "Nicht konfiguriert",
+      "drift": "Die Konfiguration auf der Festplatte passt nicht mehr zur Bindung.",
+      "resync": "Konfiguration neu syncen",
+      "resyncBusy": "Synchronisiere…",
       "configure": "Konfigurieren",
       "change": "Ändern",
       "viewConfig": "Konfiguration ansehen",

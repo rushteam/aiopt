@@ -202,6 +202,11 @@
       "loadModels": "Charger les modèles",
       "loadingModels": "Chargement…",
       "loadModelsEmpty": "Le fournisseur n’a renvoyé aucun modèle.",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "Cochez tous les formats servis par ce point de terminaison. Une liaison utilise celui que l’Agent parle nativement quand c’est possible.",
       "detectFormats": "Détecter",
       "detecting": "Détection…",
@@ -229,8 +234,19 @@
         "sensitive": "Les retirer change ce qui revient : sans response_format, un JSON garanti devient du texte libre ; sans thinking ni reasoning, le modèle est discrètement dégradé. À utiliser uniquement si le service amont les refuse."
       }
     },
+    "profiles": {
+      "heading": "Profils de liaison",
+      "hint": "Enregistrez les liaisons actuelles de tous les agents et basculez en une action.",
+      "namePlaceholder": "Nom du profil",
+      "save": "Enregistrer les liaisons actuelles",
+      "empty": "Aucun profil pour l'instant.",
+      "boundCount": "{{count}} agents liés",
+      "apply": "Appliquer",
+      "delete": "Supprimer"
+    },
     "card": {
       "models": "Modèles",
+      "signedInAs": "Connecté en tant que {{account}}",
       "keySet": "Clé enregistrée",
       "keyMissing": "Aucune clé",
       "oauthConnected": "Connecté · {{account}}",
@@ -259,6 +275,9 @@
     "agent": {
       "notInstalled": "Non détecté",
       "unbound": "Non configuré",
+      "drift": "La configuration sur disque ne correspond plus à cette liaison.",
+      "resync": "Resynchroniser la config",
+      "resyncBusy": "Synchronisation…",
       "configure": "Configurer",
       "change": "Modifier",
       "viewConfig": "Voir la configuration",

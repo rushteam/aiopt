@@ -1,10 +1,9 @@
-// The set of agent adapters AiOpt ships, keyed by agent id.
+// Bindable-agent adapters — one factory per {@link BindableAgentId}.
 //
-// The bindable agents are wired here (Claude, Codex, dsh, Gemini, Grok, Hermes,
-// OpenCode, pi). An agent with no adapter would simply be unbindable — the manager
-// treats a missing adapter as an unsupported capability.
+// TypeScript enforces exhaustiveness: add `binding` in AGENT_SPECS → you must add a
+// matching key here (see `docs/dev-rules/add-bindable-agent.md`).
 
-import type { AgentId } from '../../../shared/aiProviders';
+import type { AgentId, BindableAgentId } from '../../../shared/aiProviders';
 import type { AgentAdapter } from './agentAdapter';
 import { createClaudeAdapter } from './claudeAdapter';
 import { createCodexAdapter } from './codexAdapter';
@@ -15,16 +14,30 @@ import { createHermesAdapter } from './hermesAdapter';
 import { createOpenCodeAdapter } from './opencodeAdapter';
 import { createPiAdapter } from './piAdapter';
 
+/** The only registration table for bindable agents — keys must cover every {@link BindableAgentId}. */
+export const BINDABLE_ADAPTER_FACTORIES = {
+  claude: createClaudeAdapter,
+  codex: createCodexAdapter,
+  dsh: createDshAdapter,
+  gemini: createGeminiAdapter,
+  grok: createGrokAdapter,
+  hermes: createHermesAdapter,
+  opencode: createOpenCodeAdapter,
+  pi: createPiAdapter,
+} satisfies { [K in BindableAgentId]: () => AgentAdapter };
+
 export function createAdapterRegistry(): Map<AgentId, AgentAdapter> {
-  const adapters: AgentAdapter[] = [
-    createClaudeAdapter(),
-    createCodexAdapter(),
-    createDshAdapter(),
-    createGeminiAdapter(),
-    createGrokAdapter(),
-    createHermesAdapter(),
-    createOpenCodeAdapter(),
-    createPiAdapter(),
-  ];
-  return new Map(adapters.map((adapter) => [adapter.def.id, adapter]));
+  const entries = Object.entries(BINDABLE_ADAPTER_FACTORIES) as [
+    BindableAgentId,
+    () => AgentAdapter,
+  ][];
+  return new Map(
+    entries.map(([id, factory]) => {
+      const adapter = factory();
+      if (adapter.def.id !== id) {
+        throw new Error(`adapter factory for "${id}" returned def.id "${adapter.def.id}"`);
+      }
+      return [id, adapter];
+    }),
+  );
 }

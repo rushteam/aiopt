@@ -24,6 +24,7 @@ import type {
   ProviderAddRequest,
   ProviderDetectFormatsRequest,
   ProviderFetchModelsRequest,
+  ProviderFetchModelsResult,
   ProviderSummary,
   ProviderUpdateRequest,
   ProviderTestResult,
@@ -33,8 +34,12 @@ import { MAIN_ONLY_SECRET_PREFIX, type SecretStore } from '../secrets/secretStor
 import { throwIpcError } from '../ipc/validate';
 import { logger } from '../logger';
 import type { AgentAdapter } from './adapters/agentAdapter';
-import { fetchProviderModels, type FetchLike } from './modelCatalog';
-import { enrichProviderModels } from './modelsDev';
+import { fetchProviderModelsWithMeta, type FetchLike } from './modelCatalog';
+import { refreshModelsDevCatalog } from './modelsDev';
+import type { BindingProfileStore } from './bindingProfileStore';
+import type { BindingAppliedStore } from './bindingAppliedStore';
+import { detectBindingDrift } from './bindingDrift';
+import type { BindingProfileSummary } from '../../shared/bindingProfiles';
 import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
@@ -92,7 +97,13 @@ export interface ProviderManager {
    */
   restoreAgentDefault(agentId: AgentId): ProvidersSnapshot;
   /** Ask a provider's API for its model list. Read-only: touches neither store nor secrets writes. */
-  fetchModels(input: ProviderFetchModelsRequest): Promise<ProviderModel[]>;
+  fetchModels(input: ProviderFetchModelsRequest): Promise<ProviderFetchModelsResult>;
+  listBindingProfiles(): BindingProfileSummary[];
+  saveBindingProfile(name: string): BindingProfileSummary[];
+  applyBindingProfile(profileId: string): ProvidersSnapshot;
+  deleteBindingProfile(profileId: string): BindingProfileSummary[];
+  resyncBinding(agentId: AgentId): ProvidersSnapshot;
+  refreshModelsDevCatalog(): Promise<{ fetchedAt: number | null; stale: boolean }>;
   /**
    * Probe a base URL for the wire formats it serves (one cheap request per format). Read-only
    * like {@link fetchModels}, with the same key resolution; returns only the format list.
@@ -184,6 +195,8 @@ export function createProviderManager(
   // supply it (copyProxyConfig then silently does nothing).
   copyToClipboard: (text: string) => void = () => {},
   oauth: Pick<OAuthManager, 'isConnected' | 'readAccessTokenSync' | 'disconnect'> | null = null,
+  bindingProfiles: BindingProfileStore | null = null,
+  bindingApplied: BindingAppliedStore | null = null,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -241,6 +254,9 @@ export function createProviderManager(
         // It rides this existing snapshot rather than a channel of its own, so the config
         // panel refreshes on the same providersChanged push as everything else.
         ...describeAgentConfig(def.id),
+        bindingDrift:
+          store.getBinding(def.id) !== null &&
+          detectBindingDrift(adapters.get(def.id), bindingApplied?.get(def.id) ?? null),
       })),
     };
   }
@@ -313,6 +329,12 @@ export function createProviderManager(
       getProxy().unregisterRoute({ agentId });
       const apiKey = secrets.get(providerSecretKey(provider.id));
       adapter.writeLive({ provider, apiFormat: outbound, modelId: wireModelId, apiKey });
+      bindingApplied?.set(agentId, {
+        baseUrl: provider.baseUrl,
+        modelId: wireModelId,
+        authTokenSet: apiKey !== null && apiKey !== '',
+        providerId: provider.id,
+      });
       return;
     }
 
@@ -342,6 +364,12 @@ export function createProviderManager(
       apiFormat: inbound,
       modelId: wireModelId,
       apiKey: token,
+    });
+    bindingApplied?.set(agentId, {
+      baseUrl,
+      modelId: wireModelId,
+      authTokenSet: token !== null && token !== '',
+      providerId: provider.id,
     });
   }
 
@@ -562,6 +590,7 @@ export function createProviderManager(
       // Drop any cross-format route so its token dies immediately (no-op if none).
       getProxy().unregisterRoute({ agentId });
       store.clearBinding(agentId);
+      bindingApplied?.clear(agentId);
       return announce();
     },
 
@@ -576,11 +605,12 @@ export function createProviderManager(
       adapter.restoreDefault();
       getProxy().unregisterRoute({ agentId });
       store.clearBinding(agentId);
+      bindingApplied?.clear(agentId);
       return announce();
     },
 
     async fetchModels(input) {
-      const models = await fetchProviderModels(
+      return fetchProviderModelsWithMeta(
         {
           apiFormats: normalizeApiFormats(input.apiFormats),
           baseUrl: input.baseUrl,
@@ -588,7 +618,58 @@ export function createProviderManager(
         },
         fetchImpl,
       );
-      return enrichProviderModels(models, fetchImpl);
+    },
+
+    listBindingProfiles() {
+      return bindingProfiles?.list() ?? [];
+    },
+
+    saveBindingProfile(name) {
+      if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
+      bindingProfiles.saveFromBindings(name, store.getBindings());
+      return bindingProfiles.list();
+    },
+
+    applyBindingProfile(profileId) {
+      if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
+      const profile = bindingProfiles.get(profileId);
+      if (!profile) throwIpcError('NOT_FOUND', 'profile not found');
+      for (const def of AGENTS) {
+        const next = profile.bindings[def.id];
+        if (next) {
+          const provider = store.getProvider(next.providerId);
+          const model = provider?.models.find((m) => m.id === next.modelId);
+          if (!provider || !model) continue;
+          applyBinding(def.id, provider, model);
+          store.setBinding(def.id, { providerId: next.providerId, modelId: next.modelId });
+        } else if (store.getBinding(def.id)) {
+          getProxy().unregisterRoute({ agentId: def.id });
+          store.clearBinding(def.id);
+          bindingApplied?.clear(def.id);
+        }
+      }
+      return announce();
+    },
+
+    deleteBindingProfile(profileId) {
+      if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
+      bindingProfiles.remove(profileId);
+      return bindingProfiles.list();
+    },
+
+    resyncBinding(agentId) {
+      const binding = store.getBinding(agentId);
+      if (!binding) throwIpcError('PRECONDITION_FAILED', 'agent has no binding');
+      const provider = store.getProvider(binding.providerId);
+      if (!provider) throwIpcError('NOT_FOUND', 'provider not found');
+      const model = provider.models.find((m) => m.id === binding.modelId);
+      if (!model) throwIpcError('NOT_FOUND', 'model not found on provider');
+      applyBinding(agentId, provider, model);
+      return announce();
+    },
+
+    async refreshModelsDevCatalog() {
+      return refreshModelsDevCatalog(fetchImpl);
     },
 
     detectFormats(input) {

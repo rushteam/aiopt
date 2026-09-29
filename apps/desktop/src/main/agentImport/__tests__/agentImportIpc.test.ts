@@ -80,7 +80,7 @@ describe('agent import IPC', () => {
       const out = (await reg.invoke(IPC_CHANNELS.providersAgentImportScan, undefined, {
         assertTrustedSender: () => {},
       })) as { candidates: { agentId: string }[] };
-      expect(out.candidates.map((c) => c.agentId)).toEqual(['codex', 'claude']);
+      expect(out.candidates.map((c) => c.agentId)).toEqual(['codex', 'claude', 'copilot']);
     });
   });
 });

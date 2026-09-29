@@ -206,6 +206,11 @@
       "loadModels": "加载模型",
       "loadingModels": "加载中…",
       "loadModelsEmpty": "该供应商没有返回任何模型。",
+      "loadModelsFromCatalog": "供应商无模型列表，已从 models.dev 目录填充。",
+      "refreshCatalog": "刷新目录",
+      "refreshingCatalog": "刷新中…",
+      "modelsDevStale": "models.dev 缓存已过期，可刷新目录以获取新模型名。",
+      "modelsDevFresh": "models.dev 目录已刷新。",
       "apiFormatsHint": "勾选该地址支持的全部格式。绑定时优先使用 Agent 原生支持的那一种。",
       "detectFormats": "自动探测",
       "detecting": "探测中…",
@@ -233,8 +238,19 @@
         "sensitive": "剥离这些会改变返回内容：没有 response_format，原本保证的 JSON 会变成自由文本；没有 thinking 或 reasoning，模型会被悄悄降级。仅在上游明确拒绝时使用。"
       }
     },
+    "profiles": {
+      "heading": "绑定配置",
+      "hint": "将当前所有 Agent 的绑定保存为配置名，可一键切换整套环境。",
+      "namePlaceholder": "配置名称",
+      "save": "保存当前绑定",
+      "empty": "尚无保存的配置。",
+      "boundCount": "已绑定 {{count}} 个 Agent",
+      "apply": "应用",
+      "delete": "删除"
+    },
     "card": {
       "models": "模型",
+      "signedInAs": "已登录 · {{account}}",
       "keySet": "已存密钥",
       "keyMissing": "无密钥",
       "oauthConnected": "已登录 · {{account}}",
@@ -263,6 +279,9 @@
     "agent": {
       "notInstalled": "未检测到",
       "unbound": "未配置",
+      "drift": "磁盘上的配置已与当前绑定不一致。",
+      "resync": "重新同步配置",
+      "resyncBusy": "同步中…",
       "configure": "配置",
       "change": "更改",
       "viewConfig": "查看配置",

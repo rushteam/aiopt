@@ -19,6 +19,7 @@ import { BindingPicker } from './BindingPicker';
 import { AgentConfigDialog } from './AgentConfigDialog';
 import { ProviderFormDialog } from './ProviderFormDialog';
 import { ScrollTabScreen, tabScreenIntroStyle, tabScreenSectionStyle } from '../../components/TabScreenShell';
+import { BindingProfilesPanel } from './BindingProfilesPanel';
 import { AgentImportDialog } from './AgentImportDialog';
 
 type Dialog =
@@ -70,6 +71,8 @@ export function ProvidersHome() {
         <p style={{ ...tabScreenIntroStyle, color: token('textMuted'), fontSize: fontSize.md }}>
           {t('providers.subtitle')}
         </p>
+
+        <BindingProfilesPanel />
 
         <section style={tabScreenSectionStyle}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>

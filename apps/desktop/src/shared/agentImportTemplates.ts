@@ -27,4 +27,11 @@ export const AGENT_IMPORT_PROVIDER_TEMPLATES: Record<AgentImportAgentId, AgentIm
     apiFormats: ['anthropic'],
     models: [{ id: 'claude-sonnet-4-20250514' }],
   },
+  copilot: {
+    agentId: 'copilot',
+    name: 'GitHub Copilot (sign-in)',
+    baseUrl: 'https://api.githubcopilot.com',
+    apiFormats: ['openai'],
+    models: [{ id: 'gpt-4o' }],
+  },
 };

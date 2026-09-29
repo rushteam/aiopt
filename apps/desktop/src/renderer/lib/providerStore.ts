@@ -11,6 +11,7 @@ import type {
   ProviderAddRequest,
   ProviderDetectFormatsRequest,
   ProviderFetchModelsRequest,
+  ProviderFetchModelsResult,
   ProviderUpdateRequest,
   ProviderTestResult,
   ProvidersSnapshot,
@@ -102,10 +103,50 @@ export async function restoreAgentDefault(agentId: AgentId): Promise<void> {
  */
 export async function fetchProviderModels(
   input: ProviderFetchModelsRequest,
-): Promise<ProviderModel[]> {
+): Promise<ProviderFetchModelsResult> {
   ensureInitialized();
-  const { models } = await window.aiopt.providers.fetchModels(input);
-  return models;
+  return window.aiopt.providers.fetchModels(input);
+}
+
+export async function refreshModelsDevCatalog(): Promise<
+  import('../../shared/ipc-channels').ProviderRefreshModelsDevResult
+> {
+  ensureInitialized();
+  return window.aiopt.providers.refreshModelsDev();
+}
+
+export async function resyncAgentBinding(agentId: AgentId): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.resyncBinding(agentId));
+}
+
+export async function listBindingProfiles(): Promise<
+  import('../../shared/bindingProfiles').BindingProfileSummary[]
+> {
+  ensureInitialized();
+  const { profiles } = await window.aiopt.providers.bindingProfilesList();
+  return profiles;
+}
+
+export async function saveBindingProfile(name: string): Promise<
+  import('../../shared/bindingProfiles').BindingProfileSummary[]
+> {
+  ensureInitialized();
+  const { profiles } = await window.aiopt.providers.bindingProfileSave(name);
+  return profiles;
+}
+
+export async function applyBindingProfile(profileId: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.bindingProfileApply(profileId));
+}
+
+export async function deleteBindingProfile(profileId: string): Promise<
+  import('../../shared/bindingProfiles').BindingProfileSummary[]
+> {
+  ensureInitialized();
+  const { profiles } = await window.aiopt.providers.bindingProfileDelete(profileId);
+  return profiles;
 }
 
 /**

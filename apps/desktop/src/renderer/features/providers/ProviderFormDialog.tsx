@@ -33,6 +33,7 @@ import {
   addProvider,
   detectProviderFormats,
   fetchProviderModels,
+  refreshModelsDevCatalog,
   revealProviderKey,
   updateProvider,
 } from '../../lib/providerStore';
@@ -119,6 +120,8 @@ export function ProviderFormDialog({
   const [error, setError] = useState<string | null>(null);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
+  const [refreshingCatalog, setRefreshingCatalog] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
@@ -235,8 +238,9 @@ export function ProviderFormDialog({
   async function onLoadModels(): Promise<void> {
     setLoadingModels(true);
     setModelsError(null);
+    setModelsCatalogHint(null);
     try {
-      const fetched = await fetchProviderModels({
+      const result = await fetchProviderModels({
         apiFormats,
         baseUrl,
         // A freshly-typed key is sent; when editing and left blank, main resolves
@@ -244,15 +248,36 @@ export function ProviderFormDialog({
         apiKey: apiKey === '' ? undefined : apiKey,
         providerId: editing ? provider.id : undefined,
       });
+      const fetched = result.models;
       if (fetched.length === 0) {
         setModelsError(t('providers.form.loadModelsEmpty'));
         return;
       }
       setModels((current) => mergeRows(current, fetched));
+      if (result.catalogSource === 'models_dev') {
+        setModelsCatalogHint(t('providers.form.loadModelsFromCatalog'));
+      } else if (result.modelsDev?.stale) {
+        setModelsCatalogHint(t('providers.form.modelsDevStale'));
+      }
     } catch (err) {
       setModelsError(providerErrorMessage(t, err));
     } finally {
       setLoadingModels(false);
+    }
+  }
+
+  async function onRefreshModelsDev(): Promise<void> {
+    setRefreshingCatalog(true);
+    setModelsError(null);
+    try {
+      const status = await refreshModelsDevCatalog();
+      setModelsCatalogHint(
+        status.stale ? t('providers.form.modelsDevStale') : t('providers.form.modelsDevFresh'),
+      );
+    } catch (err) {
+      setModelsError(providerErrorMessage(t, err));
+    } finally {
+      setRefreshingCatalog(false);
     }
   }
 
@@ -593,18 +618,34 @@ export function ProviderFormDialog({
             )}
           </fieldset>
           <div style={fieldStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, flexWrap: 'wrap' }}>
               <span>{t('providers.fields.models')}</span>
-              <button
-                type="button"
-                onClick={onLoadModels}
-                disabled={baseUrl.trim() === '' || loadingModels}
-                {...hoverBackground('transparent', token('surfaceHover'))}
-                style={buttonStyle('ghost')}
-              >
-                {loadingModels ? t('providers.form.loadingModels') : t('providers.form.loadModels')}
-              </button>
+              <div style={{ display: 'flex', gap: space.sm, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => void onRefreshModelsDev()}
+                  disabled={refreshingCatalog}
+                  {...hoverBackground('transparent', token('surfaceHover'))}
+                  style={buttonStyle('ghost')}
+                >
+                  {refreshingCatalog
+                    ? t('providers.form.refreshingCatalog')
+                    : t('providers.form.refreshCatalog')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void onLoadModels()}
+                  disabled={baseUrl.trim() === '' || loadingModels}
+                  {...hoverBackground('transparent', token('surfaceHover'))}
+                  style={buttonStyle('ghost')}
+                >
+                  {loadingModels ? t('providers.form.loadingModels') : t('providers.form.loadModels')}
+                </button>
+              </div>
             </div>
+            {modelsCatalogHint && (
+              <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>{modelsCatalogHint}</p>
+            )}
 
             {models.length > 0 && (
               <div style={modelListStyle}>

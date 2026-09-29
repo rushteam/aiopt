@@ -202,6 +202,11 @@
       "loadModels": "モデルを読み込む",
       "loadingModels": "読み込み中…",
       "loadModelsEmpty": "プロバイダーからモデルが返されませんでした。",
+      "loadModelsFromCatalog": "Vendor had no model list — filled from models.dev catalog.",
+      "refreshCatalog": "Refresh catalog",
+      "refreshingCatalog": "Refreshing…",
+      "modelsDevStale": "models.dev cache is stale — refresh catalog for newer names.",
+      "modelsDevFresh": "models.dev catalog refreshed.",
       "apiFormatsHint": "このエンドポイントが提供する形式をすべてチェックしてください。バインド時は Agent がネイティブに話せる形式を優先します。",
       "detectFormats": "自動検出",
       "detecting": "検出中…",
@@ -229,8 +234,19 @@
         "sensitive": "除去すると返る内容が変わります。response_format がないと保証されていた JSON が自由文になり、thinking や reasoning がないとモデルは静かに性能を落とします。アップストリームが明確に拒否する場合のみ使用してください。"
       }
     },
+    "profiles": {
+      "heading": "バインドプロファイル",
+      "hint": "全 Agent の現在のバインドを名前で保存し、一括で切り替えます。",
+      "namePlaceholder": "プロファイル名",
+      "save": "現在のバインドを保存",
+      "empty": "プロファイルはまだありません。",
+      "boundCount": "{{count}} 件の Agent をバインド",
+      "apply": "適用",
+      "delete": "削除"
+    },
     "card": {
       "models": "モデル",
+      "signedInAs": "ログイン中 · {{account}}",
       "keySet": "キー保存済み",
       "keyMissing": "キーなし",
       "oauthConnected": "サインイン済み · {{account}}",
@@ -259,6 +275,9 @@
     "agent": {
       "notInstalled": "検出されません",
       "unbound": "未設定",
+      "drift": "ディスク上の設定がこのバインドと一致しません。",
+      "resync": "設定を再同期",
+      "resyncBusy": "同期中…",
       "configure": "設定する",
       "change": "変更",
       "viewConfig": "設定を表示",

@@ -99,6 +99,14 @@ export const IPC_CHANNELS = {
   providersAgentImportScan: 'providers:agent-import-scan',
   /** Create a pool provider from an installed agent sign-in. */
   providersAgentImportAdd: 'providers:agent-import-add',
+  providersBindingProfilesList: 'providers:binding-profiles-list',
+  providersBindingProfileSave: 'providers:binding-profile-save',
+  providersBindingProfileApply: 'providers:binding-profile-apply',
+  providersBindingProfileDelete: 'providers:binding-profile-delete',
+  /** Re-apply the stored binding to one agent's on-disk config. */
+  providersResyncBinding: 'providers:resync-binding',
+  /** Force-refresh the models.dev catalog cache (main-side). */
+  providersRefreshModelsDev: 'providers:refresh-models-dev',
   // GATED EXCEPTION to the "no plaintext" rule above: on an explicit user gesture
   // this returns a provider's stored key IN PLAINTEXT to the renderer so it can be
   // viewed. This deliberately crosses the boundary that credentials-and-local-storage.md
@@ -550,6 +558,8 @@ export interface AgentSummary {
    * files AiOpt is willing to touch, and nothing else.
    */
   configFiles: AgentConfigFile[];
+  /** True when on-disk config no longer matches the last binding AiOpt applied. */
+  bindingDrift?: boolean;
 }
 
 /** The full renderer-visible view of the pool + agents. */
@@ -611,6 +621,31 @@ export interface ProviderAgentImportAddRequest {
   agentId: import('./agentImport').AgentImportAgentId;
 }
 
+export interface ProviderBindingProfileSaveRequest {
+  name: string;
+}
+
+export interface ProviderBindingProfileApplyRequest {
+  profileId: string;
+}
+
+export interface ProviderBindingProfileDeleteRequest {
+  profileId: string;
+}
+
+export interface ProviderBindingProfilesListResult {
+  profiles: import('./bindingProfiles').BindingProfileSummary[];
+}
+
+export interface ProviderResyncBindingRequest {
+  agentId: AgentId;
+}
+
+export interface ProviderRefreshModelsDevResult {
+  fetchedAt: number | null;
+  stale: boolean;
+}
+
 export interface ProviderOAuthStartRequest {
   providerId: string;
 }
@@ -655,6 +690,9 @@ export interface ProviderFetchModelsRequest {
 
 export interface ProviderFetchModelsResult {
   models: ProviderModel[];
+  /** Whether models came from the vendor API or models.dev fallback. */
+  catalogSource?: 'vendor' | 'models_dev';
+  modelsDev?: { fetchedAt: number | null; stale: boolean };
 }
 
 /**
@@ -913,6 +951,30 @@ export interface IpcContract {
   [IPC_CHANNELS.providersAgentImportAdd]: {
     request: ProviderAgentImportAddRequest;
     result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersBindingProfilesList]: {
+    request: void;
+    result: ProviderBindingProfilesListResult;
+  };
+  [IPC_CHANNELS.providersBindingProfileSave]: {
+    request: ProviderBindingProfileSaveRequest;
+    result: ProviderBindingProfilesListResult;
+  };
+  [IPC_CHANNELS.providersBindingProfileApply]: {
+    request: ProviderBindingProfileApplyRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersBindingProfileDelete]: {
+    request: ProviderBindingProfileDeleteRequest;
+    result: ProviderBindingProfilesListResult;
+  };
+  [IPC_CHANNELS.providersResyncBinding]: {
+    request: ProviderResyncBindingRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersRefreshModelsDev]: {
+    request: void;
+    result: ProviderRefreshModelsDevResult;
   };
   [IPC_CHANNELS.providersRevealKey]: {
     request: ProviderRevealKeyRequest;

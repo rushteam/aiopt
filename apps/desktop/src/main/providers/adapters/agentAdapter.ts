@@ -6,7 +6,9 @@
 // model, and the plaintext API key (read main-side at apply time — agents read
 // plaintext, so this is unavoidable) and must go through fsutil's guarded write.
 
+import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import type { AgentDef, ApiFormat, Provider } from '../../../shared/aiProviders';
+import type { LiveBindingSnapshot } from './bindingLive';
 
 /** The inputs an adapter needs to render + persist a live binding. */
 export interface WriteLiveInput {
@@ -33,6 +35,11 @@ export interface AgentAdapter {
   detectInstalled(): boolean;
   /** Render the provider into the agent's native format and write it (backup + atomic). */
   writeLive(input: WriteLiveInput): void;
+  /**
+   * Read back the binding fields this adapter owns on disk, in the same shape
+   * drift detection compares against `binding-applied.json`.
+   */
+  readLiveBinding(applied: AppliedBindingRecord): LiveBindingSnapshot | null;
   /**
    * Undo AiOpt's takeover: restore every config file this adapter owns to its
    * pre-AiOpt state (backup written back, or the AiOpt-created file removed). See
