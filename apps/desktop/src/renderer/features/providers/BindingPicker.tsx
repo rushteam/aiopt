@@ -33,6 +33,7 @@ import {
 } from '../../../shared/modelRef';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
+import { HelpHint } from '../../components/ui/HelpHint';
 
 const SEARCH_THRESHOLD = 8; // show the model filter only once a provider has many
 
@@ -241,57 +242,63 @@ export function BindingPicker({
                 const selectable = route !== null;
                 const isSelected = provider.id === selectedId;
                 const isBound = agent.binding?.providerId === provider.id;
+                const isCombined = isCombinedProviderId(provider.id);
                 return (
                   <li key={provider.id}>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setSelectedId(provider.id);
-                        setModelQuery('');
-                        setPendingModelId(defaultModelFor(provider.id, provider.models));
-                      }}
-                      {...hoverBackground(
-                        isSelected ? token('surfaceHover') : 'transparent',
-                        token('surfaceHover'),
-                      )}
-                      style={providerRowStyle(isSelected, selectable)}
-                    >
-                      <span style={providerNameRowStyle}>
-                        <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {provider.name}
+                    <div style={providerRowShellStyle(isSelected, selectable)}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setSelectedId(provider.id);
+                          setModelQuery('');
+                          setPendingModelId(defaultModelFor(provider.id, provider.models));
+                        }}
+                        {...hoverBackground(
+                          isSelected ? token('surfaceHover') : 'transparent',
+                          token('surfaceHover'),
+                        )}
+                        style={providerRowButtonStyle}
+                      >
+                        <span style={providerNameRowStyle}>
+                          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {provider.name}
+                          </span>
+                          {isBound && (
+                            <>
+                              <span style={boundDotStyle} aria-hidden />
+                              <span className="sr-only">{t('providers.binding.bound')}</span>
+                            </>
+                          )}
                         </span>
-                        {isBound && (
-                          <>
-                            <span style={boundDotStyle} aria-hidden />
-                            <span className="sr-only">{t('providers.binding.bound')}</span>
-                          </>
-                        )}
-                      </span>
-                      <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
-                        {/* Every format the provider serves; the one this binding would use
-                            (route.outbound) is emphasized so a multi-format gateway reads at
-                            a glance as "will talk Anthropic here". */}
-                        {provider.apiFormats.map((format) => (
-                          <span
-                            key={format}
-                            style={badgeStyle(route !== null && route.outbound === format)}
-                          >
-                            {t(`providers.formats.${format}`)}
-                          </span>
-                        ))}
-                        {route?.kind === 'translated' && (
-                          <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
-                            {t('providers.binding.viaProxy')}
-                          </span>
-                        )}
-                        {route === null && (
-                          <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
-                            {t('providers.binding.unsupported')}
-                          </span>
-                        )}
-                      </span>
-                    </button>
+                        <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
+                          {/* Every format the provider serves; the one this binding would use
+                              (route.outbound) is emphasized so a multi-format gateway reads at
+                              a glance as "will talk Anthropic here". */}
+                          {provider.apiFormats.map((format) => (
+                            <span
+                              key={format}
+                              style={badgeStyle(route !== null && route.outbound === format)}
+                            >
+                              {t(`providers.formats.${format}`)}
+                            </span>
+                          ))}
+                          {route?.kind === 'translated' && (
+                            <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
+                              {t('providers.binding.viaProxy')}
+                            </span>
+                          )}
+                          {route === null && (
+                            <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
+                              {t('providers.binding.unsupported')}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      {isCombined && (
+                        <HelpHint label={t('providers.combined.helpTooltip')} style={{ marginTop: 10 }} />
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -556,23 +563,35 @@ const providerListStyle = {
   paddingRight: 8,
 } as const;
 
-function providerRowStyle(selected: boolean, selectable: boolean) {
+function providerRowShellStyle(selected: boolean, selectable: boolean) {
   return {
     display: 'flex',
-    flexDirection: 'column',
+    alignItems: 'flex-start',
     gap: space.xs,
     width: '100%',
-    textAlign: 'left',
     padding: '8px 10px',
     borderRadius: radius.md,
     border: `1px solid ${selected ? token('accent') : 'transparent'}`,
     background: selected ? token('surfaceHover') : 'transparent',
-    color: token('text'),
-    cursor: 'pointer',
-    fontSize: fontSize.base,
     opacity: selectable ? 1 : 0.5,
   } as const;
 }
+
+const providerRowButtonStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.xs,
+  flex: 1,
+  minWidth: 0,
+  textAlign: 'left',
+  padding: 0,
+  border: 'none',
+  borderRadius: radius.sm,
+  background: 'transparent',
+  color: token('text'),
+  cursor: 'pointer',
+  fontSize: fontSize.base,
+} as const;
 
 // The restore-default entry: same footprint as a provider row, marked off with a
 // bottom divider so it reads as a distinct, standing action above the pool.

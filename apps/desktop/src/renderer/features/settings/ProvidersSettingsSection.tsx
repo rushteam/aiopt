@@ -1,8 +1,8 @@
 // Providers settings — virtual pool entries that should not appear as editable cards.
 
 import { token, fontSize, radius, space } from '../../themes/tokens';
-import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
+import { HelpHint } from '../../components/ui/HelpHint';
 import { useProviders } from '../../hooks/useProviders';
 import { isCombinedProviderId } from '../../../shared/combinedProvider';
 
@@ -44,35 +44,5 @@ export function ProvidersSettingsSection() {
         )}
       </div>
     </section>
-  );
-}
-
-function HelpHint({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      {...hoverBackground('transparent', token('surfaceHover'))}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 20,
-        height: 20,
-        padding: 0,
-        borderRadius: '50%',
-        border: `1px solid ${token('borderStrong')}`,
-        background: 'transparent',
-        color: token('textMuted'),
-        fontSize: fontSize.xs,
-        fontWeight: 700,
-        cursor: 'help',
-        lineHeight: 1,
-        flexShrink: 0,
-      }}
-    >
-      ?
-    </button>
   );
 }

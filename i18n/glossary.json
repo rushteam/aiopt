@@ -100,6 +100,14 @@
       "forbidden": { "zh-CN": ["极速模式", "代理服务器模式", "加速模式"] }
     },
     {
+      "id": "combined-provider",
+      "en": "Combined provider",
+      "status": "proposed",
+      "note": "A virtual pool entry that merges every real provider's models into one picker list for agent binding. It is not an editable card in the pool. Not 'union provider' or 'federated provider' in zh-CN UI copy.",
+      "translations": { "zh-CN": "聚合供应商", "ja": "統合プロバイダー", "ko": "통합 공급자", "fr": "Fournisseur combiné", "de": "Kombinierter Anbieter", "es": "Proveedor combinado" },
+      "forbidden": { "zh-CN": ["联合提供商", "联合供应商"] }
+    },
+    {
       "id": "binding-profile",
       "en": "Binding profile",
       "status": "proposed",

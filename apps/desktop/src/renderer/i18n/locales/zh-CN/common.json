@@ -151,9 +151,9 @@
       "noAgentsHint": "请安装并登录支持的 Agent CLI（如 Codex、Claude Code、Copilot 等）。可先添加供应商，稍后再绑定。"
     },
     "combined": {
-      "name": "联合提供商",
+      "name": "聚合供应商",
       "description": "池中所有供应商的模型合并为一个列表，绑定 Agent 时可直接选用。",
-      "helpTooltip": "联合提供商会把供应商池里所有模型合成一份列表，供绑定 Agent 时选择；它是虚拟项，不会出现在下方供应商卡片列表中。",
+      "helpTooltip": "聚合供应商会把供应商池里所有模型合成一份列表，供绑定 Agent 时选择；它是虚拟项，不会出现在下方供应商卡片列表中。",
       "settingsStatus": "已启用 · 共 {{count}} 个模型可选",
       "settingsDisabled": "添加至少一个供应商后自动启用。"
     },

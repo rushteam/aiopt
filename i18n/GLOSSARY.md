@@ -49,6 +49,18 @@ A named snapshot of every agent's provider+model binding. The user saves the liv
 - **de**: Binding-Profil
 - **es**: Perfil de enlace
 
+### Combined provider (`combined-provider`)
+
+A virtual pool entry that merges every real provider's models into one picker list for agent binding. It is not an editable card in the pool. Not 'union provider' or 'federated provider' in zh-CN UI copy.
+
+- **zh-CN**: 聚合供应商
+  - forbidden: `联合提供商`, `联合供应商`
+- **ja**: 統合プロバイダー
+- **ko**: 통합 공급자
+- **fr**: Fournisseur combiné
+- **de**: Kombinierter Anbieter
+- **es**: Proveedor combinado
+
 ### Coordinator (`coordinator`)
 
 The single chat agent on the workbench. It breaks a request into tasks and proposes them on the board; it never starts a task itself — the user presses Run on each one. The code calls it the orchestrator; UI copy says coordinator. Not 'manager', 'boss', or 'master agent' in UI copy. Term still under discussion.
