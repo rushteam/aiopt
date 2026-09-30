@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { space, token } from '../../themes/tokens';
+import { disabledOpacity, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import {
   buttonAccentChrome,
@@ -52,7 +52,7 @@ export function LoadingButton({
       style={{
         ...chrome,
         gap: space.sm,
-        opacity: disabled && !loading ? 0.55 : 1,
+        opacity: disabled && !loading ? disabledOpacity : 1,
         cursor: inactive ? 'default' : 'pointer',
         ...style,
       }}

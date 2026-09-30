@@ -13,7 +13,7 @@
 // cleared together main-side, so a non-null port means the server is genuinely listening.
 
 import { useEffect, useRef, useState } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { refreshProxyPort } from '../../lib/providerStore';
@@ -84,7 +84,7 @@ export function ProxyStatusBar({ port }: { port: number | null }) {
         onClick={() => void onRefresh()}
         disabled={disabled}
         {...hoverBackground('transparent', token('surfaceHover'))}
-        style={{ ...refreshStyle, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}
+        style={{ ...refreshStyle, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? disabledOpacity : 1 }}
       >
         {label}
       </button>

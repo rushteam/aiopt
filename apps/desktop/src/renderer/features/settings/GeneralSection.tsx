@@ -18,7 +18,7 @@
 import { useEffect, useState } from 'react';
 import type { LanguagePreference, ThemePreference } from '../../../shared/ipc-channels';
 import { useTheme } from '../../themes/ThemeProvider';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { Select } from '../../components/ui/Select';
@@ -159,7 +159,7 @@ function Switch({
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
             background: checked ? token('accent') : token('borderStrong'),
-            opacity: loading ? 0.5 : 1,
+            opacity: loading ? disabledOpacity : 1,
             transition: 'background 120ms ease',
             padding: 0,
           }}

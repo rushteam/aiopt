@@ -1,4 +1,4 @@
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { WORKBENCH_LIMITS, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
@@ -102,7 +102,7 @@ export function TaskBoardTabRow({
                 borderRight: 'none',
                 fontSize: fontSize.lg,
                 lineHeight: 1,
-                opacity: creating || taskFull ? 0.45 : 1,
+                opacity: creating || taskFull ? disabledOpacity : 1,
               }),
             }}
           >

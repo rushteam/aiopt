@@ -10,7 +10,7 @@
 // AiOpt never sees their traffic. These numbers cover cross-format bindings only.
 
 import { useState } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
 import { useUsage } from '../../hooks/useUsage';
@@ -92,7 +92,7 @@ export function UsageHome() {
             onClick={() => setConfirmClear(true)}
             disabled={usage.eventCount === 0}
             {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? 0.5 : 1 }}
+            style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? disabledOpacity : 1 }}
           >
             {t('usage.clear')}
           </button>

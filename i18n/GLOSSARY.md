@@ -39,10 +39,10 @@ The wire protocol a provider speaks and an agent accepts — one of anthropic, o
 
 ### Binding profile (`binding-profile`)
 
-A named snapshot of every agent's provider+model binding. The user saves the live setup under a name and can apply a saved profile to switch the whole binding set in one step. Not 'binding config' or 'binding settings' in UI copy — it is a saved preset, not the mechanics of binding. In zh-CN UI prefer 配置方案, not 绑定方案/绑定配置.
+A named snapshot of every agent's provider+model binding. The user saves the live setup under a name and can apply a saved profile to switch the whole binding set in one step. Not 'binding config' or 'binding settings' in UI copy — it is a saved preset, not the mechanics of binding. zh-CN renders it 预设 (the plainest word for the thing it actually is); the word was freed up by moving the provider-form field to 模板 — see provider-preset. Earlier zh-CN attempts 绑定配置 / 绑定方案 / 配置方案 are all rejected.
 
-- **zh-CN**: 配置方案
-  - forbidden: `绑定配置`, `绑定方案`
+- **zh-CN**: 预设
+  - forbidden: `绑定配置`, `绑定方案`, `配置方案`
 - **ja**: バインドプロファイル
 - **ko**: 바인딩 프로필
 - **fr**: Profil de liaison
@@ -113,6 +113,12 @@ An AI model source entered once into the global pool: a name, an API format, a b
 - **fr**: Fournisseur
 - **de**: Anbieter
 - **es**: Proveedor
+
+### Preset (`provider-preset`)
+
+The field in the add/edit-provider dialog that picks a vendor starting point — an API key vendor, a subscription (OAuth) sign-in, or Custom. It seeds the form; it is not a saved user snapshot. zh-CN renders it 模板, NOT 预设: 预设 belongs to binding-profile, and both surface on the Providers screen (the switcher in the toolbar, this field in the dialog it opens), so one word for both would collide in the user's field of view. No forbidden list on purpose — the gate scans every string for the substring, so banning 预设 here would fire on binding-profile's own copy.
+
+- **zh-CN**: 模板
 
 ### Proxy mode (`proxy-mode`)
 

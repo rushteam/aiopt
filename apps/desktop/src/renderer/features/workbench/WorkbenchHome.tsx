@@ -9,7 +9,7 @@
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
@@ -205,7 +205,7 @@ function ChatPane({
             border: sessionOn ? `1px solid ${token('borderStrong')}` : 'none',
             background: sessionOn ? 'transparent' : token('accent'),
             color: sessionOn ? token('text') : token('accentText'),
-            opacity: toggleDisabled ? 0.5 : 1,
+            opacity: toggleDisabled ? disabledOpacity : 1,
             flexShrink: 0,
             marginLeft: space.sm,
           }}
@@ -236,7 +236,7 @@ function ChatPane({
           }
           disabled={!canSwitch}
           {...hoverBackground('transparent', token('surfaceHover'))}
-          style={{ ...actionButtonStyle, opacity: canSwitch ? 1 : 0.5 }}
+          style={{ ...actionButtonStyle, opacity: canSwitch ? 1 : disabledOpacity }}
         >
           {t('workbench.chat.reset')}
         </button>
@@ -469,7 +469,7 @@ function HistoryPanel({
                     color: token('text'),
                     textAlign: 'left',
                     cursor: canSwitch || c.current ? 'pointer' : 'default',
-                    opacity: canSwitch || c.current ? 1 : 0.5,
+                    opacity: canSwitch || c.current ? 1 : disabledOpacity,
                     fontSize: fontSize.base,
                   }}
                 >
@@ -742,7 +742,7 @@ function TaskForm({
           type="submit"
           disabled={!valid || saving}
           {...hoverBackground(token('accent'), token('accentHover'))}
-          style={{ ...smallAccentStyle, opacity: !valid || saving ? 0.5 : 1 }}
+          style={{ ...smallAccentStyle, opacity: !valid || saving ? disabledOpacity : 1 }}
         >
           {submitLabel}
         </button>

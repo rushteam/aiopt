@@ -11,7 +11,7 @@
 // go through a second confirmation, mirroring the Usage clear button.
 
 import { useEffect, useMemo, useState } from 'react';
-import { fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, type Locale, type TranslateFn } from '../../i18n';
 import { useSkills } from '../../hooks/useSkills';
@@ -313,7 +313,7 @@ function LocationToggle({
               background: active ? token('accent') : 'transparent',
               color: active ? token('accentText') : token('text'),
               cursor: active || disabled ? 'default' : 'pointer',
-              opacity: disabled && !active ? 0.55 : 1,
+              opacity: disabled && !active ? disabledOpacity : 1,
             }}
           >
             {t(`skills.library.${opt}`)}
@@ -800,7 +800,7 @@ function DiffPanel({
               {...hoverBackground(token('accent'), token('accentHover'))}
               style={{
                 ...buttonAccentChrome('sm'),
-                opacity: busy || agentPicks.length === 0 ? 0.5 : 1,
+                opacity: busy || agentPicks.length === 0 ? disabledOpacity : 1,
                 cursor: busy || agentPicks.length === 0 ? 'default' : 'pointer',
               }}
             >

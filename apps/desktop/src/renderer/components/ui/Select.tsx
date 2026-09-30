@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { controlInputSmStyle, controlInputStyle } from './controlStyles';
 
@@ -167,7 +167,7 @@ export function Select({
           gap: space.sm,
           textAlign: 'left',
           cursor: disabled ? 'default' : 'pointer',
-          opacity: disabled ? 0.55 : 1,
+          opacity: disabled ? disabledOpacity : 1,
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayLabel}</span>
@@ -209,7 +209,7 @@ export function Select({
                     style={{
                       ...optionStyle,
                       background: isHighlighted ? token('surfaceHover') : isSelected ? token('surface') : 'transparent',
-                      opacity: entry.option.disabled ? 0.45 : 1,
+                      opacity: entry.option.disabled ? disabledOpacity : 1,
                       cursor: entry.option.disabled ? 'default' : 'pointer',
                     }}
                   >

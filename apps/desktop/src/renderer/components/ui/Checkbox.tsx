@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, fontSize, radius, space, token } from '../../themes/tokens';
 
 export function Checkbox({
   checked,
@@ -30,7 +30,7 @@ export function Checkbox({
       onClick={() => onChange(!checked)}
       style={{
         ...boxStyle,
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? disabledOpacity : 1,
         cursor: disabled ? 'default' : 'pointer',
         background: checked ? token('accent') : token('bg'),
         borderColor: checked ? token('accent') : token('borderStrong'),

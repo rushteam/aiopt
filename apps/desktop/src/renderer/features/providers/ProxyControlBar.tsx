@@ -15,7 +15,7 @@
 // never merely the switch position.
 
 import { useEffect, useState } from 'react';
-import { token, fontSize, space } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, space } from '../../themes/tokens';
 import { useT } from '../../i18n';
 import { ProxyStatusBar } from './ProxyStatusBar';
 
@@ -83,7 +83,7 @@ export function ProxyControlBar({
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
             background: enabled ? token('accent') : token('borderStrong'),
-            opacity: loading ? 0.5 : 1,
+            opacity: loading ? disabledOpacity : 1,
             transition: 'background 120ms ease',
             padding: 0,
           }}

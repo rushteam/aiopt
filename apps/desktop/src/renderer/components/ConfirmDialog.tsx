@@ -10,7 +10,7 @@
 // the panel is swallowed so it never bubbles to the backdrop and closes.
 
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
-import { elevation, token, fontSize, radius, space } from '../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../themes/tokens';
 import { hoverBackground } from '../lib/hover';
 
 export function ConfirmDialog({
@@ -65,7 +65,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={busy}
             {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{ ...ghostStyle, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1 }}
+            style={{ ...ghostStyle, cursor: busy ? 'default' : 'pointer', opacity: busy ? disabledOpacity : 1 }}
           >
             {cancelLabel}
           </button>
@@ -79,7 +79,7 @@ export function ConfirmDialog({
             style={{
               ...(danger ? dangerSolidStyle : ghostStyle),
               cursor: busy ? 'default' : 'pointer',
-              opacity: busy ? 0.5 : 1,
+              opacity: busy ? disabledOpacity : 1,
             }}
           >
             {confirmLabel}

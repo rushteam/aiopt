@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { CheckboxField } from '../../components/ui/Checkbox';
@@ -464,7 +464,7 @@ function AddFolderButton({
         fontSize: fontSize.sm,
         lineHeight: 1,
         color: token('textMuted'),
-        opacity: full ? 0.45 : 1,
+        opacity: full ? disabledOpacity : 1,
       }}
     >
       +

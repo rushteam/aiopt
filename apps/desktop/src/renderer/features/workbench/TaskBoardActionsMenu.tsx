@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import {
@@ -244,7 +244,7 @@ function MenuItem({
       style={{
         ...menuItemStyle,
         color: danger ? token('danger') : token('text'),
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? disabledOpacity : 1,
         cursor: disabled ? 'default' : 'pointer',
       }}
     >

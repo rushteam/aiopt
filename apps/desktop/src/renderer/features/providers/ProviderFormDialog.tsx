@@ -12,7 +12,7 @@
 // with the current ticks — it never unticks a choice the user made by hand).
 
 import { useState, type FormEvent } from 'react';
-import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { Checkbox } from '../../components/ui/Checkbox';
@@ -562,7 +562,7 @@ export function ProviderFormDialog({
                 style={{
                   ...iconButtonStyle,
                   cursor: apiKey === '' && !provider?.hasKey ? 'default' : 'pointer',
-                  opacity: apiKey === '' && !provider?.hasKey ? 0.4 : 1,
+                  opacity: apiKey === '' && !provider?.hasKey ? disabledOpacity : 1,
                 }}
               >
                 <EyeIcon off={showKey} />

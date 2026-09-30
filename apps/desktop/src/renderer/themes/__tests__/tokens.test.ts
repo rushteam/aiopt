@@ -101,6 +101,19 @@ describe('contrast (WCAG)', () => {
     }
   });
 
+  // `success` fills a status dot — the running proxy, a task at review/done. That is a
+  // state indicator in exactly the sense §1.1 gives the switch thumb, so it owes the same
+  // 3:1. The ground that catches it out is `surfaceHover`: the dot lives in a task tab and
+  // a menu row, so it spends real time on the hover fill, not just on `bg`.
+  it('the status dot clears 3:1 on every background a row can take', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+        const ratio = contrast(TOKENS.success[mode], TOKENS[ground][mode]);
+        expect(ratio, `success on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   // `accent` is used BOTH ways — as a fill under `accentText` (primary button, segmented
   // control, active nav row) and as text itself (active tab, selected settings row) — so
   // it has to clear 4.5:1 in both directions. It is also the token a "do this" control
@@ -110,6 +123,25 @@ describe('contrast (WCAG)', () => {
   it('accent clears 4.5:1 as a fill under accentText AND as text on every ground', () => {
     for (const mode of ['light', 'dark'] as const) {
       for (const fill of ['accent', 'accentHover'] as const) {
+        const onFill = contrast(TOKENS.accentText[mode], TOKENS[fill][mode]);
+        expect(onFill, `accentText on ${fill} (${mode}) = ${onFill.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+          const asText = contrast(TOKENS[fill][mode], TOKENS[ground][mode]);
+          expect(asText, `${fill} as text on ${ground} (${mode}) = ${asText.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  // `danger` has accent's exact shape — a fill under `accentText` on the destructive
+  // confirm button, and text on its own for every role="alert" message and destructive
+  // menu item — so it needs the same proof in both directions. It is also the token
+  // worn by the one action a user cannot undo, which makes an unreadable label here
+  // costlier than anywhere else: #c8362f was 4.37:1 as a menu item's text on the hover
+  // fill, so the label thinned out at the moment the cursor was on it.
+  it('danger clears 4.5:1 as a fill under accentText AND as text on every ground', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const fill of ['danger', 'dangerHover'] as const) {
         const onFill = contrast(TOKENS.accentText[mode], TOKENS[fill][mode]);
         expect(onFill, `accentText on ${fill} (${mode}) = ${onFill.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
         for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {

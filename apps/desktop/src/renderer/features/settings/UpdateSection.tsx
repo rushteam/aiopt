@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { UpdateStatus } from '../../../shared/ipc-channels';
-import { token, fontSize, radius } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
@@ -105,7 +105,7 @@ export function UpdateSection() {
           background: token('surface'),
           color: token('text'),
           cursor: checking ? 'default' : 'pointer',
-          opacity: checking ? 0.5 : 1,
+          opacity: checking ? disabledOpacity : 1,
           fontSize: fontSize.md,
         }}
       >
