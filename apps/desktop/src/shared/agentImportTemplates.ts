@@ -34,4 +34,32 @@ export const AGENT_IMPORT_PROVIDER_TEMPLATES: Record<AgentImportAgentId, AgentIm
     apiFormats: ['openai'],
     models: [{ id: 'gpt-4o' }],
   },
+  grok: {
+    agentId: 'grok',
+    name: 'Grok (SuperGrok sign-in)',
+    baseUrl: 'https://cli-chat-proxy.grok.com/v1',
+    apiFormats: ['openai-responses'],
+    models: [{ id: 'grok-4.7' }],
+  },
+  devin: {
+    agentId: 'devin',
+    name: 'Devin (CLI sign-in)',
+    baseUrl: 'https://server.codeium.com',
+    apiFormats: ['openai'],
+    models: [{ id: 'claude-sonnet-4-6' }],
+  },
+  gemini: {
+    agentId: 'gemini',
+    name: 'Gemini CLI (Google sign-in)',
+    baseUrl: 'https://cloudcode-pa.googleapis.com',
+    apiFormats: ['gemini'],
+    models: [{ id: 'gemini-2.5-pro' }],
+  },
+  cursor: {
+    agentId: 'cursor',
+    name: 'Cursor (sign-in)',
+    baseUrl: 'https://api2.cursor.sh',
+    apiFormats: ['openai'],
+    models: [{ id: 'auto' }],
+  },
 };

@@ -7,6 +7,7 @@ import { IPC_CHANNELS } from '../../../shared/ipc-channels';
 import { registerAgentImportIpc } from '../agentImportIpc';
 import { createProviderManager } from '../../providers/providerManager';
 import { createProviderStore } from '../../providers/providerStore';
+import { AGENT_IMPORT_AGENT_IDS } from '../../../shared/agentImport';
 import type { ProviderManager } from '../../providers/providerManager';
 import type { TranslationProxy } from '../../proxy/translationProxy';
 import type { SecretStore } from '../../secrets/secretStore';
@@ -80,7 +81,7 @@ describe('agent import IPC', () => {
       const out = (await reg.invoke(IPC_CHANNELS.providersAgentImportScan, undefined, {
         assertTrustedSender: () => {},
       })) as { candidates: { agentId: string }[] };
-      expect(out.candidates.map((c) => c.agentId)).toEqual(['codex', 'claude', 'copilot']);
+      expect(out.candidates.map((c) => c.agentId)).toEqual([...AGENT_IMPORT_AGENT_IDS]);
     });
   });
 });
