@@ -123,7 +123,7 @@ export const AGENT_SPECS = {
     },
   },
   // Command Code keeps settings.json + a separate providers.json for custom providers.
-  // The model field is "provider/model"; a magpie/AiOpt model sets modelProvider too.
+  // The model field is "provider/model"; an AiOpt-bound model sets modelProvider too.
   commandcode: {
     name: 'Command Code',
     skillsDir: null,
