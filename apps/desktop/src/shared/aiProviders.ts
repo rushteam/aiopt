@@ -95,6 +95,22 @@ export const AGENT_SPECS = {
       files: { settings: '.claude/settings.json' },
     },
   },
+  // Cline's CLI (3.x) takes the built-in openai-compatible provider slot: a single JSON
+  // providers.json under ~/.cline/data/settings with baseUrl + apiKey + model. AiOpt takes
+  // that slot, writes the model list into models.json beside it, and sets lastUsedProvider.
+  cline: {
+    name: 'Cline',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.cline',
+      files: {
+        providers: '.cline/data/settings/providers.json',
+        models: '.cline/data/settings/models.json',
+      },
+    },
+  },
   // codex/grok speak the OpenAI *Responses* API, not Chat Completions — see ApiFormat.
   codex: {
     name: 'Codex',
@@ -106,11 +122,38 @@ export const AGENT_SPECS = {
       files: { auth: '.codex/auth.json', config: '.codex/config.toml' },
     },
   },
+  // Command Code keeps settings.json + a separate providers.json for custom providers.
+  // The model field is "provider/model"; a magpie/AiOpt model sets modelProvider too.
+  commandcode: {
+    name: 'Command Code',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.commandcode',
+      files: {
+        settings: '.commandcode/settings.json',
+        providers: '.commandcode/providers.json',
+      },
+    },
+  },
   // Copilot CLI / editor sign-in — import-only (no pool binding adapter yet).
   copilot: {
     name: 'GitHub Copilot',
     skillsDir: null,
     binding: null,
+  },
+  // Crush keeps a providers map in crush.json (type: "openai") with base_url + api_key,
+  // and two model slots: models.large and models.small, each provider/model.
+  crush: {
+    name: 'Crush',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'additive',
+      installDir: '.config/crush',
+      files: { config: '.config/crush/crush.json' },
+    },
   },
   // Cursor can't bind a pool provider (no base-URL override), so `binding` is null; its
   // CLI still keeps skills under ~/.cursor/skills, so it joins the sync matrix.
@@ -118,6 +161,25 @@ export const AGENT_SPECS = {
     name: 'Cursor',
     skillsDir: '.cursor/skills',
     binding: null,
+  },
+  // Devin only uses its own hosted models (no custom endpoint), so `binding` is null.
+  devin: {
+    name: 'Devin',
+    skillsDir: null,
+    binding: null,
+  },
+  // Droid (Factory) keeps customModels[] in settings.json, each with baseUrl + apiKey +
+  // provider (anthropic|openai|generic-chat-completion-api). The startup model is
+  // sessionDefaultSettings.model. AiOpt appends its models to the array.
+  droid: {
+    name: 'Droid',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai', 'openai-responses', 'anthropic'],
+      mode: 'exclusive',
+      installDir: '.factory',
+      files: { settings: '.factory/settings.json' },
+    },
   },
   // dsh (DeepSeek Harness) speaks three wire protocols per provider via its `api` field
   // (openai-completions←openai, openai-responses←openai-responses, anthropic-messages←anthropic;
@@ -133,6 +195,18 @@ export const AGENT_SPECS = {
       files: { settings: '.dsh/settings.yaml', credentials: '.dsh/.credentials.yaml' },
     },
   },
+  // fx (Vercel Labs) keeps providers in settings.json under "providers", each with
+  // protocol + base_url + auth. The active provider is the top-level "provider" key.
+  fx: {
+    name: 'fx',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.fx',
+      files: { settings: '.fx/settings.json' },
+    },
+  },
   gemini: {
     name: 'Gemini CLI',
     skillsDir: '.gemini/skills',
@@ -142,6 +216,13 @@ export const AGENT_SPECS = {
       installDir: '.gemini',
       files: { env: '.gemini/.env', settings: '.gemini/settings.json' },
     },
+  },
+  // Goose (Block) reads GOOSE_PROVIDER/GOOSE_MODEL from config.yaml; only built-in
+  // providers are supported (no custom base URL in config), so `binding` is null.
+  goose: {
+    name: 'Goose',
+    skillsDir: null,
+    binding: null,
   },
   // grok has no well-known skills dir (skillsDir null → absent from Skills sync).
   grok: {
@@ -168,6 +249,61 @@ export const AGENT_SPECS = {
       files: { config: '.hermes/config.yaml' },
     },
   },
+  // Kimi Code (Moonshot) keeps config.toml with [providers.<name>] tables and
+  // [models."<key>"] tables, each naming a provider and the model to ask for.
+  // default_model is the key of the model sessions start on.
+  kimicode: {
+    name: 'Kimi Code',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.kimi-code',
+      files: { config: '.kimi-code/config.toml' },
+    },
+  },
+  // MiMo Code (Xiaomi) is an OpenCode fork with the same config shape: provider map +
+  // model pointer. Its config lives under ~/.config/mimocode (or $MIMOCODE_HOME/config).
+  mimocode: {
+    name: 'MiMo Code',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai', 'anthropic'],
+      mode: 'additive',
+      installDir: '.config/mimocode',
+      files: { config: '.config/mimocode/mimocode.json' },
+    },
+  },
+  // OmO (omo-ai) is a Pi fork with the same three-file layout under ~/.omo/agent.
+  omo: {
+    name: 'OmO',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['anthropic', 'openai', 'gemini'],
+      mode: 'exclusive',
+      installDir: '.omo',
+      files: {
+        auth: '.omo/agent/auth.json',
+        models: '.omo/agent/models.json',
+        settings: '.omo/agent/settings.json',
+      },
+    },
+  },
+  // omp (oh-my-pi) is Pi-derived: config.yml + models.yml under ~/.omp/agent, YAML
+  // instead of JSON, with the same provider/model/auth structure as Pi.
+  omp: {
+    name: 'omp',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['anthropic', 'openai'],
+      mode: 'exclusive',
+      installDir: '.omp',
+      files: {
+        config: '.omp/agent/config.yml',
+        models: '.omp/agent/models.yml',
+      },
+    },
+  },
   opencode: {
     name: 'OpenCode',
     skillsDir: '.config/opencode/skills',
@@ -175,6 +311,20 @@ export const AGENT_SPECS = {
       acceptedFormats: ['openai', 'anthropic'],
       mode: 'additive',
       installDir: '.config/opencode',
+      files: { config: '.config/opencode/opencode.json' },
+    },
+  },
+  // OpenChamber (desktop front-end for OpenCode) keeps its own preferences under
+  // ~/.config/openchamber but runs on OpenCode's config, so the binding goes into the
+  // OpenCode config it reads. Treated as its own agent because it has a separate
+  // preferences file and install dir.
+  openchamber: {
+    name: 'OpenChamber',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai', 'anthropic'],
+      mode: 'additive',
+      installDir: '.config/openchamber',
       files: { config: '.config/opencode/opencode.json' },
     },
   },
@@ -190,6 +340,54 @@ export const AGENT_SPECS = {
         models: '.pi/agent/models.json',
         settings: '.pi/agent/settings.json',
       },
+    },
+  },
+  // Qoder CLI keeps providers in settings.json under "providers" (openai protocol with
+  // baseUrl + apiKey), and model.name as "provider/model". Needs a signed-in BYOK plan.
+  qoder: {
+    name: 'Qoder',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.qoder',
+      files: { settings: '.qoder/settings.json' },
+    },
+  },
+  // Qoder CN is Qoder's China-site build with its own accounts and config dir.
+  qodercn: {
+    name: 'Qoder CN',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'exclusive',
+      installDir: '.qoder-cn',
+      files: { settings: '.qoder-cn/settings.json' },
+    },
+  },
+  // WorkBuddy (Tencent CodeBuddy) takes custom models from ~/.workbuddy/models.json:
+  // a list of OpenAI chat-completions models with url + apiKey. It watches the file
+  // and picks up changes without a restart.
+  workbuddy: {
+    name: 'WorkBuddy',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['openai'],
+      mode: 'additive',
+      installDir: '.workbuddy',
+      files: { models: '.workbuddy/models.json' },
+    },
+  },
+  // ZCode (Zhipu) keeps providers in ~/.zcode/v2/config.json, OpenCode's shape with its
+  // own "kind" field. An anthropic provider is asked at baseURL + /v1/messages.
+  zcode: {
+    name: 'ZCode',
+    skillsDir: null,
+    binding: {
+      acceptedFormats: ['anthropic'],
+      mode: 'additive',
+      installDir: '.zcode',
+      files: { config: '.zcode/v2/config.json' },
     },
   },
 } as const satisfies Record<string, AgentSpec>;
