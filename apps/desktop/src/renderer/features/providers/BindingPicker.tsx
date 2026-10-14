@@ -568,6 +568,9 @@ function providerRowShellStyle(selected: boolean, selectable: boolean) {
     display: 'flex',
     alignItems: 'flex-start',
     gap: space.xs,
+    // A div defaults to content-box: 100% plus padding and border overran the list, whose
+    // overflow clipped the right edge (border and help icon).
+    boxSizing: 'border-box',
     width: '100%',
     padding: '8px 10px',
     borderRadius: radius.md,
