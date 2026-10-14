@@ -26,6 +26,7 @@ export function BindingProfileSwitcher() {
   const [selected, setSelected] = useState<string>(LIVE_DEFAULT);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -74,9 +75,15 @@ export function BindingProfileSwitcher() {
     if (value === LIVE_DEFAULT || value === selected) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
-      await applyBindingProfile(value);
+      const { applied, mcpSkipped } = await applyBindingProfile(value);
+      if (!applied) {
+        setNotice(t('providers.profiles.mcpDeclined'));
+        return;
+      }
       setSelected(value);
+      if (mcpSkipped > 0) setNotice(t('providers.profiles.mcpSkipped').replace('{{count}}', String(mcpSkipped)));
     } catch (err) {
       setError(providerErrorMessage(t, err));
     } finally {
@@ -193,6 +200,11 @@ export function BindingProfileSwitcher() {
           {error}
         </span>
       )}
+      {!error && notice && (
+        <span role="status" style={noticeStyle}>
+          {notice}
+        </span>
+      )}
       {saveAsOpen && (
         <PromptDialog
           title={t('providers.profiles.menuSaveAs')}
@@ -293,6 +305,11 @@ const errorStyle: CSSProperties = {
   textAlign: 'right',
   fontSize: fontSize.xs,
   color: token('danger'),
+};
+
+const noticeStyle: CSSProperties = {
+  ...errorStyle,
+  color: token('textMuted'),
 };
 
 const menuStyle: CSSProperties = {

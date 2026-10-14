@@ -280,6 +280,8 @@
       "save": "Save current bindings",
       "empty": "No profiles yet.",
       "boundCount": "{{count}} agents bound",
+      "mcpDeclined": "Profile not applied: the MCP server write was cancelled.",
+      "mcpSkipped": "Applied. {{count}} MCP servers in this profile were skipped (removed, or not supported by that agent).",
       "apply": "Apply",
       "delete": "Delete"
     },

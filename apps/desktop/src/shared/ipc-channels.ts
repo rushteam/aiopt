@@ -1011,7 +1011,7 @@ export interface IpcContract {
   };
   [IPC_CHANNELS.providersBindingProfileApply]: {
     request: ProviderBindingProfileApplyRequest;
-    result: ProvidersSnapshot;
+    result: import('./bindingProfiles').BindingProfileApplyResult;
   };
   [IPC_CHANNELS.providersBindingProfileDelete]: {
     request: ProviderBindingProfileDeleteRequest;

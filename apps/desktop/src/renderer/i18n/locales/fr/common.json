@@ -273,6 +273,8 @@
       "save": "Enregistrer les liaisons actuelles",
       "empty": "Aucun profil pour l'instant.",
       "boundCount": "{{count}} agents liés",
+      "mcpDeclined": "Profil non appliqué : l’écriture des serveurs MCP a été annulée.",
+      "mcpSkipped": "Appliqué. {{count}} serveurs MCP de ce profil ont été ignorés (supprimés ou non pris en charge par cet agent).",
       "apply": "Appliquer",
       "delete": "Supprimer"
     },

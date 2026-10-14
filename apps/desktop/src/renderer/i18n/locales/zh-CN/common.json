@@ -280,6 +280,8 @@
       "save": "保存当前配置",
       "empty": "尚无保存的预设。",
       "boundCount": "含 {{count}} 个 Agent",
+      "mcpDeclined": "未应用配置：已取消写入 MCP 服务器。",
+      "mcpSkipped": "已应用。此配置中有 {{count}} 个 MCP 服务器被跳过（已删除，或该 agent 不支持）。",
       "apply": "应用",
       "delete": "删除"
     },

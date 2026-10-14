@@ -242,6 +242,11 @@ export function getProviderManager(): ProviderManager {
       getOAuthManager(),
       getBindingProfileStore(),
       getBindingAppliedStore(),
+      // Config profiles also record which MCP servers each agent has enabled.
+      {
+        capture: () => getMcpStore().enabledSets(),
+        plan: (sets) => getMcpStore().planEnabledSets(sets),
+      },
     );
   }
   return providerManager;
@@ -313,9 +318,9 @@ export function getMcpStore(): McpStore {
       secrets: getSecretStore(),
       isInstalled: (agentId) => fs.existsSync(agentConfigDir(agentId)),
       displayPath: homeShortenedPath,
-      confirmWrite: async (req) => {
+      confirmWrite: async (reqs) => {
         const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
-        const c = buildMcpConfirm(locale, req);
+        const c = buildMcpConfirm(locale, reqs);
         const opts: Electron.MessageBoxOptions = {
           type: 'warning',
           buttons: [c.cancel, c.confirm],

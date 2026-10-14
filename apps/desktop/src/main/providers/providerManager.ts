@@ -39,7 +39,16 @@ import { refreshModelsDevCatalog } from './modelsDev';
 import type { BindingProfileStore } from './bindingProfileStore';
 import type { BindingAppliedStore } from './bindingAppliedStore';
 import { detectBindingDrift } from './bindingDrift';
-import type { BindingProfileSummary } from '../../shared/bindingProfiles';
+import type { BindingProfileApplyResult, BindingProfileSummary } from '../../shared/bindingProfiles';
+
+/**
+ * The MCP part of a profile, injected so providers stay unaware of the MCP module.
+ * `plan` shows the one main-side confirmation; `commit` runs only after the bindings applied.
+ */
+export interface ProfileMcpHook {
+  capture(): Partial<Record<string, string[]>>;
+  plan(sets: Partial<Record<string, string[]>>): Promise<{ proceed: boolean; skipped: number; commit(): void }>;
+}
 import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
@@ -100,7 +109,7 @@ export interface ProviderManager {
   fetchModels(input: ProviderFetchModelsRequest): Promise<ProviderFetchModelsResult>;
   listBindingProfiles(): BindingProfileSummary[];
   saveBindingProfile(name: string): BindingProfileSummary[];
-  applyBindingProfile(profileId: string): ProvidersSnapshot;
+  applyBindingProfile(profileId: string): Promise<BindingProfileApplyResult>;
   deleteBindingProfile(profileId: string): BindingProfileSummary[];
   resyncBinding(agentId: AgentId): ProvidersSnapshot;
   refreshModelsDevCatalog(): Promise<{ fetchedAt: number | null; stale: boolean }>;
@@ -197,6 +206,7 @@ export function createProviderManager(
   oauth: Pick<OAuthManager, 'isConnected' | 'readAccessTokenSync' | 'disconnect'> | null = null,
   bindingProfiles: BindingProfileStore | null = null,
   bindingApplied: BindingAppliedStore | null = null,
+  profileMcp: ProfileMcpHook | null = null,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -635,16 +645,24 @@ export function createProviderManager(
 
     saveBindingProfile(name) {
       if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
-      bindingProfiles.saveFromBindings(name, store.getBindings());
+      bindingProfiles.saveFromBindings(name, store.getBindings(), profileMcp?.capture());
       return bindingProfiles.list();
     },
 
-    applyBindingProfile(profileId) {
+    async applyBindingProfile(profileId) {
       if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
       const profile = bindingProfiles.get(profileId);
       if (!profile) throwIpcError('NOT_FOUND', 'profile not found');
+      // MCP first: its confirmation can be declined, and then nothing at all changes.
+      const mcpPlan = profile.mcp && profileMcp ? await profileMcp.plan(profile.mcp) : null;
+      if (mcpPlan && !mcpPlan.proceed) {
+        return { snapshot: snapshot(), applied: false, mcpSkipped: mcpPlan.skipped };
+      }
+      // Re-read: the profile may have been deleted or re-saved while the dialog was open.
+      const current = bindingProfiles.get(profileId);
+      if (!current) throwIpcError('NOT_FOUND', 'profile not found');
       for (const def of AGENTS) {
-        const next = profile.bindings[def.id];
+        const next = current.bindings[def.id];
         if (next) {
           const provider = store.getProvider(next.providerId);
           const model = provider?.models.find((m) => m.id === next.modelId);
@@ -657,7 +675,9 @@ export function createProviderManager(
           bindingApplied?.clear(def.id);
         }
       }
-      return announce();
+      const applied = announce();
+      mcpPlan?.commit();
+      return { snapshot: applied, applied: true, mcpSkipped: mcpPlan?.skipped ?? 0 };
     },
 
     deleteBindingProfile(profileId) {

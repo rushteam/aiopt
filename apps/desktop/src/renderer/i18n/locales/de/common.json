@@ -273,6 +273,8 @@
       "save": "Aktuelle Bindungen speichern",
       "empty": "Noch keine Profile.",
       "boundCount": "{{count}} Agenten gebunden",
+      "mcpDeclined": "Profil nicht angewendet: Das Schreiben der MCP-Server wurde abgebrochen.",
+      "mcpSkipped": "Angewendet. {{count}} MCP-Server dieses Profils wurden übersprungen (entfernt oder vom Agenten nicht unterstützt).",
       "apply": "Anwenden",
       "delete": "Löschen"
     },

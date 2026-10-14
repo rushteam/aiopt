@@ -247,7 +247,9 @@ const api = {
       name: string,
     ): Promise<import('../shared/ipc-channels').ProviderBindingProfilesListResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileSave, { name }),
-    bindingProfileApply: (profileId: string): Promise<ProvidersSnapshot> =>
+    bindingProfileApply: (
+      profileId: string,
+    ): Promise<import('../shared/bindingProfiles').BindingProfileApplyResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileApply, { profileId }),
     bindingProfileDelete: (
       profileId: string,

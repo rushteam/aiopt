@@ -273,6 +273,8 @@
       "save": "Guardar enlaces actuales",
       "empty": "Aún no hay perfiles.",
       "boundCount": "{{count}} agentes enlazados",
+      "mcpDeclined": "Perfil no aplicado: se canceló la escritura de servidores MCP.",
+      "mcpSkipped": "Aplicado. Se omitieron {{count}} servidores MCP de este perfil (eliminados o no compatibles con ese agente).",
       "apply": "Aplicar",
       "delete": "Eliminar"
     },

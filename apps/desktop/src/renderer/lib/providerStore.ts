@@ -136,9 +136,14 @@ export async function saveBindingProfile(name: string): Promise<
   return profiles;
 }
 
-export async function applyBindingProfile(profileId: string): Promise<void> {
+/** `applied: false` — the user declined the MCP write; nothing changed. */
+export async function applyBindingProfile(
+  profileId: string,
+): Promise<{ applied: boolean; mcpSkipped: number }> {
   ensureInitialized();
-  applySnapshot(await window.aiopt.providers.bindingProfileApply(profileId));
+  const { snapshot, applied, mcpSkipped } = await window.aiopt.providers.bindingProfileApply(profileId);
+  applySnapshot(snapshot);
+  return { applied, mcpSkipped };
 }
 
 export async function deleteBindingProfile(profileId: string): Promise<

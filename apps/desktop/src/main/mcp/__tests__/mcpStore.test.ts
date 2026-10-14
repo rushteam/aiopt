@@ -47,7 +47,7 @@ function memorySecrets(available = true): SecretStore & { map: Map<string, strin
 
 function makeStore(opts: { confirm?: boolean; secrets?: ReturnType<typeof memorySecrets> } = {}) {
   const secrets = opts.secrets ?? memorySecrets();
-  const confirmWrite = vi.fn(async (_req: McpConfirmRequest) => opts.confirm ?? true);
+  const confirmWrite = vi.fn(async (_reqs: McpConfirmRequest[]) => opts.confirm ?? true);
   const store = createMcpStore({
     filePath: path.join(dir, 'mcp-servers.json'),
     secrets,
@@ -121,7 +121,7 @@ describe('mcp store', () => {
     const r = await store.save(validateSaveRequest(fsServer));
     expect(r.saved).toBe(true);
     expect(confirmWrite).toHaveBeenCalledOnce();
-    const req = confirmWrite.mock.calls[0]![0];
+    const req = confirmWrite.mock.calls[0]![0][0];
     expect(req).toMatchObject({ name: 'fs', agentIds: ['claude', 'codex'], envKeys: ['TOKEN'] });
     expect(JSON.stringify(req)).not.toContain('secret-1');
 
@@ -298,7 +298,7 @@ describe('mcp confirm content', () => {
   };
 
   it('names the server, agents, command and keys', () => {
-    const c = buildMcpConfirm('en-US', req);
+    const c = buildMcpConfirm('en-US', [req]);
     expect(c.message).toContain('fs');
     expect(c.message).toContain('Claude Code');
     expect(c.detail).toContain('npx -y server-fs');
@@ -306,10 +306,93 @@ describe('mcp confirm content', () => {
   });
 
   it('localizes, falls back to English, and marks a cut spec', () => {
-    expect(buildMcpConfirm('zh-CN', req).cancel).not.toBe(buildMcpConfirm('en', req).cancel);
-    expect(buildMcpConfirm('xx', req).title).toBe(buildMcpConfirm('en', req).title);
-    const long = buildMcpConfirm('en', { ...req, summary: 'a'.repeat(5000) });
+    expect(buildMcpConfirm('zh-CN', [req]).cancel).not.toBe(buildMcpConfirm('en', [req]).cancel);
+    expect(buildMcpConfirm('xx', [req]).title).toBe(buildMcpConfirm('en', [req]).title);
+    const long = buildMcpConfirm('en', [{ ...req, summary: 'a'.repeat(5000) }]);
     expect(long.detail).toContain('…');
     expect(long.detail.length).toBeLessThan(2600);
+  });
+
+  it('several servers share one dialog that lists each of them', () => {
+    const many = buildMcpConfirm('en', [req, { ...req, name: 'web', transport: 'http', summary: 'https://m.example/mcp', agentIds: ['gemini'], envKeys: [], headerKeys: ['Authorization'] }]);
+    expect(many.message).toContain('2');
+    expect(many.detail).toContain('fs → Claude Code, Codex');
+    expect(many.detail).toContain('web → Gemini CLI');
+    expect(many.detail).toContain('https://m.example/mcp');
+    expect(many.detail).toContain('Authorization');
+  });
+});
+
+describe('mcp enabled sets (config profiles)', () => {
+  const web: McpSaveRequest = { name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [], agents: ['claude'] };
+
+  it('captures per-agent enabled servers', async () => {
+    const { store } = makeStore();
+    await store.save(validateSaveRequest(fsServer));
+    await store.save(validateSaveRequest(web));
+    expect(store.enabledSets()).toEqual({ claude: ['fs', 'web'], codex: ['fs'], gemini: [] });
+  });
+
+  it('applies a set with one confirmation for all enables; disables need none', async () => {
+    const { store, confirmWrite } = makeStore();
+    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    await store.save(validateSaveRequest(web));
+    confirmWrite.mockClear();
+    const plan = await store.planEnabledSets({ claude: ['fs', 'gone'], codex: ['fs', 'web'], gemini: ['fs'] });
+    expect(confirmWrite).toHaveBeenCalledOnce();
+    const reqs = confirmWrite.mock.calls[0]![0];
+    expect(reqs.map((r) => [r.name, r.agentIds])).toEqual([['fs', ['claude', 'codex', 'gemini']]]);
+    // 'gone' is not in the library; 'web' is sse, which codex cannot take.
+    expect(plan).toMatchObject({ proceed: true, skipped: 2 });
+    expect(store.enabledSets().claude).toEqual(['web']); // nothing changed before commit
+    plan.commit();
+    expect(store.enabledSets()).toEqual({ claude: ['fs'], codex: ['fs'], gemini: ['fs'] });
+    expect(Object.keys(claudeServers())).toEqual(['fs']);
+    const codex = readAgentMcp('codex');
+    expect(codex.state === 'ok' && [...codex.servers.keys()]).toEqual(['fs']);
+  });
+
+  it('disable-only plans and agents absent from the set skip the dialog', async () => {
+    const { store, confirmWrite } = makeStore();
+    await store.save(validateSaveRequest(fsServer));
+    confirmWrite.mockClear();
+    const plan = await store.planEnabledSets({ claude: [] });
+    expect(confirmWrite).not.toHaveBeenCalled();
+    plan.commit();
+    expect(store.enabledSets()).toEqual({ claude: [], codex: ['fs'], gemini: [] });
+  });
+
+  it('a declined plan changes nothing', async () => {
+    const { store, confirmWrite } = makeStore();
+    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    confirmWrite.mockResolvedValue(false);
+    const plan = await store.planEnabledSets({ claude: ['fs'] });
+    expect(plan.proceed).toBe(false);
+    plan.commit();
+    expect(store.enabledSets().claude).toEqual([]);
+    expect(fs.existsSync(claudeFile())).toBe(false);
+  });
+
+  it('a spec edited while the dialog was open is not written unconfirmed', async () => {
+    const { store, confirmWrite } = makeStore();
+    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    let release!: (v: boolean) => void;
+    confirmWrite.mockImplementationOnce(() => new Promise<boolean>((r) => (release = r)));
+    const pending = store.planEnabledSets({ claude: ['fs'] });
+    await vi.waitFor(() => expect(confirmWrite).toHaveBeenCalledTimes(1));
+    confirmWrite.mockResolvedValue(true);
+    await store.save(validateSaveRequest({ ...fsServer, originalName: 'fs', command: 'evil', agents: [] }));
+    release(true);
+    (await pending).commit();
+    expect(store.enabledSets().claude).toEqual([]);
+    expect(fs.existsSync(claudeFile())).toBe(false);
+  });
+
+  it('an unreadable target refuses before the dialog', async () => {
+    const { store, confirmWrite } = makeStore();
+    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    fs.writeFileSync(claudeFile(), '{ broken');
+    await expect(store.planEnabledSets({ claude: ['fs'] })).rejects.toSatisfy((e) => codeOf(e) === 'PRECONDITION_FAILED');
+    expect(confirmWrite).not.toHaveBeenCalled();
   });
 });

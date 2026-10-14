@@ -71,7 +71,8 @@ export interface McpConfirmRequest {
 export interface McpStoreDeps {
   filePath: string;
   secrets: SecretStore;
-  confirmWrite: (req: McpConfirmRequest) => Promise<boolean>;
+  /** One dialog for one or more servers; resolves true only on an explicit confirm. */
+  confirmWrite: (reqs: McpConfirmRequest[]) => Promise<boolean>;
   /** Install signal per agent (the agent's config dir exists). */
   isInstalled: (agentId: McpAgentId) => boolean;
   displayPath: (abs: string) => string;
@@ -369,7 +370,7 @@ export function createMcpStore(deps: McpStoreDeps) {
       if (Object.keys(values.env).length + Object.keys(values.headers).length > 0 && !deps.secrets.isAvailable()) {
         throwIpcError('PRECONDITION_FAILED', 'OS secret encryption is unavailable');
       }
-      if (next.agents.length > 0 && !(await deps.confirmWrite(confirmFor(next, next.agents)))) {
+      if (next.agents.length > 0 && !(await deps.confirmWrite([confirmFor(next, next.agents)]))) {
         return { saved: false, snapshot: this.snapshot() };
       }
       writeValues(next.name, values);
@@ -392,7 +393,7 @@ export function createMcpStore(deps: McpStoreDeps) {
         throwIpcError('UNSUPPORTED_CAPABILITY', `${agentId} does not support ${s.transport} servers`);
       }
       assertWritable([agentId]);
-      if (enabled && !(await deps.confirmWrite(confirmFor(s, [agentId])))) {
+      if (enabled && !(await deps.confirmWrite([confirmFor(s, [agentId])]))) {
         return { saved: false, snapshot: this.snapshot() };
       }
       const updated: LibraryServer = {
@@ -433,6 +434,81 @@ export function createMcpStore(deps: McpStoreDeps) {
       return this.snapshot();
     },
 
+    enabledSets(): McpEnabledSets {
+      const out: McpEnabledSets = {};
+      for (const a of MCP_AGENT_IDS) out[a] = doc.servers.filter((s) => s.agents.includes(a)).map((s) => s.name);
+      return out;
+    },
+
+    /**
+     * Plan making each agent's enabled servers equal the given sets (agents absent from
+     * `sets` are left alone). Enabling writes commands into agent files, so a non-empty
+     * enable list goes through ONE confirmation; disabling only removes and needs none.
+     * Unreadable target files refuse the whole plan before the dialog.
+     */
+    async planEnabledSets(sets: McpEnabledSets): Promise<McpEnabledSetsPlan> {
+      const diff = () => {
+        const enable = new Map<string, McpAgentId[]>();
+        const disable = new Map<string, McpAgentId[]>();
+        let skipped = 0;
+        for (const a of MCP_AGENT_IDS) {
+          const want = sets[a];
+          if (!want) continue;
+          const wanted = new Set(want);
+          for (const n of wanted) {
+            const s = find(n);
+            if (!s || !agentSupportsTransport(a, s.transport)) skipped += 1;
+          }
+          for (const s of doc.servers) {
+            const on = s.agents.includes(a);
+            const should = wanted.has(s.name) && agentSupportsTransport(a, s.transport);
+            const into = should && !on ? enable : !should && on ? disable : null;
+            if (into) into.set(s.name, [...(into.get(s.name) ?? []), a]);
+          }
+        }
+        return { enable, disable, skipped };
+      };
+      const planned = diff();
+      const touched = new Set<McpAgentId>();
+      for (const m of [planned.enable, planned.disable]) for (const agents of m.values()) agents.forEach((a) => touched.add(a));
+      assertWritable(touched);
+      // What the user saw: name → spec summary, so a spec edited during the dialog is not written.
+      const confirmed = new Map<string, string>();
+      if (planned.enable.size > 0) {
+        const reqs = [...planned.enable].map(([n, agents]) => confirmFor(find(n)!, agents));
+        if (!(await deps.confirmWrite(reqs))) return { proceed: false, skipped: planned.skipped, commit: () => {} };
+        for (const r of reqs) confirmed.set(r.name, r.summary);
+      }
+      return {
+        proceed: true,
+        skipped: planned.skipped,
+        commit: () => {
+          const { enable, disable } = diff();
+          const writes = emptyWrites();
+          const nextAgents = new Map(doc.servers.map((s) => [s.name, new Set(s.agents)]));
+          for (const [n, agents] of disable) {
+            for (const a of agents) {
+              nextAgents.get(n)!.delete(a);
+              writes.get(a)!.drop.add(n);
+            }
+          }
+          for (const [n, agents] of enable) {
+            const s = find(n)!;
+            if (confirmed.get(n) !== mcpSummary(s)) continue;
+            const live = toLive(s, readValues(n));
+            for (const a of agents) {
+              if (!(planned.enable.get(n) ?? []).includes(a)) continue;
+              nextAgents.get(n)!.add(a);
+              writes.get(a)!.put.set(n, live);
+            }
+          }
+          doc = { servers: doc.servers.map((s) => ({ ...s, agents: MCP_AGENT_IDS.filter((a) => nextAgents.get(s.name)!.has(a)) })) };
+          persist();
+          applyToAgents(writes);
+        },
+      };
+    },
+
     /**
      * Adopt a server already in an agent's config into the library, enabled for that agent.
      * Nothing is written to any agent file, so no confirmation: the spec is the user's own.
@@ -468,3 +544,15 @@ export function createMcpStore(deps: McpStoreDeps) {
 }
 
 export type McpStore = ReturnType<typeof createMcpStore>;
+
+/** Per agent, the library servers enabled for it — what a config profile records. */
+export type McpEnabledSets = Partial<Record<McpAgentId, string[]>>;
+
+/** A profile's MCP change, confirmed before anything (bindings included) is applied. */
+export interface McpEnabledSetsPlan {
+  proceed: boolean;
+  /** Names in the profile that are no longer in the library (or not supported by the agent). */
+  skipped: number;
+  /** Applies the confirmed change. Call only when `proceed`. */
+  commit(): void;
+}

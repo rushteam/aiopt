@@ -67,10 +67,30 @@ Codex `config.toml` and Gemini `settings.json` are also written by the binding a
   neither drops a newer server nor revives a deleted one.
 - Gemini `writeLive` already merges JSON, so `mcpServers` survives without special handling.
 
-## 5. Tests
+## 5. Config profiles
+
+A binding profile (`binding-profiles.json`) also records, per MCP agent, the **names** of the
+library servers enabled for it (`mcp`, names only — no spec, no values). Profiles saved before
+this existed have no `mcp` part, and applying them leaves MCP alone.
+
+Applying a profile (`providerManager.applyBindingProfile`, through the injected
+`ProfileMcpHook`) runs in this order:
+
+1. `planEnabledSets` diffs the wanted sets against the library. Names no longer in the
+   library, or on an agent that cannot take that transport, are skipped and counted.
+   Unreadable target files refuse the whole apply here.
+2. If anything gets enabled, **one** native confirmation lists every server, its agents and
+   its spec. If the user declines, nothing changes: no bindings and no MCP.
+3. Bindings are applied.
+4. `commit` re-diffs and writes only the enables that were confirmed. A server whose spec
+   changed while the dialog was open is not written. Disables only remove, so they need no
+   confirmation.
+
+## 6. Tests
 
 `src/main/mcp/__tests__/` covers the TOML splitter, strict reads and key preservation per
 agent, file modes, adapter apply/restore keeping MCP, the store (confirm declined writes
 nothing, values never in the snapshot or library file, rename, toggle, drift + resync,
-unreadable and no-encryption refusals before confirmation, import writes no agent file), IPC
+unreadable and no-encryption refusals before confirmation, import writes no agent file,
+profile enabled-set plans), IPC
 (untrusted sender rejected before side effects, payload validation) and the dialog content.

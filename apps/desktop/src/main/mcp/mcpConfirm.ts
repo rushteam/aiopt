@@ -14,6 +14,8 @@ export interface McpConfirmLabels {
   title: string;
   /** `{name}` and `{agents}` are replaced. */
   message: string;
+  /** Several servers in one dialog (applying a config profile). `{count}` is replaced. */
+  messageMany: string;
   command: string;
   url: string;
   env: string;
@@ -27,6 +29,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   en: {
     title: 'Write MCP server',
     message: 'Add MCP server “{name}” to {agents}?',
+    messageMany: 'Add {count} MCP servers to your agents?',
     command: 'Command',
     url: 'URL',
     env: 'Environment variables',
@@ -38,6 +41,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   'zh-CN': {
     title: '写入 MCP 服务器',
     message: '要把 MCP 服务器「{name}」写入 {agents} 吗？',
+    messageMany: '要把 {count} 个 MCP 服务器写入 agent 吗？',
     command: '命令',
     url: 'URL',
     env: '环境变量',
@@ -49,6 +53,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   ja: {
     title: 'MCP サーバーを書き込む',
     message: 'MCP サーバー「{name}」を {agents} に追加しますか？',
+    messageMany: '{count} 個の MCP サーバーをエージェントに追加しますか？',
     command: 'コマンド',
     url: 'URL',
     env: '環境変数',
@@ -60,6 +65,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   ko: {
     title: 'MCP 서버 쓰기',
     message: 'MCP 서버 “{name}”을(를) {agents}에 추가할까요?',
+    messageMany: 'MCP 서버 {count}개를 에이전트에 추가할까요?',
     command: '명령',
     url: 'URL',
     env: '환경 변수',
@@ -71,6 +77,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   fr: {
     title: 'Écrire le serveur MCP',
     message: 'Ajouter le serveur MCP « {name} » à {agents} ?',
+    messageMany: 'Ajouter {count} serveurs MCP à vos agents ?',
     command: 'Commande',
     url: 'URL',
     env: 'Variables d’environnement',
@@ -82,6 +89,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   de: {
     title: 'MCP-Server schreiben',
     message: 'MCP-Server „{name}“ zu {agents} hinzufügen?',
+    messageMany: '{count} MCP-Server zu Ihren Agenten hinzufügen?',
     command: 'Befehl',
     url: 'URL',
     env: 'Umgebungsvariablen',
@@ -93,6 +101,7 @@ export const MCP_CONFIRM_LABELS: Record<MenuLocale, McpConfirmLabels> = {
   es: {
     title: 'Escribir servidor MCP',
     message: '¿Añadir el servidor MCP «{name}» a {agents}?',
+    messageMany: '¿Añadir {count} servidores MCP a tus agentes?',
     command: 'Comando',
     url: 'URL',
     env: 'Variables de entorno',
@@ -114,18 +123,39 @@ export interface McpConfirmContent {
 /** Long specs are cut so the dialog stays readable; the cut is marked, never silent. */
 const MAX_DETAIL_SPEC = 2000;
 
-export function buildMcpConfirm(locale: string, req: McpConfirmRequest): McpConfirmContent {
-  const l = MCP_CONFIRM_LABELS[resolveMenuLocale(locale)];
-  const agents = req.agentIds.map((a) => AGENT_SPECS[a].name).join(', ');
-  const spec = req.summary.length > MAX_DETAIL_SPEC ? `${req.summary.slice(0, MAX_DETAIL_SPEC)}…` : req.summary;
+/** Total detail budget when several servers share one dialog. */
+const MAX_DETAIL_TOTAL = 6000;
+
+const agentNames = (req: McpConfirmRequest): string => req.agentIds.map((a) => AGENT_SPECS[a].name).join(', ');
+
+function specLines(l: McpConfirmLabels, req: McpConfirmRequest, max: number): string[] {
+  const spec = req.summary.length > max ? `${req.summary.slice(0, max)}…` : req.summary;
   const lines = [`${req.transport === 'stdio' ? l.command : l.url}:`, spec];
-  if (req.envKeys.length > 0) lines.push('', `${l.env}: ${req.envKeys.join(', ')}`);
-  if (req.headerKeys.length > 0) lines.push('', `${l.headers}: ${req.headerKeys.join(', ')}`);
-  lines.push('', l.note);
+  if (req.envKeys.length > 0) lines.push(`${l.env}: ${req.envKeys.join(', ')}`);
+  if (req.headerKeys.length > 0) lines.push(`${l.headers}: ${req.headerKeys.join(', ')}`);
+  return lines;
+}
+
+/** One request: the server's own dialog. Several: every server with its agents, then the note. */
+export function buildMcpConfirm(locale: string, reqs: McpConfirmRequest[]): McpConfirmContent {
+  const l = MCP_CONFIRM_LABELS[resolveMenuLocale(locale)];
+  if (reqs.length === 1) {
+    const req = reqs[0]!;
+    return {
+      title: l.title,
+      message: l.message.replace('{name}', req.name).replace('{agents}', agentNames(req)),
+      detail: [...specLines(l, req, MAX_DETAIL_SPEC), '', l.note].join('\n'),
+      confirm: l.confirm,
+      cancel: l.cancel,
+    };
+  }
+  // Every server is always listed by name; only each spec is shortened to fit the budget.
+  const perSpec = Math.max(80, Math.min(MAX_DETAIL_SPEC, Math.floor(MAX_DETAIL_TOTAL / Math.max(1, reqs.length))));
+  const blocks = reqs.map((req) => [`${req.name} → ${agentNames(req)}`, ...specLines(l, req, perSpec)].join('\n'));
   return {
     title: l.title,
-    message: l.message.replace('{name}', req.name).replace('{agents}', agents),
-    detail: lines.join('\n'),
+    message: l.messageMany.replace('{count}', String(reqs.length)),
+    detail: [...blocks, l.note].join('\n\n'),
     confirm: l.confirm,
     cancel: l.cancel,
   };

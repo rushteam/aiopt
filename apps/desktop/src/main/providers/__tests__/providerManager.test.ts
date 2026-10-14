@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createProviderManager, providerSecretKey } from '../providerManager';
+import { createProviderManager, providerSecretKey, type ProfileMcpHook } from '../providerManager';
+import { createBindingProfileStore } from '../bindingProfileStore';
 import { createProviderStore } from '../providerStore';
 import type { AgentAdapter, WriteLiveInput } from '../adapters/agentAdapter';
 import type { FetchLike } from '../modelCatalog';
@@ -98,7 +99,7 @@ function fakeProxy() {
 
 function harness(
   installedAgents: AgentId[] = ['claude'],
-  opts: { fetchImpl?: FetchLike; proxyMode?: boolean } = {},
+  opts: { fetchImpl?: FetchLike; proxyMode?: boolean; profileMcp?: ProfileMcpHook } = {},
 ) {
   const store = createProviderStore({ load: () => ({}), save: () => {} });
   const secrets = memorySecrets();
@@ -127,6 +128,10 @@ function harness(
     () => opts.proxyMode ?? false,
     opts.fetchImpl,
     (text) => clipboard.push(text),
+    null,
+    createBindingProfileStore({ load: () => ({}), save: () => {} }),
+    null,
+    opts.profileMcp ?? null,
   );
   return { store, secrets, adapters, calls, restoreCounts, onChange, manager, registered, unregistered, clipboard };
 }
@@ -838,5 +843,61 @@ describe('provider manager — snapshot config view', () => {
     for (const role of ['auth', 'toString', '__proto__']) {
       expect(codeOf(() => manager.resolveConfigRevealPath('claude', role))).toBe('NOT_FOUND');
     }
+  });
+});
+
+describe('config profiles with MCP', () => {
+  function mcpHook(decide: boolean) {
+    const events: string[] = [];
+    let sets: Partial<Record<string, string[]>> = { claude: ['fs'] };
+    const hook: ProfileMcpHook = {
+      capture: () => sets,
+      plan: async (want) => {
+        events.push(`plan:${JSON.stringify(want)}`);
+        return { proceed: decide, skipped: 1, commit: () => void events.push('commit') };
+      },
+    };
+    return { hook, events, setSets: (next: typeof sets) => (sets = next) };
+  }
+
+  it('records MCP sets on save and applies them after the bindings', async () => {
+    const mcp = mcpHook(true);
+    const { manager, calls } = harness(['claude'], { profileMcp: mcp.hook });
+    const id = addProvider(manager);
+    manager.setBinding('claude', id, 'm1');
+    const [saved] = manager.saveBindingProfile('work');
+    expect(saved).toMatchObject({ name: 'work', boundCount: 1, mcpCount: 1 });
+    manager.restoreAgentDefault('claude');
+    const writesBefore = calls.claude!.length;
+    const r = await manager.applyBindingProfile(saved!.id);
+    expect(r).toMatchObject({ applied: true, mcpSkipped: 1 });
+    expect(calls.claude!.length).toBe(writesBefore + 1);
+    expect(r.snapshot.agents.find((x) => x.id === 'claude')!.binding).toEqual({ providerId: id, modelId: 'm1' });
+    expect(mcp.events).toEqual(['plan:{"claude":["fs"]}', 'commit']);
+  });
+
+  it('a declined MCP confirmation applies nothing', async () => {
+    const mcp = mcpHook(false);
+    const { manager, calls } = harness(['claude'], { profileMcp: mcp.hook });
+    const id = addProvider(manager);
+    manager.setBinding('claude', id, 'm1');
+    const [saved] = manager.saveBindingProfile('work');
+    manager.restoreAgentDefault('claude');
+    const writesBefore = calls.claude!.length;
+    const r = await manager.applyBindingProfile(saved!.id);
+    expect(r.applied).toBe(false);
+    expect(calls.claude!.length).toBe(writesBefore);
+    expect(r.snapshot.agents.find((x) => x.id === 'claude')!.binding).toBeNull();
+    expect(mcp.events).toEqual(['plan:{"claude":["fs"]}']);
+  });
+
+  it('a profile without an MCP part never plans MCP', async () => {
+    const mcp = mcpHook(true);
+    const { manager } = harness(['claude'], { profileMcp: mcp.hook });
+    mcp.setSets(undefined as never);
+    const [saved] = manager.saveBindingProfile('plain');
+    expect(saved!.mcpCount).toBeNull();
+    expect(await manager.applyBindingProfile(saved!.id)).toMatchObject({ applied: true, mcpSkipped: 0 });
+    expect(mcp.events).toEqual([]);
   });
 });
