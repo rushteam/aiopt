@@ -103,6 +103,7 @@
     "currentVersion": "Versión actual",
     "check": "Buscar actualizaciones",
     "notice": "Hay una nueva versión disponible:",
+    "dismiss": "Cerrar hasta la próxima versión",
     "checking": "Comprobando…",
     "state": {
       "idle": "Comprueba si hay una versión más reciente disponible.",

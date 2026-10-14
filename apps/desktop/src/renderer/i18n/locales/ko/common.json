@@ -103,6 +103,7 @@
     "currentVersion": "현재 버전",
     "check": "업데이트 확인",
     "notice": "새 버전이 있습니다:",
+    "dismiss": "다음 버전까지 닫기",
     "checking": "확인 중…",
     "state": {
       "idle": "새 버전이 있는지 확인하려면 클릭하세요.",
