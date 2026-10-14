@@ -256,6 +256,8 @@ export function getTranslationProxy(): TranslationProxy {
       // Per-provider fields to strip from the outbound body (see proxy/sanitize.ts) —
       // resolved live, like the key, so a provider edit needs no rebind.
       getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
+      // Prompt-cache breakpoints for Anthropic upstreams (see proxy/promptCache.ts), live.
+      getPromptCache: () => getConfigStore().get('promptCache'),
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).

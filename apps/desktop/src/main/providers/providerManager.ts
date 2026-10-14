@@ -313,11 +313,20 @@ export function createProviderManager(
     }
     const { inbound, outbound } = route;
     const sameFormat = route.kind === 'native';
+    // The Gemini translation speaks the public generateContent API with an API key. A
+    // signed-in (OAuth / agent-import) Gemini session talks to a different service with a
+    // bearer token, so it cannot be a translation target.
+    if (outbound === 'gemini' && !sameFormat && providerNeedsProxyForUpstreamSecret(provider.credentialMode)) {
+      throwIpcError(
+        'UNSUPPORTED_CAPABILITY',
+        'translation between this provider and agent format is not supported',
+      );
+    }
 
     // Direct config (real key on disk, no proxy hop) when the formats already match AND
     // EITHER: proxy mode is off (the default — a native binding connects directly), OR the
-    // pair can't be proxied at all (a gemini binding — gemini has no proxy dialect, so a
-    // native gemini binding is always direct). Proxy mode ON therefore routes every
+    // pair can't be proxied at all (a native gemini binding — gemini is never an inbound
+    // proxy dialect, so a Gemini agent on a Gemini provider is always direct). Proxy mode ON therefore routes every
     // proxyable binding through the loopback, native or not.
     const proxyable = translationSupported(inbound, outbound);
     // OAuth / agent-import tokens never go on disk — always route through the loopback proxy.
@@ -339,7 +348,7 @@ export function createProviderManager(
     }
 
     // Routed through the proxy — either a cross-format translation (Anthropic ⇄ Chat
-    // Completions; Responses → Chat Completions / Anthropic) or a same-format identity
+    // Completions; Responses → Chat Completions / Anthropic; Anthropic / Chat → Gemini) or a same-format identity
     // passthrough (so usage is counted and the key stays off disk). A translated route is
     // proxyable by construction; this guards the native-gemini case that fell through.
     if (!proxyable) {
@@ -785,7 +794,7 @@ export function proxyConfigSnippet(endpoint: {
   modelId: string;
   inboundFormat: ApiFormat;
 }): string {
-  // Gemini never routes through the proxy, so it can't reach here; the other three map to a
+  // Gemini is never an inbound proxy dialect, so it can't reach here; the other three map to a
   // conventional (base-url, key) env pair each.
   const prefix = endpoint.inboundFormat === 'anthropic' ? 'ANTHROPIC' : 'OPENAI';
   return [

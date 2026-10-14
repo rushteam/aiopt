@@ -25,7 +25,18 @@ function num(v: unknown): number {
 }
 
 /** Read token counts from a non-streaming upstream body by its (outbound) format. */
+/** Gemini `usageMetadata`: output counts answer + reasoning tokens (both billed as output). */
+function geminiCounts(meta: unknown): UsageCounts | null {
+  if (!meta || typeof meta !== 'object') return null;
+  const m = meta as Record<string, unknown>;
+  return {
+    inputTokens: num(m.promptTokenCount),
+    outputTokens: num(m.candidatesTokenCount) + num(m.thoughtsTokenCount),
+  };
+}
+
 export function readResponseUsage(outboundFormat: ApiFormat, json: Record<string, unknown>): UsageCounts {
+  if (outboundFormat === 'gemini') return geminiCounts(json.usageMetadata) ?? { ...ZERO };
   const usage = json.usage;
   if (!usage || typeof usage !== 'object') return { ...ZERO };
   const u = usage as Record<string, unknown>;
@@ -34,7 +45,7 @@ export function readResponseUsage(outboundFormat: ApiFormat, json: Record<string
     // `input_tokens` / `output_tokens`.
     return { inputTokens: num(u.input_tokens), outputTokens: num(u.output_tokens) };
   }
-  // openai (Chat Completions) — also the shape gemini upstreams echo.
+  // openai (Chat Completions).
   return { inputTokens: num(u.prompt_tokens), outputTokens: num(u.completion_tokens) };
 }
 
@@ -95,7 +106,17 @@ export function createUsageSniffer(outboundFormat: ApiFormat): UsageSniffer {
         return;
       }
 
-      // openai (Chat Completions) / gemini: the terminal chunk carries a full usage object.
+      if (outboundFormat === 'gemini') {
+        // Each Gemini chunk may carry a running `usageMetadata`; the last one is final.
+        const counts = geminiCounts(payload.usageMetadata);
+        if (counts) {
+          inputTokens = counts.inputTokens;
+          outputTokens = counts.outputTokens;
+        }
+        return;
+      }
+
+      // openai (Chat Completions): the terminal chunk carries a full usage object.
       const usage = payload.usage;
       if (usage && typeof usage === 'object') {
         const u = usage as { prompt_tokens?: unknown; completion_tokens?: unknown };

@@ -257,6 +257,7 @@ const prefs: PreferencesShape = {
   skillsLibrary: 'home',
   proxyMode: false,
   warnOnQuitWithProxy: true,
+  promptCache: true,
   experimentalMode: params.get('experimental') === '1',
 };
 

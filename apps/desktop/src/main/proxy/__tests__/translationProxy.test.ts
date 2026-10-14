@@ -288,3 +288,162 @@ describe('translation proxy — per-provider request sanitizing', () => {
     expect(bodies).toHaveLength(0);
   });
 });
+
+describe('translation proxy — prompt-cache breakpoints', () => {
+  const started: TranslationProxy[] = [];
+
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  async function send(
+    getPromptCache: (() => boolean) | undefined,
+    route: Partial<RouteSpec>,
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const bodies: Record<string, unknown>[] = [];
+    const impl: ProxyFetch = (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        body: null,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ id: 'x', model: 'm', content: [], stop_reason: 'end_turn', usage: {} }),
+          ),
+      });
+    };
+    const proxy = createTranslationProxy({ fetchImpl: impl, getKey: () => 'sk-test', getPromptCache });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(spec(route));
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(200);
+    expect(bodies).toHaveLength(1);
+    return bodies[0]!;
+  }
+
+  const chat = {
+    model: 'gpt',
+    messages: [
+      { role: 'system', content: 'be brief' },
+      { role: 'user', content: 'hi' },
+    ],
+  };
+
+  it('adds breakpoints to a translated Anthropic-bound body when enabled', async () => {
+    const out = await send(() => true, { agentId: 'opencode', inboundFormat: 'openai' }, '/v1/chat/completions', chat);
+    expect(JSON.stringify(out)).toContain('"cache_control":{"type":"ephemeral"}');
+  });
+
+  it('leaves the body alone when disabled or not configured', async () => {
+    for (const flag of [undefined, () => false]) {
+      const out = await send(flag, { agentId: 'opencode', inboundFormat: 'openai' }, '/v1/chat/completions', chat);
+      expect(JSON.stringify(out)).not.toContain('cache_control');
+    }
+  });
+
+  it('never touches a non-Anthropic upstream', async () => {
+    const out = await send(
+      () => true,
+      { inboundFormat: 'openai', outboundFormat: 'openai', upstreamBaseUrl: 'https://api.openai.com' },
+      '/v1/chat/completions',
+      chat,
+    );
+    expect(JSON.stringify(out)).not.toContain('cache_control');
+  });
+});
+
+describe('translation proxy — Gemini upstream', () => {
+  const started: TranslationProxy[] = [];
+
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  function sseBody(frames: string[]): ReadableStream<Uint8Array> {
+    const enc = new TextEncoder();
+    return new ReadableStream({
+      start(controller) {
+        for (const f of frames) controller.enqueue(enc.encode(f));
+        controller.close();
+      },
+    });
+  }
+
+  async function run(
+    stream: boolean,
+    reply: { json?: unknown; sse?: string[] },
+  ): Promise<{ url: string; headers: Record<string, string>; sent: Record<string, unknown>; res: Response; usage: unknown[] }> {
+    let url = '';
+    let headers: Record<string, string> = {};
+    let sent: Record<string, unknown> = {};
+    const usage: unknown[] = [];
+    const impl: ProxyFetch = (u, init) => {
+      url = u;
+      headers = init.headers;
+      sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: reply.sse ? sseBody(reply.sse) : null,
+        text: () => Promise.resolve(JSON.stringify(reply.json ?? {})),
+      });
+    };
+    const proxy = createTranslationProxy({
+      fetchImpl: impl,
+      getKey: () => 'sk-gem',
+      recordUsage: (e) => usage.push(e),
+    });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(
+      spec({ outboundFormat: 'gemini', upstreamBaseUrl: 'https://g.example', modelId: 'gemini-2.5-pro' }),
+    );
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'x', max_tokens: 64, stream, messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    return { url, headers, sent, res, usage };
+  }
+
+  it('translates a non-streaming call and keeps the key out of the URL', async () => {
+    const { url, headers, sent, res, usage } = await run(false, {
+      json: {
+        candidates: [{ content: { role: 'model', parts: [{ text: 'hello' }] }, finishReason: 'STOP' }],
+        usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 2 },
+      },
+    });
+    expect(url).toBe('https://g.example/v1beta/models/gemini-2.5-pro:generateContent');
+    expect(url).not.toContain('sk-gem');
+    expect(headers['x-goog-api-key']).toBe('sk-gem');
+    expect(sent).toEqual({ contents: [{ role: 'user', parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 64 } });
+    const body = (await res.json()) as { content: unknown[]; usage: unknown };
+    expect(body.content).toEqual([{ type: 'text', text: 'hello' }]);
+    expect(usage[0]).toMatchObject({ ok: true, streamed: false, inputTokens: 5, outputTokens: 2 });
+  });
+
+  it('streams via streamGenerateContent and closes the message even without a finish chunk', async () => {
+    const { url, res, usage } = await run(true, {
+      sse: [
+        `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: 'he' }] } }] })}\n\n`,
+        `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: 'llo' }] } }], usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 4 } })}\n\n`,
+      ],
+    });
+    expect(url).toBe('https://g.example/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse');
+    const text = await res.text();
+    expect(text).toContain('"text":"he"');
+    expect(text).toContain('"text":"llo"');
+    expect(text).toContain('event: message_stop');
+    expect(usage[0]).toMatchObject({ ok: true, streamed: true, inputTokens: 3, outputTokens: 4 });
+  });
+});

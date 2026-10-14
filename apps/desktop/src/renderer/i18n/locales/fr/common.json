@@ -52,6 +52,10 @@
       "label": "Avertir avant de quitter avec le proxy actif",
       "help": "Activé (par défaut) : si des agents passent par le proxy d’AiOpt, confirmer avant de quitter — ils ne pourront pas se connecter tant qu’AiOpt n’est pas relancé. Désactivé : quitter sans demander."
     },
+    "promptCache": {
+      "label": "Cache de prompt pour les fournisseurs Anthropic",
+      "help": "Activé (par défaut) : les requêtes relayées vers un fournisseur au format Anthropic reçoivent des points de cache si le client n’en a défini aucun, afin que le contexte répété soit facturé au tarif du cache. Désactivé : les requêtes sont transmises telles quelles."
+    },
     "experimentalMode": {
       "label": "Mode expérimental",
       "help": "Désactivé (par défaut) : masque les fonctions en cours (par ex. Workbench). Activé : affiche les onglets et entrées de barre d’état expérimentaux."

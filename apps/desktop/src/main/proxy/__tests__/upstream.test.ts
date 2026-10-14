@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outboundHeaders, outboundUrl } from '../upstream';
+import { geminiOutboundUrl, outboundHeaders, outboundUrl } from '../upstream';
 
 describe('outboundUrl', () => {
   it('appends /v1 when the base has no version segment', () => {
@@ -14,8 +14,25 @@ describe('outboundUrl', () => {
     expect(outboundUrl('openai-responses', 'https://api.example.com/v1')).toBe('https://api.example.com/v1/responses');
   });
 
-  it('refuses gemini (never a proxy target)', () => {
+  it('refuses gemini (its model lives in the path — see geminiOutboundUrl)', () => {
     expect(() => outboundUrl('gemini', 'https://x')).toThrow(/unsupported outbound format/);
+  });
+});
+
+describe('geminiOutboundUrl', () => {
+  it('puts the model in the path and picks the streaming endpoint', () => {
+    expect(geminiOutboundUrl('https://g.example', 'gemini-2.5-pro', false)).toBe(
+      'https://g.example/v1beta/models/gemini-2.5-pro:generateContent',
+    );
+    expect(geminiOutboundUrl('https://g.example/', 'models/gemini-2.5-pro', true)).toBe(
+      'https://g.example/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse',
+    );
+  });
+
+  it('keeps a versioned base and escapes the model id', () => {
+    expect(geminiOutboundUrl('https://g.example/v1', 'a/b', false)).toBe(
+      'https://g.example/v1/models/a%2Fb:generateContent',
+    );
   });
 });
 
@@ -40,7 +57,9 @@ describe('outboundHeaders', () => {
     expect(outboundHeaders('anthropic', null)['x-api-key']).toBeUndefined();
   });
 
-  it('refuses gemini', () => {
-    expect(() => outboundHeaders('gemini', 'k')).toThrow(/unsupported outbound format/);
+  it('sends a gemini key in x-goog-api-key, never the query string', () => {
+    const h = outboundHeaders('gemini', 'k');
+    expect(h['x-goog-api-key']).toBe('k');
+    expect(h.authorization).toBeUndefined();
   });
 });

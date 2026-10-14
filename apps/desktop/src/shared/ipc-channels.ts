@@ -358,6 +358,13 @@ export interface PreferencesShape {
    * tab bar, tray, and menu-driven navigation. When `true`, those surfaces are shown.
    */
   experimentalMode: boolean;
+  /**
+   * Prompt-cache breakpoints. When `true` (default) the proxy adds up to four
+   * `cache_control` breakpoints to a request bound for an Anthropic-format provider when
+   * the request carries none (a translated request never does). Adds markers only — the
+   * prompt text is unchanged. Read per request, so a flip needs no rebind.
+   */
+  promptCache: boolean;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry

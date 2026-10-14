@@ -52,6 +52,10 @@
       "label": "Avisar antes de salir con el proxy activo",
       "help": "Activado (predeterminado): si hay agentes enrutados a través del proxy de AiOpt, confirmar antes de salir — no podrán conectarse hasta que AiOpt vuelva a ejecutarse. Desactivado: salir sin preguntar."
     },
+    "promptCache": {
+      "label": "Caché de prompts para proveedores Anthropic",
+      "help": "Activado (predeterminado): las solicitudes enrutadas a un proveedor con formato Anthropic reciben puntos de caché si el cliente no definió ninguno, para que el contexto repetido se facture a la tarifa de caché. Desactivado: las solicitudes se reenvían tal cual."
+    },
     "experimentalMode": {
       "label": "Modo experimental",
       "help": "Desactivado (predeterminado): oculta funciones en desarrollo (p. ej. Workbench). Activado: muestra pestañas y entradas de bandeja experimentales."

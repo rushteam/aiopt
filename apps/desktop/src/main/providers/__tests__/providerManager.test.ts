@@ -366,13 +366,38 @@ describe('provider manager — setBinding cross-format (translation proxy)', () 
     expect(JSON.stringify(write)).not.toContain('sk-REAL-secret');
   });
 
-  it('rejects a gemini provider (untranslatable) with UNSUPPORTED_CAPABILITY and registers nothing', () => {
+  it('claude → a Gemini provider registers an anthropic→gemini route with the loopback token', () => {
     const { manager, registered, calls } = harness(['claude']);
-    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk', modelId: 'm1' });
+    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk-REAL', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(1);
+    expect(registered[0]!).toMatchObject({ inboundFormat: 'anthropic', outboundFormat: 'gemini', modelId: 'm1' });
+    expect(JSON.stringify(calls.claude![0]!)).not.toContain('sk-REAL');
+  });
+
+  it('refuses a signed-in Gemini session as a translation target (different service, bearer auth)', () => {
+    const { manager, registered } = harness(['claude']);
+    const snap = manager.addProvider({
+      name: 'Gemini sign-in',
+      apiFormats: ['gemini'],
+      baseUrl: 'https://api.example.com',
+      models: [{ id: 'm1' }],
+      notes: undefined,
+      credentialMode: 'oauth',
+      oauth: { kind: 'generic_pkce' },
+    });
+    const id = snap.providers.filter((p) => !p.virtual).at(-1)!.id;
     expect(codeOf(() => manager.setBinding('claude', id, 'm1'))).toBe('UNSUPPORTED_CAPABILITY');
     expect(registered).toHaveLength(0);
-    expect(calls.claude!).toHaveLength(0);
-    expect(manager.getSnapshot().agents.find((a) => a.id === 'claude')!.binding).toBeNull();
+  });
+
+  it('rejects codex (Responses) on a Gemini provider with UNSUPPORTED_CAPABILITY and registers nothing', () => {
+    const { manager, registered, calls } = harness(['codex']);
+    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk', modelId: 'm1' });
+    expect(codeOf(() => manager.setBinding('codex', id, 'm1'))).toBe('UNSUPPORTED_CAPABILITY');
+    expect(registered).toHaveLength(0);
+    expect(calls.codex!).toHaveLength(0);
+    expect(manager.getSnapshot().agents.find((a) => a.id === 'codex')!.binding).toBeNull();
   });
 
   it('codex (Responses) → OpenAI Chat provider registers a route with the right in/out formats', () => {

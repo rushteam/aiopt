@@ -52,6 +52,10 @@
       "label": "Warn before quitting with proxy active",
       "help": "On (default): if agents are routed through AiOpt’s proxy, confirm before quitting — they can’t connect until AiOpt runs again. Off: quit without asking."
     },
+    "promptCache": {
+      "label": "Prompt cache for Anthropic providers",
+      "help": "On (default): requests proxied to an Anthropic-format provider get cache breakpoints when the client sent none, so repeated context is billed at the cached rate. Off: requests are forwarded as sent."
+    },
     "experimentalMode": {
       "label": "Experimental mode",
       "help": "Off (default): hides in-progress features such as Workbench. On: shows experimental tabs and tray entries."

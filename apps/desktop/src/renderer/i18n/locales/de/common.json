@@ -52,6 +52,10 @@
       "label": "Vor dem Beenden bei aktivem Proxy warnen",
       "help": "An (Standard): Wenn Agenten über den Proxy von AiOpt laufen, vor dem Beenden bestätigen — sie können sich erst wieder verbinden, wenn AiOpt erneut läuft. Aus: ohne Nachfrage beenden."
     },
+    "promptCache": {
+      "label": "Prompt-Cache für Anthropic-Anbieter",
+      "help": "An (Standard): Anfragen, die an einen Anbieter im Anthropic-Format weitergeleitet werden, erhalten Cache-Haltepunkte, wenn der Client keine gesetzt hat, sodass wiederholter Kontext zum Cache-Tarif abgerechnet wird. Aus: Anfragen werden unverändert weitergeleitet."
+    },
     "experimentalMode": {
       "label": "Experimenteller Modus",
       "help": "Aus (Standard): blendet Funktionen in Entwicklung (z. B. Workbench) aus. An: zeigt experimentelle Tabs und Tray-Einträge."

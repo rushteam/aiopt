@@ -103,6 +103,17 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
       return raw;
     },
   },
+  promptCache: {
+    // On by default: it only adds cache markers, never changes content, and a client that
+    // sets its own breakpoints is left alone.
+    default: true,
+    validate(raw) {
+      if (typeof raw !== 'boolean') {
+        throwIpcError('INVALID_PARAMS', 'promptCache must be a boolean');
+      }
+      return raw;
+    },
+  },
 };
 
 export const PREFERENCE_KEYS = Object.keys(PREFERENCES) as (keyof PreferencesShape)[];
