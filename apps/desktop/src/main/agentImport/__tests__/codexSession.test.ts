@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AGENT_FILES } from '../../providers/agentPaths';
@@ -7,12 +8,13 @@ import { codexSessionSnapshot, readCodexAccessTokenSync } from '../codexSession'
 let home: string;
 
 beforeEach(() => {
-  home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-codex-import-'));
+  home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aiopt-codex-import-'));
   process.env.AIOPT_AGENT_HOME = home;
 });
 
 afterEach(() => {
   delete process.env.AIOPT_AGENT_HOME;
+  fs.rmSync(home, { recursive: true, force: true });
 });
 
 function writeAuth(data: unknown): void {
