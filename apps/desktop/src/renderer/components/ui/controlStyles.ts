@@ -20,17 +20,25 @@ export function inlineControlBox(size: ControlSize): CSSProperties {
   };
 }
 
+/** Width of {@link segmentedRootStyle}'s border, top and bottom. */
+const SEGMENTED_BORDER = 1;
+
 export const segmentedRootStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'stretch',
-  border: `1px solid ${token('borderStrong')}`,
+  border: `${SEGMENTED_BORDER}px solid ${token('borderStrong')}`,
   borderRadius: radius.md,
   overflow: 'hidden',
 };
 
 export function segmentButtonChrome(size: ControlSize = 'md'): CSSProperties {
+  // The root's border wraps the segments, so each segment gives up that border's height:
+  // the whole control then stands at controlHeight[size], level with a button beside it.
+  const h = controlHeight[size] - 2 * SEGMENTED_BORDER;
   return {
     ...inlineControlBox(size),
+    height: h,
+    minHeight: h,
     border: 'none',
     borderRadius: 0,
     background: 'transparent',
