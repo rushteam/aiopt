@@ -22,6 +22,14 @@ import type {
   SessionTranscript,
 } from './agentSessions';
 import type {
+  McpImportRequest,
+  McpNameRequest,
+  McpSaveRequest,
+  McpSnapshot,
+  McpToggleRequest,
+  McpWriteResult,
+} from './mcp';
+import type {
   SkillDiffResult,
   SkillFileContent,
   SkillRevealRef,
@@ -156,6 +164,17 @@ export const IPC_CHANNELS = {
   sessionsTranscript: 'sessions:transcript',
   sessionsCopyResume: 'sessions:copy-resume',
   sessionsExport: 'sessions:export',
+
+  // MCP servers. One library in AiOpt, synced into each agent's MCP config. Env/header
+  // VALUES never cross to the renderer (names + set flag only). Save and enable put a
+  // command/URL into an agent config, so main confirms them in a native dialog first —
+  // see shared/mcp.ts and docs/dev-rules/mcp-servers.md.
+  mcpGet: 'mcp:get',
+  mcpSave: 'mcp:save',
+  mcpToggle: 'mcp:toggle',
+  mcpResync: 'mcp:resync',
+  mcpDelete: 'mcp:delete',
+  mcpImport: 'mcp:import',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -1029,6 +1048,12 @@ export interface IpcContract {
   [IPC_CHANNELS.sessionsTranscript]: { request: SessionRef; result: SessionTranscript };
   [IPC_CHANNELS.sessionsCopyResume]: { request: SessionRef; result: Record<string, never> };
   [IPC_CHANNELS.sessionsExport]: { request: SessionRef; result: SessionsExportResult };
+  [IPC_CHANNELS.mcpGet]: { request: void; result: McpSnapshot };
+  [IPC_CHANNELS.mcpSave]: { request: McpSaveRequest; result: McpWriteResult };
+  [IPC_CHANNELS.mcpToggle]: { request: McpToggleRequest; result: McpWriteResult };
+  [IPC_CHANNELS.mcpResync]: { request: McpNameRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpDelete]: { request: McpNameRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpImport]: { request: McpImportRequest; result: McpSnapshot };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

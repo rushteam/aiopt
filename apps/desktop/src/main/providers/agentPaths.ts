@@ -46,6 +46,18 @@ export const AGENT_FILES = Object.fromEntries(
     .map(([id, spec]) => [id, spec.binding!.files]),
 ) as { [K in BindableAgentId]: (typeof AGENT_SPECS)[K]['binding'] extends { files: infer F } ? F : never };
 
+/**
+ * MCP config files, relative to home, for the agents whose MCP servers AiOpt manages
+ * (main/mcp). Part of the write allowlist. Codex and Gemini keep MCP servers in a file the
+ * binding adapter also writes; Claude Code keeps user-scope servers in `~/.claude.json`, its
+ * large state file, which AiOpt only ever touches for the `mcpServers` key.
+ */
+export const MCP_CONFIG_FILES = {
+  claude: '.claude.json',
+  codex: AGENT_FILES.codex.config,
+  gemini: AGENT_FILES.gemini.settings,
+} as const;
+
 /** The directory whose existence signals an agent is installed — derived from {@link AGENT_SPECS}. */
 const AGENT_INSTALL_DIRS: Partial<Record<AgentId, string>> = Object.fromEntries(
   (Object.entries(AGENT_SPECS) as [AgentId, AgentSpec][])
@@ -99,8 +111,7 @@ export function resolveAgentConfigRole(id: AgentId, role: string): string | null
 /** Every allowlisted config path across all declared agents, for the current home. */
 function allAllowedConfigPaths(): string[] {
   const home = agentHome();
-  return Object.values(AGENT_FILES)
-    .flatMap((files) => Object.values(files))
+  return [...Object.values(AGENT_FILES).flatMap((files) => Object.values(files)), ...Object.values(MCP_CONFIG_FILES)]
     .map((rel) => path.join(home, rel));
 }
 

@@ -154,6 +154,14 @@
       "note": "One conversation an agent (Claude Code, Codex) recorded in its own on-disk log. AiOpt only reads these logs — on the Sessions tab and in the agent-log usage view — and never writes to them. Not 'chat', 'thread', or 'conversation history' in UI copy. Term still under discussion.",
       "translations": { "zh-CN": "会话", "ja": "セッション", "ko": "세션", "fr": "Session", "de": "Sitzung", "es": "Sesión" },
       "forbidden": { "zh-CN": ["对话记录", "聊天记录"] }
+    },
+    {
+      "id": "mcp-server",
+      "en": "MCP server",
+      "status": "proposed",
+      "note": "A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one list and writes it into each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated. Term still under discussion.",
+      "translations": { "zh-CN": "MCP 服务器", "ja": "MCP サーバー", "ko": "MCP 서버", "fr": "Serveur MCP", "de": "MCP-Server", "es": "Servidor MCP" },
+      "forbidden": { "zh-CN": ["MCP 服务端", "MCP 插件"] }
     }
   ]
 }

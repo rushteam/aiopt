@@ -426,6 +426,71 @@
       "window": "Last {{days}} days"
     }
   },
+    "mcp": {
+      "title": "MCP",
+      "intro": "One list of MCP servers, written into each agent's own MCP config. Turn a server on per agent; AiOpt asks you to confirm before writing a command or URL.",
+      "refresh": "Refresh",
+      "add": "Add server",
+      "loading": "Loading MCP servers…",
+      "failed": "Could not load MCP servers.",
+      "empty": "No MCP servers yet. Add one, or import one an agent already has.",
+      "declined": "Not written — you cancelled the confirmation.",
+      "secretsUnavailable": "OS secret encryption is unavailable, so environment variable and header values cannot be saved.",
+      "unreadable": "{{agent}}'s MCP config ({{path}}) could not be read. AiOpt will not write it until it is fixed.",
+      "files": "Config files:",
+      "claudeNote": "Claude Code rewrites ~/.claude.json often. Quit Claude Code before changing its servers so your change is not overwritten.",
+      "importTitle": "Found in agent configs",
+      "importIntro": "These servers are already set up in an agent but not in AiOpt's list. Importing adds them here; it does not change the agent's file.",
+      "import": "Import",
+      "resync": "Re-sync",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteTitle": "Delete “{{name}}”?",
+      "deleteMessage": "It is also removed from every agent it is turned on for.",
+      "valueMissing": "no value",
+      "state": {
+        "missing": "Not in file",
+        "different": "Changed outside AiOpt",
+        "unsupported": "Not supported"
+      },
+      "transport": {
+        "stdio": "Local command",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "Add MCP server",
+        "editTitle": "Edit MCP server",
+        "name": "Name",
+        "nameInvalid": "Use letters, numbers, “-”, “_” or “.” (up to 64), starting with a letter or number.",
+        "nameTaken": "A server with this name already exists.",
+        "transport": "Transport",
+        "command": "Command",
+        "args": "Arguments (one per line)",
+        "url": "URL",
+        "env": "Environment variables",
+        "headers": "Headers",
+        "key": "Name",
+        "value": "Value",
+        "valueKeep": "Keep current value",
+        "removeVar": "Remove",
+        "addVar": "Add",
+        "valuesNote": "Values are stored encrypted in AiOpt and written into the agent's config file in plain text, which the agent needs.",
+        "agents": "Turn on for",
+        "confirmNote": "Saving writes the server into the agents you turn it on for. AiOpt shows the exact command or URL and asks you to confirm first.",
+        "save": "Save"
+      },
+      "errors": {
+        "generic": "Something went wrong.",
+        "ALREADY_EXISTS": "A server with this name already exists.",
+        "NOT_FOUND": "That server no longer exists. Refresh and try again.",
+        "PRECONDITION_FAILED": "An agent's MCP config could not be read, or secret encryption is unavailable.",
+        "UNSUPPORTED_CAPABILITY": "That agent does not support this transport.",
+        "INVALID_PARAMS": "Some fields are not valid.",
+        "INTERNAL": "Could not write the agent's MCP config."
+      }
+    },
   "sessions": {
     "title": "Sessions",
     "search": "Search sessions",

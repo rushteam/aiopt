@@ -18,6 +18,7 @@ import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import { restoreKeepingJsonMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
 import { readEnvFileVars } from './bindingLive';
 
@@ -77,7 +78,10 @@ export function createGeminiAdapter(): AgentAdapter {
     },
 
     restoreDefault() {
-      for (const file of this.configPaths()) restoreAgentConfigFile(file);
+      restoreAgentConfigFile(resolveAgentFile(AGENT_FILES.gemini.env));
+      // settings.json also holds MCP servers (main/mcp); a restore must not roll those back.
+      const settingsFile = resolveAgentFile(AGENT_FILES.gemini.settings);
+      restoreKeepingJsonMcp(settingsFile, () => restoreAgentConfigFile(settingsFile));
     },
   };
 }

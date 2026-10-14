@@ -51,6 +51,12 @@ import type {
   SessionsSnapshot,
   SessionTranscript,
 } from '../shared/agentSessions';
+import type {
+  McpAgentId,
+  McpSaveRequest,
+  McpSnapshot,
+  McpWriteResult,
+} from '../shared/mcp';
 import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
@@ -315,6 +321,23 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.sessionsCopyResume, ref),
     export: (ref: SessionRef): Promise<SessionsExportResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.sessionsExport, ref),
+  },
+
+  /**
+   * MCP servers. A server is named by its validated name; env/header values go IN with a
+   * save (omit `value` to keep the stored one) but never come back out. `save` and an
+   * enabling `toggle` resolve only after the user answers main's native confirmation;
+   * `saved: false` means they declined.
+   */
+  mcp: {
+    get: (): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpGet),
+    save: (req: McpSaveRequest): Promise<McpWriteResult> => ipcRenderer.invoke(IPC_CHANNELS.mcpSave, req),
+    toggle: (name: string, agentId: McpAgentId, enabled: boolean): Promise<McpWriteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpToggle, { name, agentId, enabled }),
+    resync: (name: string): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpResync, { name }),
+    delete: (name: string): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpDelete, { name }),
+    import: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpImport, { agentId, name }),
   },
 
   /**

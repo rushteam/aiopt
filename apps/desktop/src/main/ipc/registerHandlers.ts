@@ -20,6 +20,7 @@ import { registerAgentImportIpc } from '../agentImport/agentImportIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
 import { registerSessionsIpc } from '../sessions/sessionsIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
+import { registerMcpIpc } from '../mcp/mcpIpc';
 import { registerWorkbenchIpc } from '../workbench/workbenchIpc';
 import { rebuildAppMenuLabels } from '../menu/appMenu';
 import { rebuildTrayLabels } from '../tray/tray';
@@ -41,6 +42,7 @@ import {
   getUpdateService,
   getUsageStore,
   getAgentSessionStore,
+  getMcpStore,
   getWorkbenchManager,
 } from '../services';
 
@@ -85,6 +87,7 @@ export function registerHandlers(): void {
     writeFile: (file, text) => fsp.writeFile(file, text, 'utf8'),
     platform: process.platform,
   });
+  registerMcpIpc(registry, getMcpStore());
   registerSkillsIpc(registry, getSkillsStore(), {
     // The import SOURCE is chosen here in main via a native picker — never supplied
     // by the renderer. A single directory; treated as one skill by the store.

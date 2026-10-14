@@ -7,7 +7,9 @@
 //   - config.toml — we OVERWRITE the whole file with a single custom model provider.
 //     TOML has no dependency-free merge here, so we rewrite
 //     it wholesale; the pristine original is kept once as
-//     `config.toml.aiopt.bak` by fsutil's backup-before-write.
+//     `config.toml.aiopt.bak` by fsutil's backup-before-write. The one exception is the
+//     `[mcp_servers.*]` tables, which belong to the user / MCP sync (main/mcp): they are
+//     carried over verbatim on write and kept as they are on restore.
 //
 // Codex speaks the OpenAI wire format (Responses API), so the compatibility gate
 // upstream only ever routes an openai-format provider here.
@@ -21,6 +23,7 @@ import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '..
 import type { LiveBindingSnapshot } from './bindingLive';
 import { readTomlScalar } from './bindingLive';
 import { tomlLine, tomlTableHeader } from '../tomlLite';
+import { restoreKeepingCodexMcp, withCodexMcpBlocks } from '../../mcp/preserveMcp';
 
 const CODEX_DEF: AgentDef = getAgentDef('codex')!;
 
@@ -66,7 +69,8 @@ export function createCodexAdapter(): AgentAdapter {
       }
       writeAgentConfigFile(authFile, `${JSON.stringify(auth, null, 2)}\n`);
 
-      writeAgentConfigFile(resolveAgentFile(AGENT_FILES.codex.config), renderConfigToml(input));
+      const configFile = resolveAgentFile(AGENT_FILES.codex.config);
+      writeAgentConfigFile(configFile, withCodexMcpBlocks(configFile, renderConfigToml(input)));
     },
 
     readLiveBinding(_applied: AppliedBindingRecord): LiveBindingSnapshot | null {
@@ -87,7 +91,9 @@ export function createCodexAdapter(): AgentAdapter {
     },
 
     restoreDefault() {
-      for (const file of this.configPaths()) restoreAgentConfigFile(file);
+      restoreAgentConfigFile(resolveAgentFile(AGENT_FILES.codex.auth));
+      const configFile = resolveAgentFile(AGENT_FILES.codex.config);
+      restoreKeepingCodexMcp(configFile, () => restoreAgentConfigFile(configFile));
     },
   };
 }

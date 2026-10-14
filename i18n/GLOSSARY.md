@@ -85,6 +85,18 @@ The single chat agent on the workbench. It breaks a request into tasks and propo
 - **de**: Koordinator
 - **es**: Coordinador
 
+### MCP server (`mcp-server`)
+
+A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one list and writes it into each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated. Term still under discussion.
+
+- **zh-CN**: MCP 服务器
+  - forbidden: `MCP 服务端`, `MCP 插件`
+- **ja**: MCP サーバー
+- **ko**: MCP 서버
+- **fr**: Serveur MCP
+- **de**: MCP-Server
+- **es**: Servidor MCP
+
 ### Merge (`merge`)
 
 Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.

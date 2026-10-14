@@ -43,6 +43,8 @@
   read `docs/dev-rules/add-bindable-agent.md`.
 - Before changing agent binding apply/re-sync, adapter writeback, or binding drift UI:
   read `docs/dev-rules/agent-binding-drift.md`.
+- Before changing MCP server management (library, agent MCP config writes, the write confirmation):
+  read `docs/dev-rules/mcp-servers.md`.
 - Before changing the SQLite schema, a migration, or runtime DB access: read
   `docs/dev-rules/database-and-migrations.md`.
 - Before touching the update provider / service, or wiring any real update feed, downloader,

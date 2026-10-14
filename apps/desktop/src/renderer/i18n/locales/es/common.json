@@ -426,6 +426,71 @@
       "window": "Últimos {{days}} días"
     }
   },
+    "mcp": {
+      "title": "MCP",
+      "intro": "Una sola lista de servidores MCP, escrita en la configuración MCP de cada agente. Activa un servidor por agente; AiOpt te pide confirmación antes de escribir un comando o una URL.",
+      "refresh": "Actualizar",
+      "add": "Añadir servidor",
+      "loading": "Cargando servidores MCP…",
+      "failed": "No se pudieron cargar los servidores MCP.",
+      "empty": "Aún no hay servidores MCP. Añade uno o importa uno que ya tenga un agente.",
+      "declined": "No se escribió: cancelaste la confirmación.",
+      "secretsUnavailable": "El cifrado de secretos del sistema no está disponible, así que no se pueden guardar valores de variables de entorno ni de encabezados.",
+      "unreadable": "No se pudo leer la configuración MCP de {{agent}} ({{path}}). AiOpt no la escribirá hasta que se corrija.",
+      "files": "Archivos de configuración:",
+      "claudeNote": "Claude Code reescribe ~/.claude.json a menudo. Cierra Claude Code antes de cambiar sus servidores para que tu cambio no se sobrescriba.",
+      "importTitle": "Encontrados en configuraciones de agentes",
+      "importIntro": "Estos servidores ya están configurados en un agente pero no en la lista de AiOpt. Importarlos los añade aquí sin cambiar el archivo del agente.",
+      "import": "Importar",
+      "resync": "Volver a sincronizar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "deleteTitle": "¿Eliminar «{{name}}»?",
+      "deleteMessage": "También se quita de todos los agentes en los que está activado.",
+      "valueMissing": "sin valor",
+      "state": {
+        "missing": "No está en el archivo",
+        "different": "Cambiado fuera de AiOpt",
+        "unsupported": "No compatible"
+      },
+      "transport": {
+        "stdio": "Comando local",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "Añadir servidor MCP",
+        "editTitle": "Editar servidor MCP",
+        "name": "Nombre",
+        "nameInvalid": "Usa letras, números, «-», «_» o «.» (hasta 64), empezando por una letra o un número.",
+        "nameTaken": "Ya existe un servidor con este nombre.",
+        "transport": "Transporte",
+        "command": "Comando",
+        "args": "Argumentos (uno por línea)",
+        "url": "URL",
+        "env": "Variables de entorno",
+        "headers": "Encabezados",
+        "key": "Nombre",
+        "value": "Valor",
+        "valueKeep": "Conservar el valor actual",
+        "removeVar": "Quitar",
+        "addVar": "Añadir",
+        "valuesNote": "Los valores se guardan cifrados en AiOpt y se escriben en texto plano en el archivo de configuración del agente, que los necesita.",
+        "agents": "Activar para",
+        "confirmNote": "Al guardar, el servidor se escribe en los agentes activados. Antes, AiOpt muestra el comando o la URL exactos y te pide confirmación.",
+        "save": "Guardar"
+      },
+      "errors": {
+        "generic": "Algo salió mal.",
+        "ALREADY_EXISTS": "Ya existe un servidor con este nombre.",
+        "NOT_FOUND": "Ese servidor ya no existe. Actualiza e inténtalo de nuevo.",
+        "PRECONDITION_FAILED": "No se pudo leer la configuración MCP de un agente, o el cifrado de secretos no está disponible.",
+        "UNSUPPORTED_CAPABILITY": "Ese agente no admite este transporte.",
+        "INVALID_PARAMS": "Algunos campos no son válidos.",
+        "INTERNAL": "No se pudo escribir la configuración MCP del agente."
+      }
+    },
   "sessions": {
     "title": "Sesiones",
     "search": "Buscar sesiones",

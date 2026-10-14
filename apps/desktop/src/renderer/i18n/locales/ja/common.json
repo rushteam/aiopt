@@ -426,6 +426,71 @@
       "window": "過去 {{days}} 日"
     }
   },
+    "mcp": {
+      "title": "MCP",
+      "intro": "MCP サーバーの一覧を 1 つ管理し、各エージェントの MCP 設定に書き込みます。エージェントごとにオンにでき、コマンドや URL を書き込む前に確認を求めます。",
+      "refresh": "更新",
+      "add": "サーバーを追加",
+      "loading": "MCP サーバーを読み込み中…",
+      "failed": "MCP サーバーを読み込めませんでした。",
+      "empty": "MCP サーバーはまだありません。追加するか、エージェントにあるものをインポートしてください。",
+      "declined": "書き込みませんでした。確認がキャンセルされました。",
+      "secretsUnavailable": "OS のシークレット暗号化が使えないため、環境変数とヘッダーの値を保存できません。",
+      "unreadable": "{{agent}} の MCP 設定（{{path}}）を読み取れませんでした。修正されるまで AiOpt は書き込みません。",
+      "files": "設定ファイル：",
+      "claudeNote": "Claude Code は ~/.claude.json を頻繁に書き換えます。変更が上書きされないよう、サーバーを変更する前に Claude Code を終了してください。",
+      "importTitle": "エージェント設定で見つかったもの",
+      "importIntro": "これらのサーバーはエージェントに設定済みですが、AiOpt の一覧にはありません。インポートしてもエージェントのファイルは変更されません。",
+      "import": "インポート",
+      "resync": "再同期",
+      "edit": "編集",
+      "delete": "削除",
+      "cancel": "キャンセル",
+      "deleteTitle": "「{{name}}」を削除しますか？",
+      "deleteMessage": "オンにしているすべてのエージェントからも削除されます。",
+      "valueMissing": "値なし",
+      "state": {
+        "missing": "ファイルにありません",
+        "different": "AiOpt の外で変更されました",
+        "unsupported": "非対応"
+      },
+      "transport": {
+        "stdio": "ローカルコマンド",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "MCP サーバーを追加",
+        "editTitle": "MCP サーバーを編集",
+        "name": "名前",
+        "nameInvalid": "英数字、「-」「_」「.」を使い（64 文字まで）、英数字で始めてください。",
+        "nameTaken": "同じ名前のサーバーがすでにあります。",
+        "transport": "トランスポート",
+        "command": "コマンド",
+        "args": "引数（1 行に 1 つ）",
+        "url": "URL",
+        "env": "環境変数",
+        "headers": "ヘッダー",
+        "key": "名前",
+        "value": "値",
+        "valueKeep": "現在の値を保持",
+        "removeVar": "削除",
+        "addVar": "追加",
+        "valuesNote": "値は AiOpt 内で暗号化して保存され、エージェントの設定ファイルには平文で書き込まれます（エージェントが必要とするため）。",
+        "agents": "オンにするエージェント",
+        "confirmNote": "保存すると、オンにしたエージェントにサーバーが書き込まれます。その前に AiOpt がコマンドまたは URL を表示して確認を求めます。",
+        "save": "保存"
+      },
+      "errors": {
+        "generic": "問題が発生しました。",
+        "ALREADY_EXISTS": "同じ名前のサーバーがすでにあります。",
+        "NOT_FOUND": "そのサーバーはもう存在しません。更新して再試行してください。",
+        "PRECONDITION_FAILED": "エージェントの MCP 設定を読み取れないか、シークレット暗号化が使えません。",
+        "UNSUPPORTED_CAPABILITY": "そのエージェントはこのトランスポートに対応していません。",
+        "INVALID_PARAMS": "無効な項目があります。",
+        "INTERNAL": "エージェントの MCP 設定に書き込めませんでした。"
+      }
+    },
   "sessions": {
     "title": "セッション",
     "search": "セッションを検索",

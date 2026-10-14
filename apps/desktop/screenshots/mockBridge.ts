@@ -20,6 +20,7 @@ import type {
 } from '../src/shared/ipc-channels';
 import type { UsageBucket, UsageDailyPoint, UsageSnapshot, UsageTotals } from '../src/shared/usageStats';
 import type { LocalUsageSnapshot, SessionsSnapshot } from '../src/shared/agentSessions';
+import type { McpSnapshot } from '../src/shared/mcp';
 import type { SkillEntry, SkillMatrixRow, SkillsSnapshot } from '../src/shared/skills';
 import type { WorkbenchSnapshot } from '../src/shared/workbench';
 import { AGENT_SPECS, type AgentId, type AgentSpec } from '../src/shared/aiProviders';
@@ -221,6 +222,37 @@ const localUsageSnapshot: LocalUsageSnapshot = {
   scannedAt: NOW,
   retentionDays: 90,
   sessionCount: 41,
+};
+
+// Demo MCP library: one stdio server synced to two agents, one remote server with a
+// header, one server found in Codex's config that is not in the library yet.
+const mcpSnapshot: McpSnapshot = {
+  servers: [
+    {
+      name: 'filesystem',
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '~/Projects'],
+      env: [],
+      headers: [],
+      agents: { claude: 'synced', codex: 'synced', gemini: 'off' },
+    },
+    {
+      name: 'docs-search',
+      transport: 'http',
+      url: 'https://mcp.example.com/mcp',
+      env: [],
+      headers: [{ key: 'Authorization', set: true }],
+      agents: { claude: 'synced', codex: 'off', gemini: 'different' },
+    },
+  ],
+  agents: [
+    { agentId: 'claude', installed: true, configDisplayPath: '~/.claude.json', unreadable: false },
+    { agentId: 'codex', installed: true, configDisplayPath: '~/.codex/config.toml', unreadable: false },
+    { agentId: 'gemini', installed: true, configDisplayPath: '~/.gemini/settings.json', unreadable: false },
+  ],
+  candidates: [{ agentId: 'codex', name: 'github', transport: 'stdio', summary: 'github-mcp-server stdio' }],
+  secretsAvailable: true,
 };
 
 const sessionsSnapshot: SessionsSnapshot = {
@@ -499,6 +531,14 @@ const bridge: AiOptBridge = {
     copyResume: refused,
     export: refused,
   },
+  mcp: {
+    get: async () => mcpSnapshot,
+    save: refused,
+    toggle: refused,
+    resync: refused,
+    delete: refused,
+    import: refused,
+  },
   skills: {
     get: async () => skillsSnapshot,
     pull: refused,
@@ -563,8 +603,8 @@ if (select) {
   }, 50);
 }
 
-// Workbench and Sessions have no menu command, so their tab is opened by clicking the tab button.
-const CLICK_TABS: Record<string, string> = { workbench: 'Workbench', sessions: 'Sessions' };
+// Workbench, Sessions and MCP have no menu command, so their tab is opened by clicking the tab button.
+const CLICK_TABS: Record<string, string> = { workbench: 'Workbench', sessions: 'Sessions', mcp: 'MCP' };
 const clickTab = tab ? CLICK_TABS[tab] : undefined;
 if (clickTab) {
   const timer = setInterval(() => {

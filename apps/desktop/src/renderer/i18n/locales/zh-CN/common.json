@@ -426,6 +426,71 @@
       "window": "最近 {{days}} 天"
     }
   },
+    "mcp": {
+      "title": "MCP",
+      "intro": "维护一份 MCP 服务器列表，写入各 agent 自己的 MCP 配置。按 agent 开启；写入命令或 URL 前 AiOpt 会请你确认。",
+      "refresh": "刷新",
+      "add": "添加服务器",
+      "loading": "正在加载 MCP 服务器…",
+      "failed": "无法加载 MCP 服务器。",
+      "empty": "还没有 MCP 服务器。添加一个，或导入 agent 里已有的。",
+      "declined": "未写入：你取消了确认。",
+      "secretsUnavailable": "系统密钥加密不可用，无法保存环境变量和请求头的值。",
+      "unreadable": "无法读取 {{agent}} 的 MCP 配置（{{path}}）。修复之前 AiOpt 不会写入它。",
+      "files": "配置文件：",
+      "claudeNote": "Claude Code 会频繁改写 ~/.claude.json。修改它的服务器前请先退出 Claude Code，以免改动被覆盖。",
+      "importTitle": "在 agent 配置中发现",
+      "importIntro": "这些服务器已在某个 agent 里配置，但不在 AiOpt 的列表中。导入只会加到这里，不会改动 agent 的文件。",
+      "import": "导入",
+      "resync": "重新同步",
+      "edit": "编辑",
+      "delete": "删除",
+      "cancel": "取消",
+      "deleteTitle": "删除「{{name}}」？",
+      "deleteMessage": "它也会从所有已开启的 agent 中移除。",
+      "valueMissing": "无值",
+      "state": {
+        "missing": "文件中没有",
+        "different": "已在 AiOpt 外被修改",
+        "unsupported": "不支持"
+      },
+      "transport": {
+        "stdio": "本地命令",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "添加 MCP 服务器",
+        "editTitle": "编辑 MCP 服务器",
+        "name": "名称",
+        "nameInvalid": "使用字母、数字、“-”“_”或“.”（最多 64 个），以字母或数字开头。",
+        "nameTaken": "已有同名服务器。",
+        "transport": "传输方式",
+        "command": "命令",
+        "args": "参数（每行一个）",
+        "url": "URL",
+        "env": "环境变量",
+        "headers": "请求头",
+        "key": "名称",
+        "value": "值",
+        "valueKeep": "保留当前值",
+        "removeVar": "移除",
+        "addVar": "添加",
+        "valuesNote": "值在 AiOpt 中加密保存，并以明文写入 agent 的配置文件（agent 需要读取）。",
+        "agents": "开启于",
+        "confirmNote": "保存会把服务器写入你开启的 agent。写入前 AiOpt 会显示完整的命令或 URL 并请你确认。",
+        "save": "保存"
+      },
+      "errors": {
+        "generic": "出错了。",
+        "ALREADY_EXISTS": "已有同名服务器。",
+        "NOT_FOUND": "该服务器已不存在。请刷新后重试。",
+        "PRECONDITION_FAILED": "无法读取某个 agent 的 MCP 配置，或密钥加密不可用。",
+        "UNSUPPORTED_CAPABILITY": "该 agent 不支持这种传输方式。",
+        "INVALID_PARAMS": "部分字段无效。",
+        "INTERNAL": "无法写入 agent 的 MCP 配置。"
+      }
+    },
   "sessions": {
     "title": "会话",
     "search": "搜索会话",
