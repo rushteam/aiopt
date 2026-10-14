@@ -20,10 +20,13 @@ let home: string;
 beforeEach(() => {
   home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-cursor-import-'));
   process.env.AIOPT_AGENT_HOME = home;
+  // GitHub's Linux runners set XDG_CONFIG_HOME, which would move the Linux path out of `home`.
+  process.env.XDG_CONFIG_HOME = path.join(home, '.config');
 });
 
 afterEach(() => {
   delete process.env.AIOPT_AGENT_HOME;
+  delete process.env.XDG_CONFIG_HOME;
 });
 
 function writeAuth(data: unknown): void {
