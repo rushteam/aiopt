@@ -9,6 +9,9 @@
 // package.json (`app.getVersion()`, see main/services.ts), never from the tag; nothing in
 // the build would have noticed or complained.
 //
+// The tag is now the release version: release.yml writes it into the manifests first
+// (scripts/stamp-version.mjs), and this check confirms the stamp took.
+//
 // The two manifests are checked against each other on every CI run, so they cannot drift
 // while nobody is releasing. The tag is checked only when there is one.
 //
