@@ -66,8 +66,10 @@ Do not report a P0/P1 you haven't actually reproduced or traced; state confidenc
 
 ## 6. Releasing (version + tag)
 
-`release.yml` builds installers on all three platforms when a `v*` tag is pushed, and attaches
-them to a **draft** GitHub Release for a human to review and publish. It is a download channel,
+`release.yml` builds installers on all three platforms when a `v*` tag is pushed, and a single
+`publish` job attaches all of them to one **draft** GitHub Release for a human to review and
+publish. Keep publishing in that one job: per-platform publishing raced and split v1.0.11 into
+two Releases for the same tag. It is a download channel,
 not an auto-update feed — see `updater.md`.
 
 The version lives in two manifests, `package.json` and `apps/desktop/package.json`, and they
