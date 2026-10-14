@@ -103,6 +103,7 @@
     "currentVersion": "当前版本",
     "check": "检查更新",
     "notice": "有新版本可用：",
+    "dismiss": "关闭，直到下一个版本",
     "checking": "检查中…",
     "state": {
       "idle": "点击检查是否有新版本。",

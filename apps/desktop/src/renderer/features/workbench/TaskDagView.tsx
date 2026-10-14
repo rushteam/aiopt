@@ -4,7 +4,9 @@ import type { TaskStatus, TaskView } from '../../../shared/workbench';
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import type { TranslateFn } from '../../i18n';
 
-const NODE_W = 112;
+const NODE_W = 132;
+/** Title starts after the status dot; keep the same inset on the right. */
+const LABEL_X = 18;
 const NODE_H = 36;
 const GAP_X = 20;
 const GAP_Y = 48;
@@ -76,6 +78,7 @@ export function TaskDagView({
             const selected = n.id === selectedId;
             return (
               <g key={n.id} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }}>
+                <title>{n.title}</title>
                 <rect
                   x={p.x}
                   y={p.y}
@@ -87,15 +90,29 @@ export function TaskDagView({
                   strokeWidth={selected ? 2 : 1}
                 />
                 <circle cx={p.x + 8} cy={p.y + NODE_H / 2} r={4} fill={statusColor(n.status)} />
-                <text
-                  x={p.x + 16}
-                  y={p.y + NODE_H / 2 + 4}
-                  fontSize={11}
-                  fill={token('text')}
+                {/* SVG text cannot ellipsize, and a character count misjudges width (a CJK
+                    glyph is about twice a Latin one), so the title is HTML clipped to the node. */}
+                <foreignObject
+                  x={p.x + LABEL_X}
+                  y={p.y}
+                  width={NODE_W - LABEL_X * 1.5}
+                  height={NODE_H}
                   style={{ pointerEvents: 'none' }}
                 >
-                  {n.title.length > 12 ? `${n.title.slice(0, 11)}…` : n.title}
-                </text>
+                  <div
+                    style={{
+                      height: NODE_H,
+                      lineHeight: `${NODE_H}px`,
+                      fontSize: fontSize.xs,
+                      color: token('text'),
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {n.title}
+                  </div>
+                </foreignObject>
               </g>
             );
           })}
