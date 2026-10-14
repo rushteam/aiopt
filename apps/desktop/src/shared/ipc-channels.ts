@@ -15,6 +15,13 @@ import type { AgentImportConfig } from './agentImport';
 import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
 import type { UsageSnapshot } from './usageStats';
 import type {
+  LocalUsageSnapshot,
+  SessionRef,
+  SessionsExportResult,
+  SessionsSnapshot,
+  SessionTranscript,
+} from './agentSessions';
+import type {
   SkillDiffResult,
   SkillFileContent,
   SkillRevealRef,
@@ -138,6 +145,17 @@ export const IPC_CHANNELS = {
   // or token plaintext) — see shared/usageStats.ts.
   usageGet: 'usage:get',
   usageClear: 'usage:clear',
+
+  // Agent session logs (read-only). Main scans the agents' own JSONL transcripts; the
+  // renderer names a session only by (agentId, sessionId), never a path. Local usage
+  // carries counts + identifiers only; a transcript is returned only on explicit request.
+  // Copy-resume and export run main-side (clipboard / save dialog) — see
+  // shared/agentSessions.ts.
+  sessionsList: 'sessions:list',
+  sessionsLocalUsage: 'sessions:local-usage',
+  sessionsTranscript: 'sessions:transcript',
+  sessionsCopyResume: 'sessions:copy-resume',
+  sessionsExport: 'sessions:export',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -1006,6 +1024,11 @@ export interface IpcContract {
   };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };
+  [IPC_CHANNELS.sessionsList]: { request: { refresh?: boolean } | void; result: SessionsSnapshot };
+  [IPC_CHANNELS.sessionsLocalUsage]: { request: { refresh?: boolean } | void; result: LocalUsageSnapshot };
+  [IPC_CHANNELS.sessionsTranscript]: { request: SessionRef; result: SessionTranscript };
+  [IPC_CHANNELS.sessionsCopyResume]: { request: SessionRef; result: Record<string, never> };
+  [IPC_CHANNELS.sessionsExport]: { request: SessionRef; result: SessionsExportResult };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

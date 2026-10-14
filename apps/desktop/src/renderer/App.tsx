@@ -11,6 +11,7 @@ import { SettingsView, type SettingsSectionId } from './features/settings/Settin
 import { UpdateNotice } from './features/settings/UpdateNotice';
 import { ProvidersHome } from './features/providers/ProvidersHome';
 import { UsageHome } from './features/usage/UsageHome';
+import { SessionsHome } from './features/sessions/SessionsHome';
 import { SkillsHome } from './features/skills/SkillsHome';
 import { WorkbenchHome } from './features/workbench/WorkbenchHome';
 import { TitleBar } from './components/TitleBar';
@@ -133,6 +134,8 @@ export function App() {
             <SettingsView initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
           ) : tab === 'usage' ? (
             <UsageHome />
+          ) : tab === 'sessions' ? (
+            <SessionsHome />
           ) : tab === 'skills' ? (
             <SkillsHome />
           ) : tab === 'workbench' ? (

@@ -19,6 +19,7 @@ import type {
   ProvidersSnapshot,
 } from '../src/shared/ipc-channels';
 import type { UsageBucket, UsageDailyPoint, UsageSnapshot, UsageTotals } from '../src/shared/usageStats';
+import type { LocalUsageSnapshot, SessionsSnapshot } from '../src/shared/agentSessions';
 import type { SkillEntry, SkillMatrixRow, SkillsSnapshot } from '../src/shared/skills';
 import type { WorkbenchSnapshot } from '../src/shared/workbench';
 import { AGENT_SPECS, type AgentId, type AgentSpec } from '../src/shared/aiProviders';
@@ -192,6 +193,63 @@ const usageSnapshot: UsageSnapshot = {
   until: NOW,
   retentionDays: 90,
   eventCount: totals.requests,
+};
+
+function localTotals(responses: number, input: number, output: number, cacheRead: number, cacheWrite: number) {
+  return {
+    responses,
+    inputTokens: input,
+    outputTokens: output,
+    cacheReadTokens: cacheRead,
+    cacheWriteTokens: cacheWrite,
+    totalTokens: input + output + cacheRead + cacheWrite,
+  };
+}
+
+const localUsageSnapshot: LocalUsageSnapshot = {
+  totals: localTotals(1_840, 412_000, 268_000, 9_600_000, 730_000),
+  byAgent: [
+    { key: 'claude', ...localTotals(1_210, 98_000, 181_000, 7_900_000, 690_000) },
+    { key: 'codex', ...localTotals(630, 314_000, 87_000, 1_700_000, 40_000) },
+  ],
+  byModel: [
+    { key: 'claude-sonnet-4-5', ...localTotals(1_010, 81_000, 152_000, 6_500_000, 560_000) },
+    { key: 'gpt-5-codex', ...localTotals(630, 314_000, 87_000, 1_700_000, 40_000) },
+    { key: 'claude-haiku-4-5', ...localTotals(200, 17_000, 29_000, 1_400_000, 130_000) },
+  ],
+  daily: daily.map((d, i) => ({ day: d.day, ...localTotals(100 + i * 9, 20_000 + i * 900, 15_000, 600_000 + i * 20_000, 40_000) })),
+  scannedAt: NOW,
+  retentionDays: 90,
+  sessionCount: 41,
+};
+
+const sessionsSnapshot: SessionsSnapshot = {
+  sessions: [
+    {
+      agentId: 'claude',
+      sessionId: '6f1c2a90-1d2e-4c55-9a51-0f7d3e2b8a11',
+      title: 'Add retry with backoff to the upload client',
+      cwd: '~/work/uploader',
+      startedAt: NOW - 3 * 60 * 60 * 1000,
+      updatedAt: NOW - 2 * 60 * 60 * 1000,
+      model: 'claude-sonnet-4-5',
+      gitBranch: 'feat/retry',
+      messageCount: 24,
+    },
+    {
+      agentId: 'codex',
+      sessionId: '0198a3c4-77e2-7b10-9c3d-5e6f7a8b9c0d',
+      title: 'Why does the nightly build fail on Windows?',
+      cwd: '~/work/build-tools',
+      startedAt: NOW - DAY - 60 * 60 * 1000,
+      updatedAt: NOW - DAY,
+      model: 'gpt-5-codex',
+      gitBranch: 'main',
+      messageCount: 9,
+    },
+  ],
+  scannedAt: NOW,
+  truncated: false,
 };
 
 // --- Skills ----------------------------------------------------------------------------
@@ -434,6 +492,13 @@ const bridge: AiOptBridge = {
     onChanged: unsubscribe,
   },
   usage: { get: async () => usageSnapshot, clear: refused, onChanged: unsubscribe },
+  sessions: {
+    list: async () => sessionsSnapshot,
+    localUsage: async () => localUsageSnapshot,
+    transcript: refused,
+    copyResume: refused,
+    export: refused,
+  },
   skills: {
     get: async () => skillsSnapshot,
     pull: refused,
@@ -498,10 +563,12 @@ if (select) {
   }, 50);
 }
 
-// The workbench has no menu command, so its tab is opened by clicking the tab button.
-if (tab === 'workbench') {
+// Workbench and Sessions have no menu command, so their tab is opened by clicking the tab button.
+const CLICK_TABS: Record<string, string> = { workbench: 'Workbench', sessions: 'Sessions' };
+const clickTab = tab ? CLICK_TABS[tab] : undefined;
+if (clickTab) {
   const timer = setInterval(() => {
-    const button = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Workbench');
+    const button = [...document.querySelectorAll('button')].find((b) => b.textContent === clickTab);
     if (button) {
       clearInterval(timer);
       button.click();

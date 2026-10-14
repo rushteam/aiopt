@@ -41,6 +41,8 @@ import { createTranslationProxy, type TranslationProxy } from './proxy/translati
 import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/proxyStore';
 import type { ProxyFetch } from './proxy/upstream';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
+import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
+import { agentHome } from './providers/agentPaths';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
 import { isRealDirectory } from './skills/skillsLibraryDir';
@@ -75,6 +77,7 @@ let oauthManager: OAuthManager | null = null;
 let providerManager: ProviderManager | null = null;
 let translationProxy: TranslationProxy | null = null;
 let usageStore: UsageStore | null = null;
+let agentSessionStore: AgentSessionStore | null = null;
 let skillsStore: SkillsStore | null = null;
 let workbenchManager: WorkbenchManager | null = null;
 
@@ -280,6 +283,15 @@ export function getUsageStore(): UsageStore {
     usageStore = store;
   }
   return usageStore;
+}
+
+/**
+ * Read-only scanner over the agents' own session logs (Claude Code / Codex JSONL under the
+ * agent home). Serves the local-usage view and the sessions reader; writes nothing.
+ */
+export function getAgentSessionStore(): AgentSessionStore {
+  if (!agentSessionStore) agentSessionStore = createAgentSessionStore({ home: agentHome });
+  return agentSessionStore;
 }
 
 /**

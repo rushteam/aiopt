@@ -406,7 +406,50 @@
     "clear": "Effacer l’utilisation",
     "clearConfirm": "Effacer toute l’utilisation enregistrée ?",
     "clearConfirmYes": "Effacer",
-    "clearCancel": "Annuler"
+    "clearCancel": "Annuler",
+    "source": {
+      "label": "Source de l'utilisation",
+      "proxy": "Via AiOpt",
+      "local": "Journaux des agents",
+      "proxyHint": "Requêtes passées par le proxy d'AiOpt.",
+      "localHint": "Lu depuis les journaux de session de Claude Code et Codex sur cet ordinateur. Inclut les liaisons directes."
+    },
+    "local": {
+      "loading": "Lecture des journaux de session…",
+      "failed": "Impossible de lire les journaux de session des agents.",
+      "empty": "Aucune utilisation trouvée dans les journaux de Claude Code ou Codex.",
+      "responses": "Réponses",
+      "cacheRead": "Lecture du cache",
+      "cacheWrite": "Écriture du cache",
+      "cache": "Cache",
+      "refresh": "Relire les journaux",
+      "window": "{{days}} derniers jours"
+    }
+  },
+  "sessions": {
+    "title": "Sessions",
+    "search": "Rechercher des sessions",
+    "refresh": "Relire",
+    "intro": "Sessions passées de Claude Code et Codex, lues depuis les journaux qu'ils conservent sur cet ordinateur. AiOpt se contente de lire ces fichiers.",
+    "loading": "Chargement…",
+    "failed": "Impossible de lire les journaux de session des agents.",
+    "empty": "Aucune session Claude Code ou Codex trouvée.",
+    "noMatch": "Aucune session ne correspond à votre recherche.",
+    "untitled": "Session sans titre",
+    "truncated": "Seules les sessions les plus récentes sont affichées.",
+    "back": "Retour",
+    "showTools": "Afficher les appels d'outils",
+    "copyResume": "Copier la commande de reprise",
+    "export": "Exporter en Markdown",
+    "copied": "Commande de reprise copiée.",
+    "exported": "Exporté.",
+    "actionFailed": "Échec. Réessayez.",
+    "transcriptTruncated": "Cette session est longue ; seuls les messages les plus récents sont affichés.",
+    "role": {
+      "user": "Vous",
+      "assistant": "Assistant",
+      "tool": "Outil"
+    }
   },
   "skills": {
     "title": "Compétences",

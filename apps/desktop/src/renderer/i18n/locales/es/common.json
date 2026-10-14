@@ -406,7 +406,50 @@
     "clear": "Borrar uso",
     "clearConfirm": "¿Borrar todo el uso registrado?",
     "clearConfirmYes": "Borrar",
-    "clearCancel": "Cancelar"
+    "clearCancel": "Cancelar",
+    "source": {
+      "label": "Origen del uso",
+      "proxy": "A través de AiOpt",
+      "local": "Registros de agentes",
+      "proxyHint": "Solicitudes que pasaron por el proxy de AiOpt.",
+      "localHint": "Leído de los registros de sesión de Claude Code y Codex en este equipo. Incluye enlaces directos."
+    },
+    "local": {
+      "loading": "Leyendo registros de sesión…",
+      "failed": "No se pudieron leer los registros de sesión de los agentes.",
+      "empty": "No se encontró uso en los registros de Claude Code o Codex.",
+      "responses": "Respuestas",
+      "cacheRead": "Lectura de caché",
+      "cacheWrite": "Escritura de caché",
+      "cache": "Caché",
+      "refresh": "Volver a leer registros",
+      "window": "Últimos {{days}} días"
+    }
+  },
+  "sessions": {
+    "title": "Sesiones",
+    "search": "Buscar sesiones",
+    "refresh": "Volver a leer",
+    "intro": "Sesiones anteriores de Claude Code y Codex, leídas de los registros que guardan en este equipo. AiOpt solo lee estos archivos.",
+    "loading": "Cargando…",
+    "failed": "No se pudieron leer los registros de sesión de los agentes.",
+    "empty": "No se encontraron sesiones de Claude Code ni Codex.",
+    "noMatch": "Ninguna sesión coincide con la búsqueda.",
+    "untitled": "Sesión sin título",
+    "truncated": "Solo se muestran las sesiones más recientes.",
+    "back": "Volver",
+    "showTools": "Mostrar llamadas a herramientas",
+    "copyResume": "Copiar comando para reanudar",
+    "export": "Exportar como Markdown",
+    "copied": "Comando para reanudar copiado.",
+    "exported": "Exportado.",
+    "actionFailed": "No funcionó. Inténtalo de nuevo.",
+    "transcriptTruncated": "Esta sesión es larga; solo se muestran los mensajes más recientes.",
+    "role": {
+      "user": "Tú",
+      "assistant": "Asistente",
+      "tool": "Herramienta"
+    }
   },
   "skills": {
     "title": "Habilidades",

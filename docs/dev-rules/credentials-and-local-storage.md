@@ -36,6 +36,7 @@ Electron's `app.getPath(...)`:
 | Caches / rebuildable artifacts | `app.getPath('cache')` | Disposable; must be safe to delete. |
 | Transient scratch | `app.getPath('temp')` | Per-run; clean up on exit. |
 | Logs | `app.getPath('logs')` | Rotating; masked; no secrets. |
+| Agent session logs (Claude Code `~/.claude/projects/**/*.jsonl`, Codex `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) | Owned by those agents under the agent home | **Read-only** to AiOpt: scanned main-side for the Sessions tab and the agent-log usage view, never written, symlinks not followed, oversized files skipped. Parses are cached in memory only — nothing derived is persisted. The renderer names a session by `(agentId, sessionId)` alone; main resolves it to a file it listed itself. Session text is the user's conversation and is never logged. A Markdown export goes only to a path the user picks in a main-side save dialog. |
 | Skills central library | `skillsLibrary` enum, resolved in main: `userData/skills` or `~/.agents/skills`. A previously stored `~/.aiopt/skills` is still resolved. | User-owned skill files. Switching the enum points at another directory and does not move files. On first use, if the in-app library is empty and `~/.agents/skills` already exists, that choice is recorded. `~/.agents/skills` is the cross-client user directory (home-level, not a project `.agents/` that Git would track) and is shared with other agents that scan it. |
 
 - `userData` depends on how the app runs. A packaged build uses Electron's default,

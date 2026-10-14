@@ -44,6 +44,13 @@ import type {
   SkillsSnapshot,
 } from '../shared/skills';
 import type { UsageSnapshot } from '../shared/usageStats';
+import type {
+  LocalUsageSnapshot,
+  SessionRef,
+  SessionsExportResult,
+  SessionsSnapshot,
+  SessionTranscript,
+} from '../shared/agentSessions';
 import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
@@ -290,6 +297,24 @@ const api = {
     /** Subscribe to usage changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: UsageSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.usageChanged, callback),
+  },
+
+  /**
+   * Agent session logs, read-only. Sessions are named by (agentId, sessionId) only —
+   * never a path. `copyResume` writes the resume command to the clipboard main-side;
+   * `export` asks for the destination in a main-side save dialog.
+   */
+  sessions: {
+    list: (opts?: { refresh?: boolean }): Promise<SessionsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsList, opts ?? {}),
+    localUsage: (opts?: { refresh?: boolean }): Promise<LocalUsageSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsLocalUsage, opts ?? {}),
+    transcript: (ref: SessionRef): Promise<SessionTranscript> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsTranscript, ref),
+    copyResume: (ref: SessionRef): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsCopyResume, ref),
+    export: (ref: SessionRef): Promise<SessionsExportResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsExport, ref),
   },
 
   /**

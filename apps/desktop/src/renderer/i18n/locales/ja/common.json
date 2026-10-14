@@ -406,7 +406,50 @@
     "clear": "使用状況をクリア",
     "clearConfirm": "記録されたすべての使用量をクリアしますか？",
     "clearConfirmYes": "クリア",
-    "clearCancel": "キャンセル"
+    "clearCancel": "キャンセル",
+    "source": {
+      "label": "使用量のソース",
+      "proxy": "AiOpt 経由",
+      "local": "エージェントのログ",
+      "proxyHint": "AiOpt のプロキシを経由したリクエスト。",
+      "localHint": "このコンピューター上の Claude Code と Codex のセッションログから読み取ります。直接バインドも含みます。"
+    },
+    "local": {
+      "loading": "セッションログを読み込み中…",
+      "failed": "エージェントのセッションログを読み取れませんでした。",
+      "empty": "Claude Code や Codex のセッションログに使用量が見つかりません。",
+      "responses": "応答数",
+      "cacheRead": "キャッシュ読み取り",
+      "cacheWrite": "キャッシュ書き込み",
+      "cache": "キャッシュ",
+      "refresh": "ログを再スキャン",
+      "window": "過去 {{days}} 日"
+    }
+  },
+  "sessions": {
+    "title": "セッション",
+    "search": "セッションを検索",
+    "refresh": "再スキャン",
+    "intro": "このコンピューター上のログから読み取った Claude Code と Codex の過去のセッション。AiOpt はこれらのファイルを読み取るだけです。",
+    "loading": "読み込み中…",
+    "failed": "エージェントのセッションログを読み取れませんでした。",
+    "empty": "Claude Code や Codex のセッションが見つかりません。",
+    "noMatch": "検索に一致するセッションはありません。",
+    "untitled": "無題のセッション",
+    "truncated": "最近のセッションのみ表示しています。",
+    "back": "戻る",
+    "showTools": "ツール呼び出しを表示",
+    "copyResume": "再開コマンドをコピー",
+    "export": "Markdown として書き出す",
+    "copied": "再開コマンドをコピーしました。",
+    "exported": "書き出しました。",
+    "actionFailed": "うまくいきませんでした。もう一度お試しください。",
+    "transcriptTruncated": "長いセッションのため、最近のメッセージのみ表示しています。",
+    "role": {
+      "user": "あなた",
+      "assistant": "アシスタント",
+      "tool": "ツール"
+    }
   },
   "skills": {
     "title": "スキル",

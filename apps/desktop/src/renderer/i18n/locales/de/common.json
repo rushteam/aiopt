@@ -406,7 +406,50 @@
     "clear": "Nutzung löschen",
     "clearConfirm": "Alle erfassten Nutzungsdaten löschen?",
     "clearConfirmYes": "Löschen",
-    "clearCancel": "Abbrechen"
+    "clearCancel": "Abbrechen",
+    "source": {
+      "label": "Nutzungsquelle",
+      "proxy": "Über AiOpt",
+      "local": "Aus Agent-Protokollen",
+      "proxyHint": "Anfragen, die über den Proxy von AiOpt liefen.",
+      "localHint": "Aus den Sitzungsprotokollen von Claude Code und Codex auf diesem Computer gelesen. Enthält direkte Bindings."
+    },
+    "local": {
+      "loading": "Sitzungsprotokolle werden gelesen…",
+      "failed": "Die Sitzungsprotokolle der Agents konnten nicht gelesen werden.",
+      "empty": "In den Protokollen von Claude Code oder Codex wurde keine Nutzung gefunden.",
+      "responses": "Antworten",
+      "cacheRead": "Cache gelesen",
+      "cacheWrite": "Cache geschrieben",
+      "cache": "Cache",
+      "refresh": "Protokolle neu einlesen",
+      "window": "Letzte {{days}} Tage"
+    }
+  },
+  "sessions": {
+    "title": "Sitzungen",
+    "search": "Sitzungen durchsuchen",
+    "refresh": "Neu einlesen",
+    "intro": "Frühere Sitzungen von Claude Code und Codex, gelesen aus den Protokollen auf diesem Computer. AiOpt liest diese Dateien nur.",
+    "loading": "Wird geladen…",
+    "failed": "Die Sitzungsprotokolle der Agents konnten nicht gelesen werden.",
+    "empty": "Keine Sitzungen von Claude Code oder Codex gefunden.",
+    "noMatch": "Keine Sitzung passt zur Suche.",
+    "untitled": "Unbenannte Sitzung",
+    "truncated": "Es werden nur die neuesten Sitzungen angezeigt.",
+    "back": "Zurück",
+    "showTools": "Tool-Aufrufe anzeigen",
+    "copyResume": "Befehl zum Fortsetzen kopieren",
+    "export": "Als Markdown exportieren",
+    "copied": "Befehl zum Fortsetzen kopiert.",
+    "exported": "Exportiert.",
+    "actionFailed": "Das hat nicht geklappt. Bitte erneut versuchen.",
+    "transcriptTruncated": "Diese Sitzung ist lang; es werden nur die neuesten Nachrichten angezeigt.",
+    "role": {
+      "user": "Du",
+      "assistant": "Assistent",
+      "tool": "Tool"
+    }
   },
   "skills": {
     "title": "Skills",

@@ -406,7 +406,50 @@
     "clear": "Clear usage",
     "clearConfirm": "Clear all recorded usage?",
     "clearConfirmYes": "Clear",
-    "clearCancel": "Cancel"
+    "clearCancel": "Cancel",
+    "source": {
+      "label": "Usage source",
+      "proxy": "Through AiOpt",
+      "local": "From agent logs",
+      "proxyHint": "Requests that went through AiOpt's proxy.",
+      "localHint": "Read from Claude Code and Codex session logs on this computer. Includes direct bindings."
+    },
+    "local": {
+      "loading": "Reading session logs…",
+      "failed": "Couldn't read the agent session logs.",
+      "empty": "No usage found in Claude Code or Codex session logs.",
+      "responses": "Responses",
+      "cacheRead": "Cache read",
+      "cacheWrite": "Cache write",
+      "cache": "Cache",
+      "refresh": "Rescan logs",
+      "window": "Last {{days}} days"
+    }
+  },
+  "sessions": {
+    "title": "Sessions",
+    "search": "Search sessions",
+    "refresh": "Rescan",
+    "intro": "Past Claude Code and Codex sessions, read from the logs they keep on this computer. AiOpt only reads these files.",
+    "loading": "Loading…",
+    "failed": "Couldn't read the agent session logs.",
+    "empty": "No Claude Code or Codex sessions found.",
+    "noMatch": "No sessions match your search.",
+    "untitled": "Untitled session",
+    "truncated": "Only the most recent sessions are shown.",
+    "back": "Back",
+    "showTools": "Show tool calls",
+    "copyResume": "Copy resume command",
+    "export": "Export as Markdown",
+    "copied": "Resume command copied.",
+    "exported": "Exported.",
+    "actionFailed": "That didn't work. Try again.",
+    "transcriptTruncated": "This session is long; only the most recent messages are shown.",
+    "role": {
+      "user": "You",
+      "assistant": "Assistant",
+      "tool": "Tool"
+    }
   },
   "skills": {
     "title": "Skills",

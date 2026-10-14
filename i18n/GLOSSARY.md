@@ -31,6 +31,18 @@ The untrusted web context (the BrowserWindow document). Treated as hostile input
 
 ## Proposed (under discussion)
 
+### Session (`agent-session`)
+
+One conversation an agent (Claude Code, Codex) recorded in its own on-disk log. AiOpt only reads these logs — on the Sessions tab and in the agent-log usage view — and never writes to them. Not 'chat', 'thread', or 'conversation history' in UI copy. Term still under discussion.
+
+- **zh-CN**: 会话
+  - forbidden: `对话记录`, `聊天记录`
+- **ja**: セッション
+- **ko**: 세션
+- **fr**: Session
+- **de**: Sitzung
+- **es**: Sesión
+
 ### API format (`api-format`)
 
 The wire protocol a provider speaks and an agent accepts — one of anthropic, openai (Chat Completions), openai-responses (OpenAI Responses), gemini. Direct binding requires the provider's format to be in the agent's accepted set; cross-format is routed through the translation proxy. Not 'protocol' or 'interface type' in UI copy.
