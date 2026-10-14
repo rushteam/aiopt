@@ -72,23 +72,23 @@ publish. Keep publishing in that one job: per-platform publishing raced and spli
 two Releases for the same tag. It is a download channel,
 not an auto-update feed — see `updater.md`.
 
-The version lives in two manifests, `package.json` and `apps/desktop/package.json`, and they
-must agree with each other and with the tag. Electron reads the packaged
-`apps/desktop/package.json` for installer filenames and for the `app.getVersion()` the About
-page shows; it never reads the tag. So a tag that disagrees produces a Release whose name and
-whose contents state different versions, and the build itself cannot tell.
+**The tag is the release version.** Electron reads the packaged `apps/desktop/package.json` for
+installer filenames and for the `app.getVersion()` the About page and update check use; it
+never reads the tag. So before building, `release.yml` runs `scripts/stamp-version.mjs`, which
+writes the tag's version into both manifests (`package.json` and `apps/desktop/package.json`),
+then `pnpm check:version` confirms they match the tag. Nothing is committed back.
 
-`pnpm check:version` enforces this. CI runs it on every PR (manifests agree), and `release.yml`
-runs it before building (tag matches too), so the mismatch fails the run instead of shipping.
+The manifests in the repository are therefore not bumped per release and may lag the latest
+tag; a local `pnpm dev` or local package reports the committed version. CI still runs
+`pnpm check:version` on every PR so the two manifests never disagree with each other.
 
 To release:
 
-1. Bump the version in both manifests, commit (signed off), and land it through a PR.
-2. `pnpm check:version --tag v<version>` — the same check the release run will do.
-3. Tag the merge commit on `main` and push the tag: `git tag -a v<version> -m '…' && git push
-   origin v<version>`.
-4. Review the draft Release's assets, then publish it.
-5. The Homebrew cask follows on its own. `rushteam/homebrew-tap` runs a sync workflow every
+1. Tag a commit on `main` and push the tag: `git tag -a v<version> -m '…' && git push origin
+   v<version>`. The tag must be `v` plus semver (`v1.2.3`); the stamp step rejects anything
+   else.
+2. Review the draft Release's assets, then publish it.
+3. The Homebrew cask follows on its own. `rushteam/homebrew-tap` runs a sync workflow every
    six hours (or on demand: Actions → Sync AiOpt cask → Run workflow). It reads the latest
    published Release, downloads `AiOpt-<version>-arm64.dmg`, and checks its sha256 against
    GitHub's asset digest. It then rebuilds `Casks/aiopt.rb` from `packaging/homebrew/aiopt.rb`

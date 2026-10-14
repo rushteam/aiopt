@@ -63,9 +63,10 @@
   entry to `i18n/glossary.json` and discuss. The gate is `pnpm check:i18n-glossary`.
 - Working inside a worktree/branch, preparing to commit or push, or doing code review: read
   `docs/dev-rules/development-workflow.md`.
-- Before bumping the app version, pushing a `v*` tag, or changing `release.yml`: read
-  `docs/dev-rules/development-workflow.md` §6. The version lives in two manifests and must match
-  the tag; the gate is `pnpm check:version`.
+- Before releasing, pushing a `v*` tag, or changing `release.yml`: read
+  `docs/dev-rules/development-workflow.md` §6. The tag is the release version: `release.yml`
+  stamps it into both manifests before building (`scripts/stamp-version.mjs`), so do not bump
+  the manifests per release. The gate is `pnpm check:version`.
 
 ## General workflow
 
