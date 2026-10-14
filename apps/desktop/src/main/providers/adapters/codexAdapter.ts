@@ -5,8 +5,8 @@
 //     anything else (e.g. a ChatGPT OAuth `tokens` block) so a later switch back to
 //     the built-in login still works.
 //   - config.toml — we OVERWRITE the whole file with a single custom model provider.
-//     TOML has no dependency-free merge here, so (matching cc-switch's on-disk switch
-//     behavior) we rewrite it wholesale; the pristine original is kept once as
+//     TOML has no dependency-free merge here, so we rewrite
+//     it wholesale; the pristine original is kept once as
 //     `config.toml.aiopt.bak` by fsutil's backup-before-write.
 //
 // Codex speaks the OpenAI wire format (Responses API), so the compatibility gate

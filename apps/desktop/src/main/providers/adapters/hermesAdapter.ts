@@ -16,8 +16,8 @@
 // gate (AGENTS.acceptedFormats) only routes openai / anthropic / openai-responses here.
 //
 // NOTE: Hermes v12+ also exposes a read-only `providers:` MAP that its own Web UI owns.
-// We never touch it — we only ever write the `custom_providers:` LIST, exactly as
-// cc-switch does, leaving `providers:` entries to Hermes.
+// We never touch it — we only ever write the `custom_providers:` LIST, leaving
+// `providers:` entries to Hermes.
 
 import fs from 'node:fs';
 import { parseDocument, isSeq, isMap, type Document, type YAMLMap, type YAMLSeq } from 'yaml';

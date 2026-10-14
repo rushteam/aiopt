@@ -3,7 +3,7 @@
 // Gemini CLI reads two files under `~/.gemini`:
 //   - .env         — we OVERWRITE it with the three env vars that steer the endpoint
 //     (`GEMINI_API_KEY`, `GEMINI_MODEL`, `GOOGLE_GEMINI_BASE_URL`), emitted in
-//     alphabetical order as bare `KEY=VALUE` lines (matching cc-switch). The chosen
+//     alphabetical order as bare `KEY=VALUE` lines. The chosen
 //     model lives here, not in settings.json.
 //   - settings.json — we MERGE, setting only `security.auth.selectedType` to
 //     `gemini-api-key` so the CLI picks the API-key auth path; every other setting

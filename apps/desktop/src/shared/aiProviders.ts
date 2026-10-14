@@ -5,7 +5,7 @@
 // free of Node/Electron and of anything secret. API keys are NOT modeled here —
 // they live in the main-only secret store, never in a Provider record.
 //
-// The core idea (vs. cc-switch): a provider is entered ONCE into a global pool and
+// The core idea: a provider is entered ONCE into a global pool and
 // declares the wire formats it serves; each agent declares which formats it can
 // consume. When the two sets overlap, the binding speaks that shared format natively
 // (written directly, or through the proxy when proxy mode is on). When they do not,

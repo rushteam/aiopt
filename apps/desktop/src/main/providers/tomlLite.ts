@@ -1,11 +1,10 @@
 // Minimal TOML emitter for the few fixed-shape config files we write (Codex,
 // Grok). We deliberately do NOT add a TOML dependency: the documents we emit are
-// small and their shapes are known, and the string-escaping rule is the same one
-// cc-switch uses — TOML basic strings share JSON's escape set for the characters
+// small and their shapes are known, and the string-escaping rule is simple —
+// TOML basic strings share JSON's escape set for the characters
 // that occur in these values (URLs, model ids, display names), so JSON.stringify
 // produces a valid TOML basic string. This is an EMITTER only, not a parser: the
-// adapters that use it overwrite the whole file (matching cc-switch's on-disk
-// switch behavior), so there is no existing-document merge to preserve.
+// adapters that use it overwrite the whole file, so there is no existing-document merge to preserve.
 
 /** Escape a string as a TOML basic string (same escapes as JSON for our inputs). */
 export function tomlString(value: string): string {

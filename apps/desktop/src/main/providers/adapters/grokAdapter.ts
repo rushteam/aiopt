@@ -3,7 +3,7 @@
 // Grok reads a single `~/.grok/config.toml`. We OVERWRITE it with one model profile
 // (named after the chosen model id) plus a `[models] default` pointer at it. As with
 // Codex's config.toml there is no dependency-free TOML merge, so we rewrite the whole
-// file (matching cc-switch); fsutil keeps the pristine original once as
+// file; fsutil keeps the pristine original once as
 // `config.toml.aiopt.bak`.
 //
 // Grok speaks the OpenAI wire format, so the compatibility gate only routes an
