@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -9,18 +10,24 @@ import {
 } from '../devinSession';
 
 let home: string;
+const originalAppData = process.env.APPDATA;
 
 beforeEach(() => {
-  home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-devin-import-'));
+  home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aiopt-devin-import-'));
   process.env.AIOPT_AGENT_HOME = home;
   process.env.XDG_DATA_HOME = path.join(home, 'data');
+  // On Windows credentialsPath() reads $APPDATA/devin first; point it at the same dir.
+  process.env.APPDATA = path.join(home, 'data');
   delete process.env.WINDSURF_API_SERVER_URL;
 });
 
 afterEach(() => {
   delete process.env.AIOPT_AGENT_HOME;
   delete process.env.XDG_DATA_HOME;
+  if (originalAppData === undefined) delete process.env.APPDATA;
+  else process.env.APPDATA = originalAppData;
   delete process.env.WINDSURF_API_SERVER_URL;
+  fs.rmSync(home, { recursive: true, force: true });
 });
 
 function writeCreds(content: string): void {

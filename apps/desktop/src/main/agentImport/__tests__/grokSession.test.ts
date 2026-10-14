@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -10,7 +11,7 @@ import {
 let home: string;
 
 beforeEach(() => {
-  home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-grok-import-'));
+  home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aiopt-grok-import-'));
   process.env.AIOPT_AGENT_HOME = home;
   delete process.env.GROK_HOME;
 });
@@ -18,6 +19,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.AIOPT_AGENT_HOME;
   delete process.env.GROK_HOME;
+  fs.rmSync(home, { recursive: true, force: true });
 });
 
 function writeAuth(data: unknown): void {
@@ -44,7 +46,8 @@ describe('grok session import', () => {
   });
 
   it('uses GROK_HOME when set', () => {
-    const alt = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-grok-alt-'));
+    // Inside `home`, so afterEach removes it.
+    const alt = fs.mkdtempSync(path.join(home, 'grok-alt-'));
     process.env.GROK_HOME = alt;
     fs.writeFileSync(path.join(alt, 'auth.json'), JSON.stringify({ a: { key: 'k1', email: 'alt@x.ai' } }), 'utf8');
     expect(grokSessionSnapshot().accountLabel).toBe('alt@x.ai');

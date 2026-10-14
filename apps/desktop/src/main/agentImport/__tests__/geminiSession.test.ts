@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -11,12 +12,13 @@ import {
 let home: string;
 
 beforeEach(() => {
-  home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'aiopt-gemini-import-'));
+  home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aiopt-gemini-import-'));
   process.env.AIOPT_AGENT_HOME = home;
 });
 
 afterEach(() => {
   delete process.env.AIOPT_AGENT_HOME;
+  fs.rmSync(home, { recursive: true, force: true });
 });
 
 function writeOAuthCreds(data: unknown): void {
