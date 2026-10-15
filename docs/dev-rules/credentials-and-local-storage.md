@@ -47,6 +47,15 @@ Electron's `app.getPath(...)`:
   tokens. Nothing is migrated between the two: a dev run starts empty, and the installed app's
   data is left alone. Do not add a `getPath('userData')` call that runs at import time, because
   it would run before the redirect.
+- `AIOPT_DEV_PROFILE` splits dev runs further, so two checkouts or worktrees can run at the same
+  time (each userData holds its own single-instance lock). A packaged build ignores it.
+  - A name (1–32 letters, digits, `-`, `_`), e.g. `AIOPT_DEV_PROFILE=pms`, gives
+    `<appData>/AiOpt-dev-pms`. It persists like `AiOpt-dev`.
+  - `temp` gives a fresh `mkdtemp` directory (`0700`) under the OS temp dir. On macOS and Windows
+    that is per-user, never the shared `/tmp`. It is removed when the run exits.
+  - Any other value, including anything path-like, stops the run with
+    `user_data.dev_profile_invalid`. It is never taken as a path, so a dev run's secrets and
+    proxy tokens cannot be pointed at a shared or Git-tracked location.
 - Rebuildable data goes in a cache/temp location, not next to source-of-truth data, so clearing
   it can never corrupt real state.
 - When adding a new persisted location, decide its lifecycle first, then document it in the
