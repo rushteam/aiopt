@@ -287,7 +287,6 @@
     },
     "card": {
       "models": "模型",
-      "signedInAs": "已登录 · {{account}}",
       "keySet": "已存密钥",
       "keyMissing": "无密钥",
       "oauthConnected": "已登录 · {{account}}",

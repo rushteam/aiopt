@@ -287,7 +287,6 @@
     },
     "card": {
       "models": "Models",
-      "signedInAs": "Signed in as {{account}}",
       "keySet": "Key stored",
       "keyMissing": "No key",
       "oauthConnected": "Signed in · {{account}}",

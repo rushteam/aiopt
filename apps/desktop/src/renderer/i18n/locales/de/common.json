@@ -280,7 +280,6 @@
     },
     "card": {
       "models": "Modelle",
-      "signedInAs": "Angemeldet als {{account}}",
       "keySet": "Schlüssel gespeichert",
       "keyMissing": "Kein Schlüssel",
       "oauthConnected": "Angemeldet · {{account}}",
