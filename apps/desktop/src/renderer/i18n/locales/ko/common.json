@@ -280,7 +280,6 @@
     },
     "card": {
       "models": "모델",
-      "signedInAs": "로그인 · {{account}}",
       "keySet": "키 저장됨",
       "keyMissing": "키 없음",
       "oauthConnected": "로그인됨 · {{account}}",

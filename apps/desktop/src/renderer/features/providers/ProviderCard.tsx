@@ -1,6 +1,11 @@
 // One provider in the global pool: identity, format badge, endpoint, key status,
 // model count, and edit / delete actions.
 //
+// Layout: status text lives in the meta lines, never in the action row, so the row holds
+// buttons only and wraps cleanly. The row is pinned to the card's bottom (cards in one grid
+// row line up), routine actions sit on the left, and the destructive delete sits apart on the
+// right.
+//
 // Delete is a destructive, hard-to-reverse action (it drops the stored key too), so
 // it takes a second confirmation in a modal dialog rather than firing on the first
 // click.
@@ -128,6 +133,8 @@ export function ProviderCard({
                   '{{account}}',
                   provider.oauthAccountLabel?.trim() || t('providers.card.oauthAccountUnknown'),
                 )
+              : isAgentImport
+              ? t('providers.card.agentImportHint')
               : t('providers.card.oauthDisconnected')}
           </>
         ) : (
@@ -161,9 +168,9 @@ export function ProviderCard({
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: space.md, marginTop: 4, flexWrap: 'wrap' }}>
-        {!provider.virtual && (
-          <>
+      {!provider.virtual && (
+        <div style={actionRowStyle}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.sm, minWidth: 0 }}>
             <button
               type="button"
               onClick={onEdit}
@@ -188,19 +195,6 @@ export function ProviderCard({
                     : t('providers.card.oauthConnect')}
               </button>
             )}
-            {isAgentImport && provider.hasKey && (
-              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
-                {t('providers.card.signedInAs').replace(
-                  '{{account}}',
-                  provider.oauthAccountLabel?.trim() || t('providers.card.oauthAccountUnknown'),
-                )}
-              </span>
-            )}
-            {isAgentImport && !provider.hasKey && (
-              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
-                {t('providers.card.agentImportHint')}
-              </span>
-            )}
             <button
               type="button"
               onClick={() => void onTest()}
@@ -210,7 +204,8 @@ export function ProviderCard({
             >
               {testing ? t('providers.card.testing') : t('providers.card.test')}
             </button>
-            <button
+          </div>
+          <button
               type="button"
               onClick={() => setConfirming(true)}
               disabled={busy}
@@ -221,9 +216,8 @@ export function ProviderCard({
               <TrashIcon />
               {t('providers.card.delete')}
             </button>
-          </>
-        )}
-      </div>
+        </div>
+      )}
       {confirmDialog}
     </div>
   );
@@ -233,6 +227,9 @@ const cardStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: space.sm,
+  // Fill the grid cell so the action row (margin-top: auto) lines up across a row of cards.
+  height: '100%',
+  boxSizing: 'border-box',
   padding: 14,
   borderRadius: radius.lg,
   border: `1px solid ${token('border')}`,
@@ -247,7 +244,20 @@ const badgeStyle = {
   color: token('textMuted'),
 } as const;
 
-const metaStyle = { margin: 0, fontSize: fontSize.base, color: token('textMuted') } as const;
+const metaStyle = { margin: 0, fontSize: fontSize.base, color: token('textMuted'), overflowWrap: 'anywhere' } as const;
+
+// Buttons only. Routine actions on the left; delete apart on the right, so it is never the
+// next thing after "Test". Pinned to the bottom of the card.
+const actionRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: space.sm,
+  marginTop: 'auto',
+  paddingTop: space.sm,
+  borderTop: `1px solid ${token('border')}`,
+} as const;
 
 // Only the ghost variant is used now (Edit); the danger variant is kept for a
 // consistent call site should another inline action need it.
@@ -260,6 +270,7 @@ function actionStyle(kind: 'ghost' | 'danger') {
     color: kind === 'danger' ? token('danger') : token('text'),
     cursor: 'pointer',
     fontSize: fontSize.base,
+    whiteSpace: 'nowrap',
   } as const;
 }
 
@@ -276,6 +287,7 @@ function deleteButtonStyle(hover: boolean) {
     color: hover ? token('accentText') : token('textMuted'),
     cursor: 'pointer',
     fontSize: fontSize.base,
+    whiteSpace: 'nowrap',
   } as const;
 }
 

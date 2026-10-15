@@ -280,7 +280,6 @@
     },
     "card": {
       "models": "モデル",
-      "signedInAs": "ログイン中 · {{account}}",
       "keySet": "キー保存済み",
       "keyMissing": "キーなし",
       "oauthConnected": "サインイン済み · {{account}}",
