@@ -87,7 +87,7 @@ The single chat agent on the workbench. It breaks a request into tasks and propo
 
 ### MCP server (`mcp-server`)
 
-A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one list and writes it into each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated. Term still under discussion.
+A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one library and syncs it with each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated. Term still under discussion.
 
 - **zh-CN**: MCP 服务器
   - forbidden: `MCP 服务端`, `MCP 插件`
