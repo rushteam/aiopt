@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
+import { useMentionPicker, type MentionSource } from './mentionPicker';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 
@@ -60,6 +61,7 @@ export function WorkbenchChatComposer({
   rows = 3,
   onTaskMentionDrop,
   dropHint,
+  mentions,
 }: {
   draft: string;
   setDraft: (v: string) => void;
@@ -76,8 +78,12 @@ export function WorkbenchChatComposer({
   /** When set, accepts task tabs dragged from the task board. */
   onTaskMentionDrop?: (taskId: string) => void;
   dropHint?: string;
+  /** When set, typing `@` opens a picker over these options (tasks and sessions). */
+  mentions?: MentionSource;
 }) {
   const [dropActive, setDropActive] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const picker = useMentionPicker({ mentions, draft, setDraft, maxLength, disabled, textRef });
   const onDragOver = (e: DragEvent): void => {
     if (!onTaskMentionDrop) return;
     if (e.dataTransfer.types.includes('application/x-aiopt-workbench-task')) {
@@ -100,6 +106,7 @@ export function WorkbenchChatComposer({
     }
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (picker.onKeyDown(e)) return;
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       onSend();
@@ -120,11 +127,18 @@ export function WorkbenchChatComposer({
         outline: dropActive ? `2px solid ${token('accent')}` : 'none',
         outlineOffset: -2,
         borderRadius: dropActive ? radius.md : 0,
+        position: 'relative',
       }}
     >
+      {picker.menu}
       <textarea
+        ref={textRef}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          picker.sync(e.target);
+        }}
+        {...picker.textareaProps}
         onKeyDown={onKeyDown}
         disabled={disabled}
         maxLength={maxLength}

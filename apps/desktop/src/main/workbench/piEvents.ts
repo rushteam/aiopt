@@ -22,6 +22,7 @@ import {
   type TaskStatus,
   type WorkbenchNotice,
 } from '../../shared/workbench';
+import { stripSessionContext } from '../../shared/sessionMention';
 
 /** The orchestrator's task-proposal tool (see orchestratorExtension.ts). */
 export const PROPOSE_TASKS_TOOL = 'propose_tasks';
@@ -211,7 +212,8 @@ export function createTranscript(): Transcript {
   }
 
   function pushUser(message: Record<string, unknown>): void {
-    const text = cap(contentText(message.content));
+    // Session context main attached to the prompt is for the model, not the chat view.
+    const text = cap(stripSessionContext(contentText(message.content)).trimEnd());
     if (text !== '') push({ kind: 'user', id: nextId(), text });
   }
 

@@ -182,13 +182,15 @@
       "signedIn": "Signed in · {{account}}",
       "add": "Add as provider",
       "adding": "Adding…",
+      "added": "Added",
       "reason": {
         "not_installed": "Not installed",
         "not_signed_in": "Not signed in",
         "unsupported": "Not supported yet"
       },
       "errors": {
-        "restartRequired": "Quit and reopen the app, then scan again."
+        "restartRequired": "Quit and reopen the app, then scan again.",
+        "alreadyAdded": "Already added as a provider."
       }
     },
     "credential": {
@@ -503,7 +505,7 @@
       },
       "detail": {
         "notInLibrary": "Not in the library yet. Pull it from an agent to manage it here.",
-        "cannotPush": "This agent cannot take the library's transport."
+        "cannotPush": "This agent cannot take this server: its transport (SSE) or its name is not supported there."
       },
       "confirm": {
         "pushAll": "Write the library's copy of this server into every agent that can take it, overwriting theirs?",
@@ -585,11 +587,29 @@
     "back": "Back",
     "showTools": "Show tool calls",
     "copyResume": "Copy resume command",
+    "newTask": "New workbench task",
+    "newTaskHint": "Open a workbench task that references this session; its recent messages go to the agent as background when the task starts.",
     "export": "Export as Markdown",
     "copied": "Resume command copied.",
     "exported": "Exported.",
     "actionFailed": "That didn't work. Try again.",
     "transcriptTruncated": "This session is long; only the most recent messages are shown.",
+    "pack": {
+      "start": "Pick messages",
+      "done": "Done picking",
+      "title": "Context pack",
+      "selected": "{{count}} selected",
+      "all": "Select all",
+      "clear": "Clear",
+      "hint": "Click a message to pick it; Shift-click picks a range. The pack is Markdown to start a new session with.",
+      "copy": "Copy context pack",
+      "export": "Export context pack",
+      "copied": "Copied a context pack of {{count}} messages.",
+      "exported": "Exported a context pack of {{count}} messages.",
+      "cut": "Older picks were left out to keep it short.",
+      "stale": "The session changed since it was opened. Go back and open it again.",
+      "pickOne": "Pick this message ({{role}})"
+    },
     "role": {
       "user": "You",
       "assistant": "Assistant",
@@ -759,7 +779,7 @@
       "reset": "New conversation",
       "empty": "Describe what you want done. The coordinator proposes tasks on the board. Run starts each one as its own agent that can change files in its folder, so nothing runs until you press Run (or turn on auto-run).",
       "notRunning": "Press Start above to chat with the coordinator.",
-      "placeholder": "Message the coordinator",
+      "placeholder": "Message the coordinator · type @ to mention a task or session",
       "sendHint": "Enter to send · Shift+Enter for a new line",
       "taskMentionDrop": "Drop a task tab to reference it (@task)",
       "send": "Send",
@@ -781,7 +801,14 @@
       "current": "Current",
       "delete": "Delete",
       "deleteConfirm": "Delete this conversation?",
-      "taskUpdate": "Task update (sent by the app)"
+      "taskUpdate": "Task update (sent by the app)",
+      "mention": {
+        "label": "Mention a task or session",
+        "empty": "No matching task or session.",
+        "hint": "↑↓ to move · Enter to insert · Esc to close",
+        "task": "Task",
+        "session": "Session"
+      }
     },
     "notice": {
       "board_full": "Some proposed tasks were dropped: the task board is full.",
@@ -854,7 +881,7 @@
       "notify": "Report back to the coordinator",
       "notifyHint": "When a task needs review, needs input, fails, or is marked done or stopped, tell the coordinator so it can summarize in the chat.",
       "promptPlaceholder": "e.g. Add input validation to the signup form in src/auth, then run the unit tests and fix any failures.",
-      "promptHint": "The agent sees only this text, not the chat. Include the goal, the files involved, and how to check the result."
+      "promptHint": "The agent sees only this text, not the chat. Include the goal, the files involved, and how to check the result. Type @ to add a session as background."
     },
     "taskStatus": {
       "proposed": "Proposed",

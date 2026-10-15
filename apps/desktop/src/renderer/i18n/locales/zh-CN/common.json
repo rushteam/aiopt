@@ -182,13 +182,15 @@
       "signedIn": "已登录 · {{account}}",
       "add": "添加为供应商",
       "adding": "添加中…",
+      "added": "已添加",
       "reason": {
         "not_installed": "未安装",
         "not_signed_in": "未登录",
         "unsupported": "暂不支持"
       },
       "errors": {
-        "restartRequired": "请完全退出后重新打开应用，再点「重新扫描」。"
+        "restartRequired": "请完全退出后重新打开应用，再点「重新扫描」。",
+        "alreadyAdded": "已添加为供应商。"
       }
     },
     "credential": {
@@ -503,7 +505,7 @@
       },
       "detail": {
         "notInLibrary": "尚未加入中央库。从某个 Agent 拉取后即可在这里管理。",
-        "cannotPush": "该 Agent 不支持中央库副本的传输方式。"
+        "cannotPush": "该 Agent 无法写入此服务器：它不支持该传输方式（SSE）或服务器名称。"
       },
       "confirm": {
         "pushAll": "用中央库的副本覆盖每个可写入 Agent 中的该服务器？",
@@ -585,11 +587,29 @@
     "back": "返回",
     "showTools": "显示工具调用",
     "copyResume": "复制恢复命令",
+    "newTask": "新建工作台任务",
+    "newTaskHint": "新建一个引用此会话的工作台任务；任务启动时，会话的最近消息会作为背景附给 Agent。",
     "export": "导出为 Markdown",
     "copied": "已复制恢复命令。",
     "exported": "已导出。",
     "actionFailed": "操作失败，请重试。",
     "transcriptTruncated": "会话较长，仅显示最近的消息。",
+    "pack": {
+      "start": "挑选消息",
+      "done": "完成挑选",
+      "title": "上下文包",
+      "selected": "已选 {{count}} 条",
+      "all": "全选",
+      "clear": "清空",
+      "hint": "点击消息即可选中，Shift+点击可选中一段。上下文包是 Markdown，可用来开始新会话。",
+      "copy": "复制上下文包",
+      "export": "导出上下文包",
+      "copied": "已复制包含 {{count}} 条消息的上下文包。",
+      "exported": "已导出包含 {{count}} 条消息的上下文包。",
+      "cut": "为控制长度，较早的已选消息未包含在内。",
+      "stale": "打开后会话已变化，请返回并重新打开。",
+      "pickOne": "选中这条消息（{{role}}）"
+    },
     "role": {
       "user": "你",
       "assistant": "助手",
@@ -759,7 +779,7 @@
       "reset": "新对话",
       "empty": "描述你想完成的工作。协调者会在任务板上提出任务。「运行」会为每个任务启动一个独立的 Agent，它能修改所在文件夹里的文件，所以在你点「运行」（或开启自动运行）之前，什么都不会执行。",
       "notRunning": "点击上方「启动」即可与协调者对话。",
-      "placeholder": "给协调者发消息",
+      "placeholder": "给协调者发消息 · 输入 @ 引用任务或会话",
       "sendHint": "Enter 发送 · Shift+Enter 换行",
       "taskMentionDrop": "松开以引用该任务（@task）",
       "send": "发送",
@@ -781,7 +801,14 @@
       "current": "当前",
       "delete": "删除",
       "deleteConfirm": "删除这段对话？",
-      "taskUpdate": "任务更新（由应用发送）"
+      "taskUpdate": "任务更新（由应用发送）",
+      "mention": {
+        "label": "引用任务或会话",
+        "empty": "没有匹配的任务或会话。",
+        "hint": "↑↓ 选择 · Enter 插入 · Esc 关闭",
+        "task": "任务",
+        "session": "会话"
+      }
     },
     "notice": {
       "board_full": "任务板已满，部分提议的任务被丢弃。",
@@ -854,7 +881,7 @@
       "notify": "向协调者汇报",
       "notifyHint": "任务需要审阅、需要输入、失败，或被你标记为完成/停止时，通知协调者，由它在对话里总结。",
       "promptPlaceholder": "例如：给 src/auth 里的注册表单加上输入校验，然后运行单元测试并修复失败的用例。",
-      "promptHint": "Agent 只能看到这段文字，看不到对话内容。请写清目标、涉及的文件以及如何验证结果。"
+      "promptHint": "Agent 只能看到这段文字，看不到对话内容。请写清目标、涉及的文件以及如何验证结果。 输入 @ 可引用会话作为背景。"
     },
     "taskStatus": {
       "proposed": "待批准",

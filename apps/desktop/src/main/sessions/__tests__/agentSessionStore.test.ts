@@ -254,6 +254,8 @@ describe('sessions IPC', () => {
       IPC_CHANNELS.sessionsTranscript,
       IPC_CHANNELS.sessionsCopyResume,
       IPC_CHANNELS.sessionsExport,
+      IPC_CHANNELS.sessionsCopyPack,
+      IPC_CHANNELS.sessionsExportPack,
     ]) {
       await expect(reg.invoke(ch, { agentId: 'claude', sessionId: SID }, untrusted)).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
     }
@@ -292,5 +294,48 @@ describe('sessions IPC', () => {
       cancelled.reg.invoke(IPC_CHANNELS.sessionsExport, { agentId: 'claude', sessionId: SID }, trusted),
     ).resolves.toEqual({ saved: false });
     expect(cancelled.deps.writeFile).not.toHaveBeenCalled();
+  });
+
+  async function packRequest(indexes: unknown[]) {
+    const store = createAgentSessionStore({ home: () => home, now: () => NOW });
+    const t = await store.transcript({ agentId: 'claude', sessionId: SID });
+    return { agentId: 'claude', sessionId: SID, indexes, total: t.entries.length, firstTs: t.entries[0]?.ts ?? 0, entries: t.entries };
+  }
+
+  it('copies a context pack of the picked entries, rebuilt main-side', async () => {
+    const { reg, deps } = setup();
+    const { entries, ...req } = await packRequest([0]);
+    const result = await reg.invoke(IPC_CHANNELS.sessionsCopyPack, req, trusted);
+    expect(result).toEqual({ saved: true, included: 1, cut: false });
+    const md = deps.writeClipboard.mock.calls[0]![0] as string;
+    expect(md).toContain('# Context from an earlier claude session');
+    expect(md).toContain(entries[0]!.text.trim());
+    if (entries.length > 1) expect(md).not.toContain(`### ${entries[1]!.role === 'user' ? 'User' : 'Assistant'}\n\n${entries[1]!.text}`);
+  });
+
+  it('exports a context pack; cancel writes nothing', async () => {
+    const { reg, deps } = setup();
+    const { entries: _e, ...req } = await packRequest([0]);
+    await expect(reg.invoke(IPC_CHANNELS.sessionsExportPack, req, trusted)).resolves.toMatchObject({ saved: true });
+    expect(deps.pickSavePath).toHaveBeenCalledWith(`claude-${SID}-context.md`);
+    expect(deps.writeFile).toHaveBeenCalledWith('/tmp/out.md', expect.stringContaining('# Context from an earlier'));
+    const cancelled = setup(null);
+    await expect(cancelled.reg.invoke(IPC_CHANNELS.sessionsExportPack, req, trusted)).resolves.toMatchObject({ saved: false });
+    expect(cancelled.deps.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('refuses a pack for bad indexes or a session that moved since it was shown', async () => {
+    const { reg, deps } = setup();
+    const { entries: _e, ...req } = await packRequest([0]);
+    for (const indexes of [[], [req.total], [-1], [0.5], ['0'], 'all']) {
+      await expect(reg.invoke(IPC_CHANNELS.sessionsCopyPack, { ...req, indexes }, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
+    }
+    await expect(reg.invoke(IPC_CHANNELS.sessionsCopyPack, { ...req, total: req.total + 1 }, trusted)).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+    await expect(reg.invoke(IPC_CHANNELS.sessionsCopyPack, { ...req, firstTs: req.firstTs + 1 }, trusted)).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+    expect(deps.writeClipboard).not.toHaveBeenCalled();
   });
 });

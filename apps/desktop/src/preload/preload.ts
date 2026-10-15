@@ -48,6 +48,8 @@ import type {
   LocalUsageSnapshot,
   SessionRef,
   SessionsExportResult,
+  SessionPackRequest,
+  SessionPackResult,
   SessionsSnapshot,
   SessionTranscript,
 } from '../shared/agentSessions';
@@ -324,6 +326,11 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.sessionsCopyResume, ref),
     export: (ref: SessionRef): Promise<SessionsExportResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.sessionsExport, ref),
+    /** Context pack of picked entries (by index), built main-side; copy or save as Markdown. */
+    copyPack: (request: SessionPackRequest): Promise<SessionPackResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsCopyPack, request),
+    exportPack: (request: SessionPackRequest): Promise<SessionPackResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsExportPack, request),
   },
 
   /**

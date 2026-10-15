@@ -20,6 +20,8 @@ import type {
   SessionsExportResult,
   SessionsSnapshot,
   SessionTranscript,
+  SessionPackRequest,
+  SessionPackResult,
 } from './agentSessions';
 import type {
   McpAgentRequest,
@@ -166,6 +168,10 @@ export const IPC_CHANNELS = {
   sessionsTranscript: 'sessions:transcript',
   sessionsCopyResume: 'sessions:copy-resume',
   sessionsExport: 'sessions:export',
+  // Context pack: the renderer names picked entries by index; main rebuilds them from its own
+  // read of the transcript, then copies (clipboard) or exports (save dialog) the Markdown.
+  sessionsCopyPack: 'sessions:copy-pack',
+  sessionsExportPack: 'sessions:export-pack',
 
   // MCP servers. One library in AiOpt, compared live with each agent's MCP config and synced
   // only on an explicit pull / push / merge / delete. Env/header VALUES never cross to the
@@ -1059,6 +1065,8 @@ export interface IpcContract {
   [IPC_CHANNELS.sessionsTranscript]: { request: SessionRef; result: SessionTranscript };
   [IPC_CHANNELS.sessionsCopyResume]: { request: SessionRef; result: Record<string, never> };
   [IPC_CHANNELS.sessionsExport]: { request: SessionRef; result: SessionsExportResult };
+  [IPC_CHANNELS.sessionsCopyPack]: { request: SessionPackRequest; result: SessionPackResult };
+  [IPC_CHANNELS.sessionsExportPack]: { request: SessionPackRequest; result: SessionPackResult };
   [IPC_CHANNELS.mcpGet]: { request: void; result: McpSnapshot };
   [IPC_CHANNELS.mcpSave]: { request: McpSaveRequest; result: McpSnapshot };
   [IPC_CHANNELS.mcpPull]: { request: McpAgentRequest; result: McpSnapshot };

@@ -409,6 +409,42 @@ describe('workbench chat', () => {
     expect(await codeOfAsync(s.wb.chatSend(' \u0000 '))).toBe('INVALID_PARAMS');
   });
 
+  it('attaches mentioned session excerpts main-side, reporting unreadable ones as missing', async () => {
+    const SID = '6f1c2a90-1d2e-4c55-9a51-0f7d3e2b8a11';
+    const GONE = 'deadbeef-0000-4000-8000-000000000000';
+    const readSession = vi.fn(async (ref: { agentId: string; sessionId: string }) => {
+      if (ref.sessionId === GONE) throw new Error('not found');
+      return {
+        session: {
+          agentId: 'claude' as const,
+          sessionId: SID,
+          title: 'Add retry',
+          cwd: '/work/app',
+          startedAt: 0,
+          updatedAt: 0,
+          model: '',
+          gitBranch: '',
+          messageCount: 1,
+        },
+        entries: [{ role: 'assistant' as const, text: 'use exponential backoff', ts: 1 }],
+        truncated: false,
+      };
+    });
+    const s = await started({}, { readSession });
+    const typed = `follow @session:claude:${SID} and @session:codex:${GONE}`;
+    await s.wb.chatSend(typed);
+    const msg = (s.pis[0]!.commands.find((c) => c.type === 'prompt') as { message: string }).message;
+    expect(readSession).toHaveBeenCalledTimes(2);
+    expect(msg.startsWith(`${typed}\n\n[AiOpt attached session context`)).toBe(true);
+    expect(msg).toContain('use exponential backoff');
+    expect(msg).toContain(GONE);
+
+    // Without the dep, mentions go through exactly as typed.
+    const plain = await started();
+    await plain.wb.chatSend(typed);
+    expect(plain.pis[0]!.commands.find((c) => c.type === 'prompt')).toMatchObject({ message: typed });
+  });
+
   it('reset starts a new session and leaves a notice', async () => {
     const s = await started();
     await s.wb.chatReset();
@@ -564,6 +600,40 @@ describe('workbench herdr cleanup', () => {
 });
 
 describe('workbench tasks', () => {
+  it('attaches @session excerpts to the worker prompt and follow-ups, keeping the board copy short', async () => {
+    const SID = '6f1c2a90-1d2e-4c55-9a51-0f7d3e2b8a11';
+    const readSession = vi.fn(async () => ({
+      session: {
+        agentId: 'claude' as const,
+        sessionId: SID,
+        title: 'Add retry',
+        cwd: '/work/app',
+        startedAt: 0,
+        updatedAt: 0,
+        model: '',
+        gitBranch: '',
+        messageCount: 1,
+      },
+      entries: [{ role: 'assistant' as const, text: 'use exponential backoff', ts: 1 }],
+      truncated: false,
+    }));
+    const s = await withFolder({ readSession });
+    const prompt = `@session:claude:${SID}\n\nfinish the retry work`;
+    const id = s.wb.createTask({ title: 'Retry', prompt, folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    const sent = (s.herdr.client.agentPrompt.mock.calls.at(-1) as unknown as [string, string])[1];
+    expect(sent.startsWith(`${prompt}\n\n[AiOpt attached session context`)).toBe(true);
+    expect(sent).toContain('use exponential backoff');
+    // The board (and so list_tasks and the snapshot) keeps the prompt as written.
+    expect(s.wb.getSnapshot().tasks[0]!.prompt).toBe(prompt);
+
+    await s.wb.messageTask(id, `see @session:claude:${SID}`);
+    const follow = (s.herdr.client.agentPrompt.mock.calls.at(-1) as unknown as [string, string])[1];
+    expect(follow).toContain('use exponential backoff');
+    expect(s.wb.getSnapshot().tasks[0]!.thread.at(-1)!.text).toBe(`see @session:claude:${SID}`);
+  });
+
   it('validates drafts and edits', async () => {
     const s = await started();
     expect(codeOf(() => s.wb.createTask({ title: ' ', prompt: 'p' }))).toBe('INVALID_PARAMS');
