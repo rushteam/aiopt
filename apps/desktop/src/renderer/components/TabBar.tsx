@@ -1,4 +1,4 @@
-// Top-level navigation — the peer screens (Providers / Skills / Usage / Workbench) as
+// Top-level navigation — the peer screens (Providers / Skills / MCP / Usage / Sessions / Workbench) as
 // tabs. It replaces the old per-screen "×" close buttons, so there's one
 // consistent navigation model instead of three screens that each felt modal.
 // Settings lives in the hamburger menu (and the OS menu bar), not here; selecting
@@ -13,13 +13,15 @@ import type { CSSProperties } from 'react';
 import { fontSize, space, token } from '../themes/tokens';
 import { useT } from '../i18n';
 
-export type AppTab = 'providers' | 'skills' | 'usage' | 'workbench';
+export type AppTab = 'providers' | 'skills' | 'mcp' | 'usage' | 'sessions' | 'workbench';
 
 // Reuse each screen's own title as its tab label; "Workbench" is a proposed glossary term.
 const TABS: ReadonlyArray<{ id: AppTab; labelKey: string }> = [
   { id: 'providers', labelKey: 'providers.title' },
   { id: 'skills', labelKey: 'skills.title' },
+  { id: 'mcp', labelKey: 'mcp.title' },
   { id: 'usage', labelKey: 'usage.title' },
+  { id: 'sessions', labelKey: 'sessions.title' },
   { id: 'workbench', labelKey: 'workbench.title' },
 ];
 

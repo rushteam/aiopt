@@ -5,7 +5,7 @@
 // free of Node/Electron and of anything secret. API keys are NOT modeled here —
 // they live in the main-only secret store, never in a Provider record.
 //
-// The core idea (vs. cc-switch): a provider is entered ONCE into a global pool and
+// The core idea: a provider is entered ONCE into a global pool and
 // declares the wire formats it serves; each agent declares which formats it can
 // consume. When the two sets overlap, the binding speaks that shared format natively
 // (written directly, or through the proxy when proxy mode is on). When they do not,
@@ -612,8 +612,8 @@ export function isFormatCompatible(agent: AgentDef, provider: Provider): boolean
  * - `translated` — no shared format, but the translation proxy can carry the agent's
  *   first accepted format to one the provider serves. Such a binding always goes through
  *   the proxy, whether or not proxy mode is on.
- * - `unsupported` — no shared format and no translation route (gemini crossed with any
- *   other format, or a cross-format pair whose only outbound is `openai-responses`).
+ * - `unsupported` — no shared format and no translation route (a Gemini agent with a
+ *   non-Gemini provider, or a cross-format pair whose only outbound is `openai-responses`).
  */
 export type BindingAvailability = 'native' | 'translated' | 'unsupported';
 
@@ -666,11 +666,12 @@ export function bindingAvailability(
  * For each inbound (agent) format, the outbound (provider) formats translation may target,
  * most faithful first. Mirrors {@link translationSupported}'s cross-format cases: a
  * Responses client prefers Chat Completions (same vendor shape, no reasoning bridge) over
- * Anthropic. Gemini is never a translation endpoint on either side.
+ * Anthropic. Gemini is an outbound target for Anthropic and Chat clients only (the last
+ * resort, after the other dialect); it is never an inbound side.
  */
 export const TRANSLATION_TARGETS: Readonly<Record<ApiFormat, readonly ApiFormat[]>> = {
-  anthropic: ['openai'],
-  openai: ['anthropic'],
+  anthropic: ['openai', 'gemini'],
+  openai: ['anthropic', 'gemini'],
   'openai-responses': ['openai', 'anthropic'],
   gemini: [],
 };
@@ -686,6 +687,7 @@ export const TRANSLATION_TARGETS: Readonly<Record<ApiFormat, readonly ApiFormat[
  *       - anthropic ⇄ openai (Chat Completions), both directions.
  *       - openai-responses (codex/grok) → openai (Chat Completions).
  *       - openai-responses (codex/grok) → anthropic (with a reasoning bridge).
+ *       - anthropic → gemini and openai → gemini (generateContent).
  *   - SAME-format passthrough (identity transform, streamed through unchanged) so the
  *     proxy can still count token usage: anthropic→anthropic, openai→openai,
  *     openai-responses→openai-responses. This is what makes a same-format binding
@@ -693,11 +695,15 @@ export const TRANSLATION_TARGETS: Readonly<Record<ApiFormat, readonly ApiFormat[
  *
  * NOT supported: any CROSS-format direction whose OUTBOUND is `openai-responses` (no
  * need to emit the Responses API upstream — a Responses provider is reached by same-
- * format passthrough), and any pairing involving `gemini` (no proxy dialect for it —
- * gemini bindings are always direct, in either mode).
+ * format passthrough), gemini as the INBOUND side, and gemini→gemini (a native Gemini
+ * binding is always direct, in either mode).
  */
 export function translationSupported(inbound: ApiFormat, outbound: ApiFormat): boolean {
-  if (inbound === 'gemini' || outbound === 'gemini') return false; // no gemini proxy dialect
+  // Gemini is never an inbound dialect, and gemini→gemini stays a direct config (a Gemini
+  // agent keeps talking to its provider natively). Anthropic and Chat clients can reach a
+  // Gemini provider through the generateContent translation.
+  if (inbound === 'gemini') return false;
+  if (outbound === 'gemini') return inbound === 'anthropic' || inbound === 'openai';
   if (inbound === outbound) return true; // same-format passthrough (identity + usage sniff)
   if (outbound === 'openai-responses') return false; // never emit Responses upstream via translation
   switch (inbound) {

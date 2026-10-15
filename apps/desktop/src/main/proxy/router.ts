@@ -43,7 +43,7 @@ export const INBOUND_PATH: Record<ApiFormat, string> = {
   // Responses clients (codex/grok) POST to `/responses`; some SDKs prefix `/v1`.
   // assertInboundPath tolerates the optional `/v1` for this format.
   'openai-responses': '/responses',
-  gemini: '', // not translatable; never routed
+  gemini: '', // never an inbound dialect (only an outbound target); never routed inbound
 };
 
 /** Split `/<token>/rest…` into its token segment and the remaining suffix path. */

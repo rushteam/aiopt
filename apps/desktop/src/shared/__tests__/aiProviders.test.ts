@@ -188,8 +188,8 @@ describe('resolveBindingRoute', () => {
   });
 
   it('returns null when nothing native or translatable is served', () => {
-    expect(resolveBindingRoute(getAgentDef('claude')!, ['gemini'])).toBeNull();
     expect(resolveBindingRoute(getAgentDef('claude')!, ['openai-responses'])).toBeNull();
+    expect(resolveBindingRoute(getAgentDef('codex')!, ['gemini'])).toBeNull();
     expect(resolveBindingRoute(getAgentDef('gemini')!, ['openai', 'anthropic'])).toBeNull();
     expect(resolveBindingRoute(getAgentDef('codex')!, [])).toBeNull();
   });
@@ -211,8 +211,17 @@ describe('bindingAvailability', () => {
     expect(bindingAvailability(getAgentDef('codex')!, ['anthropic'])).toBe('translated');
   });
 
+  it('translates an Anthropic agent to a Gemini-only provider, preferring openai when both are served', () => {
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['gemini'])).toEqual({
+      kind: 'translated',
+      inbound: 'anthropic',
+      outbound: 'gemini',
+    });
+    expect(resolveBindingRoute(getAgentDef('claude')!, ['gemini', 'openai'])).toMatchObject({ outbound: 'openai' });
+    expect(bindingAvailability(getAgentDef('claude')!, ['gemini'])).toBe('translated');
+  });
+
   it('is unsupported when no translation route exists', () => {
-    expect(bindingAvailability(getAgentDef('claude')!, ['gemini'])).toBe('unsupported');
     expect(bindingAvailability(getAgentDef('claude')!, ['openai-responses'])).toBe('unsupported');
     expect(bindingAvailability(getAgentDef('codex')!, ['gemini'])).toBe('unsupported');
     expect(bindingAvailability(getAgentDef('gemini')!, ['openai'])).toBe('unsupported');
@@ -243,9 +252,11 @@ describe('translationSupported', () => {
     }
   });
 
-  it('rejects any pairing involving gemini', () => {
+  it('allows gemini only as the outbound side of an Anthropic or Chat client', () => {
+    expect(translationSupported('anthropic', 'gemini')).toBe(true);
+    expect(translationSupported('openai', 'gemini')).toBe(true);
     expect(translationSupported('gemini', 'openai')).toBe(false);
-    expect(translationSupported('anthropic', 'gemini')).toBe(false);
+    expect(translationSupported('gemini', 'gemini')).toBe(false);
     expect(translationSupported('openai-responses', 'gemini')).toBe(false);
   });
 });

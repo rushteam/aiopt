@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createProviderManager, providerSecretKey } from '../providerManager';
+import { createProviderManager, providerSecretKey, type ProfileMcpHook } from '../providerManager';
+import { createBindingProfileStore } from '../bindingProfileStore';
 import { createProviderStore } from '../providerStore';
 import type { AgentAdapter, WriteLiveInput } from '../adapters/agentAdapter';
 import type { FetchLike } from '../modelCatalog';
@@ -98,7 +99,7 @@ function fakeProxy() {
 
 function harness(
   installedAgents: AgentId[] = ['claude'],
-  opts: { fetchImpl?: FetchLike; proxyMode?: boolean } = {},
+  opts: { fetchImpl?: FetchLike; proxyMode?: boolean; profileMcp?: ProfileMcpHook } = {},
 ) {
   const store = createProviderStore({ load: () => ({}), save: () => {} });
   const secrets = memorySecrets();
@@ -127,6 +128,10 @@ function harness(
     () => opts.proxyMode ?? false,
     opts.fetchImpl,
     (text) => clipboard.push(text),
+    null,
+    createBindingProfileStore({ load: () => ({}), save: () => {} }),
+    null,
+    opts.profileMcp ?? null,
   );
   return { store, secrets, adapters, calls, restoreCounts, onChange, manager, registered, unregistered, clipboard };
 }
@@ -366,13 +371,38 @@ describe('provider manager — setBinding cross-format (translation proxy)', () 
     expect(JSON.stringify(write)).not.toContain('sk-REAL-secret');
   });
 
-  it('rejects a gemini provider (untranslatable) with UNSUPPORTED_CAPABILITY and registers nothing', () => {
+  it('claude → a Gemini provider registers an anthropic→gemini route with the loopback token', () => {
     const { manager, registered, calls } = harness(['claude']);
-    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk', modelId: 'm1' });
+    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk-REAL', modelId: 'm1' });
+    manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(1);
+    expect(registered[0]!).toMatchObject({ inboundFormat: 'anthropic', outboundFormat: 'gemini', modelId: 'm1' });
+    expect(JSON.stringify(calls.claude![0]!)).not.toContain('sk-REAL');
+  });
+
+  it('refuses a signed-in Gemini session as a translation target (different service, bearer auth)', () => {
+    const { manager, registered } = harness(['claude']);
+    const snap = manager.addProvider({
+      name: 'Gemini sign-in',
+      apiFormats: ['gemini'],
+      baseUrl: 'https://api.example.com',
+      models: [{ id: 'm1' }],
+      notes: undefined,
+      credentialMode: 'oauth',
+      oauth: { kind: 'generic_pkce' },
+    });
+    const id = snap.providers.filter((p) => !p.virtual).at(-1)!.id;
     expect(codeOf(() => manager.setBinding('claude', id, 'm1'))).toBe('UNSUPPORTED_CAPABILITY');
     expect(registered).toHaveLength(0);
-    expect(calls.claude!).toHaveLength(0);
-    expect(manager.getSnapshot().agents.find((a) => a.id === 'claude')!.binding).toBeNull();
+  });
+
+  it('rejects codex (Responses) on a Gemini provider with UNSUPPORTED_CAPABILITY and registers nothing', () => {
+    const { manager, registered, calls } = harness(['codex']);
+    const id = addProvider(manager, { apiFormat: 'gemini', apiKey: 'sk', modelId: 'm1' });
+    expect(codeOf(() => manager.setBinding('codex', id, 'm1'))).toBe('UNSUPPORTED_CAPABILITY');
+    expect(registered).toHaveLength(0);
+    expect(calls.codex!).toHaveLength(0);
+    expect(manager.getSnapshot().agents.find((a) => a.id === 'codex')!.binding).toBeNull();
   });
 
   it('codex (Responses) → OpenAI Chat provider registers a route with the right in/out formats', () => {
@@ -813,5 +843,61 @@ describe('provider manager — snapshot config view', () => {
     for (const role of ['auth', 'toString', '__proto__']) {
       expect(codeOf(() => manager.resolveConfigRevealPath('claude', role))).toBe('NOT_FOUND');
     }
+  });
+});
+
+describe('config profiles with MCP', () => {
+  function mcpHook(decide: boolean) {
+    const events: string[] = [];
+    let sets: Partial<Record<string, string[]>> = { claude: ['fs'] };
+    const hook: ProfileMcpHook = {
+      capture: () => sets,
+      plan: async (want) => {
+        events.push(`plan:${JSON.stringify(want)}`);
+        return { proceed: decide, skipped: 1, commit: () => void events.push('commit') };
+      },
+    };
+    return { hook, events, setSets: (next: typeof sets) => (sets = next) };
+  }
+
+  it('records MCP sets on save and applies them after the bindings', async () => {
+    const mcp = mcpHook(true);
+    const { manager, calls } = harness(['claude'], { profileMcp: mcp.hook });
+    const id = addProvider(manager);
+    manager.setBinding('claude', id, 'm1');
+    const [saved] = manager.saveBindingProfile('work');
+    expect(saved).toMatchObject({ name: 'work', boundCount: 1, mcpCount: 1 });
+    manager.restoreAgentDefault('claude');
+    const writesBefore = calls.claude!.length;
+    const r = await manager.applyBindingProfile(saved!.id);
+    expect(r).toMatchObject({ applied: true, mcpSkipped: 1 });
+    expect(calls.claude!.length).toBe(writesBefore + 1);
+    expect(r.snapshot.agents.find((x) => x.id === 'claude')!.binding).toEqual({ providerId: id, modelId: 'm1' });
+    expect(mcp.events).toEqual(['plan:{"claude":["fs"]}', 'commit']);
+  });
+
+  it('a declined MCP confirmation applies nothing', async () => {
+    const mcp = mcpHook(false);
+    const { manager, calls } = harness(['claude'], { profileMcp: mcp.hook });
+    const id = addProvider(manager);
+    manager.setBinding('claude', id, 'm1');
+    const [saved] = manager.saveBindingProfile('work');
+    manager.restoreAgentDefault('claude');
+    const writesBefore = calls.claude!.length;
+    const r = await manager.applyBindingProfile(saved!.id);
+    expect(r.applied).toBe(false);
+    expect(calls.claude!.length).toBe(writesBefore);
+    expect(r.snapshot.agents.find((x) => x.id === 'claude')!.binding).toBeNull();
+    expect(mcp.events).toEqual(['plan:{"claude":["fs"]}']);
+  });
+
+  it('a profile without an MCP part never plans MCP', async () => {
+    const mcp = mcpHook(true);
+    const { manager } = harness(['claude'], { profileMcp: mcp.hook });
+    mcp.setSets(undefined as never);
+    const [saved] = manager.saveBindingProfile('plain');
+    expect(saved!.mcpCount).toBeNull();
+    expect(await manager.applyBindingProfile(saved!.id)).toMatchObject({ applied: true, mcpSkipped: 0 });
+    expect(mcp.events).toEqual([]);
   });
 });

@@ -15,6 +15,23 @@ import type { AgentImportConfig } from './agentImport';
 import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
 import type { UsageSnapshot } from './usageStats';
 import type {
+  LocalUsageSnapshot,
+  SessionRef,
+  SessionsExportResult,
+  SessionsSnapshot,
+  SessionTranscript,
+} from './agentSessions';
+import type {
+  McpAgentRequest,
+  McpDiffResult,
+  McpMergeRequest,
+  McpNameRequest,
+  McpPushRequest,
+  McpSaveRequest,
+  McpSnapshot,
+  McpWriteResult,
+} from './mcp';
+import type {
   SkillDiffResult,
   SkillFileContent,
   SkillRevealRef,
@@ -138,6 +155,30 @@ export const IPC_CHANNELS = {
   // or token plaintext) — see shared/usageStats.ts.
   usageGet: 'usage:get',
   usageClear: 'usage:clear',
+
+  // Agent session logs (read-only). Main scans the agents' own JSONL transcripts; the
+  // renderer names a session only by (agentId, sessionId), never a path. Local usage
+  // carries counts + identifiers only; a transcript is returned only on explicit request.
+  // Copy-resume and export run main-side (clipboard / save dialog) — see
+  // shared/agentSessions.ts.
+  sessionsList: 'sessions:list',
+  sessionsLocalUsage: 'sessions:local-usage',
+  sessionsTranscript: 'sessions:transcript',
+  sessionsCopyResume: 'sessions:copy-resume',
+  sessionsExport: 'sessions:export',
+
+  // MCP servers. One library in AiOpt, compared live with each agent's MCP config and synced
+  // only on an explicit pull / push / merge / delete. Env/header VALUES never cross to the
+  // renderer (names + set flag only). A push puts a command/URL into an agent config, so
+  // main confirms it in a native dialog first — see docs/dev-rules/mcp-servers.md.
+  mcpGet: 'mcp:get',
+  mcpSave: 'mcp:save',
+  mcpPull: 'mcp:pull',
+  mcpPush: 'mcp:push',
+  mcpDelete: 'mcp:delete',
+  mcpDeleteAgent: 'mcp:delete-agent',
+  mcpDiff: 'mcp:diff',
+  mcpMerge: 'mcp:merge',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -358,6 +399,13 @@ export interface PreferencesShape {
    * tab bar, tray, and menu-driven navigation. When `true`, those surfaces are shown.
    */
   experimentalMode: boolean;
+  /**
+   * Prompt-cache breakpoints. When `true` (default) the proxy adds up to four
+   * `cache_control` breakpoints to a request bound for an Anthropic-format provider when
+   * the request carries none (a translated request never does). Adds markers only — the
+   * prompt text is unchanged. Read per request, so a flip needs no rebind.
+   */
+  promptCache: boolean;
 }
 
 // Per-channel request/result contracts. Adding a channel means adding its entry
@@ -967,7 +1015,7 @@ export interface IpcContract {
   };
   [IPC_CHANNELS.providersBindingProfileApply]: {
     request: ProviderBindingProfileApplyRequest;
-    result: ProvidersSnapshot;
+    result: import('./bindingProfiles').BindingProfileApplyResult;
   };
   [IPC_CHANNELS.providersBindingProfileDelete]: {
     request: ProviderBindingProfileDeleteRequest;
@@ -999,6 +1047,19 @@ export interface IpcContract {
   };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };
+  [IPC_CHANNELS.sessionsList]: { request: { refresh?: boolean } | void; result: SessionsSnapshot };
+  [IPC_CHANNELS.sessionsLocalUsage]: { request: { refresh?: boolean } | void; result: LocalUsageSnapshot };
+  [IPC_CHANNELS.sessionsTranscript]: { request: SessionRef; result: SessionTranscript };
+  [IPC_CHANNELS.sessionsCopyResume]: { request: SessionRef; result: Record<string, never> };
+  [IPC_CHANNELS.sessionsExport]: { request: SessionRef; result: SessionsExportResult };
+  [IPC_CHANNELS.mcpGet]: { request: void; result: McpSnapshot };
+  [IPC_CHANNELS.mcpSave]: { request: McpSaveRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpPull]: { request: McpAgentRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpPush]: { request: McpPushRequest; result: McpWriteResult };
+  [IPC_CHANNELS.mcpDelete]: { request: McpNameRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpDeleteAgent]: { request: McpAgentRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpDiff]: { request: McpAgentRequest; result: McpDiffResult };
+  [IPC_CHANNELS.mcpMerge]: { request: McpMergeRequest; result: McpSnapshot };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

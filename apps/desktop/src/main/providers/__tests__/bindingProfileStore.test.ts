@@ -20,4 +20,17 @@ describe('bindingProfileStore', () => {
     expect(store.list()).toHaveLength(1);
     expect(store.get(first.id)?.bindings.codex?.providerId).toBe('p2');
   });
+
+  it('keeps the MCP part, replaces it on re-save, and drops junk', () => {
+    let saved: unknown = { profiles: [] };
+    const persistence = { load: () => saved, save: (doc: unknown) => void (saved = doc) };
+    const store = createBindingProfileStore(persistence);
+    const p = store.saveFromBindings('w', {}, { claude: ['a', 'b'], codex: [] });
+    expect(store.list()[0]!.mcpCount).toBe(2);
+    store.saveFromBindings('w', {});
+    expect(store.get(p.id)!.mcp).toBeUndefined();
+    expect(store.list()[0]!.mcpCount).toBeNull();
+    saved = { profiles: [{ id: 'x', name: 'x', createdAt: 1, bindings: {}, mcp: { claude: ['ok', 7], gemini: 'no' } }] };
+    expect(createBindingProfileStore(persistence).get('x')!.mcp).toEqual({ claude: ['ok'] });
+  });
 });

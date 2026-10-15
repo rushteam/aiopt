@@ -36,6 +36,8 @@ Electron's `app.getPath(...)`:
 | Caches / rebuildable artifacts | `app.getPath('cache')` | Disposable; must be safe to delete. |
 | Transient scratch | `app.getPath('temp')` | Per-run; clean up on exit. |
 | Logs | `app.getPath('logs')` | Rotating; masked; no secrets. |
+| Agent session logs (Claude Code `~/.claude/projects/**/*.jsonl`, Codex `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) | Owned by those agents under the agent home | **Read-only** to AiOpt: scanned main-side for the Sessions tab and the agent-log usage view, never written, symlinks not followed, oversized files skipped. Parses are cached in memory only — nothing derived is persisted. The renderer names a session by `(agentId, sessionId)` alone; main resolves it to a file it listed itself. Session text is the user's conversation and is never logged. A Markdown export goes only to a path the user picks in a main-side save dialog. |
+| MCP server library (`mcp-servers.json`: name, transport, command + args or URL, env/header **key names**) + values (`main_mcp_<hex name>` in the OS secret store) | `app.getPath('userData')` + OS secret store | User-owned. Env/header values live only in the secret store and never cross IPC (the renderer sees key + `set`). They are written in plain text into an agent's MCP config when the user pushes a server there (`~/.claude.json` `mcpServers`, `~/.codex/config.toml` `[mcp_servers.*]`, `~/.gemini/settings.json` `mcpServers`), because the agent reads them there; those files keep their permission bits (new ones `0600`). Deleting a library entry removes its secret only; agent files are left alone. See `mcp-servers.md`. |
 | Skills central library | `skillsLibrary` enum, resolved in main: `userData/skills` or `~/.agents/skills`. A previously stored `~/.aiopt/skills` is still resolved. | User-owned skill files. Switching the enum points at another directory and does not move files. On first use, if the in-app library is empty and `~/.agents/skills` already exists, that choice is recorded. `~/.agents/skills` is the cross-client user directory (home-level, not a project `.agents/` that Git would track) and is shared with other agents that scan it. |
 
 - `userData` depends on how the app runs. A packaged build uses Electron's default,
@@ -45,6 +47,15 @@ Electron's `app.getPath(...)`:
   tokens. Nothing is migrated between the two: a dev run starts empty, and the installed app's
   data is left alone. Do not add a `getPath('userData')` call that runs at import time, because
   it would run before the redirect.
+- `AIOPT_DEV_PROFILE` splits dev runs further, so two checkouts or worktrees can run at the same
+  time (each userData holds its own single-instance lock). A packaged build ignores it.
+  - A name (1–32 letters, digits, `-`, `_`), e.g. `AIOPT_DEV_PROFILE=pms`, gives
+    `<appData>/AiOpt-dev-pms`. It persists like `AiOpt-dev`.
+  - `temp` gives a fresh `mkdtemp` directory (`0700`) under the OS temp dir. On macOS and Windows
+    that is per-user, never the shared `/tmp`. It is removed when the run exits.
+  - Any other value, including anything path-like, stops the run with
+    `user_data.dev_profile_invalid`. It is never taken as a path, so a dev run's secrets and
+    proxy tokens cannot be pointed at a shared or Git-tracked location.
 - Rebuildable data goes in a cache/temp location, not next to source-of-truth data, so clearing
   it can never corrupt real state.
 - When adding a new persisted location, decide its lifecycle first, then document it in the

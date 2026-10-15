@@ -50,9 +50,24 @@ export function outboundUrl(outboundFormat: ApiFormat, baseUrl: string): string 
       // Only reached by a same-format passthrough route (Responses → Responses).
       return endsWithVersion(base) ? `${base}/responses` : `${base}/v1/responses`;
     default:
-      // gemini is not a proxy target; routes never carry it.
+      // gemini puts the model in the path — see geminiOutboundUrl.
       throw new Error(`unsupported outbound format: ${outboundFormat}`);
   }
+}
+
+/**
+ * Build the Gemini endpoint for a translated route. Gemini addresses the model in the path
+ * (`/v1beta/models/<model>:generateContent`); streaming uses `:streamGenerateContent` with
+ * `alt=sse` so the reply is ordinary server-sent events. The key goes in a header, never the
+ * query string (a URL can end up in logs).
+ */
+export function geminiOutboundUrl(baseUrl: string, modelId: string, stream: boolean): string {
+  const base = normalizeBase(baseUrl);
+  const root = endsWithVersion(base) ? base : `${base}/v1beta`;
+  const model = encodeURIComponent(modelId.replace(/^models\//, ''));
+  return stream
+    ? `${root}/models/${model}:streamGenerateContent?alt=sse`
+    : `${root}/models/${model}:generateContent`;
 }
 
 /**
@@ -76,6 +91,9 @@ export function outboundHeaders(
     case 'anthropic':
       headers['anthropic-version'] = '2023-06-01';
       if (apiKey) headers['x-api-key'] = apiKey;
+      break;
+    case 'gemini':
+      if (apiKey) headers['x-goog-api-key'] = apiKey;
       break;
     default:
       throw new Error(`unsupported outbound format: ${outboundFormat}`);

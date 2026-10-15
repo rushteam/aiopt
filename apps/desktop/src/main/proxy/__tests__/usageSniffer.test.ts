@@ -97,3 +97,22 @@ describe('createUsageSniffer — openai stream', () => {
     expect(s.result()).toEqual({ inputTokens: 0, outputTokens: 0 });
   });
 });
+
+describe('gemini usageMetadata', () => {
+  it('reads a non-streaming body, counting reasoning tokens as output', () => {
+    expect(
+      readResponseUsage('gemini', {
+        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 4, thoughtsTokenCount: 6 },
+      }),
+    ).toEqual({ inputTokens: 10, outputTokens: 10 });
+    expect(readResponseUsage('gemini', {})).toEqual({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it('keeps the latest running count from a stream', () => {
+    const s = createUsageSniffer('gemini');
+    s.observe({ data: JSON.stringify({ usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 1 } }) });
+    s.observe({ data: JSON.stringify({ candidates: [] }) });
+    s.observe({ data: JSON.stringify({ usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 9 } }) });
+    expect(s.result()).toEqual({ inputTokens: 3, outputTokens: 9 });
+  });
+});

@@ -5,7 +5,8 @@
 // Electron is touched ONLY here (paths + safeStorage); the stores themselves are
 // Electron-free and unit-tested with injected adapters.
 
-import { app, clipboard, net, safeStorage } from 'electron';
+import fs from 'node:fs';
+import { BrowserWindow, app, clipboard, dialog, net, safeStorage } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -41,6 +42,12 @@ import { createTranslationProxy, type TranslationProxy } from './proxy/translati
 import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/proxyStore';
 import type { ProxyFetch } from './proxy/upstream';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
+import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
+import { createMcpStore, type McpStore } from './mcp/mcpStore';
+import { buildMcpConfirm } from './mcp/mcpConfirm';
+import { resolveMenuLocaleForPreference } from './menu/menuLabels';
+import { homeShortenedPath } from './providers/agentConfigView';
+import { agentConfigDir, agentHome } from './providers/agentPaths';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
 import { isRealDirectory } from './skills/skillsLibraryDir';
@@ -62,6 +69,7 @@ import {
   skillsLibraryPath,
   usageHistoryFilePath,
   workbenchDir,
+  mcpServersFilePath,
 } from './paths';
 import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 
@@ -75,6 +83,8 @@ let oauthManager: OAuthManager | null = null;
 let providerManager: ProviderManager | null = null;
 let translationProxy: TranslationProxy | null = null;
 let usageStore: UsageStore | null = null;
+let agentSessionStore: AgentSessionStore | null = null;
+let mcpStore: McpStore | null = null;
 let skillsStore: SkillsStore | null = null;
 let workbenchManager: WorkbenchManager | null = null;
 
@@ -232,6 +242,11 @@ export function getProviderManager(): ProviderManager {
       getOAuthManager(),
       getBindingProfileStore(),
       getBindingAppliedStore(),
+      // Config profiles also record which MCP servers each agent has enabled.
+      {
+        capture: () => getMcpStore().enabledSets(),
+        plan: (sets) => getMcpStore().planEnabledSets(sets),
+      },
     );
   }
   return providerManager;
@@ -256,6 +271,8 @@ export function getTranslationProxy(): TranslationProxy {
       // Per-provider fields to strip from the outbound body (see proxy/sanitize.ts) —
       // resolved live, like the key, so a provider edit needs no rebind.
       getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
+      // Prompt-cache breakpoints for Anthropic upstreams (see proxy/promptCache.ts), live.
+      getPromptCache: () => getConfigStore().get('promptCache'),
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).
@@ -278,6 +295,50 @@ export function getUsageStore(): UsageStore {
     usageStore = store;
   }
   return usageStore;
+}
+
+/**
+ * Read-only scanner over the agents' own session logs (Claude Code / Codex JSONL under the
+ * agent home). Serves the local-usage view and the sessions reader; writes nothing.
+ */
+export function getAgentSessionStore(): AgentSessionStore {
+  if (!agentSessionStore) agentSessionStore = createAgentSessionStore({ home: agentHome });
+  return agentSessionStore;
+}
+
+/**
+ * The MCP library. `confirmWrite` is a NATIVE dialog shown by main — the one gate between a
+ * renderer request and a command landing in an agent config (see main/mcp/mcpConfirm.ts).
+ * Cancel is the default and the Escape answer.
+ */
+export function getMcpStore(): McpStore {
+  if (!mcpStore) {
+    mcpStore = createMcpStore({
+      filePath: mcpServersFilePath(),
+      secrets: getSecretStore(),
+      isInstalled: (agentId) => fs.existsSync(agentConfigDir(agentId)),
+      displayPath: homeShortenedPath,
+      confirmWrite: async (reqs) => {
+        const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
+        const c = buildMcpConfirm(locale, reqs);
+        const opts: Electron.MessageBoxOptions = {
+          type: 'warning',
+          buttons: [c.cancel, c.confirm],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+          title: c.title,
+          message: c.message,
+          detail: c.detail,
+        };
+        const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        const { response } =
+          parent && !parent.isDestroyed() ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts);
+        return response === 1;
+      },
+    });
+  }
+  return mcpStore;
 }
 
 /**

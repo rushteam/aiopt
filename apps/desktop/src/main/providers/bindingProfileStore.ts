@@ -40,7 +40,18 @@ function validProfile(raw: unknown): BindingProfile | null {
     const b = validBinding((o.bindings as Record<string, unknown>)[agentId]);
     if (b) bindings[agentId] = b;
   }
-  return { id: o.id, name: o.name.trim(), createdAt: o.createdAt, bindings };
+  const mcp = validMcp(o.mcp);
+  return { id: o.id, name: o.name.trim(), createdAt: o.createdAt, bindings, ...(mcp ? { mcp } : {}) };
+}
+
+function validMcp(raw: unknown): BindingProfile['mcp'] | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out: NonNullable<BindingProfile['mcp']> = {};
+  for (const [agentId, names] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(names)) continue;
+    out[agentId] = names.filter((n): n is string => typeof n === 'string');
+  }
+  return out;
 }
 
 function loadDoc(raw: unknown): ProfilesDocument {
@@ -65,6 +76,7 @@ export function createBindingProfileStore(persistence: BindingProfilePersistence
         name: p.name,
         createdAt: p.createdAt,
         boundCount: Object.keys(p.bindings).length,
+        mcpCount: p.mcp ? Object.values(p.mcp).reduce((n, list) => n + (list?.length ?? 0), 0) : null,
       }));
     },
 
@@ -72,15 +84,17 @@ export function createBindingProfileStore(persistence: BindingProfilePersistence
       return doc.profiles.find((p) => p.id === id) ?? null;
     },
 
-    saveFromBindings(name: string, bindings: Partial<Record<AgentId, AgentBinding>>): BindingProfile {
+    saveFromBindings(
+      name: string,
+      bindings: Partial<Record<AgentId, AgentBinding>>,
+      mcp?: BindingProfile['mcp'],
+    ): BindingProfile {
       const trimmed = name.trim();
       if (trimmed === '') throwIpcError('INVALID_PARAMS', 'profile name is required');
       const existing = doc.profiles.find((p) => p.name === trimmed);
       if (existing) {
-        const updated: BindingProfile = {
-          ...existing,
-          bindings: { ...bindings },
-        };
+        const { mcp: _old, ...rest } = existing;
+        const updated: BindingProfile = { ...rest, bindings: { ...bindings }, ...(mcp ? { mcp } : {}) };
         doc = {
           profiles: doc.profiles.map((p) => (p.id === existing.id ? updated : p)),
         };
@@ -92,6 +106,7 @@ export function createBindingProfileStore(persistence: BindingProfilePersistence
         name: trimmed,
         createdAt: Date.now(),
         bindings: { ...bindings },
+        ...(mcp ? { mcp } : {}),
       };
       doc = { profiles: [...doc.profiles, profile] };
       persist();

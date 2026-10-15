@@ -48,6 +48,7 @@ export function GeneralSection() {
   // "Don't ask again" checkbox writes this false, so this toggle is the way back on.
   const [warnOnQuitWithProxy, setWarnOnQuitWithProxy] = useState<boolean | null>(null);
   const [experimentalMode, setExperimentalMode] = useState<boolean | null>(null);
+  const [promptCache, setPromptCache] = useState<boolean | null>(null);
 
   // The language and quit-warning preferences live in the same layered config as the
   // theme, but have no dedicated provider — read once, then track the config:changed push.
@@ -58,11 +59,13 @@ export function GeneralSection() {
       setLanguage(prefs.language);
       setWarnOnQuitWithProxy(prefs.warnOnQuitWithProxy);
       setExperimentalMode(prefs.experimentalMode);
+      setPromptCache(prefs.promptCache);
     });
     const unsubscribe = window.aiopt.config.onChanged((prefs) => {
       setLanguage(prefs.language);
       setWarnOnQuitWithProxy(prefs.warnOnQuitWithProxy);
       setExperimentalMode(prefs.experimentalMode);
+      setPromptCache(prefs.promptCache);
     });
     return () => {
       active = false;
@@ -101,6 +104,18 @@ export function GeneralSection() {
           const next = !warnOnQuitWithProxy;
           setWarnOnQuitWithProxy(next); // optimistic; the config:changed echo confirms
           void window.aiopt.config.set('warnOnQuitWithProxy', next);
+        }}
+      />
+      <Switch
+        title={t('general.promptCache.label')}
+        help={t('general.promptCache.help')}
+        checked={promptCache === true}
+        loading={promptCache === null}
+        onToggle={() => {
+          if (promptCache === null) return;
+          const next = !promptCache;
+          setPromptCache(next);
+          void window.aiopt.config.set('promptCache', next);
         }}
       />
       <Switch

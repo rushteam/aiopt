@@ -47,6 +47,11 @@ export function usageHistoryFilePath(): string {
   return path.join(app.getPath('userData'), 'usage-history.jsonl');
 }
 
+/** MCP server library (names, commands/urls, env/header KEYS; values are in the secret store). */
+export function mcpServersFilePath(): string {
+  return path.join(app.getPath('userData'), 'mcp-servers.json');
+}
+
 /**
  * The translation proxy's persisted identity: the fixed loopback port and the per-binding
  * path tokens, so a restart reuses the same `http://127.0.0.1:<port>/<token>` an agent already

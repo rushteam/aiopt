@@ -44,6 +44,20 @@ import type {
   SkillsSnapshot,
 } from '../shared/skills';
 import type { UsageSnapshot } from '../shared/usageStats';
+import type {
+  LocalUsageSnapshot,
+  SessionRef,
+  SessionsExportResult,
+  SessionsSnapshot,
+  SessionTranscript,
+} from '../shared/agentSessions';
+import type {
+  McpAgentId,
+  McpDiffResult,
+  McpSaveRequest,
+  McpSnapshot,
+  McpWriteResult,
+} from '../shared/mcp';
 import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
@@ -234,7 +248,9 @@ const api = {
       name: string,
     ): Promise<import('../shared/ipc-channels').ProviderBindingProfilesListResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileSave, { name }),
-    bindingProfileApply: (profileId: string): Promise<ProvidersSnapshot> =>
+    bindingProfileApply: (
+      profileId: string,
+    ): Promise<import('../shared/bindingProfiles').BindingProfileApplyResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersBindingProfileApply, { profileId }),
     bindingProfileDelete: (
       profileId: string,
@@ -290,6 +306,46 @@ const api = {
     /** Subscribe to usage changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: UsageSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.usageChanged, callback),
+  },
+
+  /**
+   * Agent session logs, read-only. Sessions are named by (agentId, sessionId) only —
+   * never a path. `copyResume` writes the resume command to the clipboard main-side;
+   * `export` asks for the destination in a main-side save dialog.
+   */
+  sessions: {
+    list: (opts?: { refresh?: boolean }): Promise<SessionsSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsList, opts ?? {}),
+    localUsage: (opts?: { refresh?: boolean }): Promise<LocalUsageSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsLocalUsage, opts ?? {}),
+    transcript: (ref: SessionRef): Promise<SessionTranscript> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsTranscript, ref),
+    copyResume: (ref: SessionRef): Promise<Record<string, never>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsCopyResume, ref),
+    export: (ref: SessionRef): Promise<SessionsExportResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessionsExport, ref),
+  },
+
+  /**
+   * MCP servers. A server is named by its validated name; env/header values go IN with a
+   * save (omit `value` to keep the stored one) but never come back out. Save, pull, merge
+   * and delete change only the library; `push` resolves only after the user answers main's
+   * native confirmation (`saved: false` means they declined); `deleteAgent` only removes.
+   */
+  mcp: {
+    get: (): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpGet),
+    save: (req: McpSaveRequest): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpSave, req),
+    pull: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpPull, { agentId, name }),
+    push: (name: string, agentIds: McpAgentId[]): Promise<McpWriteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpPush, { name, agentIds }),
+    delete: (name: string): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpDelete, { name }),
+    deleteAgent: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpDeleteAgent, { agentId, name }),
+    diff: (agentId: McpAgentId, name: string): Promise<McpDiffResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpDiff, { agentId, name }),
+    merge: (agentId: McpAgentId, name: string, agentPicks: string[]): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpMerge, { agentId, name, agentPicks }),
   },
 
   /**

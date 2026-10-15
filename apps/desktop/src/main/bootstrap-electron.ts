@@ -3,11 +3,13 @@
 // applied at package time by FusesPlugin in forge.config.ts, not here.
 
 import { app, net, protocol, session } from 'electron';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { APP_PROTOCOL } from './appProtocol';
 import { installCsp } from './security/csp';
-import { devUserDataDir } from './userDataDir';
+import { DEV_PROFILE_ENV, devUserData } from './userDataDir';
 import { logger } from './logger';
 
 const log = logger.child('bootstrap');
@@ -25,15 +27,39 @@ export const isDev = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
  * still not the installed app, and must not touch its data either.
  */
 export function isolateDevUserData(): void {
-  const dir = devUserDataDir({
-    isPackaged: app.isPackaged,
-    appData: app.getPath('appData'),
-    productName: app.getName(),
-  });
-  if (dir === null) return;
+  let target;
+  try {
+    target = devUserData({
+      isPackaged: app.isPackaged,
+      appData: app.getPath('appData'),
+      productName: app.getName(),
+      profile: process.env[DEV_PROFILE_ENV],
+      tempDir: os.tmpdir(),
+    });
+  } catch (err) {
+    // A bad profile must not fall back to the shared dev directory — that is what it was set to avoid.
+    log.error('user_data.dev_profile_invalid', { error: (err as Error).message });
+    app.exit(1);
+    process.exit(1);
+  }
+  if (target === null) return;
+  if (target.kind === 'dir') {
+    app.setPath('userData', target.dir);
+    // No path in the log (engineering-conventions.md §1); the directory name is the fixed suffix.
+    log.info('user_data.dev_isolated', { profile: process.env[DEV_PROFILE_ENV] ? 'named' : 'default' });
+    return;
+  }
+  // mkdtemp creates the directory 0700 on POSIX, under the per-user temp dir on macOS/Windows.
+  const dir = mkdtempSync(target.prefix);
   app.setPath('userData', dir);
-  // No path in the log (engineering-conventions.md §1); the directory name is the fixed suffix.
-  log.info('user_data.dev_isolated');
+  process.once('exit', () => {
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+    } catch {
+      // Best effort: the OS temp cleaner removes what is left.
+    }
+  });
+  log.info('user_data.dev_isolated', { profile: 'temp' });
 }
 
 /**

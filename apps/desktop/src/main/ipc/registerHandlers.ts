@@ -5,7 +5,8 @@
 // `register*Ipc(registry, …)`; the trusted-sender check + error sanitization
 // live in the Electron adapter (ipc/registry.ts).
 
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { promises as fsp } from 'node:fs';
+import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import { createElectronIpcRegistry } from './registry';
 import { broadcastToRenderers } from './broadcast';
 import { registerConfigIpc } from '../config/configIpc';
@@ -17,7 +18,9 @@ import { registerProviderIpc } from '../providers/providerIpc';
 import { registerOAuthProviderIpc } from '../oauth/oauthIpc';
 import { registerAgentImportIpc } from '../agentImport/agentImportIpc';
 import { registerUsageIpc } from '../usage/usageIpc';
+import { registerSessionsIpc } from '../sessions/sessionsIpc';
 import { registerSkillsIpc } from '../skills/skillsIpc';
+import { registerMcpIpc } from '../mcp/mcpIpc';
 import { registerWorkbenchIpc } from '../workbench/workbenchIpc';
 import { rebuildAppMenuLabels } from '../menu/appMenu';
 import { rebuildTrayLabels } from '../tray/tray';
@@ -38,6 +41,8 @@ import {
   getSkillsStore,
   getUpdateService,
   getUsageStore,
+  getAgentSessionStore,
+  getMcpStore,
   getWorkbenchManager,
 } from '../services';
 
@@ -69,6 +74,20 @@ export function registerHandlers(): void {
   registerOAuthProviderIpc(registry, getOAuthManager(), providers);
   registerAgentImportIpc(registry, providers);
   registerUsageIpc(registry, getUsageStore());
+  registerSessionsIpc(registry, getAgentSessionStore(), {
+    writeClipboard: (text) => clipboard.writeText(text),
+    // The export target is chosen here in main via a native save dialog — never supplied
+    // by the renderer.
+    pickSavePath: async (defaultName) => {
+      const parent = BrowserWindow.getFocusedWindow() ?? undefined;
+      const options = { defaultPath: defaultName, filters: [{ name: 'Markdown', extensions: ['md'] }] };
+      const result = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options);
+      return result.canceled || !result.filePath ? null : result.filePath;
+    },
+    writeFile: (file, text) => fsp.writeFile(file, text, 'utf8'),
+    platform: process.platform,
+  });
+  registerMcpIpc(registry, getMcpStore());
   registerSkillsIpc(registry, getSkillsStore(), {
     // The import SOURCE is chosen here in main via a native picker — never supplied
     // by the renderer. A single directory; treated as one skill by the store.

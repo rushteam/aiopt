@@ -52,6 +52,10 @@
       "label": "Avisar antes de salir con el proxy activo",
       "help": "Activado (predeterminado): si hay agentes enrutados a través del proxy de AiOpt, confirmar antes de salir — no podrán conectarse hasta que AiOpt vuelva a ejecutarse. Desactivado: salir sin preguntar."
     },
+    "promptCache": {
+      "label": "Caché de prompts para proveedores Anthropic",
+      "help": "Activado (predeterminado): las solicitudes enrutadas a un proveedor con formato Anthropic reciben puntos de caché si el cliente no definió ninguno, para que el contexto repetido se facture a la tarifa de caché. Desactivado: las solicitudes se reenvían tal cual."
+    },
     "experimentalMode": {
       "label": "Modo experimental",
       "help": "Desactivado (predeterminado): oculta funciones en desarrollo (p. ej. Workbench). Activado: muestra pestañas y entradas de bandeja experimentales."
@@ -269,6 +273,8 @@
       "save": "Guardar enlaces actuales",
       "empty": "Aún no hay perfiles.",
       "boundCount": "{{count}} agentes enlazados",
+      "mcpDeclined": "Perfil no aplicado: se canceló la escritura de servidores MCP.",
+      "mcpSkipped": "Aplicado. Se omitieron {{count}} servidores MCP de este perfil (eliminados o no compatibles con ese agente).",
       "apply": "Aplicar",
       "delete": "Eliminar"
     },
@@ -402,7 +408,153 @@
     "clear": "Borrar uso",
     "clearConfirm": "¿Borrar todo el uso registrado?",
     "clearConfirmYes": "Borrar",
-    "clearCancel": "Cancelar"
+    "clearCancel": "Cancelar",
+    "source": {
+      "label": "Origen del uso",
+      "proxy": "A través de AiOpt",
+      "local": "Registros de agentes",
+      "proxyHint": "Solicitudes que pasaron por el proxy de AiOpt.",
+      "localHint": "Leído de los registros de sesión de Claude Code y Codex en este equipo. Incluye enlaces directos."
+    },
+    "local": {
+      "loading": "Leyendo registros de sesión…",
+      "failed": "No se pudieron leer los registros de sesión de los agentes.",
+      "empty": "No se encontró uso en los registros de Claude Code o Codex.",
+      "responses": "Respuestas",
+      "cacheRead": "Lectura de caché",
+      "cacheWrite": "Escritura de caché",
+      "cache": "Caché",
+      "refresh": "Volver a leer registros",
+      "window": "Últimos {{days}} días"
+    }
+  },
+    "mcp": {
+      "title": "MCP",
+      "intro": "Una biblioteca de servidores MCP, sincronizada con la configuración MCP de cada agente. Editar la biblioteca no cambia ningún agente; enviar lo escribe, y AiOpt te pide antes confirmar el comando o la URL exactos.",
+      "refresh": "Actualizar",
+      "add": "Añadir servidor",
+      "loading": "Cargando servidores MCP…",
+      "failed": "No se pudieron cargar los servidores MCP.",
+      "empty": "Aún no hay servidores MCP: ni en la biblioteca ni en la configuración de ningún agente. Añade uno para empezar.",
+      "declined": "No se escribió: cancelaste la confirmación.",
+      "secretsUnavailable": "El cifrado de secretos del sistema no está disponible, así que no se pueden guardar valores de variables de entorno ni de encabezados.",
+      "unreadable": "No se pudo leer la configuración MCP de {{agent}} ({{path}}). AiOpt no la escribirá hasta que se corrija.",
+      "files": "Archivos de configuración:",
+      "claudeNote": "Claude Code reescribe ~/.claude.json a menudo. Cierra Claude Code antes de cambiar sus servidores para que tu cambio no se sobrescriba.",
+      "cancel": "Cancelar",
+      "valueMissing": "sin valor",
+      "server": "Servidor",
+      "library": "Biblioteca",
+      "actions": {
+        "edit": "Editar",
+        "pull": "Extraer ←",
+        "push": "Enviar →",
+        "pushAll": "Enviar a todos los agentes",
+        "diff": "Comparar",
+        "delete": "Eliminar de la biblioteca",
+        "deleteAgent": "Eliminar del agente"
+      },
+      "state": {
+        "same": "Sincronizado",
+        "libraryOnly": "Solo en la biblioteca",
+        "agentOnly": "Solo en el agente",
+        "differs": "Difiere",
+        "inLibrary": "En la biblioteca",
+        "unreadable": "Ilegible",
+        "unsupported": "No compatible"
+      },
+      "detail": {
+        "notInLibrary": "Aún no está en la biblioteca. Extráelo de un agente para gestionarlo aquí.",
+        "cannotPush": "Este agente no admite el transporte de la biblioteca."
+      },
+      "confirm": {
+        "pushAll": "¿Escribir la copia de la biblioteca de este servidor en cada agente compatible, sobrescribiendo la suya?",
+        "delete": "¿Eliminar este servidor de la biblioteca? Las configuraciones de los agentes conservan su copia.",
+        "deleteAgent": "¿Quitar este servidor de la configuración de este agente? La biblioteca y los demás agentes conservan la suya.",
+        "deleteAgentLast": "Esta es la única copia de este servidor: ni la biblioteca ni ningún otro agente la tienen. Al quitarla no podrás deshacerlo. ¿Quitar de todos modos?",
+        "overwriteAgent": "¿Sobrescribir la copia del agente con la de la biblioteca?",
+        "overwriteLibrary": "¿Sobrescribir la copia de la biblioteca con la del agente, valores incluidos?",
+        "merge": "¿Combinar en la biblioteca los campos del agente seleccionados? La configuración del agente no se modifica.",
+        "cancel": "Cancelar"
+      },
+      "diff": {
+        "title": "Cambios",
+        "close": "Cerrar",
+        "empty": "No hay diferencias.",
+        "added": "Añadido",
+        "modified": "Modificado",
+        "deleted": "Eliminado",
+        "library": "Biblioteca",
+        "agent": "Agente",
+        "useLibrary": "Usar biblioteca",
+        "useAgent": "Usar agente",
+        "merge": "Aplicar combinación",
+        "mergeHint": "Los campos marcados con «Usar agente» pasan a la biblioteca; el resto conserva los de la biblioteca. Los valores se comparan, pero nunca se muestran.",
+        "spec": "Comando / URL",
+        "env": "Variable",
+        "header": "Encabezado",
+        "absent": "No está en este lado."
+      },
+      "transport": {
+        "stdio": "Comando local",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "Añadir servidor MCP",
+        "editTitle": "Editar servidor MCP",
+        "name": "Nombre",
+        "nameInvalid": "Usa letras, números, «-», «_» o «.» (hasta 64), empezando por una letra o un número.",
+        "nameTaken": "Ya existe un servidor con este nombre.",
+        "transport": "Transporte",
+        "command": "Comando",
+        "args": "Argumentos (uno por línea)",
+        "url": "URL",
+        "env": "Variables de entorno",
+        "headers": "Encabezados",
+        "key": "Nombre",
+        "value": "Valor",
+        "valueKeep": "Conservar el valor actual",
+        "removeVar": "Quitar",
+        "addVar": "Añadir",
+        "valuesNote": "Los valores se guardan cifrados en AiOpt y se escriben en texto plano en el archivo de configuración del agente, que los necesita.",
+        "save": "Guardar",
+        "libraryNote": "Guardar solo cambia la biblioteca. Envía el servidor a un agente para escribirlo allí."
+      },
+      "errors": {
+        "generic": "Algo salió mal.",
+        "ALREADY_EXISTS": "Ya existe un servidor con este nombre.",
+        "NOT_FOUND": "Ese servidor ya no existe. Actualiza e inténtalo de nuevo.",
+        "PRECONDITION_FAILED": "No se pudo leer la configuración MCP de un agente, o el cifrado de secretos no está disponible.",
+        "UNSUPPORTED_CAPABILITY": "Ese agente no admite este transporte.",
+        "INVALID_PARAMS": "Algunos campos no son válidos.",
+        "INTERNAL": "No se pudo escribir la configuración MCP del agente."
+      }
+    },
+  "sessions": {
+    "title": "Sesiones",
+    "search": "Buscar sesiones",
+    "refresh": "Volver a leer",
+    "intro": "Sesiones anteriores de Claude Code y Codex, leídas de los registros que guardan en este equipo. AiOpt solo lee estos archivos.",
+    "loading": "Cargando…",
+    "failed": "No se pudieron leer los registros de sesión de los agentes.",
+    "empty": "No se encontraron sesiones de Claude Code ni Codex.",
+    "noMatch": "Ninguna sesión coincide con la búsqueda.",
+    "untitled": "Sesión sin título",
+    "truncated": "Solo se muestran las sesiones más recientes.",
+    "back": "Volver",
+    "showTools": "Mostrar llamadas a herramientas",
+    "copyResume": "Copiar comando para reanudar",
+    "export": "Exportar como Markdown",
+    "copied": "Comando para reanudar copiado.",
+    "exported": "Exportado.",
+    "actionFailed": "No funcionó. Inténtalo de nuevo.",
+    "transcriptTruncated": "Esta sesión es larga; solo se muestran los mensajes más recientes.",
+    "role": {
+      "user": "Tú",
+      "assistant": "Asistente",
+      "tool": "Herramienta"
+    }
   },
   "skills": {
     "title": "Habilidades",

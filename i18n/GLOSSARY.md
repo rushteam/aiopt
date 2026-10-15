@@ -22,6 +22,18 @@ The privileged Node.js process. Owns all OS capability; exposes it to the render
 
 - **zh-CN**: 主进程
 
+### MCP server (`mcp-server`)
+
+A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one library and syncs it with each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated.
+
+- **zh-CN**: MCP 服务器
+  - forbidden: `MCP 服务端`, `MCP 插件`
+- **ja**: MCP サーバー
+- **ko**: MCP 서버
+- **fr**: Serveur MCP
+- **de**: MCP-Server
+- **es**: Servidor MCP
+
 ### Renderer (`renderer`)
 
 The untrusted web context (the BrowserWindow document). Treated as hostile input; holds no privileged capability of its own.
@@ -30,6 +42,18 @@ The untrusted web context (the BrowserWindow document). Treated as hostile input
   - forbidden: `前端页面`
 
 ## Proposed (under discussion)
+
+### Session (`agent-session`)
+
+One conversation an agent (Claude Code, Codex) recorded in its own on-disk log. AiOpt only reads these logs — on the Sessions tab and in the agent-log usage view — and never writes to them. Not 'chat', 'thread', or 'conversation history' in UI copy. Term still under discussion.
+
+- **zh-CN**: 会话
+  - forbidden: `对话记录`, `聊天记录`
+- **ja**: セッション
+- **ko**: 세션
+- **fr**: Session
+- **de**: Sitzung
+- **es**: Sesión
 
 ### API format (`api-format`)
 

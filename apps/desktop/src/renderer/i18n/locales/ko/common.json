@@ -52,6 +52,10 @@
       "label": "프록시 연결 중 종료 전 경고",
       "help": "켜기(기본값): 에이전트가 AiOpt 프록시를 통해 연결 중이면 종료 전에 확인합니다——AiOpt를 다시 실행할 때까지 연결할 수 없습니다. 끄기: 묻지 않고 종료합니다."
     },
+    "promptCache": {
+      "label": "Anthropic 공급자 프롬프트 캐시",
+      "help": "켜기(기본값): Anthropic 형식 공급자로 프록시되는 요청에 클라이언트가 지정하지 않은 경우 캐시 중단점을 추가해 반복되는 컨텍스트가 캐시 요금으로 청구됩니다. 끄기: 보낸 그대로 전달합니다."
+    },
     "experimentalMode": {
       "label": "실험 모드",
       "help": "끄기(기본값): 진행 중인 기능(예: 워크벤치)을 숨깁니다. 켜기: 실험적 탭과 트레이 항목을 표시합니다."
@@ -269,6 +273,8 @@
       "save": "현재 바인딩 저장",
       "empty": "저장된 프로필이 없습니다.",
       "boundCount": "{{count}}개 Agent 바인딩",
+      "mcpDeclined": "프로필이 적용되지 않았습니다: MCP 서버 쓰기가 취소되었습니다.",
+      "mcpSkipped": "적용했습니다. 이 프로필의 MCP 서버 {{count}}개는 건너뛰었습니다(삭제되었거나 해당 에이전트가 지원하지 않음).",
       "apply": "적용",
       "delete": "삭제"
     },
@@ -402,7 +408,153 @@
     "clear": "사용량 지우기",
     "clearConfirm": "기록된 모든 사용량을 지울까요?",
     "clearConfirmYes": "지우기",
-    "clearCancel": "취소"
+    "clearCancel": "취소",
+    "source": {
+      "label": "사용량 출처",
+      "proxy": "AiOpt 경유",
+      "local": "에이전트 로그",
+      "proxyHint": "AiOpt 프록시를 거친 요청입니다.",
+      "localHint": "이 컴퓨터의 Claude Code 및 Codex 세션 로그에서 읽습니다. 직접 바인딩도 포함됩니다."
+    },
+    "local": {
+      "loading": "세션 로그를 읽는 중…",
+      "failed": "에이전트 세션 로그를 읽을 수 없습니다.",
+      "empty": "Claude Code 또는 Codex 세션 로그에서 사용량을 찾지 못했습니다.",
+      "responses": "응답 수",
+      "cacheRead": "캐시 읽기",
+      "cacheWrite": "캐시 쓰기",
+      "cache": "캐시",
+      "refresh": "로그 다시 스캔",
+      "window": "최근 {{days}}일"
+    }
+  },
+    "mcp": {
+      "title": "MCP",
+      "intro": "MCP 서버 라이브러리 하나를 관리하고 각 에이전트의 MCP 설정과 동기화합니다. 라이브러리를 편집해도 에이전트는 바뀌지 않습니다. 내보내면 기록되며, 그 전에 AiOpt가 명령이나 URL을 보여 주고 확인을 요청합니다.",
+      "refresh": "새로 고침",
+      "add": "서버 추가",
+      "loading": "MCP 서버를 불러오는 중…",
+      "failed": "MCP 서버를 불러올 수 없습니다.",
+      "empty": "아직 MCP 서버가 없습니다. 라이브러리와 에이전트 설정 어디에도 없습니다. 하나 추가해 시작하세요.",
+      "declined": "쓰지 않았습니다. 확인을 취소했습니다.",
+      "secretsUnavailable": "OS 비밀 암호화를 사용할 수 없어 환경 변수와 헤더 값을 저장할 수 없습니다.",
+      "unreadable": "{{agent}}의 MCP 설정({{path}})을 읽을 수 없습니다. 고칠 때까지 AiOpt는 이 파일에 쓰지 않습니다.",
+      "files": "설정 파일:",
+      "claudeNote": "Claude Code는 ~/.claude.json을 자주 다시 씁니다. 변경 내용이 덮어쓰이지 않도록 서버를 바꾸기 전에 Claude Code를 종료하세요.",
+      "cancel": "취소",
+      "valueMissing": "값 없음",
+      "server": "서버",
+      "library": "라이브러리",
+      "actions": {
+        "edit": "편집",
+        "pull": "가져오기 ←",
+        "push": "내보내기 →",
+        "pushAll": "모든 에이전트로 내보내기",
+        "diff": "비교",
+        "delete": "라이브러리에서 삭제",
+        "deleteAgent": "에이전트에서 삭제"
+      },
+      "state": {
+        "same": "동기화됨",
+        "libraryOnly": "라이브러리만",
+        "agentOnly": "에이전트만",
+        "differs": "차이 있음",
+        "inLibrary": "라이브러리에 있음",
+        "unreadable": "읽을 수 없음",
+        "unsupported": "지원 안 함"
+      },
+      "detail": {
+        "notInLibrary": "아직 라이브러리에 없습니다. 에이전트에서 가져오면 여기서 관리할 수 있습니다.",
+        "cannotPush": "이 에이전트는 라이브러리의 전송 방식을 지원하지 않습니다."
+      },
+      "confirm": {
+        "pushAll": "기록할 수 있는 모든 에이전트에서 이 서버를 라이브러리 사본으로 덮어쓸까요?",
+        "delete": "라이브러리에서 이 서버를 삭제할까요? 에이전트 설정의 사본은 그대로 유지됩니다.",
+        "deleteAgent": "이 에이전트의 설정에서 이 서버를 제거할까요? 라이브러리와 다른 에이전트의 사본은 그대로 유지됩니다.",
+        "deleteAgentLast": "이 서버의 유일한 사본입니다 — 라이브러리와 다른 모든 에이전트에는 없습니다. 제거하면 되돌릴 수 없습니다. 그래도 제거할까요?",
+        "overwriteAgent": "라이브러리 사본으로 에이전트 사본을 덮어쓸까요?",
+        "overwriteLibrary": "에이전트 사본(값 포함)으로 라이브러리 사본을 덮어쓸까요?",
+        "merge": "선택한 에이전트 항목을 라이브러리에 병합할까요? 에이전트 설정은 바뀌지 않습니다.",
+        "cancel": "취소"
+      },
+      "diff": {
+        "title": "변경 사항",
+        "close": "닫기",
+        "empty": "차이가 없습니다.",
+        "added": "추가됨",
+        "modified": "수정됨",
+        "deleted": "삭제됨",
+        "library": "라이브러리",
+        "agent": "에이전트",
+        "useLibrary": "라이브러리 사용",
+        "useAgent": "에이전트 사용",
+        "merge": "병합 적용",
+        "mergeHint": "‘에이전트 사용’으로 설정한 항목은 라이브러리로 가져오고, 나머지는 라이브러리 내용을 유지합니다. 값은 비교하지만 표시하지 않습니다.",
+        "spec": "명령 / URL",
+        "env": "환경 변수",
+        "header": "헤더",
+        "absent": "이쪽에는 없습니다."
+      },
+      "transport": {
+        "stdio": "로컬 명령",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "MCP 서버 추가",
+        "editTitle": "MCP 서버 편집",
+        "name": "이름",
+        "nameInvalid": "영문자, 숫자, “-”, “_”, “.”만 사용하고(최대 64자) 영문자나 숫자로 시작하세요.",
+        "nameTaken": "같은 이름의 서버가 이미 있습니다.",
+        "transport": "전송 방식",
+        "command": "명령",
+        "args": "인수(한 줄에 하나)",
+        "url": "URL",
+        "env": "환경 변수",
+        "headers": "헤더",
+        "key": "이름",
+        "value": "값",
+        "valueKeep": "현재 값 유지",
+        "removeVar": "제거",
+        "addVar": "추가",
+        "valuesNote": "값은 AiOpt에 암호화되어 저장되고, 에이전트 설정 파일에는 평문으로 쓰입니다(에이전트가 읽어야 하므로).",
+        "save": "저장",
+        "libraryNote": "저장하면 라이브러리만 바뀝니다. 에이전트로 내보내야 설정에 기록됩니다."
+      },
+      "errors": {
+        "generic": "문제가 발생했습니다.",
+        "ALREADY_EXISTS": "같은 이름의 서버가 이미 있습니다.",
+        "NOT_FOUND": "해당 서버가 더 이상 없습니다. 새로 고친 뒤 다시 시도하세요.",
+        "PRECONDITION_FAILED": "에이전트의 MCP 설정을 읽을 수 없거나 비밀 암호화를 사용할 수 없습니다.",
+        "UNSUPPORTED_CAPABILITY": "해당 에이전트는 이 전송 방식을 지원하지 않습니다.",
+        "INVALID_PARAMS": "일부 항목이 올바르지 않습니다.",
+        "INTERNAL": "에이전트의 MCP 설정에 쓸 수 없습니다."
+      }
+    },
+  "sessions": {
+    "title": "세션",
+    "search": "세션 검색",
+    "refresh": "다시 스캔",
+    "intro": "이 컴퓨터에 남아 있는 로그에서 읽은 Claude Code 및 Codex의 지난 세션입니다. AiOpt는 이 파일을 읽기만 합니다.",
+    "loading": "불러오는 중…",
+    "failed": "에이전트 세션 로그를 읽을 수 없습니다.",
+    "empty": "Claude Code 또는 Codex 세션이 없습니다.",
+    "noMatch": "검색과 일치하는 세션이 없습니다.",
+    "untitled": "제목 없는 세션",
+    "truncated": "최근 세션만 표시합니다.",
+    "back": "뒤로",
+    "showTools": "도구 호출 표시",
+    "copyResume": "재개 명령 복사",
+    "export": "Markdown으로 내보내기",
+    "copied": "재개 명령을 복사했습니다.",
+    "exported": "내보냈습니다.",
+    "actionFailed": "실패했습니다. 다시 시도하세요.",
+    "transcriptTruncated": "긴 세션이라 최근 메시지만 표시합니다.",
+    "role": {
+      "user": "나",
+      "assistant": "어시스턴트",
+      "tool": "도구"
+    }
   },
   "skills": {
     "title": "스킬",

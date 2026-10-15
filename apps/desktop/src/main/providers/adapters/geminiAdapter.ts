@@ -3,7 +3,7 @@
 // Gemini CLI reads two files under `~/.gemini`:
 //   - .env         — we OVERWRITE it with the three env vars that steer the endpoint
 //     (`GEMINI_API_KEY`, `GEMINI_MODEL`, `GOOGLE_GEMINI_BASE_URL`), emitted in
-//     alphabetical order as bare `KEY=VALUE` lines (matching cc-switch). The chosen
+//     alphabetical order as bare `KEY=VALUE` lines. The chosen
 //     model lives here, not in settings.json.
 //   - settings.json — we MERGE, setting only `security.auth.selectedType` to
 //     `gemini-api-key` so the CLI picks the API-key auth path; every other setting
@@ -18,6 +18,7 @@ import { getAgentDef, type AgentDef } from '../../../shared/aiProviders';
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import { restoreKeepingJsonMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
 import { readEnvFileVars } from './bindingLive';
 
@@ -77,7 +78,10 @@ export function createGeminiAdapter(): AgentAdapter {
     },
 
     restoreDefault() {
-      for (const file of this.configPaths()) restoreAgentConfigFile(file);
+      restoreAgentConfigFile(resolveAgentFile(AGENT_FILES.gemini.env));
+      // settings.json also holds MCP servers (main/mcp); a restore must not roll those back.
+      const settingsFile = resolveAgentFile(AGENT_FILES.gemini.settings);
+      restoreKeepingJsonMcp(settingsFile, () => restoreAgentConfigFile(settingsFile));
     },
   };
 }

@@ -4,8 +4,8 @@
 // only additive agent AiOpt ships: providers coexist under the `provider` map, so we
 // insert/overwrite just our own entry and preserve `$schema`, every other provider,
 // `mcp`, `plugin`, and any unknown keys. We DO write the top-level `model` pointer
-// (`"<slug>/<modelId>"`) to move the active model — cc-switch tracks "active" in its
-// own DB and omits this key, but AiOpt's binding must land on disk.
+// (`"<slug>/<modelId>"`) to move the active model, because AiOpt's binding must land
+// on disk.
 //
 // Our provider key is namespaced `aiopt-<providerId>` so it can never collide with a
 // built-in OpenCode provider id (e.g. `openai`, `anthropic`). `npm` selects the

@@ -33,10 +33,19 @@ import {
   type RouteSpec,
 } from './router';
 import type { ProxyStateStore } from './proxyStore';
-import { outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
+import { geminiOutboundUrl, outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
 import { sanitizeOutboundBody } from './sanitize';
+import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage } from './usageSniffer';
+import {
+  createGeminiToAnthropicStream,
+  createGeminiToOpenaiStream,
+  requestAnthropicToGemini,
+  requestOpenaiToGemini,
+  responseGeminiToAnthropic,
+  responseGeminiToOpenai,
+} from './translate/gemini';
 import type { UsageEventInput } from '../../shared/usageStats';
 import {
   createOpenaiToAnthropicStream,
@@ -72,6 +81,11 @@ export interface TranslationProxyDeps {
    * means strip nothing, which is the default for every provider.
    */
   getDropFields?: (providerId: string) => readonly string[] | undefined;
+  /**
+   * Whether to add prompt-cache breakpoints to an Anthropic-format outbound body that has
+   * none (see promptCache.ts). Read live per request; absent means off.
+   */
+  getPromptCache?: () => boolean;
   /**
    * Record one upstream attempt (counts + identifiers only; the store stamps `ts`).
    * Optional so existing constructors/tests need not supply it. Never throws into the
@@ -127,8 +141,13 @@ export interface TranslationProxy {
 /** The set of transforms for one route direction. */
 interface DirectionTransforms {
   translateRequest: (body: Record<string, unknown>, modelId: string) => Record<string, unknown>;
-  translateResponse: (upstream: Record<string, unknown>) => Record<string, unknown>;
-  makeStreamTransform: () => (event: SseEvent) => string[];
+  translateResponse: (upstream: Record<string, unknown>, modelId: string) => Record<string, unknown>;
+  /**
+   * A per-stream transform. `flush` (optional) runs once the upstream stream ends, for
+   * dialects with no terminating event of their own (Gemini), so the client still sees
+   * its end-of-message frames.
+   */
+  makeStreamTransform: (modelId: string) => ((event: SseEvent) => string[]) & { flush?: () => string[] };
 }
 
 /**
@@ -145,7 +164,7 @@ const IDENTITY_TRANSFORMS: DirectionTransforms = {
 
 /** Pick transforms by the route's directed (inbound → outbound) format pair. */
 function transformsFor(spec: RouteSpec): DirectionTransforms {
-  // Same-format route: identity passthrough (usage still sniffed). Gemini never routes.
+  // Same-format route: identity passthrough (usage still sniffed).
   if (spec.inboundFormat === spec.outboundFormat) return IDENTITY_TRANSFORMS;
   const pair = `${spec.inboundFormat}>${spec.outboundFormat}`;
   switch (pair) {
@@ -185,6 +204,22 @@ function transformsFor(spec: RouteSpec): DirectionTransforms {
         translateResponse: (upstream) =>
           responseAnthropicToResponses(upstream as never) as unknown as Record<string, unknown>,
         makeStreamTransform: createAnthropicToResponsesStream,
+      };
+    // Anthropic client (claude) → Gemini provider (generateContent).
+    case 'anthropic>gemini':
+      return {
+        translateRequest: (body) => requestAnthropicToGemini(body as never) as unknown as Record<string, unknown>,
+        translateResponse: (upstream, modelId) =>
+          responseGeminiToAnthropic(upstream as never, modelId) as unknown as Record<string, unknown>,
+        makeStreamTransform: createGeminiToAnthropicStream,
+      };
+    // Chat Completions client → Gemini provider (generateContent).
+    case 'openai>gemini':
+      return {
+        translateRequest: (body) => requestOpenaiToGemini(body as never) as unknown as Record<string, unknown>,
+        translateResponse: (upstream, modelId) =>
+          responseGeminiToOpenai(upstream as never, modelId) as unknown as Record<string, unknown>,
+        makeStreamTransform: createGeminiToOpenaiStream,
       };
     // No transform wired for this directed pair. `translationSupported` already gates
     // binding, so a route only reaches here if a pair was enabled there but not here —
@@ -310,14 +345,27 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       // that actually goes on the wire, and so the translators' explicit refusal of an
       // untranslatable field still happens first. Field NAMES only in the log — values
       // can be arbitrary user content.
-      const { body: outboundBody, dropped } = sanitizeOutboundBody(
+      const { body: sanitizedBody, dropped } = sanitizeOutboundBody(
         translatedRequest,
         deps.getDropFields?.(spec.providerId),
       );
       if (dropped.length > 0) {
         logger.info('proxy.request_sanitized', { path: rest, fields: dropped });
       }
-      const wantsStream = (outboundBody as { stream?: unknown }).stream === true;
+      // Add prompt-cache breakpoints for an Anthropic upstream when the body has none (a
+      // translated body never does). A body that already carries any is left alone.
+      let outboundBody = sanitizedBody;
+      if (spec.outboundFormat === 'anthropic' && deps.getPromptCache?.() === true) {
+        const cached = injectPromptCache(sanitizedBody);
+        outboundBody = cached.body;
+        if (cached.added > 0) logger.info('proxy.prompt_cache', { path: rest, breakpoints: cached.added });
+      }
+      // Gemini selects streaming by endpoint, not a body flag, so its translated body has
+      // no `stream`; read the client's own request instead.
+      const wantsStream =
+        spec.outboundFormat === 'gemini'
+          ? parsed.stream === true
+          : (outboundBody as { stream?: unknown }).stream === true;
 
       // OpenAI Chat streaming omits `usage` unless the request opts in. Inject the standard
       // flag so codex/opencode → OpenAI-Chat streaming paths still yield token counts. This
@@ -328,7 +376,10 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       }
 
       const apiKey = deps.getKey(spec.providerId);
-      const url = outboundUrl(spec.outboundFormat, spec.upstreamBaseUrl);
+      const url =
+        spec.outboundFormat === 'gemini'
+          ? geminiOutboundUrl(spec.upstreamBaseUrl, spec.modelId, wantsStream)
+          : outboundUrl(spec.outboundFormat, spec.upstreamBaseUrl);
       const headers = outboundHeaders(spec.outboundFormat, apiKey);
 
       const controller = new AbortController();
@@ -357,7 +408,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
 
       if (wantsStream) {
         const sniffer = createUsageSniffer(spec.outboundFormat);
-        await pipeStream(res, upstream.body, tf, inbound, rest, upstream.status, sniffer);
+        await pipeStream(res, upstream.body, tf, spec.modelId, rest, upstream.status, sniffer);
         record(true, true, upstream.status, sniffer.result());
       } else {
         const text = await upstream.text();
@@ -367,7 +418,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         } catch {
           throw new Error(encodeIpcError('UPSTREAM_ERROR', 'the provider returned an unreadable response'));
         }
-        const translated = tf.translateResponse(upstreamJson);
+        const translated = tf.translateResponse(upstreamJson, spec.modelId);
         record(false, true, upstream.status, readResponseUsage(spec.outboundFormat, upstreamJson));
         logger.info('proxy.request', { path: rest, status: upstream.status, stream: false });
         sendJson(res, 200, translated);
@@ -384,7 +435,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
     res: ServerResponse,
     body: ReadableStream<Uint8Array> | null,
     tf: DirectionTransforms,
-    inbound: ApiFormat,
+    modelId: string,
     path: string,
     status: number,
     sniffer?: { observe: (event: SseEvent) => void },
@@ -399,7 +450,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       return;
     }
     const decoder = new SseDecoder();
-    const transform = tf.makeStreamTransform();
+    const transform = tf.makeStreamTransform(modelId);
     const textDecoder = new TextDecoder();
     const reader = body.getReader();
     let bytes = 0;
@@ -418,6 +469,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         sniffer?.observe(event);
         for (const frame of transform(event)) await writeBackpressured(res, frame);
       }
+      for (const frame of transform.flush?.() ?? []) await writeBackpressured(res, frame);
     } catch {
       // Client aborted or upstream stream broke; nothing safe to add to the wire.
     } finally {

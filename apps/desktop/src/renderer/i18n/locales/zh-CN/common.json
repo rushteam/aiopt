@@ -52,6 +52,10 @@
       "label": "有代理连接时退出前提醒",
       "help": "开启（默认）：若有 agent 正经 AiOpt 代理连接，退出前会先确认——在 AiOpt 再次运行前它们将无法连接。关闭：退出时不再询问。"
     },
+    "promptCache": {
+      "label": "Anthropic 供应商提示词缓存",
+      "help": "开启（默认）：经代理发往 Anthropic 格式供应商的请求，若客户端未设置缓存断点则自动添加，重复的上下文按缓存价计费。关闭：按原样转发。"
+    },
     "experimentalMode": {
       "label": "实验模式",
       "help": "关闭（默认）：隐藏进行中的功能（例如工作台）。开启：显示实验性标签页与托盘入口。"
@@ -276,6 +280,8 @@
       "save": "保存当前配置",
       "empty": "尚无保存的预设。",
       "boundCount": "含 {{count}} 个 Agent",
+      "mcpDeclined": "未应用配置：已取消写入 MCP 服务器。",
+      "mcpSkipped": "已应用。此配置中有 {{count}} 个 MCP 服务器被跳过（已删除，或该 agent 不支持）。",
       "apply": "应用",
       "delete": "删除"
     },
@@ -402,7 +408,153 @@
     "clear": "清除统计",
     "clearConfirm": "确定清除所有用量记录？",
     "clearConfirmYes": "清除",
-    "clearCancel": "取消"
+    "clearCancel": "取消",
+    "source": {
+      "label": "用量来源",
+      "proxy": "经由 AiOpt",
+      "local": "来自 Agent 日志",
+      "proxyHint": "经过 AiOpt 代理的请求。",
+      "localHint": "读取本机 Claude Code 和 Codex 的会话日志，包含直连绑定。"
+    },
+    "local": {
+      "loading": "正在读取会话日志…",
+      "failed": "无法读取 Agent 会话日志。",
+      "empty": "在 Claude Code 或 Codex 会话日志中没有找到用量。",
+      "responses": "响应数",
+      "cacheRead": "缓存读取",
+      "cacheWrite": "缓存写入",
+      "cache": "缓存",
+      "refresh": "重新扫描日志",
+      "window": "最近 {{days}} 天"
+    }
+  },
+    "mcp": {
+      "title": "MCP",
+      "intro": "维护一份 MCP 服务器中央库，与各 Agent 自己的 MCP 配置保持同步。编辑中央库不会改动 Agent；推送才会写入，写入前 AiOpt 会显示完整的命令或 URL 请你确认。",
+      "refresh": "刷新",
+      "add": "添加服务器",
+      "loading": "正在加载 MCP 服务器…",
+      "failed": "无法加载 MCP 服务器。",
+      "empty": "还没有 MCP 服务器：中央库和各 Agent 配置里都没有。添加一个开始。",
+      "declined": "未写入：你取消了确认。",
+      "secretsUnavailable": "系统密钥加密不可用，无法保存环境变量和请求头的值。",
+      "unreadable": "无法读取 {{agent}} 的 MCP 配置（{{path}}）。修复之前 AiOpt 不会写入它。",
+      "files": "配置文件：",
+      "claudeNote": "Claude Code 会频繁改写 ~/.claude.json。修改它的服务器前请先退出 Claude Code，以免改动被覆盖。",
+      "cancel": "取消",
+      "valueMissing": "无值",
+      "server": "服务器",
+      "library": "中央库",
+      "actions": {
+        "edit": "编辑",
+        "pull": "拉取 ←",
+        "push": "推送 →",
+        "pushAll": "推送到全部 Agent",
+        "diff": "对比",
+        "delete": "从中央库删除",
+        "deleteAgent": "从该 Agent 删除"
+      },
+      "state": {
+        "same": "已同步",
+        "libraryOnly": "仅中央库",
+        "agentOnly": "仅 Agent",
+        "differs": "有差异",
+        "inLibrary": "在中央库",
+        "unreadable": "无法读取",
+        "unsupported": "不支持"
+      },
+      "detail": {
+        "notInLibrary": "尚未加入中央库。从某个 Agent 拉取后即可在这里管理。",
+        "cannotPush": "该 Agent 不支持中央库副本的传输方式。"
+      },
+      "confirm": {
+        "pushAll": "用中央库的副本覆盖每个可写入 Agent 中的该服务器？",
+        "delete": "从中央库删除该服务器？各 Agent 配置中的副本不受影响。",
+        "deleteAgent": "从该 Agent 的配置中移除该服务器？中央库及其它 Agent 的副本不受影响。",
+        "deleteAgentLast": "这是该服务器唯一的副本——中央库和其它 Agent 都没有。移除后将无法恢复。确定移除？",
+        "overwriteAgent": "用中央库的副本覆盖该 Agent 的副本？",
+        "overwriteLibrary": "用该 Agent 的副本（包括其中的值）覆盖中央库的副本？",
+        "merge": "将挑选的 Agent 字段合并到中央库？该 Agent 的配置不受影响。",
+        "cancel": "取消"
+      },
+      "diff": {
+        "title": "变更",
+        "close": "关闭",
+        "empty": "没有差异。",
+        "added": "新增",
+        "modified": "修改",
+        "deleted": "删除",
+        "library": "中央库",
+        "agent": "Agent",
+        "useLibrary": "用中央库",
+        "useAgent": "用 Agent",
+        "merge": "应用合并",
+        "mergeHint": "设为“用 Agent”的字段会合并到中央库，其余保留中央库的内容。值会参与比较，但不会显示。",
+        "spec": "命令 / URL",
+        "env": "环境变量",
+        "header": "请求头",
+        "absent": "这一侧没有。"
+      },
+      "transport": {
+        "stdio": "本地命令",
+        "http": "HTTP",
+        "sse": "SSE"
+      },
+      "form": {
+        "addTitle": "添加 MCP 服务器",
+        "editTitle": "编辑 MCP 服务器",
+        "name": "名称",
+        "nameInvalid": "使用字母、数字、“-”“_”或“.”（最多 64 个），以字母或数字开头。",
+        "nameTaken": "已有同名服务器。",
+        "transport": "传输方式",
+        "command": "命令",
+        "args": "参数（每行一个）",
+        "url": "URL",
+        "env": "环境变量",
+        "headers": "请求头",
+        "key": "名称",
+        "value": "值",
+        "valueKeep": "保留当前值",
+        "removeVar": "移除",
+        "addVar": "添加",
+        "valuesNote": "值在 AiOpt 中加密保存，并以明文写入 Agent 的配置文件（Agent 需要读取）。",
+        "save": "保存",
+        "libraryNote": "保存只改动中央库。推送到 Agent 后才会写入其配置。"
+      },
+      "errors": {
+        "generic": "出错了。",
+        "ALREADY_EXISTS": "已有同名服务器。",
+        "NOT_FOUND": "该服务器已不存在。请刷新后重试。",
+        "PRECONDITION_FAILED": "无法读取某个 agent 的 MCP 配置，或密钥加密不可用。",
+        "UNSUPPORTED_CAPABILITY": "该 agent 不支持这种传输方式。",
+        "INVALID_PARAMS": "部分字段无效。",
+        "INTERNAL": "无法写入 agent 的 MCP 配置。"
+      }
+    },
+  "sessions": {
+    "title": "会话",
+    "search": "搜索会话",
+    "refresh": "重新扫描",
+    "intro": "来自本机 Claude Code 和 Codex 日志的历史会话。AiOpt 只读取这些文件。",
+    "loading": "加载中…",
+    "failed": "无法读取 Agent 会话日志。",
+    "empty": "没有找到 Claude Code 或 Codex 会话。",
+    "noMatch": "没有匹配的会话。",
+    "untitled": "未命名会话",
+    "truncated": "仅显示最近的会话。",
+    "back": "返回",
+    "showTools": "显示工具调用",
+    "copyResume": "复制恢复命令",
+    "export": "导出为 Markdown",
+    "copied": "已复制恢复命令。",
+    "exported": "已导出。",
+    "actionFailed": "操作失败，请重试。",
+    "transcriptTruncated": "会话较长，仅显示最近的消息。",
+    "role": {
+      "user": "你",
+      "assistant": "助手",
+      "tool": "工具"
+    }
   },
   "skills": {
     "title": "技能",

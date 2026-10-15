@@ -6,10 +6,12 @@
 // providerId against the live providers snapshot, an agentId against the built-in
 // agent registry — so a deleted provider degrades to a short id, never a crash.
 //
-// IMPORTANT (surfaced in the UI): same-format DIRECT bindings bypass the proxy, so
-// AiOpt never sees their traffic. These numbers cover cross-format bindings only.
+// Two sources, picked with a segmented control:
+//   · proxy — traffic that went through AiOpt's translation proxy (live, from main).
+//   · local — token counts read main-side from the agents' own session logs (Claude Code,
+//     Codex). This covers DIRECT bindings, which bypass the proxy. Read on demand.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
@@ -19,7 +21,12 @@ import { clearUsage } from '../../lib/usageStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
 import { AGENTS } from '../../../shared/aiProviders';
-import type { UsageBucket, UsageDailyPoint } from '../../../shared/usageStats';
+import type { UsageBucket } from '../../../shared/usageStats';
+import type { LocalUsageBucket, LocalUsageSnapshot } from '../../../shared/agentSessions';
+import { segmentButtonChrome, segmentedRootStyle } from '../../components/ui/controlStyles';
+import { LoadingButton } from '../../components/ui/LoadingButton';
+
+type UsageSource = 'proxy' | 'local';
 
 const numberFormat = new Intl.NumberFormat();
 function fmt(n: number): string {
@@ -27,6 +34,168 @@ function fmt(n: number): string {
 }
 
 export function UsageHome() {
+  const t = useT();
+  const [source, setSource] = useState<UsageSource>('proxy');
+  return (
+    <ScrollTabScreen>
+      {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
+      <h1 className="sr-only">{t('usage.title')}</h1>
+      <section style={{ ...tabScreenSectionStyle, display: 'flex', alignItems: 'center', gap: space.lg }}>
+        <SourceSwitch value={source} onChange={setSource} t={t} />
+        <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+          {t(source === 'proxy' ? 'usage.source.proxyHint' : 'usage.source.localHint')}
+        </span>
+      </section>
+      {source === 'proxy' ? <ProxyUsage /> : <LocalUsage />}
+    </ScrollTabScreen>
+  );
+}
+
+function SourceSwitch({
+  value,
+  onChange,
+  t,
+}: {
+  value: UsageSource;
+  onChange: (next: UsageSource) => void;
+  t: TranslateFn;
+}) {
+  const options: UsageSource[] = ['proxy', 'local'];
+  return (
+    <div role="group" aria-label={t('usage.source.label')} style={segmentedRootStyle}>
+      {options.map((opt, index) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(opt)}
+            style={{
+              ...segmentButtonChrome('md'),
+              borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
+              background: active ? token('accent') : 'transparent',
+              color: active ? token('accentText') : token('text'),
+              cursor: active ? 'default' : 'pointer',
+            }}
+          >
+            {t(`usage.source.${opt}`)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LocalUsage() {
+  const t = useT();
+  const [snap, setSnap] = useState<LocalUsageSnapshot | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback((refresh: boolean) => {
+    setLoading(true);
+    setFailed(false);
+    window.aiopt.sessions
+      .localUsage({ refresh })
+      .then(setSnap)
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => load(false), [load]);
+
+  const agentName = (id: string): string => AGENTS.find((a) => a.id === id)?.name ?? id;
+  const totals = snap?.totals;
+
+  return (
+    <>
+      {failed ? (
+        <p role="alert" style={{ fontSize: fontSize.md, color: token('danger') }}>{t('usage.local.failed')}</p>
+      ) : !snap ? (
+        <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.local.loading')}</p>
+      ) : snap.totals.responses === 0 ? (
+        <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.local.empty')}</p>
+      ) : (
+        <>
+          <section style={tabScreenSectionStyle}>
+            <div style={cardGridStyle}>
+              <StatCard label={t('usage.local.responses')} value={fmt(totals!.responses)} />
+              <StatCard label={t('usage.totals.inputTokens')} value={fmt(totals!.inputTokens)} />
+              <StatCard label={t('usage.totals.outputTokens')} value={fmt(totals!.outputTokens)} />
+              <StatCard label={t('usage.local.cacheRead')} value={fmt(totals!.cacheReadTokens)} />
+              <StatCard label={t('usage.local.cacheWrite')} value={fmt(totals!.cacheWriteTokens)} />
+              <StatCard label={t('usage.totals.totalTokens')} value={fmt(totals!.totalTokens)} />
+            </div>
+          </section>
+          <section style={tabScreenSectionStyle}>
+            <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
+            <DailyChart daily={snap.daily} t={t} />
+          </section>
+          <LocalBreakdownTable heading={t('usage.breakdown.byAgent')} rows={snap.byAgent} label={agentName} t={t} />
+          <LocalBreakdownTable heading={t('usage.breakdown.byModel')} rows={snap.byModel} label={(k) => k} t={t} />
+        </>
+      )}
+      <section style={{ ...tabScreenSectionStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: space.md }}>
+        <LoadingButton variant="ghost" loading={loading} onClick={() => load(true)}>
+          {t('usage.local.refresh')}
+        </LoadingButton>
+        {snap && (
+          <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+            {t('usage.local.window').replace('{{days}}', String(snap.retentionDays))}
+          </span>
+        )}
+      </section>
+    </>
+  );
+}
+
+function LocalBreakdownTable({
+  heading,
+  rows,
+  label,
+  t,
+}: {
+  heading: string;
+  rows: readonly LocalUsageBucket[];
+  label: (key: string) => string;
+  t: TranslateFn;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <section style={tabScreenSectionStyle}>
+      <h2 style={sectionHeadingStyle}>{heading}</h2>
+      <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden', background: token('bg') }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fontSize.md }}>
+          <thead>
+            <tr style={{ background: token('surface') }}>
+              <th style={thStyle}>{t('usage.table.name')}</th>
+              <th style={thNumStyle}>{t('usage.local.responses')}</th>
+              <th style={thNumStyle}>{t('usage.table.inputTokens')}</th>
+              <th style={thNumStyle}>{t('usage.table.outputTokens')}</th>
+              <th style={thNumStyle}>{t('usage.local.cache')}</th>
+              <th style={thNumStyle}>{t('usage.table.totalTokens')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} style={{ borderTop: `1px solid ${token('border')}` }}>
+                <td style={tdStyle}>{label(r.key)}</td>
+                <td style={tdNumStyle}>{fmt(r.responses)}</td>
+                <td style={tdNumStyle}>{fmt(r.inputTokens)}</td>
+                <td style={tdNumStyle}>{fmt(r.outputTokens)}</td>
+                <td style={tdNumStyle}>{fmt(r.cacheReadTokens + r.cacheWriteTokens)}</td>
+                <td style={tdNumStyle}>{fmt(r.totalTokens)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function ProxyUsage() {
   const t = useT();
   const usage = useUsage();
   const { providers } = useProviders();
@@ -42,62 +211,57 @@ export function UsageHome() {
 
   return (
     <>
-      <ScrollTabScreen>
-        {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
-        <h1 className="sr-only">{t('usage.title')}</h1>
+      {usage.eventCount === 0 ? (
+        <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.empty')}</p>
+      ) : (
+        <>
+          <section style={tabScreenSectionStyle}>
+            <div style={cardGridStyle}>
+              <StatCard label={t('usage.totals.requests')} value={fmt(totals.requests)} />
+              <StatCard label={t('usage.totals.successRate')} value={`${successRate}%`} />
+              <StatCard label={t('usage.totals.inputTokens')} value={fmt(totals.inputTokens)} />
+              <StatCard label={t('usage.totals.outputTokens')} value={fmt(totals.outputTokens)} />
+              <StatCard label={t('usage.totals.totalTokens')} value={fmt(totals.totalTokens)} />
+            </div>
+          </section>
 
-        {usage.eventCount === 0 ? (
-          <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.empty')}</p>
-        ) : (
-          <>
-            <section style={tabScreenSectionStyle}>
-              <div style={cardGridStyle}>
-                <StatCard label={t('usage.totals.requests')} value={fmt(totals.requests)} />
-                <StatCard label={t('usage.totals.successRate')} value={`${successRate}%`} />
-                <StatCard label={t('usage.totals.inputTokens')} value={fmt(totals.inputTokens)} />
-                <StatCard label={t('usage.totals.outputTokens')} value={fmt(totals.outputTokens)} />
-                <StatCard label={t('usage.totals.totalTokens')} value={fmt(totals.totalTokens)} />
-              </div>
-            </section>
+          <section style={tabScreenSectionStyle}>
+            <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
+            <DailyChart daily={usage.daily} t={t} />
+          </section>
 
-            <section style={tabScreenSectionStyle}>
-              <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
-              <DailyChart daily={usage.daily} t={t} />
-            </section>
+          <BreakdownTable
+            heading={t('usage.breakdown.byProvider')}
+            rows={usage.byProvider}
+            label={providerName}
+            t={t}
+          />
+          <BreakdownTable
+            heading={t('usage.breakdown.byAgent')}
+            rows={usage.byAgent}
+            label={agentName}
+            t={t}
+          />
+          <BreakdownTable
+            heading={t('usage.breakdown.byModel')}
+            rows={usage.byModel}
+            label={(k) => k}
+            t={t}
+          />
+        </>
+      )}
 
-            <BreakdownTable
-              heading={t('usage.breakdown.byProvider')}
-              rows={usage.byProvider}
-              label={providerName}
-              t={t}
-            />
-            <BreakdownTable
-              heading={t('usage.breakdown.byAgent')}
-              rows={usage.byAgent}
-              label={agentName}
-              t={t}
-            />
-            <BreakdownTable
-              heading={t('usage.breakdown.byModel')}
-              rows={usage.byModel}
-              label={(k) => k}
-              t={t}
-            />
-          </>
-        )}
-
-        <section style={{ ...tabScreenSectionStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: space.md }}>
-          <button
-            type="button"
-            onClick={() => setConfirmClear(true)}
-            disabled={usage.eventCount === 0}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? disabledOpacity : 1 }}
-          >
-            {t('usage.clear')}
-          </button>
-        </section>
-      </ScrollTabScreen>
+      <section style={{ ...tabScreenSectionStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: space.md }}>
+        <button
+          type="button"
+          onClick={() => setConfirmClear(true)}
+          disabled={usage.eventCount === 0}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={{ ...ghostStyle, opacity: usage.eventCount === 0 ? disabledOpacity : 1 }}
+        >
+          {t('usage.clear')}
+        </button>
+      </section>
       {confirmClear && (
         <ConfirmDialog
           title={t('usage.clearConfirm')}
@@ -131,7 +295,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DailyChart({ daily, t }: { daily: readonly UsageDailyPoint[]; t: TranslateFn }) {
+function DailyChart({ daily, t }: { daily: readonly { day: string; totalTokens: number }[]; t: TranslateFn }) {
   if (daily.length === 0) {
     return <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.chart.empty')}</p>;
   }

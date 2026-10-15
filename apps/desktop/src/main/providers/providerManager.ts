@@ -39,7 +39,16 @@ import { refreshModelsDevCatalog } from './modelsDev';
 import type { BindingProfileStore } from './bindingProfileStore';
 import type { BindingAppliedStore } from './bindingAppliedStore';
 import { detectBindingDrift } from './bindingDrift';
-import type { BindingProfileSummary } from '../../shared/bindingProfiles';
+import type { BindingProfileApplyResult, BindingProfileSummary } from '../../shared/bindingProfiles';
+
+/**
+ * The MCP part of a profile, injected so providers stay unaware of the MCP module.
+ * `plan` shows the one main-side confirmation; `commit` runs only after the bindings applied.
+ */
+export interface ProfileMcpHook {
+  capture(): Partial<Record<string, string[]>>;
+  plan(sets: Partial<Record<string, string[]>>): Promise<{ proceed: boolean; skipped: number; commit(): void }>;
+}
 import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
@@ -100,7 +109,7 @@ export interface ProviderManager {
   fetchModels(input: ProviderFetchModelsRequest): Promise<ProviderFetchModelsResult>;
   listBindingProfiles(): BindingProfileSummary[];
   saveBindingProfile(name: string): BindingProfileSummary[];
-  applyBindingProfile(profileId: string): ProvidersSnapshot;
+  applyBindingProfile(profileId: string): Promise<BindingProfileApplyResult>;
   deleteBindingProfile(profileId: string): BindingProfileSummary[];
   resyncBinding(agentId: AgentId): ProvidersSnapshot;
   refreshModelsDevCatalog(): Promise<{ fetchedAt: number | null; stale: boolean }>;
@@ -197,6 +206,7 @@ export function createProviderManager(
   oauth: Pick<OAuthManager, 'isConnected' | 'readAccessTokenSync' | 'disconnect'> | null = null,
   bindingProfiles: BindingProfileStore | null = null,
   bindingApplied: BindingAppliedStore | null = null,
+  profileMcp: ProfileMcpHook | null = null,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -313,11 +323,20 @@ export function createProviderManager(
     }
     const { inbound, outbound } = route;
     const sameFormat = route.kind === 'native';
+    // The Gemini translation speaks the public generateContent API with an API key. A
+    // signed-in (OAuth / agent-import) Gemini session talks to a different service with a
+    // bearer token, so it cannot be a translation target.
+    if (outbound === 'gemini' && !sameFormat && providerNeedsProxyForUpstreamSecret(provider.credentialMode)) {
+      throwIpcError(
+        'UNSUPPORTED_CAPABILITY',
+        'translation between this provider and agent format is not supported',
+      );
+    }
 
     // Direct config (real key on disk, no proxy hop) when the formats already match AND
     // EITHER: proxy mode is off (the default — a native binding connects directly), OR the
-    // pair can't be proxied at all (a gemini binding — gemini has no proxy dialect, so a
-    // native gemini binding is always direct). Proxy mode ON therefore routes every
+    // pair can't be proxied at all (a native gemini binding — gemini is never an inbound
+    // proxy dialect, so a Gemini agent on a Gemini provider is always direct). Proxy mode ON therefore routes every
     // proxyable binding through the loopback, native or not.
     const proxyable = translationSupported(inbound, outbound);
     // OAuth / agent-import tokens never go on disk — always route through the loopback proxy.
@@ -339,7 +358,7 @@ export function createProviderManager(
     }
 
     // Routed through the proxy — either a cross-format translation (Anthropic ⇄ Chat
-    // Completions; Responses → Chat Completions / Anthropic) or a same-format identity
+    // Completions; Responses → Chat Completions / Anthropic; Anthropic / Chat → Gemini) or a same-format identity
     // passthrough (so usage is counted and the key stays off disk). A translated route is
     // proxyable by construction; this guards the native-gemini case that fell through.
     if (!proxyable) {
@@ -626,16 +645,24 @@ export function createProviderManager(
 
     saveBindingProfile(name) {
       if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
-      bindingProfiles.saveFromBindings(name, store.getBindings());
+      bindingProfiles.saveFromBindings(name, store.getBindings(), profileMcp?.capture());
       return bindingProfiles.list();
     },
 
-    applyBindingProfile(profileId) {
+    async applyBindingProfile(profileId) {
       if (!bindingProfiles) throwIpcError('UNSUPPORTED_CAPABILITY', 'binding profiles unavailable');
       const profile = bindingProfiles.get(profileId);
       if (!profile) throwIpcError('NOT_FOUND', 'profile not found');
+      // MCP first: its confirmation can be declined, and then nothing at all changes.
+      const mcpPlan = profile.mcp && profileMcp ? await profileMcp.plan(profile.mcp) : null;
+      if (mcpPlan && !mcpPlan.proceed) {
+        return { snapshot: snapshot(), applied: false, mcpSkipped: mcpPlan.skipped };
+      }
+      // Re-read: the profile may have been deleted or re-saved while the dialog was open.
+      const current = bindingProfiles.get(profileId);
+      if (!current) throwIpcError('NOT_FOUND', 'profile not found');
       for (const def of AGENTS) {
-        const next = profile.bindings[def.id];
+        const next = current.bindings[def.id];
         if (next) {
           const provider = store.getProvider(next.providerId);
           const model = provider?.models.find((m) => m.id === next.modelId);
@@ -648,7 +675,9 @@ export function createProviderManager(
           bindingApplied?.clear(def.id);
         }
       }
-      return announce();
+      const applied = announce();
+      mcpPlan?.commit();
+      return { snapshot: applied, applied: true, mcpSkipped: mcpPlan?.skipped ?? 0 };
     },
 
     deleteBindingProfile(profileId) {
@@ -785,7 +814,7 @@ export function proxyConfigSnippet(endpoint: {
   modelId: string;
   inboundFormat: ApiFormat;
 }): string {
-  // Gemini never routes through the proxy, so it can't reach here; the other three map to a
+  // Gemini is never an inbound proxy dialect, so it can't reach here; the other three map to a
   // conventional (base-url, key) env pair each.
   const prefix = endpoint.inboundFormat === 'anthropic' ? 'ANTHROPIC' : 'OPENAI';
   return [
