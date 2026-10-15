@@ -158,8 +158,8 @@
     {
       "id": "mcp-server",
       "en": "MCP server",
-      "status": "proposed",
-      "note": "A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one library and syncs it with each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated. Term still under discussion.",
+      "status": "decided",
+      "note": "A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one library and syncs it with each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated.",
       "translations": { "zh-CN": "MCP 服务器", "ja": "MCP サーバー", "ko": "MCP 서버", "fr": "Serveur MCP", "de": "MCP-Server", "es": "Servidor MCP" },
       "forbidden": { "zh-CN": ["MCP 服务端", "MCP 插件"] }
     }
