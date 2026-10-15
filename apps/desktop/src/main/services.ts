@@ -41,6 +41,10 @@ import { createAdapterRegistry } from './providers/adapters/registry';
 import { createTranslationProxy, type TranslationProxy } from './proxy/translationProxy';
 import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/proxyStore';
 import type { ProxyFetch } from './proxy/upstream';
+import { createUpstreamRegistry, type UpstreamRegistry } from './upstreams/types';
+import { createCursorClient } from './upstreams/cursor/client';
+import { createCursorDriver } from './upstreams/cursor/driver';
+import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agentCli';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
 import { createMcpStore, type McpStore } from './mcp/mcpStore';
@@ -87,6 +91,7 @@ let agentSessionStore: AgentSessionStore | null = null;
 let mcpStore: McpStore | null = null;
 let skillsStore: SkillsStore | null = null;
 let workbenchManager: WorkbenchManager | null = null;
+let upstreamRegistry: UpstreamRegistry | null = null;
 
 /**
  * Leading + trailing throttle: fire immediately, then at most once per `waitMs`. Used to
@@ -220,6 +225,25 @@ export function getOAuthManager(): OAuthManager {
   return oauthManager;
 }
 
+/**
+ * The upstream drivers (main/upstreams/): providers served by a private protocol rather
+ * than an HTTP POST. The list is fixed at build time — drivers are never loaded at runtime
+ * (docs/dev-rules/upstream-drivers.md). Add a driver here.
+ */
+function getUpstreamRegistry(): UpstreamRegistry {
+  if (!upstreamRegistry) {
+    const fetchImpl = ((url, init) => net.fetch(url, init as RequestInit)) as ProxyFetch;
+    upstreamRegistry = createUpstreamRegistry([
+      // Signed-in cursor-agent (agent import). Unary calls over net.fetch; Run over node:http2.
+      createCursorDriver({
+        client: createCursorClient({ fetchImpl, clientVersion: cursorClientVersion }),
+        token: cursorAccessToken,
+      }),
+    ]);
+  }
+  return upstreamRegistry;
+}
+
 export function getProviderManager(): ProviderManager {
   if (!providerManager) {
     providerManager = createProviderManager(
@@ -247,6 +271,8 @@ export function getProviderManager(): ProviderManager {
         capture: () => getMcpStore().enabledSets(),
         plan: (sets) => getMcpStore().planEnabledSets(sets),
       },
+      // Driver-served providers list models / are tested through their driver.
+      (provider) => getUpstreamRegistry().forProvider(provider),
     );
   }
   return providerManager;
@@ -277,6 +303,8 @@ export function getTranslationProxy(): TranslationProxy {
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).
       persistence: createProxyStateStore(createFileProxyStatePersistence(proxyStateFilePath())),
+      // A driver-served provider is answered by its driver, not an HTTP POST (live lookup).
+      upstreamFor: (providerId) => getUpstreamRegistry().forProvider(getProviderStore().getProvider(providerId)),
     });
   }
   return translationProxy;

@@ -25,6 +25,7 @@ into that file** so the agent stays signed in).
 | Claude Code | `.claude/.credentials.json` (`claudeAiOauth`), or macOS Keychain item `Claude Code-credentials` when the file is absent | Yes — writes `.credentials.json` when refreshing |
 | Copilot | `~/.config/github-copilot/apps.json` and/or Copilot CLI `~/.copilot/config.json` + macOS Keychain `copilot-cli` | Best-effort; upstream is GitHub OAuth |
 | dsh (DeepSeek Harness) | `$DSH_HOME/.credentials.yaml` (default `~/.dsh`; `AIOPT_AGENT_HOME` wins in dev/test), ref `DEEPSEEK_API_KEY` under `refs:` (v1) or at the root (pre-release flat layout). Symlinks are not followed. Only this ref is read, never the `AIOPT_*_KEY` refs the dsh binding writes. | No — it is a plain API key, never written by an import |
+| Cursor (cursor-agent) | macOS Keychain `cursor-access-token` / account `cursor-user`, else `accessToken` in `auth.json` (`~/.cursor/` on macOS, `%APPDATA%\Cursor\` on Windows, `$XDG_CONFIG_HOME/cursor/` elsewhere) | No file write by AiOpt — a token with < 5 min left is renewed by running `cursor-agent status` (30 s, deduplicated), then re-read |
 
 dsh is the one source that is an **API key, not a sign-in**. It still follows the same split:
 the key stays in dsh's file and is read at request time (a key rotated in dsh takes effect
@@ -39,6 +40,21 @@ Same as OAuth providers: **always proxied** — upstream tokens never written in
 agents' config files. `resolveUpstreamKey` calls the agent-import reader synchronously;
 near-expiry refresh runs on async test paths and token refresh helpers write back to the
 agent file when applicable.
+
+### Cursor is not an HTTP API
+
+Cursor serves its models over `agent.v1.AgentService/Run` (Connect + protobuf over HTTP/2),
+not an OpenAI-compatible endpoint, so a Cursor import provider is served by the **Cursor
+upstream driver** (`main/upstreams/cursor/`, modelled on magpie's Cursor gateway and its
+opencode plugin). The driver contract, routing and error rules are in
+[`upstream-drivers.md`](upstream-drivers.md); Cursor specifics:
+
+- Callers' tools are offered as MCP tools under the `aiopt` namespace; Cursor's own
+  built-in tools (shell, files, …) are always refused — the client agent runs its own tools.
+- Model listing is `AvailableModels` filtered by `GetUsableModels`.
+- The `x-cursor-client-version` sent is the installed cursor-agent's (`cli-<version>`),
+  else a recent fallback (`upstreams/cursor/agentCli.ts`).
+- Not ported yet: the HTTP/1.1 RunSSE fallback and native session reuse across turns.
 
 ## Renderer surface
 
