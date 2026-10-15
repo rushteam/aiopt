@@ -427,6 +427,12 @@ const api = {
     taskOutput: (taskId: string): Promise<TaskOutput> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId }),
     runAll: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskRunAll),
+    /** Approve tasks to run; each starts once its dependencies are done. */
+    approveTasks: (taskIds: string[]): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskApprove, { taskIds }),
+    /** Approve one conversation's whole plan. */
+    runPlan: (conversationId: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchPlanRun, { conversationId }),
     openConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationOpen, { conversationId }),
     deleteConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>

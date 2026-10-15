@@ -704,6 +704,15 @@
       "git": "git",
       "hint": "Les agents ne s'exécutent que dans ces dossiers ; le coordinateur peut seulement les lire."
     },
+    "proposal": {
+      "title": "Tâches proposées",
+      "hint": "Choisissez un dossier pour chaque tâche, puis approuvez-la. Rien ne s’exécute avant votre accord.",
+      "blocked": {
+        "session": "Démarrez d’abord l’atelier.",
+        "folder": "Choisissez d’abord un dossier.",
+        "limit": "Trop de tâches sont en cours."
+      }
+    },
     "chat": {
       "title": "Coordinateur",
       "reset": "Nouvelle conversation",
@@ -739,7 +748,24 @@
       "session_opened": "Conversation restaurée."
     },
     "plan": {
-      "title": "Plan des tâches"
+      "title": "Plan des tâches",
+      "approve": "Approuver",
+      "approved": "Approuvée",
+      "dependsOn": "Attend",
+      "empty": "Aucune tâche dans ce plan pour l’instant. Demandez quelque chose au coordinateur ou ajoutez une tâche.",
+      "others": "Autres tâches",
+      "pickNode": "Choisissez une tâche du plan pour la voir.",
+      "queued": "Approuvée, en attente",
+      "progress": "{{done}}/{{total}} terminées",
+      "rerunHint": "La relancer ne relance pas les tâches qui en dépendent.",
+      "run": "Lancer le plan",
+      "runHint": "Approuve toutes les tâches en attente de ce plan. Chacune démarre dès que les tâches qu’elle attend sont terminées ; le coordinateur les vérifie une à une.",
+      "state": {
+        "idle": "En attente d’approbation",
+        "running": "En cours",
+        "complete": "Tout est terminé",
+        "stalled": "Action requise"
+      }
     },
     "taskChat": {
       "title": "Chat de la tâche",
@@ -782,9 +808,7 @@
       "runAll": "Tout lancer",
       "runAllHint": "Lancer toutes les tâches proposées qui ont un dossier.",
       "autoRun": "Lancer les propositions automatiquement",
-      "autoRunHint": "Lancer tout de suite les propositions du coordinateur qui indiquent un dossier. Seulement pour les réponses à vos propres messages.",
-      "autoLaunchDependents": "Lancer les tâches dépendantes",
-      "autoLaunchDependentsHint": "Quand une tâche est marquée terminée, lancer les propositions qui en dépendent et sont prêtes.",
+      "autoRunHint": "Approuve les propositions du coordinateur dès qu’il les fait ; elles démarrent quand leur dossier et leurs dépendances sont prêts. Ne s’applique qu’aux propositions faites en réponse à vos propres messages.",
       "waitingOn": "En attente de :",
       "notify": "Informer le coordinateur",
       "notifyHint": "Quand une tâche attend une revue, une réponse, échoue ou est marquée terminée/arrêtée, prévenir le coordinateur pour qu'il résume dans la conversation.",

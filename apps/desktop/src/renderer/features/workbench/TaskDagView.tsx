@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo, type KeyboardEvent } from 'react';
 import { layoutTaskDag } from '../../../shared/taskDagLayout';
 import type { TaskStatus, TaskView } from '../../../shared/workbench';
 import { token, fontSize, radius, space } from '../../themes/tokens';
@@ -24,13 +24,19 @@ export function TaskDagView({
   selectedId,
   onSelect,
   t,
+  maxHeight = 120,
 }: {
   tasks: readonly TaskView[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   t: TranslateFn;
+  /** Height cap before the graph scrolls; null lets the parent size it. */
+  maxHeight?: number | null;
 }) {
   const layout = useMemo(() => layoutTaskDag(tasks), [tasks]);
+  // One arrow marker per graph: two views on a page must not share an id.
+  const arrowId = `wb-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const approved = useMemo(() => new Set(tasks.filter((x) => x.approved).map((x) => x.id)), [tasks]);
   if (layout.nodes.length === 0) return null;
 
   const width = Math.max(1, layout.maxWidth) * (NODE_W + GAP_X) - GAP_X + PAD * 2;
@@ -47,7 +53,12 @@ export function TaskDagView({
   return (
     <section
       aria-label={t('workbench.plan.title')}
-      style={{ padding: `${space.sm}px ${space.md}px`, flexShrink: 0, maxHeight: 120, overflow: 'auto' }}
+      style={{
+        padding: `${space.sm}px ${space.md}px`,
+        flexShrink: 0,
+        ...(maxHeight === null ? { minHeight: 0 } : { maxHeight }),
+        overflow: 'auto',
+      }}
     >
       <div style={{ overflowX: 'auto' }}>
         <svg width={width} height={height} role="img" aria-label={t('workbench.plan.title')}>
@@ -64,21 +75,40 @@ export function TaskDagView({
                 y2={b.y}
                 stroke={token('borderStrong')}
                 strokeWidth={1.5}
-                markerEnd="url(#wb-arrow)"
+                markerEnd={`url(#${arrowId})`}
               />
             );
           })}
           <defs>
-            <marker id="wb-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <marker id={arrowId} markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
               <path d="M0,0 L8,4 L0,8 z" fill={token('borderStrong')} />
             </marker>
           </defs>
           {layout.nodes.map((n) => {
             const p = pos.get(n.id)!;
             const selected = n.id === selectedId;
+            const isApproved = approved.has(n.id);
+            const onKey = (e: KeyboardEvent<SVGGElement>): void => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(n.id);
+              }
+            };
+            const label = `${n.title} · ${
+              isApproved && n.status === 'proposed' ? t('workbench.plan.queued') : t(`workbench.taskStatus.${n.status}`)
+            }`;
             return (
-              <g key={n.id} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }}>
-                <title>{n.title}</title>
+              <g
+                key={n.id}
+                role="button"
+                tabIndex={0}
+                aria-label={label}
+                aria-pressed={selected}
+                onClick={() => onSelect(n.id)}
+                onKeyDown={onKey}
+                style={{ cursor: 'pointer' }}
+              >
+                <title>{label}</title>
                 <rect
                   x={p.x}
                   y={p.y}
@@ -90,6 +120,18 @@ export function TaskDagView({
                   strokeWidth={selected ? 2 : 1}
                 />
                 <circle cx={p.x + 8} cy={p.y + NODE_H / 2} r={4} fill={statusColor(n.status)} />
+                {/* Approved and waiting: a small check in the corner (the label says it too). */}
+                {isApproved && n.status === 'proposed' && (
+                  <path
+                    d={`M${p.x + NODE_W - 13},${p.y + 9} l3,3 l6,-6`}
+                    fill="none"
+                    stroke={token('accent')}
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  />
+                )}
                 {/* SVG text cannot ellipsize, and a character count misjudges width (a CJK
                     glyph is about twice a Latin one), so the title is HTML clipped to the node. */}
                 <foreignObject

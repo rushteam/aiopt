@@ -213,13 +213,6 @@ export function WorkbenchTopBar({
             disabled={savingSettings}
             onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
           />
-          <SettingToggle
-            label={t('workbench.tasks.autoLaunchDependents')}
-            hint={t('workbench.tasks.autoLaunchDependentsHint')}
-            checked={wb.settings.autoLaunchDependents}
-            disabled={savingSettings}
-            onChange={(autoLaunchDependents) => setSetting({ autoLaunchDependents })}
-          />
         </div>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted') }}>
           {t('workbench.herdr.sshLabel')}

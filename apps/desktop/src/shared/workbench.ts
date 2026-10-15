@@ -77,7 +77,13 @@ export type ChatItem =
   /** A coded, localized line AiOpt adds itself (e.g. proposals dropped: the board is full). */
   | { kind: 'notice'; id: string; code: WorkbenchNotice }
   /** AiOpt told the coordinator that tasks changed state (it replies with a summary). */
-  | { kind: 'taskUpdate'; id: string; tasks: { title: string; status: TaskStatus }[] };
+  | { kind: 'taskUpdate'; id: string; tasks: { title: string; status: TaskStatus }[] }
+  /**
+   * Tasks one `propose_tasks` call put on the board, shown as an approval card in the chat
+   * (human in the loop: nothing runs until the user approves). The ids are the ones main
+   * minted; the card reads each task's live state from the board.
+   */
+  | { kind: 'proposal'; id: string; taskIds: string[] };
 
 export type WorkbenchNotice = 'board_full' | 'session_reset' | 'session_opened';
 
@@ -118,8 +124,10 @@ export function isLiveTaskStatus(status: TaskStatus): boolean {
 
 /** Which user actions a task accepts in a given status. Main enforces this; the renderer mirrors it. */
 export const TASK_ACTIONS = {
-  edit: ['proposed', 'stopped', 'failed'],
-  launch: ['proposed', 'stopped', 'failed'],
+  // `done` may be edited and run again: re-running one node of a plan. Its finished
+  // dependents are not re-run with it.
+  edit: ['proposed', 'stopped', 'failed', 'done'],
+  launch: ['proposed', 'stopped', 'failed', 'done'],
   message: ['working', 'blocked', 'review'],
   complete: ['working', 'blocked', 'review'],
   stop: ['starting', 'working', 'blocked', 'review'],
@@ -159,6 +167,16 @@ export interface TaskView {
   failure: TaskFailure | null;
   /** Task ids that must reach `done` before this one may launch. */
   dependsOn: string[];
+  /**
+   * The coordinator conversation whose plan this task belongs to (the pi session uuid); null
+   * for tasks made before plans were tracked. Each conversation's tasks form its own DAG.
+   */
+  conversationId: string | null;
+  /**
+   * The user approved this task to run. An approved task waiting in `proposed` launches by
+   * itself once its dependencies are done and a slot is free. Only the user sets this.
+   */
+  approved: boolean;
   /** Follow-up instructions sent to the worker after launch (initial prompt is {@link prompt}). */
   thread: readonly TaskThreadMessage[];
   /** Last captured worker terminal tail (for chat display when not live). */
@@ -224,11 +242,17 @@ export interface HerdrProbeView {
 
 /** The user's workbench preferences (only changed keys are persisted; see manager). */
 export interface WorkbenchSettings {
-  /** Run the coordinator's proposals at once when they have a folder (user-asked turns only). */
+  /** Approve the coordinator's proposals as they arrive (user-asked turns only); they then run when ready. */
   autoRun: boolean;
-  /** Tell the coordinator when a task needs review, needs input, fails, or is marked done/stopped. */
+  /**
+   * Tell the coordinator when a task needs review, needs input, fails, or is marked done/stopped.
+   * This is what lets it drive a plan from review to done; with it off, the user marks tasks done.
+   */
   notifyCoordinator: boolean;
-  /** When a task reaches `done`, launch proposed dependents that are otherwise ready (user turns only). */
+  /**
+   * Superseded: approved tasks now launch by themselves once their dependencies are done. Still
+   * parsed and saved so an older settings file round-trips; nothing reads it.
+   */
   autoLaunchDependents: boolean;
   /**
    * Optional SSH destination (`user@host`) for herdr. Empty means local. This is not herdr's
@@ -277,6 +301,57 @@ export function pendingDependencies(task: Pick<TaskView, 'dependsOn'>, tasks: re
   return out;
 }
 
+/** Where one conversation's plan stands, for the plan pane's toolbar. */
+export interface PlanProgress {
+  total: number;
+  done: number;
+  live: number;
+  /** Proposed and not yet approved. */
+  awaitingApproval: number;
+  /** Approved, waiting on dependencies or a free slot. */
+  queued: number;
+  /** stopped or failed: needs the user (re-run, edit, or remove). */
+  attention: number;
+  /**
+   * idle: nothing approved yet; running: work is approved or live; complete: every task is
+   * done (the coordinator gives the final verdict); stalled: nothing can move without the user.
+   */
+  state: 'empty' | 'idle' | 'running' | 'complete' | 'stalled';
+}
+
+/** The tasks of one conversation's plan, oldest first. */
+export function planTasksOf<T extends Pick<TaskView, 'conversationId' | 'createdAt'>>(
+  tasks: readonly T[],
+  conversationId: string | null,
+): T[] {
+  if (conversationId === null) return [];
+  return tasks.filter((x) => x.conversationId === conversationId).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export function planProgress(tasks: readonly Pick<TaskView, 'status' | 'approved'>[]): PlanProgress {
+  let done = 0;
+  let live = 0;
+  let awaitingApproval = 0;
+  let queued = 0;
+  let attention = 0;
+  for (const t of tasks) {
+    if (t.status === 'done') done += 1;
+    else if (isLiveTaskStatus(t.status)) live += 1;
+    else if (t.status === 'proposed') {
+      if (t.approved) queued += 1;
+      else awaitingApproval += 1;
+    } else attention += 1;
+  }
+  const total = tasks.length;
+  let state: PlanProgress['state'];
+  if (total === 0) state = 'empty';
+  else if (done === total) state = 'complete';
+  else if (live > 0 || queued > 0) state = 'running';
+  else if (done > 0 || attention > 0) state = 'stalled';
+  else state = 'idle';
+  return { total, done, live, awaitingApproval, queued, attention, state };
+}
+
 /** Last batch of tasks reported to the coordinator (tray / status hints). */
 export interface WorkbenchNotifyPreview {
   titles: string[];
@@ -302,6 +377,8 @@ export interface WorkbenchSnapshot {
   herdrProbe: HerdrProbeView;
   /** Saved conversations, newest first. The current one is absent until it has a message. */
   conversations: ConversationView[];
+  /** The conversation the coordinator is in now, whose plan the task pane shows. */
+  currentConversationId: string | null;
   settings: WorkbenchSettings;
 }
 
