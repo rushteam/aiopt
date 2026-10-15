@@ -11,7 +11,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const DEF: AgentDef = getAgentDef('crush')!;
 
@@ -53,6 +53,7 @@ export function createCrushAdapter(): AgentAdapter {
         models,
       };
       if (apiKey) entry.api_key = apiKey;
+      pruneAioptKeys(providers, slug);
       providers[slug] = entry;
 
       const next = {

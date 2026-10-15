@@ -16,7 +16,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug, readYamlConfigDocument } from './bindingLive';
+import { aioptProviderSlug, pruneAioptYamlKeys, readYamlConfigDocument } from './bindingLive';
 
 const DEF: AgentDef = getAgentDef('omp')!;
 
@@ -64,6 +64,7 @@ export function createOmpAdapter(): AgentAdapter {
       // models.yml: upsert provider.
       const modelsFile = resolveAgentFile(AGENT_FILES.omp.models);
       const modelsDoc = readConfigDocument(modelsFile);
+      pruneAioptYamlKeys(modelsDoc.getIn(['providers']), slug);
       const entry = mapAt(modelsDoc, ['providers', slug]);
       entry.set('baseUrl', provider.baseUrl);
       entry.set('api', API_BY_FORMAT[apiFormat]);

@@ -31,7 +31,13 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug, dshCredentialRefName, readYamlConfigDocument } from './bindingLive';
+import {
+  aioptProviderSlug,
+  dshCredentialRefName,
+  isStaleDshCredentialRef,
+  pruneAioptYamlKeys,
+  readYamlConfigDocument,
+} from './bindingLive';
 
 const DSH_DEF: AgentDef = getAgentDef('dsh')!;
 
@@ -101,6 +107,7 @@ export function createDshAdapter(): AgentAdapter {
       // --- settings.yaml: upsert our provider under llm-pi-ai.providers.<slug> ---
       const settingsFile = resolveAgentFile(AGENT_FILES.dsh.settings);
       const settings = readConfigDocument(settingsFile);
+      pruneAioptYamlKeys(settings.getIn(['llm-pi-ai', 'providers']), slug);
       const entry = mapAt(settings, ['llm-pi-ai', 'providers', slug]);
       entry.set('displayName', provider.name);
       entry.set('api', API_BY_FORMAT[apiFormat]);
@@ -117,6 +124,8 @@ export function createDshAdapter(): AgentAdapter {
       const creds = readConfigDocument(credFile);
       creds.set('version', 1); // required; a file with entries but no version is rejected
       const refs = mapAt(creds, ['refs']);
+      // Only AiOpt's own `AIOPT_<ID>_KEY` refs; dsh's own DEEPSEEK_API_KEY etc. never match.
+      pruneAioptYamlKeys(refs, credRef, isStaleDshCredentialRef);
       if (apiKey) refs.set(credRef, apiKey);
       else refs.delete(credRef);
       writeAgentConfigFile(credFile, creds.toString(), CREDENTIALS_MODE);

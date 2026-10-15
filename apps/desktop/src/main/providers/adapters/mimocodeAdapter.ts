@@ -11,7 +11,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const DEF: AgentDef = getAgentDef('mimocode')!;
 
@@ -56,6 +56,7 @@ export function createMimoCodeAdapter(): AgentAdapter {
       }
 
       const providers = objectAt(config, 'provider');
+      pruneAioptKeys(providers, slug);
       providers[slug] = {
         npm: NPM_BY_FORMAT[apiFormat],
         name: provider.name,

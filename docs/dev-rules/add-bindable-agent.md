@@ -64,3 +64,9 @@ agent-agnostic once the adapter exists. Details: `agent-binding-drift.md`.
 1. Are all writes confined to paths declared in `AGENT_SPECS.binding.files`?
 2. Do `writeLive` and `readLiveBinding` agree on URL, model, and token presence?
 3. For additive agents, is the provider slug `aiopt-<providerId>` and is `providerId` recorded on apply?
+4. For additive agents, does `writeLive` prune the OTHER `aiopt-*` entries (`pruneAioptKeys` /
+   `pruneAioptYamlKeys` / `pruneAioptYamlSeqByName` in `bindingLive.ts`) before upserting its own,
+   including any per-provider key slot? A binding switch must leave disk exactly as binding the new
+   provider alone would; otherwise the agent's own model picker keeps offering a dead provider (a
+   revoked loopback token, a deleted provider). `staleProviderPrune.test.ts` asserts this for every
+   adapter in the registry.

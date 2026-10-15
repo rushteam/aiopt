@@ -19,7 +19,7 @@ import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import { restoreKeepingJsonMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const OPENCODE_DEF: AgentDef = getAgentDef('opencode')!;
 
@@ -71,6 +71,7 @@ export function createOpenCodeAdapter(): AgentAdapter {
       }
 
       const providers = objectAt(config, 'provider');
+      pruneAioptKeys(providers, slug);
       providers[slug] = {
         npm: NPM_BY_FORMAT[apiFormat],
         name: provider.name,
