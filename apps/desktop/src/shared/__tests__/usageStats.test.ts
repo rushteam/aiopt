@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateUsage, dayKey, USAGE_RETENTION_DAYS, type UsageEvent } from '../usageStats';
+import { aggregateUsage, dayKey, dayKeyToDate, shiftDayKey, USAGE_RETENTION_DAYS, type UsageEvent } from '../usageStats';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -20,12 +20,39 @@ function event(overrides: Partial<UsageEvent> = {}): UsageEvent {
   };
 }
 
+// Day keys follow the SYSTEM time zone, so timestamps here are built with local-time
+// constructors — the assertions then hold in whatever zone the suite runs in.
 describe('dayKey', () => {
-  it('buckets by UTC calendar day', () => {
-    expect(dayKey(Date.parse('2026-09-01T00:00:00Z'))).toBe('2026-09-01');
-    expect(dayKey(Date.parse('2026-09-01T23:59:59Z'))).toBe('2026-09-01');
-    // 30 min past midnight UTC is still the new day regardless of any local offset.
-    expect(dayKey(Date.parse('2026-09-02T00:30:00Z'))).toBe('2026-09-02');
+  it('buckets by the local calendar day', () => {
+    expect(dayKey(new Date(2026, 8, 1, 0, 0, 0).getTime())).toBe('2026-09-01');
+    expect(dayKey(new Date(2026, 8, 1, 23, 59, 59).getTime())).toBe('2026-09-01');
+    expect(dayKey(new Date(2026, 8, 2, 0, 30).getTime())).toBe('2026-09-02');
+  });
+
+  it('round-trips through dayKeyToDate at local midnight', () => {
+    const d = dayKeyToDate('2026-03-08');
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 2, 8, 0]);
+    expect(dayKey(d.getTime())).toBe('2026-03-08');
+  });
+});
+
+describe('shiftDayKey', () => {
+  it('steps whole calendar days across month and year bounds', () => {
+    expect(shiftDayKey(new Date(2026, 0, 1, 9).getTime(), -1)).toBe('2025-12-31');
+    expect(shiftDayKey(new Date(2026, 1, 28, 23).getTime(), 1)).toBe('2026-03-01');
+  });
+
+  it('never skips or repeats a day across a DST change', () => {
+    // March–November covers the US and EU transitions; in a zone without DST this is
+    // still a plain consecutive-days check.
+    const start = new Date(2026, 2, 1, 0, 0).getTime();
+    const keys = Array.from({ length: 280 }, (_, i) => shiftDayKey(start, i));
+    expect(new Set(keys).size).toBe(280);
+    for (let i = 1; i < keys.length; i++) {
+      const prev = dayKeyToDate(keys[i - 1]!);
+      prev.setDate(prev.getDate() + 1);
+      expect(keys[i]).toBe(dayKey(prev.getTime()));
+    }
   });
 });
 
@@ -74,11 +101,11 @@ describe('aggregateUsage — grouping', () => {
 });
 
 describe('aggregateUsage — daily series', () => {
-  it('buckets events into ascending UTC days', () => {
+  it('buckets events into ascending local days', () => {
     const snap = aggregateUsage([
-      event({ ts: Date.parse('2026-09-02T01:00:00Z'), inputTokens: 1, outputTokens: 1 }),
-      event({ ts: Date.parse('2026-09-01T10:00:00Z'), inputTokens: 2, outputTokens: 2 }),
-      event({ ts: Date.parse('2026-09-01T20:00:00Z'), inputTokens: 3, outputTokens: 3 }),
+      event({ ts: new Date(2026, 8, 2, 1).getTime(), inputTokens: 1, outputTokens: 1 }),
+      event({ ts: new Date(2026, 8, 1, 0, 30).getTime(), inputTokens: 2, outputTokens: 2 }),
+      event({ ts: new Date(2026, 8, 1, 23, 30).getTime(), inputTokens: 3, outputTokens: 3 }),
     ]);
     expect(snap.daily.map((d) => d.day)).toEqual(['2026-09-01', '2026-09-02']);
     expect(snap.daily[0]).toMatchObject({ day: '2026-09-01', requests: 2, totalTokens: 10 });

@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "Tokens par jour",
-      "empty": "Aucune donnée journalière."
+      "empty": "Aucune donnée journalière.",
+      "rangeLabel": "Période du graphique",
+      "range": "{{days}} j",
+      "avgLine": "Moy. {{value}}",
+      "trend": "Moyenne mobile sur {{days}} jours",
+      "avgLegend": "Moyenne de la période",
+      "vsAvg": "par rapport à la moyenne"
     },
     "breakdown": {
       "byProvider": "Par fournisseur",
@@ -402,7 +408,8 @@
       "requests": "Requêtes",
       "inputTokens": "Entrée",
       "outputTokens": "Sortie",
-      "totalTokens": "Total"
+      "totalTokens": "Total",
+      "share": "Part"
     },
     "clear": "Effacer l’utilisation",
     "clearConfirm": "Effacer toute l’utilisation enregistrée ?",
@@ -413,18 +420,50 @@
       "proxy": "Via AiOpt",
       "local": "Journaux des agents",
       "proxyHint": "Requêtes passées par le proxy d'AiOpt.",
-      "localHint": "Lu depuis les journaux de session de Claude Code et Codex sur cet ordinateur. Inclut les liaisons directes."
+      "localHint": "Lu depuis les journaux de session de Claude Code, Codex, Cursor et pi sur cet ordinateur. Inclut les liaisons directes. Cursor n’enregistre pas les tokens : son utilisation est estimée à partir du texte des conversations."
     },
     "local": {
       "loading": "Lecture des journaux de session…",
+      "estimated": "estimé",
       "failed": "Impossible de lire les journaux de session des agents.",
-      "empty": "Aucune utilisation trouvée dans les journaux de Claude Code ou Codex.",
+      "empty": "Aucune utilisation trouvée dans les journaux de Claude Code, Codex, Cursor ou pi.",
       "responses": "Réponses",
       "cacheRead": "Lecture du cache",
       "cacheWrite": "Écriture du cache",
       "cache": "Cache",
       "refresh": "Relire les journaux",
       "window": "{{days}} derniers jours"
+    },
+    "kpi": {
+      "today": "Aujourd’hui",
+      "noToday": "Pas encore de moyenne journalière",
+      "vsDailyAvg": "{{pct}} par rapport à la moyenne journalière",
+      "dailyAvg": "Moyenne journalière",
+      "perDay": "/ jour",
+      "activeDays": "Actif {{active}} jours sur {{span}}",
+      "avg7": "Moyenne sur 7 jours",
+      "noCompare": "Historique insuffisant pour comparer",
+      "vsPrev7": "{{pct}} par rapport aux 7 jours précédents",
+      "monthlyAvg": "Moyenne mensuelle",
+      "perMonth": "/ mois",
+      "avg30": "Moyenne sur 30 jours : {{value}} / jour",
+      "vsPrev30": "{{pct}} par rapport aux 30 jours précédents"
+    },
+    "mix": {
+      "title": "Répartition des tokens"
+    },
+    "summary": {
+      "totalTokens": "Total des tokens",
+      "perCount": "Tokens moyens par unité",
+      "peakDay": "Jour de pic",
+      "errors": "{{count}} en échec",
+      "outputRatio": "Ratio sortie / entrée",
+      "cacheHit": "Taux de succès du cache",
+      "sessions": "Sessions"
+    },
+    "weekday": {
+      "title": "Par jour de la semaine",
+      "hint": "Tokens moyens par jour de la semaine"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "Sessions",
     "search": "Rechercher des sessions",
+    "agentFilter": "Filtrer par agent",
+    "allAgents": "Tous les agents",
     "refresh": "Relire",
-    "intro": "Sessions passées de Claude Code et Codex, lues depuis les journaux qu'ils conservent sur cet ordinateur. AiOpt se contente de lire ces fichiers.",
+    "intro": "Sessions passées de Claude Code, Codex, Cursor et pi, lues depuis les journaux qu'ils conservent sur cet ordinateur. AiOpt se contente de lire ces fichiers.",
     "loading": "Chargement…",
     "failed": "Impossible de lire les journaux de session des agents.",
-    "empty": "Aucune session Claude Code ou Codex trouvée.",
+    "empty": "Aucune session Claude Code, Codex, Cursor ou pi trouvée.",
     "noMatch": "Aucune session ne correspond à votre recherche.",
     "untitled": "Session sans titre",
     "truncated": "Seules les sessions les plus récentes sont affichées.",

@@ -10,7 +10,8 @@
 // + timestamp. Never content, never keys, never token PLAINTEXT — same disclosure
 // surface as the proxy's existing "may log token counts" rule, nothing new.
 //
-// No I/O, no Electron. `dayKey` buckets by UTC so tests can assert deterministically.
+// No I/O, no Electron. `dayKey` buckets by the LOCAL calendar day of the system time zone
+// (what the user means by "today"); tests pin `process.env.TZ` to stay deterministic.
 
 import type { ApiFormat } from './aiProviders';
 
@@ -60,9 +61,9 @@ export interface UsageBucket extends UsageTotals {
   key: string;
 }
 
-/** One calendar day (UTC) of totals for the time series. */
+/** One local calendar day of totals for the time series. */
 export interface UsageDailyPoint extends UsageTotals {
-  /** 'YYYY-MM-DD' in UTC. */
+  /** 'YYYY-MM-DD' in the system time zone. */
   day: string;
 }
 
@@ -87,9 +88,34 @@ export interface AggregateOptions {
   now?: number;
 }
 
-/** UTC day bucket key ('YYYY-MM-DD') for an epoch-ms timestamp. */
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Day bucket key ('YYYY-MM-DD') for an epoch-ms timestamp, in the SYSTEM time zone — the
+ * calendar day the user sees on their clock. Main and renderer run in the same OS zone, so
+ * keys built on either side agree.
+ */
 export function dayKey(ts: number): string {
-  return new Date(ts).toISOString().slice(0, 10);
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** Parse a day key into a Date at LOCAL midnight of that day. */
+export function dayKeyToDate(day: string): Date {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
+/**
+ * The day key `offset` calendar days from the day containing `ts` (negative = earlier).
+ * Calendar arithmetic, not `± n × 24h`: a DST transition makes one local day 23 or 25
+ * hours long, and millisecond steps would then skip or repeat a day.
+ */
+export function shiftDayKey(ts: number, offset: number): string {
+  const d = new Date(ts);
+  return dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset, 12).getTime());
 }
 
 function emptyTotals(): UsageTotals {
@@ -122,7 +148,7 @@ function into(map: Map<string, UsageTotals>, key: string, e: UsageEvent): void {
 
 /**
  * Fold a flat event log into a snapshot: drop events outside the retention window, then
- * accumulate totals + group by provider/agent/model + build the daily (UTC) series.
+ * accumulate totals + group by provider/agent/model + build the daily (local-day) series.
  * Pure — no I/O, deterministic given `opts.now`.
  */
 export function aggregateUsage(events: readonly UsageEvent[], opts: AggregateOptions = {}): UsageSnapshot {

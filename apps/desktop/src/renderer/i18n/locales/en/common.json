@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "Daily tokens",
-      "empty": "No daily data."
+      "empty": "No daily data.",
+      "rangeLabel": "Chart range",
+      "range": "{{days}}d",
+      "avgLine": "Avg {{value}}",
+      "trend": "{{days}}-day moving average",
+      "avgLegend": "Range average",
+      "vsAvg": "vs. average"
     },
     "breakdown": {
       "byProvider": "By provider",
@@ -402,7 +408,8 @@
       "requests": "Requests",
       "inputTokens": "Input",
       "outputTokens": "Output",
-      "totalTokens": "Total"
+      "totalTokens": "Total",
+      "share": "Share"
     },
     "clear": "Clear usage",
     "clearConfirm": "Clear all recorded usage?",
@@ -413,18 +420,50 @@
       "proxy": "Through AiOpt",
       "local": "From agent logs",
       "proxyHint": "Requests that went through AiOpt's proxy.",
-      "localHint": "Read from Claude Code and Codex session logs on this computer. Includes direct bindings."
+      "localHint": "Read from Claude Code, Codex, Cursor and pi session logs on this computer. Includes direct bindings. Cursor keeps no token counts, so its usage is estimated from the conversation text."
     },
     "local": {
       "loading": "Reading session logs…",
+      "estimated": "estimated",
       "failed": "Couldn't read the agent session logs.",
-      "empty": "No usage found in Claude Code or Codex session logs.",
+      "empty": "No usage found in Claude Code, Codex, Cursor or pi session logs.",
       "responses": "Responses",
       "cacheRead": "Cache read",
       "cacheWrite": "Cache write",
       "cache": "Cache",
       "refresh": "Rescan logs",
       "window": "Last {{days}} days"
+    },
+    "kpi": {
+      "today": "Today",
+      "noToday": "No daily average yet",
+      "vsDailyAvg": "{{pct}} vs. daily average",
+      "dailyAvg": "Daily average",
+      "perDay": "/ day",
+      "activeDays": "Active {{active}} of {{span}} days",
+      "avg7": "7-day average",
+      "noCompare": "Not enough history to compare",
+      "vsPrev7": "{{pct}} vs. previous 7 days",
+      "monthlyAvg": "Monthly average",
+      "perMonth": "/ month",
+      "avg30": "30-day average {{value}} / day",
+      "vsPrev30": "{{pct}} vs. previous 30 days"
+    },
+    "mix": {
+      "title": "Token mix"
+    },
+    "summary": {
+      "totalTokens": "Total tokens",
+      "perCount": "Average tokens each",
+      "peakDay": "Peak day",
+      "errors": "{{count}} failed",
+      "outputRatio": "Output / input ratio",
+      "cacheHit": "Cache hit rate",
+      "sessions": "Sessions"
+    },
+    "weekday": {
+      "title": "By weekday",
+      "hint": "Average tokens per day of the week"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "Sessions",
     "search": "Search sessions",
+    "agentFilter": "Filter by agent",
+    "allAgents": "All agents",
     "refresh": "Rescan",
-    "intro": "Past Claude Code and Codex sessions, read from the logs they keep on this computer. AiOpt only reads these files.",
+    "intro": "Past Claude Code, Codex, Cursor and pi sessions, read from the logs they keep on this computer. AiOpt only reads these files.",
     "loading": "Loading…",
     "failed": "Couldn't read the agent session logs.",
-    "empty": "No Claude Code or Codex sessions found.",
+    "empty": "No Claude Code, Codex, Cursor or pi sessions found.",
     "noMatch": "No sessions match your search.",
     "untitled": "Untitled session",
     "truncated": "Only the most recent sessions are shown.",

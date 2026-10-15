@@ -20,17 +20,91 @@ import { useProviders } from '../../hooks/useProviders';
 import { clearUsage } from '../../lib/usageStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
-import { AGENTS } from '../../../shared/aiProviders';
-import type { UsageBucket } from '../../../shared/usageStats';
+import { AGENT_SPECS } from '../../../shared/aiProviders';
+import type { UsageBucket, UsageSnapshot } from '../../../shared/usageStats';
 import type { LocalUsageBucket, LocalUsageSnapshot } from '../../../shared/agentSessions';
+import { BreakdownPanel, UsageDashboard, type BreakdownColumn, type DashboardData } from './UsageDashboard';
 import { segmentButtonChrome, segmentedRootStyle } from '../../components/ui/controlStyles';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 
+/** Display name for any agent id (including skills-only ones such as Cursor). */
+const agentName = (id: string): string =>
+  Object.hasOwn(AGENT_SPECS, id) ? AGENT_SPECS[id as keyof typeof AGENT_SPECS].name : id;
+
+/** Agents whose local usage is estimated from conversation text, not read from logged counts. */
+const ESTIMATED_AGENTS: ReadonlySet<string> = new Set(['cursor']);
+
 type UsageSource = 'proxy' | 'local';
 
-const numberFormat = new Intl.NumberFormat();
-function fmt(n: number): string {
-  return numberFormat.format(n);
+const percent = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
+
+// ─── Source adapters: snapshot → dashboard data ──────────────────────────────
+
+function proxyDashboard(usage: UsageSnapshot, t: TranslateFn): DashboardData {
+  const { totals } = usage;
+  return {
+    daily: usage.daily.map((d) => ({ day: d.day, segments: [d.inputTokens, d.outputTokens], count: d.requests })),
+    segments: [
+      { label: t('usage.totals.inputTokens'), color: 'accent' },
+      { label: t('usage.totals.outputTokens'), color: 'chartOutput' },
+    ],
+    retentionDays: usage.retentionDays,
+    countLabel: t('usage.totals.requests'),
+    stats: [
+      {
+        label: t('usage.totals.successRate'),
+        value: totals.requests > 0 ? percent.format(totals.okRequests / totals.requests) : '—',
+        hint: totals.errorRequests > 0 ? t('usage.summary.errors').replace('{{count}}', String(totals.errorRequests)) : undefined,
+      },
+      {
+        label: t('usage.summary.outputRatio'),
+        value: totals.inputTokens > 0 ? (totals.outputTokens / totals.inputTokens).toFixed(2) : '—',
+      },
+    ],
+  };
+}
+
+function localDashboard(snap: LocalUsageSnapshot, t: TranslateFn): DashboardData {
+  const { totals } = snap;
+  const cacheable = totals.inputTokens + totals.cacheReadTokens;
+  return {
+    daily: snap.daily.map((d) => ({
+      day: d.day,
+      segments: [d.inputTokens, d.outputTokens, d.cacheReadTokens + d.cacheWriteTokens],
+      count: d.responses,
+    })),
+    segments: [
+      { label: t('usage.totals.inputTokens'), color: 'accent' },
+      { label: t('usage.totals.outputTokens'), color: 'chartOutput' },
+      { label: t('usage.local.cache'), color: 'chartCache' },
+    ],
+    retentionDays: snap.retentionDays,
+    countLabel: t('usage.local.responses'),
+    stats: [
+      {
+        label: t('usage.summary.cacheHit'),
+        value: cacheable > 0 ? percent.format(totals.cacheReadTokens / cacheable) : '—',
+      },
+      { label: t('usage.summary.sessions'), value: String(snap.sessionCount) },
+    ],
+  };
+}
+
+function proxyColumns(t: TranslateFn): BreakdownColumn<UsageBucket>[] {
+  return [
+    { label: t('usage.table.requests'), value: (r) => r.requests },
+    { label: t('usage.table.inputTokens'), value: (r) => r.inputTokens },
+    { label: t('usage.table.outputTokens'), value: (r) => r.outputTokens },
+  ];
+}
+
+function localColumns(t: TranslateFn): BreakdownColumn<LocalUsageBucket>[] {
+  return [
+    { label: t('usage.local.responses'), value: (r) => r.responses },
+    { label: t('usage.table.inputTokens'), value: (r) => r.inputTokens },
+    { label: t('usage.table.outputTokens'), value: (r) => r.outputTokens },
+    { label: t('usage.local.cache'), value: (r) => r.cacheReadTokens + r.cacheWriteTokens },
+  ];
 }
 
 export function UsageHome() {
@@ -105,9 +179,6 @@ function LocalUsage() {
 
   useEffect(() => load(false), [load]);
 
-  const agentName = (id: string): string => AGENTS.find((a) => a.id === id)?.name ?? id;
-  const totals = snap?.totals;
-
   return (
     <>
       {failed ? (
@@ -118,22 +189,15 @@ function LocalUsage() {
         <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.local.empty')}</p>
       ) : (
         <>
-          <section style={tabScreenSectionStyle}>
-            <div style={cardGridStyle}>
-              <StatCard label={t('usage.local.responses')} value={fmt(totals!.responses)} />
-              <StatCard label={t('usage.totals.inputTokens')} value={fmt(totals!.inputTokens)} />
-              <StatCard label={t('usage.totals.outputTokens')} value={fmt(totals!.outputTokens)} />
-              <StatCard label={t('usage.local.cacheRead')} value={fmt(totals!.cacheReadTokens)} />
-              <StatCard label={t('usage.local.cacheWrite')} value={fmt(totals!.cacheWriteTokens)} />
-              <StatCard label={t('usage.totals.totalTokens')} value={fmt(totals!.totalTokens)} />
-            </div>
-          </section>
-          <section style={tabScreenSectionStyle}>
-            <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
-            <DailyChart daily={snap.daily} t={t} />
-          </section>
-          <LocalBreakdownTable heading={t('usage.breakdown.byAgent')} rows={snap.byAgent} label={agentName} t={t} />
-          <LocalBreakdownTable heading={t('usage.breakdown.byModel')} rows={snap.byModel} label={(k) => k} t={t} />
+          <UsageDashboard data={localDashboard(snap, t)} t={t} />
+          <BreakdownPanel
+            heading={t('usage.breakdown.byAgent')}
+            rows={snap.byAgent}
+            label={(id) => (ESTIMATED_AGENTS.has(id) ? `${agentName(id)} (${t('usage.local.estimated')})` : agentName(id))}
+            columns={localColumns(t)}
+            t={t}
+          />
+          <BreakdownPanel heading={t('usage.breakdown.byModel')} rows={snap.byModel} label={(k) => k} columns={localColumns(t)} t={t} />
         </>
       )}
       <section style={{ ...tabScreenSectionStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: space.md }}>
@@ -150,51 +214,6 @@ function LocalUsage() {
   );
 }
 
-function LocalBreakdownTable({
-  heading,
-  rows,
-  label,
-  t,
-}: {
-  heading: string;
-  rows: readonly LocalUsageBucket[];
-  label: (key: string) => string;
-  t: TranslateFn;
-}) {
-  if (rows.length === 0) return null;
-  return (
-    <section style={tabScreenSectionStyle}>
-      <h2 style={sectionHeadingStyle}>{heading}</h2>
-      <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden', background: token('bg') }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fontSize.md }}>
-          <thead>
-            <tr style={{ background: token('surface') }}>
-              <th style={thStyle}>{t('usage.table.name')}</th>
-              <th style={thNumStyle}>{t('usage.local.responses')}</th>
-              <th style={thNumStyle}>{t('usage.table.inputTokens')}</th>
-              <th style={thNumStyle}>{t('usage.table.outputTokens')}</th>
-              <th style={thNumStyle}>{t('usage.local.cache')}</th>
-              <th style={thNumStyle}>{t('usage.table.totalTokens')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.key} style={{ borderTop: `1px solid ${token('border')}` }}>
-                <td style={tdStyle}>{label(r.key)}</td>
-                <td style={tdNumStyle}>{fmt(r.responses)}</td>
-                <td style={tdNumStyle}>{fmt(r.inputTokens)}</td>
-                <td style={tdNumStyle}>{fmt(r.outputTokens)}</td>
-                <td style={tdNumStyle}>{fmt(r.cacheReadTokens + r.cacheWriteTokens)}</td>
-                <td style={tdNumStyle}>{fmt(r.totalTokens)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 function ProxyUsage() {
   const t = useT();
   const usage = useUsage();
@@ -203,11 +222,6 @@ function ProxyUsage() {
 
   const providerName = (id: string): string =>
     providers.find((p) => p.id === id)?.name ?? `${id.slice(0, 8)}…`;
-  const agentName = (id: string): string => AGENTS.find((a) => a.id === id)?.name ?? id;
-
-  const { totals } = usage;
-  const successRate =
-    totals.requests > 0 ? Math.round((totals.okRequests / totals.requests) * 100) : 0;
 
   return (
     <>
@@ -215,39 +229,10 @@ function ProxyUsage() {
         <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.empty')}</p>
       ) : (
         <>
-          <section style={tabScreenSectionStyle}>
-            <div style={cardGridStyle}>
-              <StatCard label={t('usage.totals.requests')} value={fmt(totals.requests)} />
-              <StatCard label={t('usage.totals.successRate')} value={`${successRate}%`} />
-              <StatCard label={t('usage.totals.inputTokens')} value={fmt(totals.inputTokens)} />
-              <StatCard label={t('usage.totals.outputTokens')} value={fmt(totals.outputTokens)} />
-              <StatCard label={t('usage.totals.totalTokens')} value={fmt(totals.totalTokens)} />
-            </div>
-          </section>
-
-          <section style={tabScreenSectionStyle}>
-            <h2 style={sectionHeadingStyle}>{t('usage.chart.title')}</h2>
-            <DailyChart daily={usage.daily} t={t} />
-          </section>
-
-          <BreakdownTable
-            heading={t('usage.breakdown.byProvider')}
-            rows={usage.byProvider}
-            label={providerName}
-            t={t}
-          />
-          <BreakdownTable
-            heading={t('usage.breakdown.byAgent')}
-            rows={usage.byAgent}
-            label={agentName}
-            t={t}
-          />
-          <BreakdownTable
-            heading={t('usage.breakdown.byModel')}
-            rows={usage.byModel}
-            label={(k) => k}
-            t={t}
-          />
+          <UsageDashboard data={proxyDashboard(usage, t)} t={t} />
+          <BreakdownPanel heading={t('usage.breakdown.byProvider')} rows={usage.byProvider} label={providerName} columns={proxyColumns(t)} t={t} />
+          <BreakdownPanel heading={t('usage.breakdown.byAgent')} rows={usage.byAgent} label={agentName} columns={proxyColumns(t)} t={t} />
+          <BreakdownPanel heading={t('usage.breakdown.byModel')} rows={usage.byModel} label={(k) => k} columns={proxyColumns(t)} t={t} />
         </>
       )}
 
@@ -279,129 +264,6 @@ function ProxyUsage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      style={{
-        border: `1px solid ${token('border')}`,
-        borderRadius: radius.lg,
-        background: token('surface'),
-        padding: space.lg,
-      }}
-    >
-      <div style={{ fontSize: fontSize.sm, color: token('textMuted'), marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: fontSize['2xl'], fontWeight: 600 }}>{value}</div>
-    </div>
-  );
-}
-
-function DailyChart({ daily, t }: { daily: readonly { day: string; totalTokens: number }[]; t: TranslateFn }) {
-  if (daily.length === 0) {
-    return <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('usage.chart.empty')}</p>;
-  }
-  const max = daily.reduce((m, d) => Math.max(m, d.totalTokens), 0);
-  return (
-    <div
-      style={{
-        display: 'flex',
-        // Stretch, not flex-end: each column must fill the chart's height so the bar's
-        // percentage height has a definite box to resolve against. With flex-end the
-        // columns were content-sized and every bar computed to 0px — an empty chart.
-        alignItems: 'stretch',
-        gap: space.xs,
-        height: 140,
-        padding: space.md,
-        border: `1px solid ${token('border')}`,
-        borderRadius: radius.lg,
-        background: token('surface'),
-        overflowX: 'auto',
-      }}
-    >
-      {daily.map((d) => {
-        const pct = max > 0 ? (d.totalTokens / max) * 100 : 0;
-        return (
-          <div
-            key={d.day}
-            title={`${d.day} · ${fmt(d.totalTokens)}`}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 14, flex: 1 }}
-          >
-            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
-              <div
-                style={{
-                  width: '100%',
-                  minWidth: 8,
-                  height: `${Math.max(pct, d.totalTokens > 0 ? 2 : 0)}%`,
-                  background: token('accent'),
-                  borderRadius: `${radius.sm}px ${radius.sm}px 0 0`,
-                }}
-              />
-            </div>
-            <span style={{ fontSize: fontSize.xs, color: token('textMuted'), whiteSpace: 'nowrap' }}>
-              {d.day.slice(5)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function BreakdownTable({
-  heading,
-  rows,
-  label,
-  t,
-}: {
-  heading: string;
-  rows: readonly UsageBucket[];
-  label: (key: string) => string;
-  t: TranslateFn;
-}) {
-  if (rows.length === 0) return null;
-  return (
-    <section style={tabScreenSectionStyle}>
-      <h2 style={sectionHeadingStyle}>{heading}</h2>
-      <div style={{ border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden', background: token('bg') }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fontSize.md }}>
-          <thead>
-            <tr style={{ background: token('surface') }}>
-              <th style={thStyle}>{t('usage.table.name')}</th>
-              <th style={thNumStyle}>{t('usage.table.requests')}</th>
-              <th style={thNumStyle}>{t('usage.table.inputTokens')}</th>
-              <th style={thNumStyle}>{t('usage.table.outputTokens')}</th>
-              <th style={thNumStyle}>{t('usage.table.totalTokens')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.key} style={{ borderTop: `1px solid ${token('border')}` }}>
-                <td style={tdStyle}>{label(r.key)}</td>
-                <td style={tdNumStyle}>{fmt(r.requests)}</td>
-                <td style={tdNumStyle}>{fmt(r.inputTokens)}</td>
-                <td style={tdNumStyle}>{fmt(r.outputTokens)}</td>
-                <td style={tdNumStyle}>{fmt(r.totalTokens)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-// Matches ProvidersHome: 18px/600 so a section heading outranks the content under it.
-const sectionHeadingStyle = {
-  margin: '0 0 12px',
-  fontSize: fontSize['2xl'],
-  fontWeight: 600,
-} as const;
-
-const cardGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-  gap: space.lg,
-} as const;
-
 const ghostStyle = {
   padding: '8px 16px',
   borderRadius: radius.md,
@@ -411,16 +273,3 @@ const ghostStyle = {
   cursor: 'pointer',
   fontSize: fontSize.md,
 } as const;
-
-const thStyle = {
-  textAlign: 'left',
-  padding: '8px 12px',
-  fontSize: fontSize.sm,
-  fontWeight: 600,
-  color: token('textMuted'),
-} as const;
-
-const thNumStyle = { ...thStyle, textAlign: 'right' } as const;
-
-const tdStyle = { padding: '8px 12px' } as const;
-const tdNumStyle = { ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' } as const;

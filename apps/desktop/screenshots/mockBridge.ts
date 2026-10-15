@@ -25,6 +25,7 @@ import type { SkillEntry, SkillMatrixRow, SkillsSnapshot } from '../src/shared/s
 import type { WorkbenchSnapshot } from '../src/shared/workbench';
 import { AGENT_SPECS, type AgentId, type AgentSpec } from '../src/shared/aiProviders';
 import { MENU_COMMANDS, type MenuCommand } from '../src/shared/menuCommands';
+import { shiftDayKey } from '../src/shared/usageStats';
 
 const params = new URLSearchParams(location.search);
 const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
@@ -139,7 +140,7 @@ const daily: UsageDailyPoint[] = DAILY_SHAPE.map((f, i) => {
   const requests = Math.round(420 * f);
   const input = Math.round(3_900_000 * f);
   const output = Math.round(610_000 * f);
-  const day = new Date(NOW - (DAILY_SHAPE.length - 1 - i) * DAY).toISOString().slice(0, 10);
+  const day = shiftDayKey(NOW, -(DAILY_SHAPE.length - 1 - i));
   return { day, ...totalsOf(requests, i % 5 === 3 ? 3 : 1, input, output) };
 });
 

@@ -105,6 +105,19 @@ describe('contrast (WCAG)', () => {
   // state indicator in exactly the sense §1.1 gives the switch thumb, so it owes the same
   // 3:1. The ground that catches it out is `surfaceHover`: the dot lives in a task tab and
   // a menu row, so it spends real time on the hover fill, not just on `bg`.
+  // Chart series are graphical objects the user has to tell apart from the ground to read
+  // the chart (1.4.11), so each clears 3:1 wherever a chart is drawn.
+  it('chart series clear 3:1 on every ground a chart is drawn on', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const series of ['accent', 'chartOutput', 'chartCache', 'chartTrend'] as const) {
+        for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
+          const ratio = contrast(TOKENS[series][mode], TOKENS[ground][mode]);
+          expect(ratio, `${series} on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
   it('the status dot clears 3:1 on every background a row can take', () => {
     for (const mode of ['light', 'dark'] as const) {
       for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {

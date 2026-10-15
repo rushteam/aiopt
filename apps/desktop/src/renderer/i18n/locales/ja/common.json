@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "日別トークン",
-      "empty": "日別データがありません。"
+      "empty": "日別データがありません。",
+      "rangeLabel": "グラフの期間",
+      "range": "{{days}} 日",
+      "avgLine": "平均 {{value}}",
+      "trend": "{{days}} 日移動平均",
+      "avgLegend": "期間平均",
+      "vsAvg": "平均比"
     },
     "breakdown": {
       "byProvider": "プロバイダー別",
@@ -402,7 +408,8 @@
       "requests": "リクエスト数",
       "inputTokens": "入力",
       "outputTokens": "出力",
-      "totalTokens": "合計"
+      "totalTokens": "合計",
+      "share": "割合"
     },
     "clear": "使用状況をクリア",
     "clearConfirm": "記録されたすべての使用量をクリアしますか？",
@@ -413,18 +420,50 @@
       "proxy": "AiOpt 経由",
       "local": "エージェントのログ",
       "proxyHint": "AiOpt のプロキシを経由したリクエスト。",
-      "localHint": "このコンピューター上の Claude Code と Codex のセッションログから読み取ります。直接バインドも含みます。"
+      "localHint": "このコンピューター上の Claude Code、Codex、Cursor、pi のセッションログから読み取ります。直接バインドも含みます。Cursor はトークン数を記録しないため、使用量は会話内容からの推定です。"
     },
     "local": {
       "loading": "セッションログを読み込み中…",
+      "estimated": "推定",
       "failed": "エージェントのセッションログを読み取れませんでした。",
-      "empty": "Claude Code や Codex のセッションログに使用量が見つかりません。",
+      "empty": "Claude Code、Codex、Cursor、pi のセッションログに使用量が見つかりません。",
       "responses": "応答数",
       "cacheRead": "キャッシュ読み取り",
       "cacheWrite": "キャッシュ書き込み",
       "cache": "キャッシュ",
       "refresh": "ログを再スキャン",
       "window": "過去 {{days}} 日"
+    },
+    "kpi": {
+      "today": "今日",
+      "noToday": "比較できる日平均がまだありません",
+      "vsDailyAvg": "日平均比 {{pct}}",
+      "dailyAvg": "日平均",
+      "perDay": "/ 日",
+      "activeDays": "{{span}} 日中 {{active}} 日稼働",
+      "avg7": "直近 7 日の平均",
+      "noCompare": "比較に十分な履歴がありません",
+      "vsPrev7": "前の 7 日比 {{pct}}",
+      "monthlyAvg": "月平均",
+      "perMonth": "/ 月",
+      "avg30": "直近 30 日の日平均 {{value}}",
+      "vsPrev30": "前の 30 日比 {{pct}}"
+    },
+    "mix": {
+      "title": "トークンの内訳"
+    },
+    "summary": {
+      "totalTokens": "合計トークン",
+      "perCount": "1 回あたりの平均トークン",
+      "peakDay": "ピーク日",
+      "errors": "失敗 {{count}} 件",
+      "outputRatio": "出力 / 入力比",
+      "cacheHit": "キャッシュヒット率",
+      "sessions": "セッション数"
+    },
+    "weekday": {
+      "title": "曜日別",
+      "hint": "曜日ごとの 1 日平均トークン"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "セッション",
     "search": "セッションを検索",
+    "agentFilter": "エージェントで絞り込み",
+    "allAgents": "すべてのエージェント",
     "refresh": "再スキャン",
-    "intro": "このコンピューター上のログから読み取った Claude Code と Codex の過去のセッション。AiOpt はこれらのファイルを読み取るだけです。",
+    "intro": "このコンピューター上のログから読み取った Claude Code、Codex、Cursor、pi の過去のセッション。AiOpt はこれらのファイルを読み取るだけです。",
     "loading": "読み込み中…",
     "failed": "エージェントのセッションログを読み取れませんでした。",
-    "empty": "Claude Code や Codex のセッションが見つかりません。",
+    "empty": "Claude Code、Codex、Cursor、pi のセッションが見つかりません。",
     "noMatch": "検索に一致するセッションはありません。",
     "untitled": "無題のセッション",
     "truncated": "最近のセッションのみ表示しています。",

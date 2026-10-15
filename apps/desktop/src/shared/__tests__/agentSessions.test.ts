@@ -8,9 +8,9 @@ import {
   type LocalUsageRecord,
   type SessionTranscript,
 } from '../agentSessions';
+import { shiftDayKey } from '../usageStats';
 
-const DAY = 24 * 60 * 60 * 1000;
-const NOW = Date.UTC(2025, 5, 30, 12);
+const NOW = new Date(2025, 5, 30, 12).getTime(); // local noon: day keys are local
 
 function rec(day: string, agentId: 'claude' | 'codex', model: string, n: number): LocalUsageRecord {
   return { day, agentId, model, responses: 1, inputTokens: n, outputTokens: n, cacheReadTokens: n, cacheWriteTokens: n };
@@ -56,7 +56,7 @@ describe('aggregateLocalUsage', () => {
   });
 
   it('keeps the first day of the window', () => {
-    const first = new Date(NOW - 89 * DAY).toISOString().slice(0, 10);
+    const first = shiftDayKey(NOW, -89);
     const snap = aggregateLocalUsage([[rec(first, 'claude', 'm', 1)]], { now: NOW, retentionDays: 90 });
     expect(snap.totals.responses).toBe(1);
   });
@@ -70,6 +70,8 @@ describe('resumeCommand', () => {
       `cd '/Users/me/it'\\''s here' && claude --resume ${ref.sessionId}`,
     );
     expect(resumeCommand({ ...ref, agentId: 'codex' }, '', 'linux')).toBe(`codex resume ${ref.sessionId}`);
+    expect(resumeCommand({ ...ref, agentId: 'cursor' }, '', 'linux')).toBe(`cursor-agent --resume ${ref.sessionId}`);
+    expect(resumeCommand({ ...ref, agentId: 'pi' }, '', 'linux')).toBe(`pi --session ${ref.sessionId}`);
   });
 
   it('uses PowerShell on Windows and drops a cwd it cannot quote', () => {

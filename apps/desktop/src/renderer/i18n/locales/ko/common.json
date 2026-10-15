@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "일별 토큰",
-      "empty": "일별 데이터가 없습니다."
+      "empty": "일별 데이터가 없습니다.",
+      "rangeLabel": "차트 기간",
+      "range": "{{days}}일",
+      "avgLine": "평균 {{value}}",
+      "trend": "{{days}}일 이동 평균",
+      "avgLegend": "기간 평균",
+      "vsAvg": "평균 대비"
     },
     "breakdown": {
       "byProvider": "공급자별",
@@ -402,7 +408,8 @@
       "requests": "요청 수",
       "inputTokens": "입력",
       "outputTokens": "출력",
-      "totalTokens": "합계"
+      "totalTokens": "합계",
+      "share": "비중"
     },
     "clear": "사용량 지우기",
     "clearConfirm": "기록된 모든 사용량을 지울까요?",
@@ -413,18 +420,50 @@
       "proxy": "AiOpt 경유",
       "local": "에이전트 로그",
       "proxyHint": "AiOpt 프록시를 거친 요청입니다.",
-      "localHint": "이 컴퓨터의 Claude Code 및 Codex 세션 로그에서 읽습니다. 직접 바인딩도 포함됩니다."
+      "localHint": "이 컴퓨터의 Claude Code, Codex, Cursor 및 pi 세션 로그에서 읽습니다. 직접 바인딩도 포함됩니다. Cursor는 토큰 수를 기록하지 않으므로 사용량은 대화 내용으로 추정합니다."
     },
     "local": {
       "loading": "세션 로그를 읽는 중…",
+      "estimated": "추정",
       "failed": "에이전트 세션 로그를 읽을 수 없습니다.",
-      "empty": "Claude Code 또는 Codex 세션 로그에서 사용량을 찾지 못했습니다.",
+      "empty": "Claude Code, Codex, Cursor 또는 pi 세션 로그에서 사용량을 찾지 못했습니다.",
       "responses": "응답 수",
       "cacheRead": "캐시 읽기",
       "cacheWrite": "캐시 쓰기",
       "cache": "캐시",
       "refresh": "로그 다시 스캔",
       "window": "최근 {{days}}일"
+    },
+    "kpi": {
+      "today": "오늘",
+      "noToday": "비교할 일 평균이 아직 없습니다",
+      "vsDailyAvg": "일 평균 대비 {{pct}}",
+      "dailyAvg": "일 평균",
+      "perDay": "/ 일",
+      "activeDays": "{{span}}일 중 {{active}}일 사용",
+      "avg7": "최근 7일 평균",
+      "noCompare": "비교할 기록이 부족합니다",
+      "vsPrev7": "이전 7일 대비 {{pct}}",
+      "monthlyAvg": "월 평균",
+      "perMonth": "/ 월",
+      "avg30": "최근 30일 일 평균 {{value}}",
+      "vsPrev30": "이전 30일 대비 {{pct}}"
+    },
+    "mix": {
+      "title": "토큰 구성"
+    },
+    "summary": {
+      "totalTokens": "총 토큰",
+      "perCount": "회당 평균 토큰",
+      "peakDay": "최대 사용일",
+      "errors": "실패 {{count}}건",
+      "outputRatio": "출력 / 입력 비율",
+      "cacheHit": "캐시 적중률",
+      "sessions": "세션 수"
+    },
+    "weekday": {
+      "title": "요일별",
+      "hint": "요일별 하루 평균 토큰"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "세션",
     "search": "세션 검색",
+    "agentFilter": "에이전트별 필터",
+    "allAgents": "모든 에이전트",
     "refresh": "다시 스캔",
-    "intro": "이 컴퓨터에 남아 있는 로그에서 읽은 Claude Code 및 Codex의 지난 세션입니다. AiOpt는 이 파일을 읽기만 합니다.",
+    "intro": "이 컴퓨터에 남아 있는 로그에서 읽은 Claude Code, Codex, Cursor 및 pi의 지난 세션입니다. AiOpt는 이 파일을 읽기만 합니다.",
     "loading": "불러오는 중…",
     "failed": "에이전트 세션 로그를 읽을 수 없습니다.",
-    "empty": "Claude Code 또는 Codex 세션이 없습니다.",
+    "empty": "Claude Code, Codex, Cursor 또는 pi 세션이 없습니다.",
     "noMatch": "검색과 일치하는 세션이 없습니다.",
     "untitled": "제목 없는 세션",
     "truncated": "최근 세션만 표시합니다.",
