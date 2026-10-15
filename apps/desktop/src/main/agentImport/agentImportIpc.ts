@@ -17,6 +17,7 @@ function wireAgentImportCandidates(list: AgentImportCandidate[]): AgentImportCan
       accountLabel: c.accountLabel,
     };
     if (c.reason !== undefined) row.reason = c.reason;
+    if (c.alreadyAdded) row.alreadyAdded = true;
     return row;
   });
 }

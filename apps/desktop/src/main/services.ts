@@ -415,6 +415,8 @@ export function getWorkbenchManager(): WorkbenchManager {
         }),
       onChange: broadcast,
       logger: logger.child('workbench'),
+      // @session mentions in the coordinator chat: read-only, named by (agentId, sessionId).
+      readSession: (ref) => getAgentSessionStore().transcript(ref),
     });
     workbenchManager = manager;
     syncWorkbenchTrayHint(manager.getSnapshot());

@@ -85,6 +85,23 @@ export interface SessionsExportResult {
   saved: boolean;
 }
 
+/** Messages picked from a session's transcript, for a context pack (shared/sessionContextPack.ts). */
+export interface SessionPackRequest extends SessionRef {
+  /** Indexes into the `entries` of the transcript the renderer was shown. */
+  indexes: number[];
+  /** That transcript's `entries.length` and first entry `ts` — main refuses if it moved since. */
+  total: number;
+  firstTs: number;
+}
+
+export interface SessionPackResult {
+  /** False when the user cancelled the save dialog (export only). */
+  saved: boolean;
+  /** Messages in the pack, and whether older picks were left out to fit the size cap. */
+  included: number;
+  cut: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Local usage
 // ---------------------------------------------------------------------------

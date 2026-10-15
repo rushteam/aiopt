@@ -13,6 +13,7 @@ import type { TranslateFn } from '../../i18n';
 import { createTask, runPlan } from '../../lib/workbenchStore';
 import { WORKBENCH_LIMITS, planProgress, planTasksOf, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { TaskForm } from './TaskForm';
+import type { TaskSeed } from './taskSeed';
 import { TaskDagView } from './TaskDagView';
 import { TaskNodeDetail } from './TaskNodeDetail';
 import { StatusLabel } from './TaskStatusLabel';
@@ -25,12 +26,17 @@ export function PlanPanel({
   run,
   selectedId,
   onSelectTask,
+  seed = null,
+  onSeedUsed,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
   selectedId: string | null;
   onSelectTask: (id: string | null) => void;
+  /** A draft handed over from Sessions: opens the new-task form with it. */
+  seed?: TaskSeed | null;
+  onSeedUsed?: () => void;
 }) {
   const conversationId = wb.currentConversationId;
   const plan = useMemo(() => planTasksOf(wb.tasks, conversationId), [wb.tasks, conversationId]);
@@ -42,6 +48,19 @@ export function PlanPanel({
   const selected = wb.tasks.find((x) => x.id === selectedId) ?? null;
   const [showOthers, setShowOthers] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [draftSeed, setDraftSeed] = useState<TaskSeed | null>(null);
+  const [seedCount, setSeedCount] = useState(0);
+  useEffect(() => {
+    if (!seed) return;
+    setDraftSeed(seed);
+    setSeedCount((n) => n + 1);
+    setCreating(true);
+    onSeedUsed?.();
+  }, [seed, onSeedUsed]);
+  const closeForm = () => {
+    setCreating(false);
+    setDraftSeed(null);
+  };
   const boardFull = wb.tasks.length >= WORKBENCH_LIMITS.tasks;
 
   // Keep a node selected while the plan has any; drop a selection that left the board.
@@ -97,14 +116,21 @@ export function PlanPanel({
       {creating && (
         <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0, overflowY: 'auto', maxHeight: '50%' }}>
           <TaskForm
+            // A new seed while the form is open restarts it with that draft.
+            key={seedCount}
             t={t}
             folders={wb.folders}
             submitLabel={t('workbench.tasks.create')}
-            initial={{ title: '', prompt: '', folderId: wb.folders.length === 1 ? (wb.folders[0]?.id ?? null) : null, isolated: false }}
-            onCancel={() => setCreating(false)}
+            initial={{
+              title: draftSeed?.title ?? '',
+              prompt: draftSeed?.prompt ?? '',
+              folderId: wb.folders.length === 1 ? (wb.folders[0]?.id ?? null) : null,
+              isolated: false,
+            }}
+            onCancel={closeForm}
             onSubmit={async (draft) => {
               // A task added here joins the current conversation's plan (main files it there).
-              if (await run(() => createTask(draft))) setCreating(false);
+              if (await run(() => createTask(draft))) closeForm();
             }}
           />
         </div>

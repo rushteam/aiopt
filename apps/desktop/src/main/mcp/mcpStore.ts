@@ -19,7 +19,8 @@ import {
   MCP_ENV_KEY_RE,
   MCP_HEADER_KEY_RE,
   MCP_LIMITS,
-  agentSupportsTransport,
+  agentAcceptsServer,
+  agentNamesRemoteTransport,
   isMcpName,
   mcpSummary,
   type McpAgentId,
@@ -202,9 +203,9 @@ function pick(map: Record<string, string>, keys: string[]): Record<string, strin
   return out;
 }
 
-/** Codex's config cannot say SSE, and its HTTP entries are read back as `http`. */
+/** Only Claude and Gemini files say SSE; elsewhere every remote entry reads back as `http`. */
 function liveTransportFor(agentId: McpAgentId, s: LiveMcpServer): LiveMcpServer {
-  return agentId === 'codex' && s.transport !== 'stdio' ? { ...s, transport: 'http' } : s;
+  return !agentNamesRemoteTransport(agentId) && s.transport !== 'stdio' ? { ...s, transport: 'http' } : s;
 }
 
 export function createMcpStore(deps: McpStoreDeps) {
@@ -392,7 +393,7 @@ export function createMcpStore(deps: McpStoreDeps) {
           const r = live[a];
           if (r.state !== 'ok') continue;
           const got = r.servers.get(name);
-          const supported = s ? agentSupportsTransport(a, s.transport) : true;
+          const supported = s ? agentAcceptsServer(a, s.name, s.transport) : true;
           if (s && got) {
             const same = sameMcpServer(liveTransportFor(a, want!), got);
             agents[a] = { state: same ? 'same' : 'differs', entry: entryView(got), supported };
@@ -466,8 +467,8 @@ export function createMcpStore(deps: McpStoreDeps) {
       const s = find(name);
       if (!s) throwIpcError('NOT_FOUND', 'server not found');
       for (const a of agentIds) {
-        if (!agentSupportsTransport(a, s.transport)) {
-          throwIpcError('UNSUPPORTED_CAPABILITY', `${a} does not support ${s.transport} servers`);
+        if (!agentAcceptsServer(a, s.name, s.transport)) {
+          throwIpcError('UNSUPPORTED_CAPABILITY', `${a} cannot take this ${s.transport} server`);
         }
       }
       assertWritable(agentIds);
@@ -539,8 +540,12 @@ export function createMcpStore(deps: McpStoreDeps) {
       const spec: McpServerShape = picks.has('spec')
         ? got.transport === 'stdio'
           ? { transport: 'stdio', command: got.command, args: got.args ?? [] }
-          : // Codex reads every remote server back as http; keep the library's SSE choice there.
-            { transport: agentId === 'codex' && s.transport === 'sse' ? 'sse' : got.transport, url: got.url }
+          : // Files that store only a `url` read every remote server back as http; keep the
+            // library's SSE choice there.
+            {
+              transport: !agentNamesRemoteTransport(agentId) && s.transport === 'sse' ? 'sse' : got.transport,
+              url: got.url,
+            }
         : s.transport === 'stdio'
           ? { transport: 'stdio', command: s.command, args: s.args ?? [] }
           : { transport: s.transport, url: s.url };
@@ -577,11 +582,11 @@ export function createMcpStore(deps: McpStoreDeps) {
           const wanted = new Set(want);
           for (const n of wanted) {
             const s = find(n);
-            if (!s || !agentSupportsTransport(a, s.transport)) skipped += 1;
+            if (!s || !agentAcceptsServer(a, s.name, s.transport)) skipped += 1;
           }
           const has = new Set(present[a] ?? []);
           for (const s of doc.servers) {
-            const should = wanted.has(s.name) && agentSupportsTransport(a, s.transport);
+            const should = wanted.has(s.name) && agentAcceptsServer(a, s.name, s.transport);
             const into = should && !has.has(s.name) ? add : !wanted.has(s.name) && has.has(s.name) ? drop : null;
             if (into) into.set(s.name, [...(into.get(s.name) ?? []), a]);
           }

@@ -83,5 +83,44 @@ describe('agent import IPC', () => {
       })) as { candidates: { agentId: string }[] };
       expect(out.candidates.map((c) => c.agentId)).toEqual([...AGENT_IMPORT_AGENT_IDS]);
     });
+
+    it('marks an agent already imported, and a second add is ALREADY_EXISTS', async () => {
+      fs.mkdirSync(path.join(sandboxHome, '.dsh'));
+      fs.writeFileSync(path.join(sandboxHome, '.dsh', '.credentials.yaml'), 'DEEPSEEK_API_KEY: sk-x\n', {
+        mode: 0o600,
+      });
+      const manager = createProviderManager(
+        createProviderStore({ load: () => ({}), save: () => {} }),
+        { isAvailable: () => true, set: () => {}, get: () => null, has: () => false, delete: () => {} },
+        new Map(),
+        () => {},
+        () =>
+          ({
+            start: () => Promise.resolve(),
+            stop: () => Promise.resolve(),
+            getPort: () => 4567,
+            rebindPort: () => Promise.resolve(4568),
+            registerRoute: () => ({ baseUrl: 'http://127.0.0.1:4567/tok', token: 'tok' }),
+            unregisterRoute: () => {},
+            isRouted: () => false,
+            endpointFor: () => null,
+          }) satisfies TranslationProxy,
+        () => false,
+      );
+      const reg = createInMemoryRegistry();
+      registerAgentImportIpc(reg, manager);
+      const meta = { assertTrustedSender: () => {} };
+      const scan = async () =>
+        ((await reg.invoke(IPC_CHANNELS.providersAgentImportScan, undefined, meta)) as {
+          candidates: { agentId: string; available: boolean; alreadyAdded?: boolean }[];
+        }).candidates.find((c) => c.agentId === 'dsh');
+      expect(await scan()).toMatchObject({ available: true });
+      expect((await scan())?.alreadyAdded).toBeUndefined();
+      await reg.invoke(IPC_CHANNELS.providersAgentImportAdd, { agentId: 'dsh' }, meta);
+      expect(await scan()).toMatchObject({ available: true, alreadyAdded: true });
+      await expect(reg.invoke(IPC_CHANNELS.providersAgentImportAdd, { agentId: 'dsh' }, meta)).rejects.toThrow(
+        /ALREADY_EXISTS/,
+      );
+    });
   });
 });

@@ -268,6 +268,10 @@ const mcpSnapshot: McpSnapshot = {
     { agentId: 'claude', installed: true, configDisplayPath: '~/.claude.json', unreadable: false },
     { agentId: 'codex', installed: true, configDisplayPath: '~/.codex/config.toml', unreadable: false },
     { agentId: 'gemini', installed: true, configDisplayPath: '~/.gemini/settings.json', unreadable: false },
+    { agentId: 'cursor', installed: false, configDisplayPath: '~/.cursor/mcp.json', unreadable: false },
+    { agentId: 'opencode', installed: false, configDisplayPath: '~/.config/opencode/opencode.json', unreadable: false },
+    { agentId: 'pi', installed: false, configDisplayPath: '~/.pi/agent/mcp.json', unreadable: false },
+    { agentId: 'hermes', installed: false, configDisplayPath: '~/.hermes/config.yaml', unreadable: false },
   ],
   secretsAvailable: true,
 };
@@ -554,6 +558,8 @@ const bridge: AiOptBridge = {
     transcript: refused,
     copyResume: refused,
     export: refused,
+    copyPack: refused,
+    exportPack: refused,
   },
   mcp: {
     get: async () => mcpSnapshot,

@@ -9,6 +9,7 @@ import {
   TASK_UPDATE_MESSAGE,
 } from '../piEvents';
 import { WORKBENCH_LIMITS } from '../../../shared/workbench';
+import { attachSessionContext } from '../../../shared/sessionMention';
 
 /** The event sequence pi emitted for one propose_tasks round-trip (captured from a live run). */
 function proposalRun() {
@@ -67,6 +68,17 @@ describe('transcript reducer', () => {
     expect(items[2]).toMatchObject({ kind: 'tool', name: PROPOSE_TASKS_TOOL, result: 'ok 1', done: true });
     expect(items[3]).toMatchObject({ kind: 'assistant', text: 'Proposed.' });
     expect(tr.streaming()).toBe(false);
+  });
+
+  it('shows only what the user typed, not the session context main attached', () => {
+    const typed = 'see @session:pi:abcdefgh1234';
+    const sent = attachSessionContext(typed, ['<<<SESSION\nsecret-ish excerpt\nSESSION>>>'], []);
+    const live = createTranscript();
+    live.apply({ type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: sent }] } });
+    expect(live.items()).toEqual([expect.objectContaining({ kind: 'user', text: typed })]);
+    const loaded = createTranscript();
+    loaded.load([{ role: 'user', content: [{ type: 'text', text: sent }] }]);
+    expect(loaded.items()).toEqual([expect.objectContaining({ kind: 'user', text: typed })]);
   });
 
   it('tracks streaming between agent_start and agent_settled, honoring willRetry', () => {

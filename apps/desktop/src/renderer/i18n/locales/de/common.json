@@ -175,13 +175,15 @@
       "signedIn": "Angemeldet · {{account}}",
       "add": "Als Anbieter hinzufügen",
       "adding": "Wird hinzugefügt…",
+      "added": "Hinzugefügt",
       "reason": {
         "not_installed": "Nicht installiert",
         "not_signed_in": "Nicht angemeldet",
         "unsupported": "Noch nicht unterstützt"
       },
       "errors": {
-        "restartRequired": "App vollständig beenden, neu öffnen und erneut scannen."
+        "restartRequired": "App vollständig beenden, neu öffnen und erneut scannen.",
+        "alreadyAdded": "Bereits als Anbieter hinzugefügt."
       }
     },
     "credential": {
@@ -503,7 +505,7 @@
       },
       "detail": {
         "notInLibrary": "Noch nicht in der Bibliothek. Rufen Sie ihn von einem Agenten ab, um ihn hier zu verwalten.",
-        "cannotPush": "Dieser Agent unterstützt den Transport der Bibliothek nicht."
+        "cannotPush": "Dieser Agent kann diesen Server nicht übernehmen: Transport (SSE) oder Name werden dort nicht unterstützt."
       },
       "confirm": {
         "pushAll": "Die Bibliothekskopie dieses Servers in jeden geeigneten Agenten schreiben und dessen Kopie überschreiben?",
@@ -585,11 +587,29 @@
     "back": "Zurück",
     "showTools": "Tool-Aufrufe anzeigen",
     "copyResume": "Befehl zum Fortsetzen kopieren",
+    "newTask": "Neue Werkbank-Aufgabe",
+    "newTaskHint": "Erstellt eine Werkbank-Aufgabe, die auf diese Sitzung verweist; ihre letzten Nachrichten erhält der Agent beim Start als Hintergrund.",
     "export": "Als Markdown exportieren",
     "copied": "Befehl zum Fortsetzen kopiert.",
     "exported": "Exportiert.",
     "actionFailed": "Das hat nicht geklappt. Bitte erneut versuchen.",
     "transcriptTruncated": "Diese Sitzung ist lang; es werden nur die neuesten Nachrichten angezeigt.",
+    "pack": {
+      "start": "Nachrichten auswählen",
+      "done": "Auswahl beenden",
+      "title": "Kontextpaket",
+      "selected": "{{count}} ausgewählt",
+      "all": "Alle auswählen",
+      "clear": "Leeren",
+      "hint": "Klicken Sie auf eine Nachricht, um sie auszuwählen; Umschalt+Klick wählt einen Bereich. Das Paket ist Markdown für den Start einer neuen Sitzung.",
+      "copy": "Kontextpaket kopieren",
+      "export": "Kontextpaket exportieren",
+      "copied": "Kontextpaket mit {{count}} Nachrichten kopiert.",
+      "exported": "Kontextpaket mit {{count}} Nachrichten exportiert.",
+      "cut": "Ältere ausgewählte Nachrichten wurden weggelassen, um es kurz zu halten.",
+      "stale": "Die Sitzung hat sich seit dem Öffnen geändert. Gehen Sie zurück und öffnen Sie sie erneut.",
+      "pickOne": "Diese Nachricht auswählen ({{role}})"
+    },
     "role": {
       "user": "Du",
       "assistant": "Assistent",
@@ -759,7 +779,7 @@
       "reset": "Neue Unterhaltung",
       "empty": "Beschreiben Sie, was erledigt werden soll. Der Koordinator schlägt Aufgaben auf dem Board vor. „Ausführen“ startet jede als eigenen Agenten, der Dateien in seinem Ordner ändern kann – deshalb läuft nichts, bevor Sie auf „Ausführen“ klicken (oder die automatische Ausführung einschalten).",
       "notRunning": "Klicken Sie oben auf „Start“, um mit dem Koordinator zu chatten.",
-      "placeholder": "Nachricht an den Koordinator",
+      "placeholder": "Nachricht an den Koordinator · @ für eine Aufgabe oder Sitzung",
       "sendHint": "Eingabe zum Senden · Umschalt+Eingabe für neue Zeile",
       "taskMentionDrop": "Tab loslassen, um die Aufgabe zu referenzieren (@task)",
       "send": "Senden",
@@ -781,7 +801,14 @@
       "current": "Aktuell",
       "delete": "Löschen",
       "deleteConfirm": "Diese Unterhaltung löschen?",
-      "taskUpdate": "Aufgaben-Update (von der App gesendet)"
+      "taskUpdate": "Aufgaben-Update (von der App gesendet)",
+      "mention": {
+        "label": "Aufgabe oder Sitzung erwähnen",
+        "empty": "Keine passende Aufgabe oder Sitzung.",
+        "hint": "↑↓ zum Wechseln · Eingabe zum Einfügen · Esc zum Schließen",
+        "task": "Aufgabe",
+        "session": "Sitzung"
+      }
     },
     "notice": {
       "board_full": "Einige vorgeschlagene Aufgaben wurden verworfen: Das Aufgaben-Board ist voll.",
@@ -854,7 +881,7 @@
       "notify": "Koordinator informieren",
       "notifyHint": "Wenn eine Aufgabe Prüfung oder Eingabe braucht, fehlschlägt oder als erledigt/gestoppt markiert wird, den Koordinator benachrichtigen, damit er es im Chat zusammenfasst.",
       "promptPlaceholder": "z. B. Dem Registrierungsformular in src/auth eine Eingabeprüfung hinzufügen, dann die Unit-Tests ausführen und Fehler beheben.",
-      "promptHint": "Der Agent sieht nur diesen Text, nicht den Chat. Nennen Sie das Ziel, die betroffenen Dateien und wie das Ergebnis geprüft wird."
+      "promptHint": "Der Agent sieht nur diesen Text, nicht den Chat. Nennen Sie das Ziel, die betroffenen Dateien und wie das Ergebnis geprüft wird. Geben Sie @ ein, um eine Sitzung als Hintergrund hinzuzufügen."
     },
     "taskStatus": {
       "proposed": "Vorgeschlagen",

@@ -175,13 +175,15 @@
       "signedIn": "Connecté · {{account}}",
       "add": "Ajouter comme fournisseur",
       "adding": "Ajout…",
+      "added": "Ajouté",
       "reason": {
         "not_installed": "Non installé",
         "not_signed_in": "Non connecté",
         "unsupported": "Pas encore pris en charge"
       },
       "errors": {
-        "restartRequired": "Quittez l’app complètement, rouvrez-la, puis relancez l’analyse."
+        "restartRequired": "Quittez l’app complètement, rouvrez-la, puis relancez l’analyse.",
+        "alreadyAdded": "Déjà ajouté comme fournisseur."
       }
     },
     "credential": {
@@ -503,7 +505,7 @@
       },
       "detail": {
         "notInLibrary": "Pas encore dans la bibliothèque. Récupérez-le depuis un agent pour le gérer ici.",
-        "cannotPush": "Cet agent ne prend pas en charge le transport de la bibliothèque."
+        "cannotPush": "Cet agent ne peut pas recevoir ce serveur : son transport (SSE) ou son nom n'y est pas pris en charge."
       },
       "confirm": {
         "pushAll": "Écrire la copie de la bibliothèque de ce serveur chez chaque agent compatible, en écrasant la leur ?",
@@ -585,11 +587,29 @@
     "back": "Retour",
     "showTools": "Afficher les appels d'outils",
     "copyResume": "Copier la commande de reprise",
+    "newTask": "Nouvelle tâche d'atelier",
+    "newTaskHint": "Crée une tâche d'atelier qui fait référence à cette session ; ses messages récents sont transmis à l'agent comme contexte au démarrage.",
     "export": "Exporter en Markdown",
     "copied": "Commande de reprise copiée.",
     "exported": "Exporté.",
     "actionFailed": "Échec. Réessayez.",
     "transcriptTruncated": "Cette session est longue ; seuls les messages les plus récents sont affichés.",
+    "pack": {
+      "start": "Choisir des messages",
+      "done": "Terminer la sélection",
+      "title": "Pack de contexte",
+      "selected": "{{count}} sélectionné(s)",
+      "all": "Tout sélectionner",
+      "clear": "Effacer",
+      "hint": "Cliquez sur un message pour le choisir ; Maj+clic choisit une plage. Le pack est du Markdown pour démarrer une nouvelle session.",
+      "copy": "Copier le pack de contexte",
+      "export": "Exporter le pack de contexte",
+      "copied": "Pack de contexte de {{count}} messages copié.",
+      "exported": "Pack de contexte de {{count}} messages exporté.",
+      "cut": "Les messages choisis les plus anciens ont été omis pour rester court.",
+      "stale": "La session a changé depuis son ouverture. Revenez en arrière et rouvrez-la.",
+      "pickOne": "Choisir ce message ({{role}})"
+    },
     "role": {
       "user": "Vous",
       "assistant": "Assistant",
@@ -759,7 +779,7 @@
       "reset": "Nouvelle conversation",
       "empty": "Décrivez ce que vous voulez faire. Le coordinateur propose des tâches sur le tableau. Lancer démarre chacune comme un agent distinct qui peut modifier les fichiers de son dossier : rien ne s'exécute tant que vous n'appuyez pas sur Lancer (ou n'activez pas le lancement automatique).",
       "notRunning": "Appuyez sur Démarrer ci-dessus pour discuter avec le coordinateur.",
-      "placeholder": "Écrire au coordinateur",
+      "placeholder": "Écrire au coordinateur · tapez @ pour mentionner une tâche ou une session",
       "sendHint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
       "taskMentionDrop": "Relâchez pour référencer la tâche (@task)",
       "send": "Envoyer",
@@ -781,7 +801,14 @@
       "current": "Actuelle",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer cette conversation ?",
-      "taskUpdate": "Mise à jour des tâches (envoyée par l'application)"
+      "taskUpdate": "Mise à jour des tâches (envoyée par l'application)",
+      "mention": {
+        "label": "Mentionner une tâche ou une session",
+        "empty": "Aucune tâche ni session correspondante.",
+        "hint": "↑↓ pour naviguer · Entrée pour insérer · Échap pour fermer",
+        "task": "Tâche",
+        "session": "Session"
+      }
     },
     "notice": {
       "board_full": "Certaines tâches proposées ont été ignorées : le tableau est plein.",
@@ -854,7 +881,7 @@
       "notify": "Informer le coordinateur",
       "notifyHint": "Quand une tâche attend une revue, une réponse, échoue ou est marquée terminée/arrêtée, prévenir le coordinateur pour qu'il résume dans la conversation.",
       "promptPlaceholder": "Ex. : ajouter la validation des champs au formulaire d'inscription dans src/auth, puis lancer les tests unitaires et corriger les échecs.",
-      "promptHint": "L'agent ne voit que ce texte, pas la conversation. Indiquez l'objectif, les fichiers concernés et comment vérifier le résultat."
+      "promptHint": "L'agent ne voit que ce texte, pas la conversation. Indiquez l'objectif, les fichiers concernés et comment vérifier le résultat. Tapez @ pour ajouter une session comme contexte."
     },
     "taskStatus": {
       "proposed": "Proposée",

@@ -26,6 +26,7 @@ import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../..
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import { restoreKeepingYamlMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
 import { aioptProviderSlug, readYamlConfigDocument } from './bindingLive';
 
@@ -58,7 +59,9 @@ function readConfigDocument(file: string): Document.Parsed {
 function customProvidersSeq(doc: Document.Parsed): YAMLSeq {
   const existing = doc.get('custom_providers');
   if (isSeq(existing)) return existing;
-  doc.set('custom_providers', []);
+  // A node, not a plain `[]`: in a non-empty document `set` stores a plain array as-is, and
+  // `doc.get` then returns that array rather than a YAMLSeq.
+  doc.set('custom_providers', doc.createNode([]));
   return doc.get('custom_providers') as YAMLSeq;
 }
 
@@ -148,7 +151,8 @@ export function createHermesAdapter(): AgentAdapter {
     },
 
     restoreDefault() {
-      for (const file of this.configPaths()) restoreAgentConfigFile(file);
+      // The file also holds MCP servers (main/mcp); a restore must not roll those back.
+      for (const file of this.configPaths()) restoreKeepingYamlMcp(file, () => restoreAgentConfigFile(file));
     },
   };
 }

@@ -19,6 +19,7 @@ import { TitleBar } from './components/TitleBar';
 import { BackgroundLines } from './components/background/BackgroundLines';
 import { type AppTab } from './components/TabBar';
 import { MENU_COMMANDS, type MenuCommand } from '../shared/menuCommands';
+import type { TaskSeed } from './features/workbench/taskSeed';
 
 export function App() {
   const { resolved, setPreference } = useTheme();
@@ -28,6 +29,8 @@ export function App() {
   // wherever you were, not to a fixed "home".
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId | null>(null);
   const [experimentalMode, setExperimentalMode] = useState(false);
+  /** A task draft handed from Sessions to the workbench's new-task form (one-shot). */
+  const [taskSeed, setTaskSeed] = useState<TaskSeed | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -136,13 +139,22 @@ export function App() {
           ) : tab === 'usage' ? (
             <UsageHome />
           ) : tab === 'sessions' ? (
-            <SessionsHome />
+            <SessionsHome
+              onCreateTask={
+                experimentalMode
+                  ? (seed) => {
+                      setTaskSeed(seed);
+                      setTab('workbench');
+                    }
+                  : undefined
+              }
+            />
           ) : tab === 'mcp' ? (
             <McpHome />
           ) : tab === 'skills' ? (
             <SkillsHome />
           ) : tab === 'workbench' ? (
-            <WorkbenchHome />
+            <WorkbenchHome taskSeed={taskSeed} onTaskSeedUsed={() => setTaskSeed(null)} />
           ) : (
             <ProvidersHome />
           )}

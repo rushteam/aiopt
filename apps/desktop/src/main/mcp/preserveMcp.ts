@@ -1,10 +1,12 @@
-// MCP servers share a file with the provider binding for Codex (`config.toml`) and Gemini
-// (`settings.json`). The binding adapters rewrite that file on apply and roll it back from
+// MCP servers share a file with the provider binding for Codex (`config.toml`), Gemini
+// (`settings.json`), OpenCode / OpenChamber (`opencode.json`, key `mcp`) and Hermes
+// (`config.yaml`, key `mcp_servers`). The binding adapters rewrite that file on apply and roll it back from
 // `*.aiopt.bak` on restore; both would silently drop or revert the user's MCP servers. These
 // helpers carry the CURRENT MCP section across either operation, so binding a provider never
 // changes which MCP servers an agent has.
 
 import fs from 'node:fs';
+import { isMap, parseDocument } from 'yaml';
 import { assertAgentConfigPath, atomicWriteFile } from '../providers/fsutil';
 import { extractMcpBlocks, stripMcpBlocks } from './codexToml';
 
@@ -46,14 +48,17 @@ export function restoreKeepingCodexMcp(file: string, restore: () => void): void 
   atomicWriteFile(file, next, modeOf(file) ?? 0o600);
 }
 
-/** Run `restore` on Gemini `settings.json`; its `mcpServers` ends up as it was before. */
-export function restoreKeepingJsonMcp(file: string, restore: () => void): void {
+/**
+ * Run `restore` on a JSON config whose MCP servers live under `section` (Gemini `mcpServers`,
+ * OpenCode `mcp`); that section ends up as it was before.
+ */
+export function restoreKeepingJsonMcp(file: string, restore: () => void, section = 'mcpServers'): void {
   const before = readOrNull(file);
   let current: unknown;
   try {
     const parsed: unknown = before === null ? {} : JSON.parse(before);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
-    current = (parsed as { mcpServers?: unknown }).mcpServers;
+    current = (parsed as Record<string, unknown>)[section];
   } catch {
     // The current file is not readable JSON: we cannot tell what to keep; plain restore.
     restore();
@@ -71,9 +76,33 @@ export function restoreKeepingJsonMcp(file: string, restore: () => void): void {
     // An unparseable restored original would not have been loadable by the agent either.
     return;
   }
-  const { mcpServers: _old, ...rest } = restored;
-  const next = current === undefined ? rest : { ...rest, mcpServers: current };
+  const { [section]: _old, ...rest } = restored;
+  const next = current === undefined ? rest : { ...rest, [section]: current };
   if (current === undefined && _old === undefined) return;
   assertAgentConfigPath(file);
   atomicWriteFile(file, `${JSON.stringify(next, null, 2)}\n`, modeOf(file) ?? 0o600);
+}
+
+/** Run `restore` on Hermes `config.yaml`; its `mcp_servers` ends up as it was before. */
+export function restoreKeepingYamlMcp(file: string, restore: () => void, section = 'mcp_servers'): void {
+  const before = parseDocument(readOrNull(file) ?? '');
+  if (before.errors.length > 0 || (before.contents !== null && !isMap(before.contents))) {
+    // Not a YAML map: we cannot tell what to keep; plain restore.
+    restore();
+    return;
+  }
+  const current = before.get(section, true);
+  restore();
+  const afterText = readOrNull(file);
+  if (afterText === null && current === undefined) return;
+  const after = parseDocument(afterText ?? '');
+  // An unparseable restored original would not have been loadable by the agent either.
+  if (after.errors.length > 0 || (after.contents !== null && !isMap(after.contents))) return;
+  if (current === undefined && !after.has(section)) return;
+  if (current === undefined) after.delete(section);
+  else after.set(section, current);
+  const next = after.toString();
+  if (next === afterText) return;
+  assertAgentConfigPath(file);
+  atomicWriteFile(file, next, modeOf(file) ?? 0o600);
 }

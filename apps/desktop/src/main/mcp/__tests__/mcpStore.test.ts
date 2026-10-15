@@ -164,6 +164,25 @@ describe('mcp store', () => {
     expect(confirmWrite).not.toHaveBeenCalled();
   });
 
+  it('pi and Hermes refuse SSE; pi also refuses a name with a dot', async () => {
+    const { store, confirmWrite } = makeStore();
+    store.save(validateSaveRequest({ name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [] }));
+    store.save(validateSaveRequest({ ...fsServer, name: 'my.fs', env: [] }));
+    const web = rowOf(store.snapshot(), 'web')!.agents;
+    expect(web).toMatchObject({ pi: { supported: false }, hermes: { supported: false }, cursor: { supported: true }, opencode: { supported: true } });
+    expect(rowOf(store.snapshot(), 'my.fs')!.agents).toMatchObject({ pi: { supported: false }, hermes: { supported: true } });
+    await expect(store.push('my.fs', ['pi'])).rejects.toSatisfy((e) => codeOf(e) === 'UNSUPPORTED_CAPABILITY');
+    expect(confirmWrite).not.toHaveBeenCalled();
+  });
+
+  it('an SSE server pushed to Cursor or OpenCode reads back as the same server', async () => {
+    const { store } = makeStore();
+    store.save(validateSaveRequest({ name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [] }));
+    const r = await store.push('web', ['cursor', 'opencode']);
+    expect(r.saved).toBe(true);
+    expect(rowOf(r.snapshot, 'web')!.agents).toMatchObject({ cursor: { state: 'same' }, opencode: { state: 'same' } });
+  });
+
   it('editing the library leaves agent files alone; the agent shows differs until pushed', async () => {
     const { store, confirmWrite } = makeStore();
     store.save(validateSaveRequest(fsServer));
@@ -345,9 +364,9 @@ describe('mcp IPC', () => {
     registerMcpIpc(reg, store);
     const invalid = async (ch: string, payload: unknown) =>
       expect(reg.invoke(ch, payload, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
-    await invalid(IPC_CHANNELS.mcpPull, { agentId: 'pi', name: 'fs' });
+    await invalid(IPC_CHANNELS.mcpPull, { agentId: 'droid', name: 'fs' });
     await invalid(IPC_CHANNELS.mcpPush, { name: 'fs', agentIds: [] });
-    await invalid(IPC_CHANNELS.mcpPush, { name: 'fs', agentIds: ['claude', 'pi'] });
+    await invalid(IPC_CHANNELS.mcpPush, { name: 'fs', agentIds: ['claude', 'droid'] });
     await invalid(IPC_CHANNELS.mcpDeleteAgent, { agentId: 'claude', name: '../x' });
     await invalid(IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'fs', agentPicks: 'spec' });
     await invalid(IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'fs', agentPicks: [1] });
@@ -404,7 +423,7 @@ describe('mcp enabled sets (config profiles)', () => {
     await store.push('fs', ['claude', 'codex']);
     await store.push('web', ['claude']);
     // `gh` is only in Claude's file, not the library: profiles do not record it.
-    expect(store.enabledSets()).toEqual({ claude: ['fs', 'web'], codex: ['fs'], gemini: [] });
+    expect(store.enabledSets()).toMatchObject({ claude: ['fs', 'web'], codex: ['fs'], gemini: [], cursor: [], pi: [] });
   });
 
   it('applies a set with one confirmation for all adds; removals need none; hand-written entries stay', async () => {
@@ -422,7 +441,7 @@ describe('mcp enabled sets (config profiles)', () => {
     expect(plan).toMatchObject({ proceed: true, skipped: 2 });
     expect(store.enabledSets().claude).toEqual(['web']); // nothing changed before commit
     plan.commit();
-    expect(store.enabledSets()).toEqual({ claude: ['fs'], codex: ['fs'], gemini: ['fs'] });
+    expect(store.enabledSets()).toMatchObject({ claude: ['fs'], codex: ['fs'], gemini: ['fs'] });
     expect(Object.keys(claudeServers()).sort()).toEqual(['fs', 'gh']);
     const codex = readAgentMcp('codex');
     expect(codex.state === 'ok' && [...codex.servers.keys()]).toEqual(['fs']);
@@ -436,7 +455,7 @@ describe('mcp enabled sets (config profiles)', () => {
     const plan = await store.planEnabledSets({ claude: [] });
     expect(confirmWrite).not.toHaveBeenCalled();
     plan.commit();
-    expect(store.enabledSets()).toEqual({ claude: [], codex: ['fs'], gemini: [] });
+    expect(store.enabledSets()).toMatchObject({ claude: [], codex: ['fs'], gemini: [] });
   });
 
   it('a declined plan changes nothing', async () => {

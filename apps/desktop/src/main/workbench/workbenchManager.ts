@@ -62,6 +62,13 @@ import {
   isValidHerdrSshTarget,
 } from '../../shared/workbench';
 import { expandTaskMentions } from '../../shared/taskMention';
+import {
+  attachSessionContext,
+  parseSessionMentions,
+  sessionContextBlock,
+  stripSessionContext,
+} from '../../shared/sessionMention';
+import type { SessionRef, SessionTranscript } from '../../shared/agentSessions';
 import { throwIpcError } from '../ipc/validate';
 import type { Logger } from '../logger';
 import { homeRelativeDisplayPath } from '../displayPath';
@@ -159,6 +166,11 @@ export interface WorkbenchDeps {
   logger: Logger;
   /** Test seam; defaults to the real CLI client over `exec`. */
   createHerdr?: (opts: HerdrClientOptions) => HerdrClient;
+  /**
+   * Read an agent session for an @session mention (the read-only session store). Absent:
+   * mentions stay as typed. Its text goes to the coordinator fenced as untrusted data.
+   */
+  readSession?: (ref: SessionRef) => Promise<SessionTranscript>;
 }
 
 export interface TaskDraft {
@@ -838,7 +850,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           : Array.isArray(content)
             ? content.map((block) => (typeof block?.text === 'string' ? block.text : '')).join(' ')
             : '';
-      const title = sanitizeWorkbenchText(text).replace(/\s+/g, ' ').trim();
+      const title = sanitizeWorkbenchText(stripSessionContext(text)).replace(/\s+/g, ' ').trim();
       if (title !== '') return title.slice(0, WORKBENCH_LIMITS.conversationTitle);
     }
     return '';
@@ -1308,16 +1320,36 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     const client = requireOrchestrator();
     const message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.chatText);
     if (message === '') throwIpcError('INVALID_PARAMS', 'message is empty');
-    const promptText = expandTaskMentions(
+    let promptText = expandTaskMentions(
       message,
       [...tasks.values()].map((t) => ({ id: t.id, title: t.title, status: t.status })),
     );
+    promptText = await withSessionContext(promptText);
     try {
       await client.prompt(promptText, transcript.streaming());
     } catch (err) {
       transcript.pushError(err instanceof Error ? err.message : 'prompt failed');
       changed();
     }
+  }
+
+  /** Attach an excerpt of each @session the message names (see shared/sessionMention.ts). */
+  async function withSessionContext(text: string): Promise<string> {
+    const read = deps.readSession;
+    const refs = read ? parseSessionMentions(text) : [];
+    if (!read || refs.length === 0) return text;
+    const blocks: string[] = [];
+    const missing: SessionRef[] = [];
+    for (const ref of refs) {
+      try {
+        blocks.push(sessionContextBlock(await read(ref)));
+      } catch {
+        missing.push(ref);
+      }
+    }
+    // Counts only: session text is never logged.
+    log.info('workbench.session_context', { attached: blocks.length, missing: missing.length });
+    return attachSessionContext(text, blocks, missing);
   }
 
   async function chatAbort(): Promise<void> {
@@ -1601,7 +1633,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       const agentName = `wb-${t.id}`;
       t.agentName = agentName;
       await client.agentStart(agentName, paneId, WORKER_PI_ARGS);
-      await client.agentPrompt(agentName, t.prompt);
+      // The board keeps the prompt as written; @session excerpts are attached only on the way
+      // to the worker (same as the coordinator chat), so the snapshot and list_tasks stay small.
+      await client.agentPrompt(agentName, await withSessionContext(t.prompt));
       if (seq !== startSeq || t.status !== 'starting') {
         // Stopped (or the workbench restarted) while the worker came up: nothing will ever
         // close this workspace if we don't, since stop already ran past it.
@@ -1703,7 +1737,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     const message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.taskPrompt);
     if (message === '' || !t.agentName) throwIpcError('INVALID_PARAMS', 'message is empty');
     try {
-      await client.agentPrompt(t.agentName, message);
+      await client.agentPrompt(t.agentName, await withSessionContext(message));
     } catch (err) {
       log.warn('workbench.task_message_failed', { code: errorCode(err) });
       throwIpcError('UPSTREAM_ERROR', 'could not reach the worker');

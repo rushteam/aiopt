@@ -10,7 +10,7 @@
 // The renderer holds no capability here: every action is a named IPC call carrying an opaque
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
@@ -40,10 +40,19 @@ import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
+import { useMentionSource } from './mentionPicker';
+import type { TaskSeed } from './taskSeed';
 import { WorkbenchSplitPane } from './WorkbenchSplitPane';
 import { WorkspaceTabScreen } from '../../components/TabScreenShell';
 
-export function WorkbenchHome() {
+export function WorkbenchHome({
+  taskSeed = null,
+  onTaskSeedUsed,
+}: {
+  /** Opens the new-task form prefilled (from Sessions). */
+  taskSeed?: TaskSeed | null;
+  onTaskSeedUsed?: () => void;
+} = {}) {
   const t = useT();
   const wb = useWorkbench();
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +120,15 @@ export function WorkbenchHome() {
               />
             }
             right={
-              <PlanPanel wb={wb} t={t} run={run} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+              <PlanPanel
+                wb={wb}
+                t={t}
+                run={run}
+                selectedId={selectedTaskId}
+                onSelectTask={setSelectedTaskId}
+                seed={taskSeed}
+                onSeedUsed={onTaskSeedUsed}
+              />
             }
           />
         </div>
@@ -181,6 +198,8 @@ function ChatPane({
   const addTaskMention = (taskId: string): void => {
     setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
   };
+
+  const mentions = useMentionSource(t, wb.tasks);
 
   return (
     <section
@@ -294,6 +313,7 @@ function ChatPane({
           abortLabel={t('workbench.chat.abort')}
           onTaskMentionDrop={ready ? addTaskMention : undefined}
           dropHint={t('workbench.chat.taskMentionDrop')}
+          mentions={mentions}
         />
       </div>
     </section>

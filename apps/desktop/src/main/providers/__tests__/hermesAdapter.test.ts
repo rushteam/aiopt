@@ -76,6 +76,15 @@ describe('hermes adapter — writeLive', () => {
     });
   });
 
+  it('adds custom_providers to an existing config that has none', () => {
+    fs.mkdirSync(path.dirname(configFile()), { recursive: true });
+    fs.writeFileSync(configFile(), '# mine\ntheme: dark\n');
+    createHermesAdapter().writeLive({ provider, apiFormat: 'openai', modelId: 'gpt-4o', apiKey: 'k' });
+    expect(readRaw()).toContain('# mine');
+    expect(readConfig().theme).toBe('dark');
+    expect(customProviders()).toHaveLength(1);
+  });
+
   it('maps each accepted apiFormat to the right Hermes api_mode', () => {
     const adapter = createHermesAdapter();
     adapter.writeLive({ provider, apiFormat: 'anthropic', modelId: 'gpt-4o', apiKey: 'k' });

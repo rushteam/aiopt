@@ -10,6 +10,7 @@ import {
 } from '../../../shared/workbench';
 import { messageTask, readTaskOutput } from '../../lib/workbenchStore';
 import { WorkbenchChatComposer, WorkbenchChatThread, type WorkbenchChatLine } from './workbenchChat';
+import { useMentionSource } from './mentionPicker';
 
 const OUTPUT_POLL_MS = 2000;
 
@@ -25,6 +26,8 @@ export function TaskChatPane({
   run: (action: () => Promise<void>) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState('');
+  // Sessions only: a worker gets @session excerpts attached, but has no board to resolve @task.
+  const mentions = useMentionSource(t);
   const [liveOutput, setLiveOutput] = useState<string | null>(null);
   const live = isLiveTaskStatus(task.status);
   const canMessage = taskAllows('message', task.status);
@@ -108,6 +111,7 @@ export function TaskChatPane({
           sendHint={t('workbench.chat.sendHint')}
           sendLabel={t('workbench.chat.send')}
           rows={3}
+          mentions={mentions}
         />
       </div>
     </section>

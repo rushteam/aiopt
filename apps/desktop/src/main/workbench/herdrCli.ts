@@ -103,7 +103,11 @@ const PANE_BUSY_DELAY_MS = 750;
  */
 const WORKSPACE_ID_RE = /^w[0-9A-Z]{1,9}$/;
 const PANE_ID_RE = /^w[0-9A-Z]{1,9}:p[0-9A-Z]{1,9}$/;
-const MAX_PROMPT = 16_000;
+/**
+ * One `herdr agent prompt` argument. Fits a task prompt (8k) plus three attached @session
+ * excerpts (12k each) with room to spare, and stays far below the OS argv limits.
+ */
+const MAX_PROMPT = 64_000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)

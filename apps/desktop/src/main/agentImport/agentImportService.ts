@@ -41,6 +41,7 @@ import {
   readGeminiAccessToken,
   readGeminiAccessTokenSync,
 } from './geminiSession';
+import { dshInstallDirExists, dshSessionSnapshot, readDshAccessTokenSync } from './dshSession';
 import {
   grokInstallDirExists,
   grokSessionSnapshot,
@@ -55,6 +56,7 @@ function agentInstalled(agentId: AgentImportAgentId): boolean {
   if (agentId === 'devin') return devinInstallDirExists();
   if (agentId === 'gemini') return geminiOAuthCredsExist();
   if (agentId === 'cursor') return cursorAuthFileExists();
+  if (agentId === 'dsh') return dshInstallDirExists();
   try {
     return fs.existsSync(agentConfigDir(agentId));
   } catch {
@@ -160,6 +162,16 @@ export function scanAgentImportCandidates(): AgentImportCandidate[] {
         reason: snap.available ? undefined : 'not_signed_in',
       };
     }
+    if (agentId === 'dsh') {
+      const snap = dshSessionSnapshot();
+      return {
+        agentId,
+        agentName,
+        available: snap.available,
+        accountLabel: snap.accountLabel,
+        reason: snap.available ? undefined : 'not_signed_in',
+      };
+    }
     return { agentId, agentName, available: false, accountLabel: null, reason: 'unsupported' };
   });
 }
@@ -177,6 +189,7 @@ export function readAgentImportAccessTokenSync(agentId: AgentImportAgentId): str
   if (agentId === 'devin') return readDevinAccessTokenSync();
   if (agentId === 'gemini') return readGeminiAccessTokenSync();
   if (agentId === 'cursor') return readCursorAccessTokenSync();
+  if (agentId === 'dsh') return readDshAccessTokenSync();
   return null;
 }
 
@@ -191,6 +204,7 @@ export async function readAgentImportAccessToken(
   if (agentId === 'devin') return readDevinAccessTokenSync();
   if (agentId === 'gemini') return readGeminiAccessToken(fetchImpl);
   if (agentId === 'cursor') return readCursorAccessTokenSync();
+  if (agentId === 'dsh') return readDshAccessTokenSync();
   return null;
 }
 

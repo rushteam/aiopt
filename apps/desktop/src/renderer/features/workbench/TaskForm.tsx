@@ -1,13 +1,14 @@
 // The task form (title, prompt, where it runs, and — for a plan node — what it waits on) and
 // the folder picker it uses. Shared by the task board and the plan's node detail.
 
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { CheckboxField } from '../../components/ui/Checkbox';
 import { Select } from '../../components/ui/Select';
 import { WORKBENCH_LIMITS, type FolderView } from '../../../shared/workbench';
+import { useMentionPicker, useMentionSource } from './mentionPicker';
 
 export interface Draft {
   title: string;
@@ -41,6 +42,16 @@ export function TaskForm({
 }) {
   const [draft, setDraft] = useState<Draft>(initial);
   const [saving, setSaving] = useState(false);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+  // `@` in the prompt picks a session; its excerpt is attached when the worker starts.
+  const picker = useMentionPicker({
+    mentions: useMentionSource(t),
+    draft: draft.prompt,
+    setDraft: (prompt) => setDraft((d) => ({ ...d, prompt })),
+    maxLength: WORKBENCH_LIMITS.taskPrompt,
+    textRef: promptRef,
+    placement: 'inline',
+  });
   const valid = draft.title.trim() !== '' && draft.prompt.trim() !== '';
   return (
     <form
@@ -64,13 +75,22 @@ export function TaskForm({
       <label style={fieldStyle}>
         <span style={labelStyle}>{t('workbench.tasks.promptLabel')}</span>
         <textarea
+          ref={promptRef}
           value={draft.prompt}
-          onChange={(e) => setDraft({ ...draft, prompt: e.target.value })}
+          onChange={(e) => {
+            setDraft({ ...draft, prompt: e.target.value });
+            picker.sync(e.target);
+          }}
+          onKeyDown={(e) => {
+            picker.onKeyDown(e);
+          }}
+          {...picker.textareaProps}
           maxLength={WORKBENCH_LIMITS.taskPrompt}
           rows={5}
           placeholder={t('workbench.tasks.promptPlaceholder')}
           style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
         />
+        {picker.menu}
         <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('workbench.tasks.promptHint')}</span>
       </label>
       {!lockPlace && (

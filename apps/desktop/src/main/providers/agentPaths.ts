@@ -48,14 +48,22 @@ export const AGENT_FILES = Object.fromEntries(
 
 /**
  * MCP config files, relative to home, for the agents whose MCP servers AiOpt manages
- * (main/mcp). Part of the write allowlist. Codex and Gemini keep MCP servers in a file the
- * binding adapter also writes; Claude Code keeps user-scope servers in `~/.claude.json`, its
+ * (main/mcp). Part of the write allowlist. Codex, Gemini, OpenCode and Hermes keep MCP servers
+ * in a file the binding adapter also writes; Claude Code keeps user-scope servers in `~/.claude.json`, its
  * large state file, which AiOpt only ever touches for the `mcpServers` key.
  */
 export const MCP_CONFIG_FILES = {
   claude: '.claude.json',
   codex: AGENT_FILES.codex.config,
   gemini: AGENT_FILES.gemini.settings,
+  // Cursor has no binding; its MCP file is the only Cursor file AiOpt writes.
+  cursor: '.cursor/mcp.json',
+  // Also the OpenCode binding file (and OpenChamber's, which runs on OpenCode's config).
+  opencode: AGENT_FILES.opencode.config,
+  // pi keeps MCP servers in their own file, apart from the binding's three.
+  pi: '.pi/agent/mcp.json',
+  // Also the Hermes binding file.
+  hermes: AGENT_FILES.hermes.config,
 } as const;
 
 /** The directory whose existence signals an agent is installed — derived from {@link AGENT_SPECS}. */

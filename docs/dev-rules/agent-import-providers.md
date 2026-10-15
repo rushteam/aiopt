@@ -24,6 +24,12 @@ into that file** so the agent stays signed in).
 | Codex | `.codex/auth.json` (`tokens`, not `auth_mode: apikey`) | Yes — OpenAI OAuth refresh |
 | Claude Code | `.claude/.credentials.json` (`claudeAiOauth`), or macOS Keychain item `Claude Code-credentials` when the file is absent | Yes — writes `.credentials.json` when refreshing |
 | Copilot | `~/.config/github-copilot/apps.json` and/or Copilot CLI `~/.copilot/config.json` + macOS Keychain `copilot-cli` | Best-effort; upstream is GitHub OAuth |
+| dsh (DeepSeek Harness) | `$DSH_HOME/.credentials.yaml` (default `~/.dsh`; `AIOPT_AGENT_HOME` wins in dev/test), ref `DEEPSEEK_API_KEY` under `refs:` (v1) or at the root (pre-release flat layout). Symlinks are not followed. Only this ref is read, never the `AIOPT_*_KEY` refs the dsh binding writes. | No — it is a plain API key, never written by an import |
+
+dsh is the one source that is an **API key, not a sign-in**. It still follows the same split:
+the key stays in dsh's file and is read at request time (a key rotated in dsh takes effect
+without re-import); nothing is copied into AiOpt's secret store. dsh's DeepSeek *account*
+sign-in (`x-dsh-auth-token`) is a dsh-private API and is not imported.
 
 macOS Keychain reads use `security find-generic-password` main-side only; tokens never cross IPC.
 

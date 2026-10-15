@@ -1,12 +1,14 @@
 // Sessions — a reader over the agents' own session logs (Claude Code / Codex / Cursor / pi).
 //
 // Main scans the logs read-only; this screen lists sessions (search by title, folder,
-// branch or model), opens one transcript on request, and offers two main-side actions:
-// copy the resume command (clipboard) and export as Markdown (save dialog). Session text
-// is rendered as plain text only — never as HTML — since it is arbitrary model output.
+// branch or model), opens one transcript on request, and offers main-side actions: copy the
+// resume command (clipboard), export as Markdown (save dialog), and — after picking messages —
+// copy or export a context pack to start a new session with. Packs are built main-side from
+// the picked entry indexes. Session text is rendered as plain text only — never as HTML —
+// since it is arbitrary model output.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
 import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
@@ -14,11 +16,14 @@ import { LoadingButton } from '../../components/ui/LoadingButton';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { Select } from '../../components/ui/Select';
 import { buttonGhostChrome, controlInputStyle } from '../../components/ui/controlStyles';
-import { AGENT_SPECS } from '../../../shared/aiProviders';
 import { SESSION_AGENT_IDS } from '../../../shared/agentSessions';
+import { decodeIpcError } from '../../../shared/ipc-errors';
+import { agentName, sessionMatches, shortDir } from './sessionSearch';
+import { packIndexes, toggleSelection } from './packSelection';
+import { taskSeedFromSession, type TaskSeed } from '../workbench/taskSeed';
 import type {
+  SessionPackRequest,
   SessionRef,
-  SessionSummary,
   SessionsSnapshot,
   SessionTranscript,
   TranscriptEntry,
@@ -29,21 +34,13 @@ function fmtDate(ts: number): string {
   return ts > 0 ? dateFormat.format(ts) : '';
 }
 
-const agentName = (id: string): string =>
-  Object.hasOwn(AGENT_SPECS, id) ? AGENT_SPECS[id as keyof typeof AGENT_SPECS].name : id;
 
-/** Show the last two path segments — enough to recognise a project. */
-function shortDir(cwd: string): string {
-  const parts = cwd.split(/[\\/]/).filter(Boolean);
-  return parts.length <= 2 ? cwd : `…/${parts.slice(-2).join('/')}`;
-}
-
-function matches(s: SessionSummary, q: string): boolean {
-  if (!q) return true;
-  return [s.title, s.cwd, s.gitBranch, s.model, s.sessionId].some((f) => f.toLowerCase().includes(q));
-}
-
-export function SessionsHome() {
+export function SessionsHome({
+  onCreateTask,
+}: {
+  /** Opens the workbench's new-task form with this draft; absent when the workbench is off. */
+  onCreateTask?: (seed: TaskSeed) => void;
+} = {}) {
   const t = useT();
   const [snap, setSnap] = useState<SessionsSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,9 +62,9 @@ export function SessionsHome() {
 
   useEffect(() => load(false), [load]);
 
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   const visible = useMemo(
-    () => (snap ? snap.sessions.filter((s) => (!agentFilter || s.agentId === agentFilter) && matches(s, q)) : []),
+    () => (snap ? snap.sessions.filter((s) => (!agentFilter || s.agentId === agentFilter) && sessionMatches(s, q)) : []),
     [snap, q, agentFilter],
   );
   // Every readable agent is offered (with its session count) so the list doesn't reshuffle
@@ -87,7 +84,7 @@ export function SessionsHome() {
   if (open) {
     return (
       <ScrollTabScreen>
-        <TranscriptView sessionRef={open} onBack={() => setOpen(null)} t={t} />
+        <TranscriptView sessionRef={open} onBack={() => setOpen(null)} onCreateTask={onCreateTask} t={t} />
       </ScrollTabScreen>
     );
   }
@@ -158,12 +155,26 @@ export function SessionsHome() {
   );
 }
 
-function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onBack: () => void; t: TranslateFn }) {
+function TranscriptView({
+  sessionRef,
+  onBack,
+  onCreateTask,
+  t,
+}: {
+  sessionRef: SessionRef;
+  onBack: () => void;
+  onCreateTask?: (seed: TaskSeed) => void;
+  t: TranslateFn;
+}) {
   const [data, setData] = useState<SessionTranscript | null>(null);
   const [failed, setFailed] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'copy' | 'export' | null>(null);
+  const [busy, setBusy] = useState<'copy' | 'export' | 'copyPack' | 'exportPack' | null>(null);
+  /** Picking messages for a context pack; indexes into `data.entries`. */
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<ReadonlySet<number>>(() => new Set());
+  const [anchor, setAnchor] = useState<number | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -188,8 +199,46 @@ function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onB
       .finally(() => setBusy(null));
   };
 
-  const entries = data ? data.entries.filter((e) => showTools || e.role !== 'tool') : [];
+  // Indexes into the full entry list, so a pick survives toggling tool calls on and off.
+  const shown = useMemo(
+    () => (data ? data.entries.map((e, i) => ({ e, i })).filter(({ e }) => showTools || e.role !== 'tool') : []),
+    [data, showTools],
+  );
+  const shownIndexes = useMemo(() => shown.map(({ i }) => i), [shown]);
+  const pack = packIndexes(picked, shownIndexes);
   const s = data?.session;
+
+  const pick = (index: number, range: boolean) => {
+    setPicked((cur) => toggleSelection(cur, index, { range, anchor, visible: shownIndexes }));
+    setAnchor(index);
+  };
+
+  const stopPicking = () => {
+    setPicking(false);
+    setPicked(new Set());
+    setAnchor(null);
+  };
+
+  const runPack = (kind: 'copyPack' | 'exportPack') => {
+    if (!data || pack.length === 0) return;
+    const request: SessionPackRequest = {
+      ...sessionRef,
+      indexes: pack,
+      total: data.entries.length,
+      firstTs: data.entries[0]?.ts ?? 0,
+    };
+    setBusy(kind);
+    setNotice(null);
+    const p = kind === 'copyPack' ? window.aiopt.sessions.copyPack(request) : window.aiopt.sessions.exportPack(request);
+    p.then((r) => {
+      if (!r.saved) return null;
+      const done = fill(t(kind === 'copyPack' ? 'sessions.pack.copied' : 'sessions.pack.exported'), { count: r.included });
+      return r.cut ? `${done} ${t('sessions.pack.cut')}` : done;
+    })
+      .then(setNotice)
+      .catch((err: unknown) => setNotice(isStale(err) ? t('sessions.pack.stale') : t('sessions.actionFailed')))
+      .finally(() => setBusy(null));
+  };
 
   return (
     <>
@@ -202,6 +251,28 @@ function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onB
           <Checkbox id="sessions-show-tools" checked={showTools} onChange={setShowTools} aria-label={t('sessions.showTools')} />
           <label htmlFor="sessions-show-tools">{t('sessions.showTools')}</label>
         </span>
+        <button
+          type="button"
+          aria-pressed={picking}
+          disabled={!data || data.entries.length === 0}
+          onClick={() => (picking ? stopPicking() : setPicking(true))}
+          {...hoverBackground(picking ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
+          style={{ ...buttonGhostChrome('md'), opacity: !data || data.entries.length === 0 ? disabledOpacity : 1 }}
+        >
+          {picking ? t('sessions.pack.done') : t('sessions.pack.start')}
+        </button>
+        {onCreateTask && (
+          <button
+            type="button"
+            disabled={!s}
+            title={t('sessions.newTaskHint')}
+            onClick={() => s && onCreateTask(taskSeedFromSession(s, t('sessions.untitled')))}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={{ ...buttonGhostChrome('md'), opacity: s ? 1 : disabledOpacity }}
+          >
+            {t('sessions.newTask')}
+          </button>
+        )}
         <LoadingButton variant="ghost" loading={busy === 'copy'} disabled={!data} onClick={() => run('copy')}>
           {t('sessions.copyResume')}
         </LoadingButton>
@@ -209,6 +280,37 @@ function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onB
           {t('sessions.export')}
         </LoadingButton>
       </section>
+      {picking && data && (
+        <section aria-label={t('sessions.pack.title')} style={packBarStyle}>
+          <span style={{ fontSize: fontSize.md, fontVariantNumeric: 'tabular-nums' }}>
+            {fill(t('sessions.pack.selected'), { count: pack.length })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPicked(new Set(shownIndexes))}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={buttonGhostChrome('sm')}
+          >
+            {t('sessions.pack.all')}
+          </button>
+          <button
+            type="button"
+            disabled={pack.length === 0}
+            onClick={() => setPicked(new Set())}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={{ ...buttonGhostChrome('sm'), opacity: pack.length === 0 ? disabledOpacity : 1 }}
+          >
+            {t('sessions.pack.clear')}
+          </button>
+          <span style={{ flex: 1, minWidth: 0, fontSize: fontSize.sm, color: token('textMuted') }}>{t('sessions.pack.hint')}</span>
+          <LoadingButton variant="ghost" size="sm" loading={busy === 'exportPack'} disabled={pack.length === 0} onClick={() => runPack('exportPack')}>
+            {t('sessions.pack.export')}
+          </LoadingButton>
+          <LoadingButton variant="accent" size="sm" loading={busy === 'copyPack'} disabled={pack.length === 0} onClick={() => runPack('copyPack')}>
+            {t('sessions.pack.copy')}
+          </LoadingButton>
+        </section>
+      )}
       {notice && (
         <p role="status" style={{ margin: `0 0 ${space.lg}px`, fontSize: fontSize.sm, color: token('textMuted') }}>
           {notice}
@@ -233,8 +335,13 @@ function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onB
             </p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: space.lg }}>
-            {entries.map((e, i) => (
-              <Entry key={i} entry={e} t={t} />
+            {shown.map(({ e, i }) => (
+              <Entry
+                key={i}
+                entry={e}
+                t={t}
+                pick={picking ? { checked: picked.has(i), onPick: (range) => pick(i, range) } : undefined}
+              />
             ))}
           </div>
         </>
@@ -243,7 +350,16 @@ function TranscriptView({ sessionRef, onBack, t }: { sessionRef: SessionRef; onB
   );
 }
 
-function Entry({ entry, t }: { entry: TranscriptEntry; t: TranslateFn }) {
+function Entry({
+  entry,
+  t,
+  pick,
+}: {
+  entry: TranscriptEntry;
+  t: TranslateFn;
+  /** Set while picking messages for a context pack. */
+  pick?: { checked: boolean; onPick: (range: boolean) => void };
+}) {
   const label =
     entry.role === 'tool'
       ? entry.toolName
@@ -251,16 +367,43 @@ function Entry({ entry, t }: { entry: TranscriptEntry; t: TranslateFn }) {
         : t('sessions.role.tool')
       : t(`sessions.role.${entry.role}`);
   const isUser = entry.role === 'user';
+  const checked = pick?.checked === true;
   return (
     <article
+      // While picking, a click anywhere on the message toggles it (Shift extends a range);
+      // the checkbox is the keyboard path. Text selection still works with a drag.
+      onClick={
+        pick
+          ? (e) => {
+              if (window.getSelection()?.toString()) return;
+              if ((e.target as HTMLElement).closest('button')) return;
+              pick.onPick(e.shiftKey);
+            }
+          : undefined
+      }
       style={{
-        border: `1px solid ${token('border')}`,
+        border: `1px solid ${checked ? token('accent') : token('border')}`,
         borderRadius: radius.lg,
         background: isUser ? token('surface') : token('bg'),
         padding: space.lg,
+        cursor: pick ? 'pointer' : undefined,
+        boxShadow: checked ? `inset 0 0 0 1px ${token('accent')}` : undefined,
       }}
     >
-      <div style={{ fontSize: fontSize.sm, color: token('textMuted'), marginBottom: space.sm }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: space.sm, fontSize: fontSize.sm, color: token('textMuted'), marginBottom: space.sm }}>
+        {pick && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              pick.onPick(e.shiftKey);
+            }}
+            style={{ display: 'inline-flex' }}
+          >
+            <Checkbox checked={checked} onChange={() => {}} aria-label={fill(t('sessions.pack.pickOne'), { role: label })} />
+          </span>
+        )}
+        <span>{label}</span>
+      </div>
       <div
         style={{
           whiteSpace: 'pre-wrap',
@@ -300,6 +443,29 @@ const rowButtonStyle = {
   cursor: 'pointer',
   minWidth: 0,
 } as const;
+
+const packBarStyle = {
+  ...tabScreenSectionStyle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.md,
+  flexWrap: 'wrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 5,
+  padding: `${space.md}px ${space.lg}px`,
+  border: `1px solid ${token('border')}`,
+  borderRadius: radius.lg,
+  background: token('surface'),
+} as const;
+
+function isStale(err: unknown): boolean {
+  return err instanceof Error && decodeIpcError(err.message).code === 'PRECONDITION_FAILED';
+}
+
+function fill(text: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce((s, [k, v]) => s.replace(`{{${k}}}`, String(v)), text);
+}
 
 const metaStyle = {
   fontSize: fontSize.sm,
