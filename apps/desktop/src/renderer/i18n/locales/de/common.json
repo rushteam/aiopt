@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "Tägliche Token",
-      "empty": "Keine täglichen Daten."
+      "empty": "Keine täglichen Daten.",
+      "rangeLabel": "Diagrammzeitraum",
+      "range": "{{days}} T",
+      "avgLine": "Ø {{value}}",
+      "trend": "Gleitender {{days}}-Tage-Durchschnitt",
+      "avgLegend": "Zeitraumdurchschnitt",
+      "vsAvg": "ggü. Durchschnitt"
     },
     "breakdown": {
       "byProvider": "Nach Anbieter",
@@ -402,7 +408,8 @@
       "requests": "Anfragen",
       "inputTokens": "Eingabe",
       "outputTokens": "Ausgabe",
-      "totalTokens": "Gesamt"
+      "totalTokens": "Gesamt",
+      "share": "Anteil"
     },
     "clear": "Nutzung löschen",
     "clearConfirm": "Alle erfassten Nutzungsdaten löschen?",
@@ -413,18 +420,50 @@
       "proxy": "Über AiOpt",
       "local": "Aus Agent-Protokollen",
       "proxyHint": "Anfragen, die über den Proxy von AiOpt liefen.",
-      "localHint": "Aus den Sitzungsprotokollen von Claude Code und Codex auf diesem Computer gelesen. Enthält direkte Bindings."
+      "localHint": "Aus den Sitzungsprotokollen von Claude Code, Codex, Cursor und pi auf diesem Computer gelesen. Enthält direkte Bindings. Cursor speichert keine Token-Zahlen, daher wird seine Nutzung aus dem Gesprächstext geschätzt."
     },
     "local": {
       "loading": "Sitzungsprotokolle werden gelesen…",
+      "estimated": "geschätzt",
       "failed": "Die Sitzungsprotokolle der Agents konnten nicht gelesen werden.",
-      "empty": "In den Protokollen von Claude Code oder Codex wurde keine Nutzung gefunden.",
+      "empty": "In den Protokollen von Claude Code, Codex, Cursor oder pi wurde keine Nutzung gefunden.",
       "responses": "Antworten",
       "cacheRead": "Cache gelesen",
       "cacheWrite": "Cache geschrieben",
       "cache": "Cache",
       "refresh": "Protokolle neu einlesen",
       "window": "Letzte {{days}} Tage"
+    },
+    "kpi": {
+      "today": "Heute",
+      "noToday": "Noch kein Tagesdurchschnitt",
+      "vsDailyAvg": "{{pct}} ggü. Tagesdurchschnitt",
+      "dailyAvg": "Tagesdurchschnitt",
+      "perDay": "/ Tag",
+      "activeDays": "An {{active}} von {{span}} Tagen aktiv",
+      "avg7": "7-Tage-Durchschnitt",
+      "noCompare": "Zu wenig Verlauf für einen Vergleich",
+      "vsPrev7": "{{pct}} ggü. den vorherigen 7 Tagen",
+      "monthlyAvg": "Monatsdurchschnitt",
+      "perMonth": "/ Monat",
+      "avg30": "30-Tage-Durchschnitt {{value}} / Tag",
+      "vsPrev30": "{{pct}} ggü. den vorherigen 30 Tagen"
+    },
+    "mix": {
+      "title": "Token-Verteilung"
+    },
+    "summary": {
+      "totalTokens": "Tokens gesamt",
+      "perCount": "Ø Tokens pro Einheit",
+      "peakDay": "Spitzentag",
+      "errors": "{{count}} fehlgeschlagen",
+      "outputRatio": "Verhältnis Ausgabe / Eingabe",
+      "cacheHit": "Cache-Trefferquote",
+      "sessions": "Sitzungen"
+    },
+    "weekday": {
+      "title": "Nach Wochentag",
+      "hint": "Durchschnittliche Tokens pro Wochentag"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "Sitzungen",
     "search": "Sitzungen durchsuchen",
+    "agentFilter": "Nach Agent filtern",
+    "allAgents": "Alle Agenten",
     "refresh": "Neu einlesen",
-    "intro": "Frühere Sitzungen von Claude Code und Codex, gelesen aus den Protokollen auf diesem Computer. AiOpt liest diese Dateien nur.",
+    "intro": "Frühere Sitzungen von Claude Code, Codex, Cursor und pi, gelesen aus den Protokollen auf diesem Computer. AiOpt liest diese Dateien nur.",
     "loading": "Wird geladen…",
     "failed": "Die Sitzungsprotokolle der Agents konnten nicht gelesen werden.",
-    "empty": "Keine Sitzungen von Claude Code oder Codex gefunden.",
+    "empty": "Keine Sitzungen von Claude Code, Codex, Cursor oder pi gefunden.",
     "noMatch": "Keine Sitzung passt zur Suche.",
     "untitled": "Unbenannte Sitzung",
     "truncated": "Es werden nur die neuesten Sitzungen angezeigt.",

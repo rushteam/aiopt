@@ -390,7 +390,13 @@
     },
     "chart": {
       "title": "每日 Token",
-      "empty": "暂无每日数据。"
+      "empty": "暂无每日数据。",
+      "rangeLabel": "图表范围",
+      "range": "{{days}} 天",
+      "avgLine": "均值 {{value}}",
+      "trend": "{{days}} 日移动平均",
+      "avgLegend": "区间均值",
+      "vsAvg": "较均值"
     },
     "breakdown": {
       "byProvider": "按供应商",
@@ -402,7 +408,8 @@
       "requests": "请求数",
       "inputTokens": "输入",
       "outputTokens": "输出",
-      "totalTokens": "合计"
+      "totalTokens": "合计",
+      "share": "占比"
     },
     "clear": "清除统计",
     "clearConfirm": "确定清除所有用量记录？",
@@ -413,18 +420,50 @@
       "proxy": "经由 AiOpt",
       "local": "来自 Agent 日志",
       "proxyHint": "经过 AiOpt 代理的请求。",
-      "localHint": "读取本机 Claude Code 和 Codex 的会话日志，包含直连绑定。"
+      "localHint": "读取本机 Claude Code、Codex、Cursor 和 pi 的会话日志，包含直连绑定。Cursor 不记录 token 数，其用量按对话内容估算。"
     },
     "local": {
       "loading": "正在读取会话日志…",
+      "estimated": "估算",
       "failed": "无法读取 Agent 会话日志。",
-      "empty": "在 Claude Code 或 Codex 会话日志中没有找到用量。",
+      "empty": "在 Claude Code、Codex、Cursor 或 pi 会话日志中没有找到用量。",
       "responses": "响应数",
       "cacheRead": "缓存读取",
       "cacheWrite": "缓存写入",
       "cache": "缓存",
       "refresh": "重新扫描日志",
       "window": "最近 {{days}} 天"
+    },
+    "kpi": {
+      "today": "今日",
+      "noToday": "暂无日均可比较",
+      "vsDailyAvg": "较日均 {{pct}}",
+      "dailyAvg": "日均",
+      "perDay": "/ 天",
+      "activeDays": "{{span}} 天中活跃 {{active}} 天",
+      "avg7": "近 7 天日均",
+      "noCompare": "历史数据不足，无法对比",
+      "vsPrev7": "较前 7 天 {{pct}}",
+      "monthlyAvg": "月均",
+      "perMonth": "/ 月",
+      "avg30": "近 30 天日均 {{value}}",
+      "vsPrev30": "较前 30 天 {{pct}}"
+    },
+    "mix": {
+      "title": "Token 构成"
+    },
+    "summary": {
+      "totalTokens": "合计 Token",
+      "perCount": "平均每次 Token",
+      "peakDay": "峰值日",
+      "errors": "失败 {{count}} 次",
+      "outputRatio": "输出 / 输入比",
+      "cacheHit": "缓存命中率",
+      "sessions": "会话数"
+    },
+    "weekday": {
+      "title": "按星期",
+      "hint": "一周中每天的平均 Token"
     }
   },
     "mcp": {
@@ -533,11 +572,13 @@
   "sessions": {
     "title": "会话",
     "search": "搜索会话",
+    "agentFilter": "按 Agent 筛选",
+    "allAgents": "全部 Agent",
     "refresh": "重新扫描",
-    "intro": "来自本机 Claude Code 和 Codex 日志的历史会话。AiOpt 只读取这些文件。",
+    "intro": "来自本机 Claude Code、Codex、Cursor 和 pi 日志的历史会话。AiOpt 只读取这些文件。",
     "loading": "加载中…",
     "failed": "无法读取 Agent 会话日志。",
-    "empty": "没有找到 Claude Code 或 Codex 会话。",
+    "empty": "没有找到 Claude Code、Codex、Cursor 或 pi 会话。",
     "noMatch": "没有匹配的会话。",
     "untitled": "未命名会话",
     "truncated": "仅显示最近的会话。",

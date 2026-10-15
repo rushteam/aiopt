@@ -1,5 +1,6 @@
 // Agent session logs — shared types + pure helpers for reading the transcripts that
-// coding agents (Claude Code, Codex) already keep on disk.
+// coding agents (Claude Code, Codex, Cursor, pi) already keep on disk. Cursor stores no
+// token counts; its usage is estimated from the conversation text.
 //
 // Two views are built on the same READ-ONLY scan, done main-side:
 //   - Local usage: token counts per agent / model / day, read from the numeric usage
@@ -13,10 +14,10 @@
 //
 // No I/O, no Electron.
 
-import { dayKey } from './usageStats';
+import { shiftDayKey } from './usageStats';
 
 /** Agents whose on-disk session logs AiOpt can read. */
-export const SESSION_AGENT_IDS = ['claude', 'codex'] as const;
+export const SESSION_AGENT_IDS = ['claude', 'codex', 'cursor', 'pi'] as const;
 export type SessionAgentId = (typeof SESSION_AGENT_IDS)[number];
 
 export function isSessionAgentId(value: unknown): value is SessionAgentId {
@@ -102,7 +103,7 @@ export interface LocalUsageTotals {
 
 /** One (day, agent, model) roll-up produced by the scanner. */
 export interface LocalUsageRecord extends Omit<LocalUsageTotals, 'totalTokens'> {
-  /** 'YYYY-MM-DD' (UTC). */
+  /** 'YYYY-MM-DD' in the system time zone. */
   day: string;
   agentId: SessionAgentId;
   model: string;
@@ -164,7 +165,7 @@ export function aggregateLocalUsage(
   perFile: ReadonlyArray<readonly LocalUsageRecord[]>,
   opts: { now: number; retentionDays: number },
 ): LocalUsageSnapshot {
-  const cutoffDay = dayKey(opts.now - (opts.retentionDays - 1) * 24 * 60 * 60 * 1000);
+  const cutoffDay = shiftDayKey(opts.now, -(opts.retentionDays - 1));
   const totals = emptyLocalUsageTotals();
   const byAgent = new Map<string, LocalUsageTotals>();
   const byModel = new Map<string, LocalUsageTotals>();
@@ -201,6 +202,13 @@ function posixQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
+const RESUME_CLI: Record<SessionAgentId, (id: string) => string> = {
+  claude: (id) => `claude --resume ${id}`,
+  codex: (id) => `codex resume ${id}`,
+  cursor: (id) => `cursor-agent --resume ${id}`,
+  pi: (id) => `pi --session ${id}`,
+};
+
 /**
  * The shell command that reopens a session in its agent CLI, prefixed with a `cd` into
  * the session's working directory when one is known. POSIX shells on macOS / Linux;
@@ -212,7 +220,7 @@ export function resumeCommand(
   platform: string,
 ): string {
   if (!isSessionId(ref.sessionId)) throw new Error('invalid session id');
-  const cli = ref.agentId === 'claude' ? `claude --resume ${ref.sessionId}` : `codex resume ${ref.sessionId}`;
+  const cli = RESUME_CLI[ref.agentId](ref.sessionId);
   if (!cwd || /[\r\n\u0000]/.test(cwd)) return cli;
   if (platform === 'win32') {
     if (/["`$]/.test(cwd)) return cli;

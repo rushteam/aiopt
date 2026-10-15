@@ -1,4 +1,4 @@
-// Sessions — a reader over the agents' own session logs (Claude Code / Codex).
+// Sessions — a reader over the agents' own session logs (Claude Code / Codex / Cursor / pi).
 //
 // Main scans the logs read-only; this screen lists sessions (search by title, folder,
 // branch or model), opens one transcript on request, and offers two main-side actions:
@@ -12,8 +12,10 @@ import { useT, type TranslateFn } from '../../i18n';
 import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 import { Checkbox } from '../../components/ui/Checkbox';
+import { Select } from '../../components/ui/Select';
 import { buttonGhostChrome, controlInputStyle } from '../../components/ui/controlStyles';
-import { AGENTS } from '../../../shared/aiProviders';
+import { AGENT_SPECS } from '../../../shared/aiProviders';
+import { SESSION_AGENT_IDS } from '../../../shared/agentSessions';
 import type {
   SessionRef,
   SessionSummary,
@@ -27,7 +29,8 @@ function fmtDate(ts: number): string {
   return ts > 0 ? dateFormat.format(ts) : '';
 }
 
-const agentName = (id: string): string => AGENTS.find((a) => a.id === id)?.name ?? id;
+const agentName = (id: string): string =>
+  Object.hasOwn(AGENT_SPECS, id) ? AGENT_SPECS[id as keyof typeof AGENT_SPECS].name : id;
 
 /** Show the last two path segments — enough to recognise a project. */
 function shortDir(cwd: string): string {
@@ -46,6 +49,8 @@ export function SessionsHome() {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState('');
+  /** '' = every agent. */
+  const [agentFilter, setAgentFilter] = useState<string>('');
   const [open, setOpen] = useState<SessionRef | null>(null);
 
   const load = useCallback((refresh: boolean) => {
@@ -61,7 +66,23 @@ export function SessionsHome() {
   useEffect(() => load(false), [load]);
 
   const q = query.trim().toLowerCase();
-  const visible = useMemo(() => (snap ? snap.sessions.filter((s) => matches(s, q)) : []), [snap, q]);
+  const visible = useMemo(
+    () => (snap ? snap.sessions.filter((s) => (!agentFilter || s.agentId === agentFilter) && matches(s, q)) : []),
+    [snap, q, agentFilter],
+  );
+  // Every readable agent is offered (with its session count) so the list doesn't reshuffle
+  // between scans; an agent with no sessions is shown disabled rather than hidden.
+  const agentOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of snap?.sessions ?? []) counts.set(s.agentId, (counts.get(s.agentId) ?? 0) + 1);
+    return [
+      { value: '', label: `${t('sessions.allAgents')} · ${snap?.sessions.length ?? 0}` },
+      ...SESSION_AGENT_IDS.map((id) => {
+        const n = counts.get(id) ?? 0;
+        return { value: id, label: `${agentName(id)} · ${n}`, disabled: n === 0 && agentFilter !== id };
+      }),
+    ];
+  }, [snap, t, agentFilter]);
 
   if (open) {
     return (
@@ -82,6 +103,14 @@ export function SessionsHome() {
           placeholder={t('sessions.search')}
           aria-label={t('sessions.search')}
           style={{ ...controlInputStyle, flex: 1 }}
+        />
+        <Select
+          value={agentFilter}
+          onChange={setAgentFilter}
+          options={agentOptions}
+          disabled={!snap}
+          aria-label={t('sessions.agentFilter')}
+          style={{ flex: '0 0 auto', width: 180 }}
         />
         <LoadingButton variant="ghost" loading={loading} onClick={() => load(true)}>
           {t('sessions.refresh')}

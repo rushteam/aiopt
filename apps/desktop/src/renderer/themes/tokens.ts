@@ -59,6 +59,14 @@ export const TOKENS = {
   // #2ea043 was 2.83:1 on it — passing at rest, failing under the cursor. Slightly
   // brighter in dark mode so the small dot reads against the darker surface.
   success: { light: '#2b953f', dark: '#3fb950' },
+  // Data-visualization series (Usage chart, token-mix bar, sparklines). Input tokens reuse
+  // `accent`; these are the OTHER series, picked to sit apart from accent and from each
+  // other. They are graphical objects needed to read the chart, so WCAG 1.4.11's 3:1
+  // applies against every ground a chart is drawn on (tokens.test.ts holds it).
+  chartOutput: { light: '#0f8a7e', dark: '#3cc7b4' },
+  chartCache: { light: '#8a4bd1', dark: '#b892f2' },
+  // The trend line (moving average) — warm, so it reads apart from the cool bars under it.
+  chartTrend: { light: '#b0610f', dark: '#e9a04b' },
   // Tracks `accent` — one emphasis hue, so a focused control and an active one agree.
   focusRing: { light: '#295fe3', dark: '#84a5f5' },
   // Modal scrim. A dark panel on a dark page needs a heavier scrim to separate
