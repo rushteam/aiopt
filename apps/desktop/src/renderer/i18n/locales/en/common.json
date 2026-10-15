@@ -704,6 +704,15 @@
       "git": "git",
       "hint": "Workers only run inside these folders; the coordinator can only read them."
     },
+    "proposal": {
+      "title": "Proposed tasks",
+      "hint": "Pick a folder for each task, then approve it. Nothing runs until you do.",
+      "blocked": {
+        "session": "Start the workbench first.",
+        "folder": "Pick a folder first.",
+        "limit": "Too many tasks are running."
+      }
+    },
     "chat": {
       "title": "Coordinator",
       "reset": "New conversation",
@@ -739,7 +748,24 @@
       "session_opened": "Conversation restored."
     },
     "plan": {
-      "title": "Task plan"
+      "title": "Task plan",
+      "approve": "Approve",
+      "approved": "Approved",
+      "dependsOn": "Waits on",
+      "empty": "No tasks in this plan yet. Ask the coordinator for something, or add a task.",
+      "others": "Other tasks",
+      "pickNode": "Pick a task in the plan to see it.",
+      "queued": "Approved, waiting",
+      "progress": "{{done}}/{{total}} done",
+      "rerunHint": "Running it again does not re-run the tasks that depend on it.",
+      "run": "Run plan",
+      "runHint": "Approve every waiting task in this plan. Each starts once the tasks it waits on are done; the coordinator reviews each one.",
+      "state": {
+        "idle": "Waiting for approval",
+        "running": "Running",
+        "complete": "All done",
+        "stalled": "Needs you"
+      }
     },
     "taskChat": {
       "title": "Task chat",
@@ -782,9 +808,7 @@
       "runAll": "Run all",
       "runAllHint": "Run every proposed task that has a folder.",
       "autoRun": "Auto-run proposals",
-      "autoRunHint": "Run the coordinator's proposals right away when they name a folder. Only for replies to your own messages.",
-      "autoLaunchDependents": "Auto-launch dependents",
-      "autoLaunchDependentsHint": "When a task is marked done, start proposed tasks that depend on it and are otherwise ready.",
+      "autoRunHint": "Approve the coordinator’s proposals as soon as it makes them, so they start once their folder and dependencies are ready. Applies only to proposals made in reply to your own message.",
       "waitingOn": "Waiting for:",
       "notify": "Report back to the coordinator",
       "notifyHint": "When a task needs review, needs input, fails, or is marked done or stopped, tell the coordinator so it can summarize in the chat.",

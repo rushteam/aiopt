@@ -704,6 +704,15 @@
       "git": "git",
       "hint": "Los agentes solo se ejecutan dentro de estas carpetas; el coordinador solo puede leerlas."
     },
+    "proposal": {
+      "title": "Tareas propuestas",
+      "hint": "Elige una carpeta para cada tarea y luego apruébala. Nada se ejecuta hasta que lo apruebes.",
+      "blocked": {
+        "session": "Inicia primero el banco de trabajo.",
+        "folder": "Elige primero una carpeta.",
+        "limit": "Hay demasiadas tareas en ejecución."
+      }
+    },
     "chat": {
       "title": "Coordinador",
       "reset": "Nueva conversación",
@@ -739,7 +748,24 @@
       "session_opened": "Conversación restaurada."
     },
     "plan": {
-      "title": "Plan de tareas"
+      "title": "Plan de tareas",
+      "approve": "Aprobar",
+      "approved": "Aprobada",
+      "dependsOn": "Espera a",
+      "empty": "Este plan aún no tiene tareas. Pide algo al coordinador o añade una tarea.",
+      "others": "Otras tareas",
+      "pickNode": "Elige una tarea del plan para verla.",
+      "queued": "Aprobada, en espera",
+      "progress": "{{done}}/{{total}} hechas",
+      "rerunHint": "Volver a ejecutarla no vuelve a ejecutar las tareas que dependen de ella.",
+      "run": "Ejecutar el plan",
+      "runHint": "Aprueba todas las tareas pendientes de este plan. Cada una empieza cuando terminan las tareas que espera; el coordinador revisa cada una.",
+      "state": {
+        "idle": "Pendiente de aprobación",
+        "running": "En curso",
+        "complete": "Todo hecho",
+        "stalled": "Necesita tu atención"
+      }
     },
     "taskChat": {
       "title": "Chat de la tarea",
@@ -782,9 +808,7 @@
       "runAll": "Ejecutar todo",
       "runAllHint": "Ejecutar todas las tareas propuestas que tengan carpeta.",
       "autoRun": "Ejecutar propuestas automáticamente",
-      "autoRunHint": "Ejecutar enseguida las propuestas del coordinador que indiquen una carpeta. Solo en respuestas a tus propios mensajes.",
-      "autoLaunchDependents": "Iniciar tareas dependientes",
-      "autoLaunchDependentsHint": "Al marcar una tarea como hecha, inicia las propuestas que dependen de ella y están listas.",
+      "autoRunHint": "Aprueba las propuestas del coordinador en cuanto las hace; empiezan cuando su carpeta y sus dependencias están listas. Solo se aplica a las propuestas hechas en respuesta a tus propios mensajes.",
       "waitingOn": "Esperando a:",
       "notify": "Informar al coordinador",
       "notifyHint": "Cuando una tarea necesite revisión o respuesta, falle o se marque hecha o detenida, avisar al coordinador para que lo resuma en el chat.",

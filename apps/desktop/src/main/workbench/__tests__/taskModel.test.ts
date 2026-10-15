@@ -40,7 +40,9 @@ describe('toHerdrAgentStatus', () => {
 
 describe('taskAllows', () => {
   it('only lets a task that is not running be edited and only a live task be messaged', () => {
-    expect(TASK_STATUSES.filter((s) => taskAllows('edit', s))).toEqual(['proposed', 'stopped', 'failed']);
+    expect(TASK_STATUSES.filter((s) => taskAllows('edit', s))).toEqual(['proposed', 'done', 'stopped', 'failed']);
+    // A finished node can be run again (re-running one node of a plan).
+    expect(TASK_STATUSES.filter((s) => taskAllows('launch', s))).toEqual(['proposed', 'done', 'stopped', 'failed']);
     expect(TASK_STATUSES.filter((s) => taskAllows('message', s))).toEqual(['working', 'blocked', 'review']);
     expect(taskAllows('remove', 'working')).toBe(false);
   });

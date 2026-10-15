@@ -191,6 +191,10 @@ export interface WorkbenchManager {
   taskOutput(taskId: string): Promise<string>;
   /** Launch every proposed task that has a folder, up to the live limit; returns how many. */
   runAll(): number;
+  /** Approve tasks to run; each launches once its dependencies are done and a slot is free. */
+  approveTasks(taskIds: readonly string[]): void;
+  /** Approve every proposed task of one conversation's plan (runs the DAG to completion). */
+  runPlan(conversationId: string): void;
   /** Reopen a past conversation, named by the id `getSnapshot().conversations` listed. */
   openConversation(conversationId: string): Promise<void>;
   deleteConversation(conversationId: string): void;
@@ -279,10 +283,16 @@ interface TaskRecord {
   outputTail: string;
   dependsOn: string[];
   thread: { text: string; at: number }[];
+  /** The coordinator conversation whose plan this task belongs to (see TaskView). */
+  conversationId: string | null;
+  /** Approved by the user to run (see TaskView). Never set by the coordinator. */
+  approved: boolean;
 }
 
 interface TasksDoc {
   version: 1;
+  /** The conversation the coordinator is in now: its tools see only that plan's tasks. */
+  currentConversationId?: string | null;
   tasks: {
     id: string;
     title: string;
@@ -305,6 +315,8 @@ interface TasksDoc {
     updatedAt: number;
     dependsOn?: string[];
     thread?: { text: string; at: number }[];
+    conversationId?: string | null;
+    approved?: boolean;
   }[];
 }
 
@@ -318,6 +330,11 @@ interface ConversationRecord {
 interface FoldersDoc {
   version: 1;
   folders: { id: string; name: string; path: string; git: boolean }[];
+}
+
+/** The conversation uuid in a pi session file name, or null. */
+function conversationIdOf(sessionFile: string | null): string | null {
+  return sessionFile ? (SESSION_FILE_RE.exec(sessionFile)?.[1] ?? null) : null;
 }
 
 function errorCode(err: unknown): string {
@@ -368,6 +385,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let startSeq = 0;
   const launching = new Set<string>();
   const transcript = createTranscript();
+  /** The uuid of the conversation the coordinator is in now; its tasks are the plan in view. */
+  let currentConversationId: string | null = null;
   let folders: FolderRecord[] = loadFolders();
   const tasks = new Map<string, TaskRecord>(loadTasks().map((t) => [t.id, t]));
   let tasksSignature = signatureOf();
@@ -548,10 +567,11 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   function signatureOf(): string {
     // Cheap to compute on every change (streamed chat events included); covers every field
     // a mutation touches.
-    let sig = '';
+    // The current conversation is in the board file too (it scopes the coordinator's tools).
+    let sig = `${currentConversationId};`;
     for (const t of tasks.values()) {
       sig += `${t.id}|${t.status}|${t.updatedAt}|${t.folderId}|${t.isolated}|${t.branch}|${t.failure}|`;
-      sig += `${t.worktreePath}|${t.title}|${t.prompt.length}|${t.outputTail.length}|${t.dependsOn.join(',')};`;
+      sig += `${t.worktreePath}|${t.title}|${t.prompt.length}|${t.outputTail.length}|${t.dependsOn.join(',')}|${t.approved}|${t.conversationId};`;
     }
     return sig;
   }
@@ -605,6 +625,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
             typeof r.output === 'string' ? sanitizeWorkbenchText(r.output).slice(-WORKBENCH_LIMITS.taskOutputTail) : '',
           dependsOn: [],
           thread: parseTaskThread(r.thread),
+          conversationId: isValidConversationId(r.conversationId) ? r.conversationId : null,
+          approved: r.approved === true,
         });
         dependsRaw.set(r.id as string, r.dependsOn);
         if (out.length >= WORKBENCH_LIMITS.tasks) break;
@@ -622,6 +644,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   function tasksDoc(): TasksDoc {
     return {
       version: 1,
+      currentConversationId,
       tasks: [...tasks.values()].map((t) => ({
         id: t.id,
         title: t.title,
@@ -642,6 +665,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         updatedAt: t.updatedAt,
         dependsOn: t.dependsOn,
         thread: t.thread,
+        conversationId: t.conversationId,
+        approved: t.approved,
       })),
     };
   }
@@ -677,12 +702,60 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     return ids;
   }
 
-  function maybeLaunchDependents(finishedId: string): void {
-    if (!settings.autoLaunchDependents) return;
-    for (const t of tasks.values()) {
-      if (t.dependsOn.includes(finishedId) && canLaunch(t)) launchTask(t.id);
+  /**
+   * Launch every approved task that is ready: its dependencies are done and a worker slot is
+   * free. This is what runs an approved plan to the end, layer by layer. Called whenever that
+   * could change (an approval, a task done, a slot freed, the workbench ready).
+   */
+  function advance(): void {
+    for (const t of [...tasks.values()].sort((a, b) => a.createdAt - b.createdAt)) {
+      if (t.approved && t.status === 'proposed' && canLaunch(t)) launchTask(t.id);
     }
   }
+
+  /** Approve tasks to run (the user's call only; the coordinator cannot approve). */
+  function approveTasks(taskIds: readonly string[]): void {
+    for (const id of taskIds) {
+      const t = requireTask(id, 'launch');
+      t.approved = true;
+      t.updatedAt = deps.now();
+    }
+    changed();
+    advance();
+  }
+
+  /** Approve every proposed task of one conversation's plan, then start what is ready. */
+  function runPlan(conversationId: string): void {
+    if (!isValidConversationId(conversationId)) throwIpcError('INVALID_PARAMS', 'invalid conversation id');
+    let any = false;
+    for (const t of tasks.values()) {
+      if (t.conversationId !== conversationId || t.status !== 'proposed') continue;
+      t.approved = true;
+      t.updatedAt = deps.now();
+      any = true;
+    }
+    if (!any) throwIpcError('PRECONDITION_FAILED', 'nothing in this plan is waiting to run');
+    changed();
+    advance();
+  }
+
+  /**
+   * The coordinator's \`complete_tasks\`: it reviewed these tasks and judged them done. Allowed
+   * in any turn, including one started by a task update, because that review is the plan's
+   * main loop. Bounded: only tasks of the current plan, only in \`review\`, and completing one
+   * can only start dependents the user already approved.
+   */
+  function applyCompleteRequests(ids: readonly string[]): void {
+    for (const id of ids) {
+      const t = tasks.get(id);
+      if (!t || t.conversationId === null || t.conversationId !== currentConversationId) continue;
+      if (t.status !== 'review' || launching.has(id)) continue;
+      void endTask(id, 'complete').catch((err: unknown) => {
+        log.debug('workbench.complete_failed', { code: errorCode(err) });
+      });
+    }
+  }
+
 
   function saveTasks(): void {
     try {
@@ -808,6 +881,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       log.debug('workbench.state_failed', { code: errorCode(err) });
       currentSession = null;
     }
+    currentConversationId = conversationIdOf(currentSession);
   }
 
   /** Rebuild the transcript from the session pi is in now. */
@@ -836,6 +910,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       agentName: t.agentName,
       failure: t.failure,
       dependsOn: [...t.dependsOn],
+      conversationId: t.conversationId,
+      approved: t.approved,
       thread: [...t.thread],
       workerOutput: t.outputTail ? t.outputTail : null,
       createdAt: t.createdAt,
@@ -865,6 +941,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       herdrAvailable: herdr !== null,
       herdrProbe: buildHerdrProbeView(),
       conversations: conversations.map(conversationView),
+      currentConversationId,
       settings: { ...settings },
     };
   }
@@ -988,6 +1065,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     transcript.clear();
     model = null;
     currentSession = null;
+    currentConversationId = null;
     userTurn = false;
     if (deps.platform === 'win32') {
       setStatus('error', 'unsupported_platform');
@@ -1094,6 +1172,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       setStatus('ready', null);
       if (herdr) await sweepOrphanWorkspaces(herdr);
       cancelPoll = deps.every(POLL_MS, () => void poll());
+      advance();
       log.info('workbench.started', { herdr: herdr !== null, proxied: resolved.view.proxied });
     } catch (err) {
       log.error('workbench.start_failed', { code: errorCode(err) });
@@ -1141,6 +1220,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     const effects = transcript.apply(event);
     if (effects.proposed.length > 0) addProposals(effects.proposed);
     if (effects.launchTaskIds.length > 0) applyLaunchRequests(effects.launchTaskIds);
+    if (effects.completeTaskIds.length > 0) applyCompleteRequests(effects.completeTaskIds);
     // pi saves the session as the turn ends: that is when a new conversation appears.
     if (event.type === 'agent_end') refreshConversations();
     changed();
@@ -1167,12 +1247,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         tasks.get(batch[i]!.id)!.dependsOn = [];
       }
     }
+    // The approval card goes below the coordinator's reply (the transcript holds it to turn end).
+    transcript.pushProposal(added);
     if (dropped) transcript.pushNotice('board_full');
     if (settings.autoRun && userTurn) {
-      for (const id of added) {
-        const t = tasks.get(id);
-        if (t && canLaunch(t)) launchTask(id);
-      }
+      for (const id of added) tasks.get(id)!.approved = true;
+      advance();
     }
   }
 
@@ -1372,6 +1452,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       outputTail: '',
       dependsOn: [],
       thread: [],
+      conversationId: currentConversationId,
+      approved: false,
     });
     return id;
   }
@@ -1418,6 +1500,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
     t.updatedAt = deps.now();
     changed();
+    advance();
   }
 
   function liveCount(): number {
@@ -1466,6 +1549,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     if (liveCount() >= WORKBENCH_LIMITS.liveTasks) throwIpcError('PRECONDITION_FAILED', 'too many running tasks');
     if (!depsMet(t.dependsOn, taskStatusMap())) throwIpcError('PRECONDITION_FAILED', 'task dependencies are not done');
 
+    // Every caller is the user's say-so (their click, a launch they asked the coordinator
+    // for, or a plan they approved), so a launched task counts as approved.
+    t.approved = true;
     t.status = 'starting';
     t.failure = null;
     t.outputTail = '';
@@ -1642,8 +1728,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     if (client) await closeWorkspace(client, t);
     else t.workspaceId = null;
     changed();
-    if (action === 'complete') maybeLaunchDependents(taskId);
     queueNotify([taskId]);
+    advance();
   }
 
   async function removeTask(taskId: string): Promise<void> {
@@ -1666,6 +1752,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       }
     }
     changed();
+    advance();
   }
 
   async function readTail(client: HerdrClient, agentName: string): Promise<string> {
@@ -1680,6 +1767,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
 
   // --- coordinator updates --------------------------------------------------------------
 
+  // With reporting off the coordinator does not hear of reviews, so a plan does not move past
+  // `review` on its own: the user marks tasks done instead. That is the user's call.
   function queueNotify(ids: readonly string[]): void {
     if (!settings.notifyCoordinator) return;
     for (const id of ids) pendingNotify.add(id);
@@ -1764,6 +1853,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         if (NOTIFY_STATUSES.includes(next)) notable.push(t);
       }
       if (dirty) changed();
+      if (notable.some((t) => t.status === 'failed')) advance();
       if (notable.length > 0) {
         for (const t of notable) {
           // What the worker left on screen, for the coordinator's summary (not for a lost one).
@@ -1800,6 +1890,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     removeTask,
     taskOutput,
     runAll,
+    approveTasks,
+    runPlan,
     openConversation,
     deleteConversation,
     updateSettings,

@@ -14,8 +14,12 @@
 //     user's own auto-run setting, which main applies only to turns the user asked for);
 //   - `launch_tasks` asks main to start existing board tasks by id (from `list_tasks`). Main
 //     launches only in a turn the user started — never after a task-update message;
+//   - `complete_tasks` asks main to mark reviewed tasks done, which lets the approved tasks
+//     that depend on them start. This is the plan's main loop, so main accepts it in any turn,
+//     but only for tasks of the current plan that are in `review`;
 //   - `list_tasks` reads the task board from a second file main keeps current, so the model can
-//     answer "how is it going" and build on results;
+//     answer "how is it going" and build on results. It shows the current conversation's plan
+//     only (each conversation owns its own DAG);
 //   - the `/aiopt-task-update <id…>` command is how main reports that tasks need review, need
 //     input, or failed: it injects a custom message (the board's view of those tasks) and
 //     starts a turn, so the coordinator tells the user what happened.
@@ -23,11 +27,13 @@
 // A worker's terminal output reaches the model through the last two. It is data from a process
 // that read arbitrary files, so it is fenced and labelled untrusted, and nothing the model does
 // with it can run anything: proposals and launch requests from such a turn are ignored in main.
+// It can mark a reviewed task done early; the most that does is start dependents the user had
+// already approved, with the prompts the user approved.
 //
 // The source is a constant so the file on disk is always exactly what this build ships; main
 // rewrites it on every start. Plain JSON-Schema parameters keep it free of imports.
 
-import { LAUNCH_TASKS_TOOL, PROPOSE_TASKS_TOOL, TASK_UPDATE_MESSAGE } from './piEvents';
+import { COMPLETE_TASKS_TOOL, LAUNCH_TASKS_TOOL, PROPOSE_TASKS_TOOL, TASK_UPDATE_MESSAGE } from './piEvents';
 import { WORKBENCH_LIMITS } from '../../shared/workbench';
 
 export const LIST_FOLDERS_TOOL = 'list_folders';
@@ -52,6 +58,7 @@ export const ORCHESTRATOR_TOOLS: readonly string[] = [
   LIST_TASKS_TOOL,
   PROPOSE_TASKS_TOOL,
   LAUNCH_TASKS_TOOL,
+  COMPLETE_TASKS_TOOL,
 ];
 
 export const ORCHESTRATOR_EXTENSION_SOURCE = `// Written by AiOpt. Rewritten on every start; edits are lost.
@@ -59,10 +66,19 @@ import { readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
+// The current conversation's plan only: each conversation has its own task DAG. Tasks made
+// before plans were tracked (no conversation) stay visible so they are not orphaned.
 function boardTasks() {
   try {
     const doc = JSON.parse(readFileSync(process.env.${TASKS_FILE_ENV} || "", "utf8"));
-    return Array.isArray(doc.tasks) ? doc.tasks.filter((t) => t && typeof t.id === "string" && typeof t.title === "string") : [];
+    const current = typeof doc.currentConversationId === "string" ? doc.currentConversationId : null;
+    return Array.isArray(doc.tasks)
+      ? doc.tasks.filter(
+          (t) =>
+            t && typeof t.id === "string" && typeof t.title === "string" &&
+            (t.conversationId == null || t.conversationId === current),
+        )
+      : [];
   } catch {
     return [];
   }
@@ -75,6 +91,7 @@ function oneLine(value) {
 // One task as text for the model. Worker output is fenced and labelled: it is data, not orders.
 function describeTask(t, withOutput, allTasks) {
   const parts = [t.status, t.folder ? "folder " + oneLine(t.folder) : "no folder"];
+  if (t.status === "proposed") parts.push(t.approved ? "approved, waiting on dependencies" : "awaiting the user's approval");
   if (t.branch) parts.push("branch " + oneLine(t.branch));
   if (t.failure) parts.push("failure " + oneLine(t.failure));
   if (Array.isArray(t.dependsOn) && t.dependsOn.length) {
@@ -158,9 +175,10 @@ export default function (pi) {
     name: ${JSON.stringify(LIST_TASKS_TOOL)},
     label: "List tasks",
     description:
-      "List the tasks on the user's board with their status (proposed, starting, working, blocked, " +
-      "review, done, stopped, failed), folder, and branch. Pass include_output to also get the recent " +
-      "terminal output a worker left when it last stopped for review or input.",
+      "List the tasks of this conversation's plan with their status (proposed, starting, working, " +
+      "blocked, review, done, stopped, failed), approval, folder, branch, and dependencies. Pass " +
+      "include_output to also get the recent terminal output a worker left when it last stopped " +
+      "for review or input.",
     parameters: {
       type: "object",
       properties: { include_output: { type: "boolean", description: "Include recent worker output." } },
@@ -182,12 +200,26 @@ export default function (pi) {
       const ids = String(args || "").split(/\\s+/).filter((id) => /^[a-z0-9]{1,32}$/.test(id));
       const tasks = boardTasks().filter((t) => ids.includes(t.id));
       if (tasks.length === 0) return;
+      const all = boardTasks();
       const needsAttention = tasks.some(
         (t) => t.status === "review" || t.status === "blocked" || t.status === "failed",
       );
+      const inReview = tasks.some((t) => t.status === "review");
       const userEnded = tasks.some((t) => t.status === "done" || t.status === "stopped");
+      const planDone = all.length > 0 && all.every((t) => t.status === "done");
       let guidance;
-      if (needsAttention && userEnded) {
+      if (planDone) {
+        guidance =
+          "Every task in this plan is done. Check the results against what the user asked for and " +
+          "give your final verdict: whether the work is complete, what was delivered, and anything " +
+          "left to do. Propose follow-up tasks only if something is clearly missing.";
+      } else if (inReview) {
+        guidance =
+          "A worker finished its turn and is waiting for review. Read its output above. If it did what " +
+          "its task asked, call complete_tasks with its id: that marks it done and lets the approved " +
+          "tasks that depend on it start. If not, do not complete it; tell the user what is wrong and " +
+          "suggest running it again or editing it. Summarize briefly for the user either way.";
+      } else if (needsAttention && userEnded) {
         guidance =
           "Some tasks need attention while others were marked done or stopped. Summarize each " +
           "briefly and suggest sensible next steps. Propose follow-up tasks only if they clearly help.";
@@ -203,7 +235,7 @@ export default function (pi) {
       }
       const content =
         "[AiOpt task update — sent automatically by the app, not by the user]\\n" +
-        (() => { const all = boardTasks(); return all.map((t) => describeTask(t, true, all)).join("\\n"); })() +
+        all.map((t) => describeTask(t, true, all)).join("\\n") +
         "\\n\\n" +
         guidance;
       pi.sendMessage(
@@ -224,7 +256,8 @@ export default function (pi) {
     description:
       "Propose tasks for worker agents. Tasks with no dependencies can run in parallel; use " +
       "depends_on_titles (earlier tasks in this same call) or depends_on_ids (from list_tasks) " +
-      "for ordering. Nothing runs until the user approves or asks to launch. Returns immediately.",
+      "for ordering. The tasks join this conversation's plan. Nothing runs until the user approves; " +
+      "approved tasks then start on their own as their dependencies are done. Returns immediately.",
     parameters: {
       type: "object",
       properties: {
@@ -303,6 +336,38 @@ export default function (pi) {
       };
     },
   });
+
+  pi.registerTool({
+    name: ${JSON.stringify(COMPLETE_TASKS_TOOL)},
+    label: "Complete tasks",
+    description:
+      "Mark tasks of this plan done after you reviewed their output and they did what was asked. " +
+      "Only tasks in review can be completed. Completing a task lets the approved tasks that " +
+      "depend on it start. Do not complete a task whose output shows it failed or is unfinished.",
+    parameters: {
+      type: "object",
+      properties: {
+        task_ids: {
+          type: "array",
+          minItems: 1,
+          maxItems: ${WORKBENCH_LIMITS.tasksPerProposal},
+          items: { type: "string", description: "Task id from list_tasks (the [id …] field)." },
+        },
+      },
+      required: ["task_ids"],
+    },
+    async execute(_id, params) {
+      const raw = Array.isArray(params && params.task_ids) ? params.task_ids : [];
+      const idRe = /^[a-z0-9]{1,32}$/;
+      const task_ids = raw
+        .filter((id) => typeof id === "string" && idRe.test(id))
+        .slice(0, ${WORKBENCH_LIMITS.tasksPerProposal});
+      return {
+        content: [{ type: "text", text: "Completion requested for " + task_ids.length + " task(s)." }],
+        details: { task_ids },
+      };
+    },
+  });
 }
 `;
 
@@ -321,9 +386,17 @@ How to work:
   Give each task a self-contained prompt (the worker sees none of this conversation) and name
   its folder when known.
 - Propose a few well-scoped tasks rather than many tiny ones.
-- The user approves, edits, or discards each task on the board and presses Run, or asks you to
-  run them — then call list_tasks and launch_tasks with the right ids. Never claim a task has
-  run or finished unless list_tasks (or a task update) shows that status.
+- The tasks you propose form this conversation's plan, a DAG. After propose_tasks the app shows
+  the user an approval card right below your message, where they pick folders and approve one
+  task or the whole plan. Say briefly what you proposed and that it waits in that card; do not
+  ask the user to type a command such as "run" to start it. If the user asks you to run tasks,
+  call list_tasks and launch_tasks with the right ids.
+- Approved tasks start on their own once their dependencies are done. You drive the plan from
+  there: when a task update shows a task in review, read its output and, if it did what was
+  asked, call complete_tasks so its dependents can start. If it did not, leave it in review and
+  tell the user what is wrong. When every task in the plan is done, give your final verdict on
+  whether the user's request is complete.
+- Never claim a task has run or finished unless list_tasks (or a task update) shows that status.
 - Call list_tasks when the user asks about progress or results, or before proposing follow-ups,
   so you do not propose work that is already on the board.
 - The user may reference a board task as @task:<id> (expanded in their message to title and status).

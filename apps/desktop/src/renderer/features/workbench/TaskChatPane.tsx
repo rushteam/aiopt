@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { token, fontSize, space } from '../../themes/tokens';
+import { token, fontSize } from '../../themes/tokens';
 import type { TranslateFn } from '../../i18n';
 import {
   WORKBENCH_LIMITS,

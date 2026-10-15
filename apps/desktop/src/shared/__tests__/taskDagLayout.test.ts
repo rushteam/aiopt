@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTaskDag } from '../taskDagLayout';
-import { shouldShowTaskPlan } from '../workbench';
+import { planProgress, shouldShowTaskPlan } from '../workbench';
 import type { TaskView } from '../workbench';
 
 function task(id: string, dependsOn: string[] = []): TaskView {
@@ -17,6 +17,8 @@ function task(id: string, dependsOn: string[] = []): TaskView {
     agentName: null,
     failure: null,
     dependsOn,
+    conversationId: null,
+    approved: false,
     thread: [],
     workerOutput: null,
     createdAt: 1,
@@ -51,5 +53,26 @@ describe('shouldShowTaskPlan', () => {
   it('shows the plan for multiple tasks or any dependency', () => {
     expect(shouldShowTaskPlan([task('a'), task('b')])).toBe(true);
     expect(shouldShowTaskPlan([task('a', ['b']), task('b')])).toBe(true);
+  });
+});
+
+describe('planProgress', () => {
+  const t = (status: TaskView['status'], approved = false) => ({ status, approved });
+
+  it('counts each state and names where the plan stands', () => {
+    expect(planProgress([]).state).toBe('empty');
+    expect(planProgress([t('proposed'), t('proposed')])).toMatchObject({ state: 'idle', awaitingApproval: 2 });
+    expect(planProgress([t('done'), t('working'), t('proposed', true)])).toMatchObject({
+      state: 'running',
+      done: 1,
+      live: 1,
+      queued: 1,
+    });
+    expect(planProgress([t('done'), t('done')])).toMatchObject({ state: 'complete', done: 2, total: 2 });
+  });
+
+  it('is stalled when nothing can move without the user', () => {
+    expect(planProgress([t('done'), t('failed')])).toMatchObject({ state: 'stalled', attention: 1 });
+    expect(planProgress([t('done'), t('proposed')]).state).toBe('stalled');
   });
 });

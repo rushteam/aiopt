@@ -704,6 +704,15 @@
       "git": "git",
       "hint": "Agenten laufen nur in diesen Ordnern; der Koordinator kann sie nur lesen."
     },
+    "proposal": {
+      "title": "Vorgeschlagene Aufgaben",
+      "hint": "Wählen Sie für jede Aufgabe einen Ordner und geben Sie sie dann frei. Ohne Ihre Freigabe läuft nichts.",
+      "blocked": {
+        "session": "Starten Sie zuerst die Werkbank.",
+        "folder": "Wählen Sie zuerst einen Ordner.",
+        "limit": "Es laufen zu viele Aufgaben."
+      }
+    },
     "chat": {
       "title": "Koordinator",
       "reset": "Neue Unterhaltung",
@@ -739,7 +748,24 @@
       "session_opened": "Unterhaltung wiederhergestellt."
     },
     "plan": {
-      "title": "Aufgabenplan"
+      "title": "Aufgabenplan",
+      "approve": "Freigeben",
+      "approved": "Freigegeben",
+      "dependsOn": "Wartet auf",
+      "empty": "In diesem Plan gibt es noch keine Aufgaben. Bitten Sie den Koordinator um etwas oder fügen Sie eine Aufgabe hinzu.",
+      "others": "Weitere Aufgaben",
+      "pickNode": "Wählen Sie eine Aufgabe im Plan, um sie anzuzeigen.",
+      "queued": "Freigegeben, wartet",
+      "progress": "{{done}}/{{total}} erledigt",
+      "rerunHint": "Ein erneuter Lauf startet die davon abhängigen Aufgaben nicht neu.",
+      "run": "Plan ausführen",
+      "runHint": "Gibt alle wartenden Aufgaben dieses Plans frei. Jede startet, sobald die Aufgaben erledigt sind, auf die sie wartet; der Koordinator prüft jede einzeln.",
+      "state": {
+        "idle": "Wartet auf Freigabe",
+        "running": "Läuft",
+        "complete": "Alles erledigt",
+        "stalled": "Braucht Sie"
+      }
     },
     "taskChat": {
       "title": "Aufgaben-Chat",
@@ -782,9 +808,7 @@
       "runAll": "Alle ausführen",
       "runAllHint": "Alle vorgeschlagenen Aufgaben mit Ordner ausführen.",
       "autoRun": "Vorschläge automatisch ausführen",
-      "autoRunHint": "Vorschläge des Koordinators sofort ausführen, wenn sie einen Ordner nennen. Nur bei Antworten auf Ihre eigenen Nachrichten.",
-      "autoLaunchDependents": "Abhängige Aufgaben starten",
-      "autoLaunchDependentsHint": "Wenn eine Aufgabe als erledigt markiert wird, starten vorgeschlagene abhängige Aufgaben, sofern bereit.",
+      "autoRunHint": "Gibt die Vorschläge des Koordinators sofort frei; sie starten, sobald Ordner und Abhängigkeiten bereit sind. Gilt nur für Vorschläge als Antwort auf Ihre eigenen Nachrichten.",
       "waitingOn": "Wartet auf:",
       "notify": "Koordinator informieren",
       "notifyHint": "Wenn eine Aufgabe Prüfung oder Eingabe braucht, fehlschlägt oder als erledigt/gestoppt markiert wird, den Koordinator benachrichtigen, damit er es im Chat zusammenfasst.",

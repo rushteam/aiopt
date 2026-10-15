@@ -37,6 +37,7 @@ const EMPTY: WorkbenchSnapshot = {
     remote: false,
   },
   conversations: [],
+  currentConversationId: null,
   settings: { ...DEFAULT_WORKBENCH_SETTINGS },
 };
 
@@ -103,6 +104,8 @@ export const stopTask = (taskId: string): Promise<void> => apply(wb().stopTask(t
 export const removeTask = (taskId: string): Promise<void> => apply(wb().removeTask(taskId));
 /** Launch every proposed task that has a folder (up to the running limit). */
 export const runAllTasks = (): Promise<void> => apply(wb().runAll());
+export const approveTasks = (taskIds: string[]): Promise<void> => apply(wb().approveTasks(taskIds));
+export const runPlan = (conversationId: string): Promise<void> => apply(wb().runPlan(conversationId));
 export const openConversation = (conversationId: string): Promise<void> =>
   apply(wb().openConversation(conversationId));
 export const deleteConversation = (conversationId: string): Promise<void> =>

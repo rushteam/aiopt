@@ -218,6 +218,8 @@ export const IPC_CHANNELS = {
   workbenchTaskRemove: 'workbench:task-remove',
   workbenchTaskOutput: 'workbench:task-output',
   workbenchTaskRunAll: 'workbench:task-run-all',
+  workbenchTaskApprove: 'workbench:task-approve',
+  workbenchPlanRun: 'workbench:plan-run',
   workbenchConversationOpen: 'workbench:conversation-open',
   workbenchConversationDelete: 'workbench:conversation-delete',
   workbenchSettingsUpdate: 'workbench:settings-update',
@@ -867,6 +869,11 @@ export interface WorkbenchTaskMessageRequest {
   text: string;
 }
 
+/** Approve tasks to run; each launches once its dependencies are done and a slot is free. */
+export interface WorkbenchTaskApproveRequest {
+  taskIds: string[];
+}
+
 /** A conversation, by the id (a uuid) the snapshot listed — never a path. */
 export interface WorkbenchConversationRef {
   conversationId: string;
@@ -1087,6 +1094,9 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchTaskRemove]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskOutput]: { request: WorkbenchTaskRef; result: TaskOutput };
   [IPC_CHANNELS.workbenchTaskRunAll]: { request: void; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchTaskApprove]: { request: WorkbenchTaskApproveRequest; result: WorkbenchSnapshot };
+  /** Approve every proposed task of one conversation's plan (the DAG runs to completion). */
+  [IPC_CHANNELS.workbenchPlanRun]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchConversationDelete]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };

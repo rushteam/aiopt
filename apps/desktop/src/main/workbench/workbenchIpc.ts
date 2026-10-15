@@ -50,6 +50,18 @@ function optionalBoolean(raw: unknown, name: string): boolean | undefined {
   return raw;
 }
 
+/** A non-empty, de-duplicated list of task ids, at most one proposal's worth. */
+function requireTaskIds(raw: unknown): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) throwIpcError('INVALID_PARAMS', 'taskIds must be a non-empty array');
+  const out: string[] = [];
+  for (const id of raw) {
+    if (!isValidWorkbenchId(id)) throwIpcError('INVALID_PARAMS', 'invalid task id');
+    if (!out.includes(id)) out.push(id);
+    if (out.length > WORKBENCH_LIMITS.tasksPerProposal) throwIpcError('INVALID_PARAMS', 'too many task ids');
+  }
+  return out;
+}
+
 function optionalDependsOn(raw: unknown): string[] | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === null) return null;
@@ -200,6 +212,18 @@ export function registerWorkbenchIpc(
   registry.register(IPC_CHANNELS.workbenchTaskRunAll, (_payload, meta) => {
     meta.assertTrustedSender();
     manager.runAll();
+    return snapshot();
+  });
+
+  registry.register(IPC_CHANNELS.workbenchTaskApprove, (payload, meta) => {
+    meta.assertTrustedSender();
+    manager.approveTasks(requireTaskIds(requireObject(payload).taskIds));
+    return snapshot();
+  });
+
+  registry.register(IPC_CHANNELS.workbenchPlanRun, (payload, meta) => {
+    meta.assertTrustedSender();
+    manager.runPlan(requireConversationId(requireObject(payload).conversationId));
     return snapshot();
   });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPLETE_TASKS_TOOL,
   createTranscript,
   extractLaunchTaskIds,
   extractProposedTasks,
@@ -135,6 +136,49 @@ describe('transcript reducer', () => {
     tr.pushError('x');
     (tr.items()[0] as { message: string }).message = 'mutated';
     expect(tr.items()[0]).toMatchObject({ message: 'x' });
+    tr.pushProposal(['aa']);
+    (tr.items()[1] as { taskIds: string[] }).taskIds.push('bb');
+    expect(tr.items()[1]).toMatchObject({ taskIds: ['aa'] });
+  });
+
+  it('puts a card proposed mid-turn below the reply that follows it', () => {
+    const tr = createTranscript();
+    tr.apply({ type: 'agent_start' });
+    tr.apply({ type: 'tool_execution_start', toolCallId: 'p1', toolName: PROPOSE_TASKS_TOOL, args: {} });
+    tr.apply({ type: 'tool_execution_end', toolCallId: 'p1', toolName: PROPOSE_TASKS_TOOL, result: {}, isError: false });
+    tr.pushProposal(['aa']);
+    expect(tr.items().some((i) => i.kind === 'proposal')).toBe(false);
+    tr.apply({ type: 'message_start', message: { role: 'assistant' } });
+    tr.apply({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Approve it below.' }] } });
+    // A retry keeps the turn open; the card still waits.
+    tr.apply({ type: 'agent_end', willRetry: true });
+    expect(tr.items().some((i) => i.kind === 'proposal')).toBe(false);
+    tr.apply({ type: 'agent_end' });
+    expect(tr.items().map((i) => i.kind)).toEqual(['tool', 'assistant', 'proposal']);
+  });
+
+  it('drops a held card when the conversation is cleared', () => {
+    const tr = createTranscript();
+    tr.apply({ type: 'agent_start' });
+    tr.pushProposal(['aa']);
+    tr.clear();
+    tr.apply({ type: 'agent_settled' });
+    expect(tr.items()).toEqual([]);
+  });
+
+  it('records a proposal card with valid, capped task ids, and skips an empty one', () => {
+    const tr = createTranscript();
+    tr.pushProposal([]);
+    tr.pushProposal(['BAD ID']);
+    expect(tr.items()).toEqual([]);
+    const many = Array.from({ length: WORKBENCH_LIMITS.tasksPerProposal + 3 }, (_, i) => `t${i}`);
+    tr.pushProposal(['ok1', 'BAD ID', ...many]);
+    const [card] = tr.items();
+    expect(card).toMatchObject({ kind: 'proposal' });
+    const ids = (card as { taskIds: string[] }).taskIds;
+    expect(ids[0]).toBe('ok1');
+    expect(ids).not.toContain('BAD ID');
+    expect(ids).toHaveLength(WORKBENCH_LIMITS.tasksPerProposal);
   });
 });
 
@@ -239,6 +283,21 @@ describe('extractProposedTasks', () => {
     expect(extractProposedTasks({ tasks: many })).toHaveLength(WORKBENCH_LIMITS.tasksPerProposal);
     expect(extractProposedTasks(null)).toEqual([]);
     expect(extractProposedTasks({ tasks: 'no' })).toEqual([]);
+  });
+});
+
+describe('complete_tasks', () => {
+  it('extracts the ids the coordinator asked to complete, and nothing from a failed call', () => {
+    const tr = createTranscript();
+    const end = (isError: boolean) => ({
+      type: 'tool_execution_end',
+      toolCallId: 'k',
+      toolName: COMPLETE_TASKS_TOOL,
+      result: { details: { task_ids: ['aa', 'BAD ID', 'bb'] } },
+      isError,
+    });
+    expect(tr.apply(end(false))).toEqual({ proposed: [], launchTaskIds: [], completeTaskIds: ['aa', 'bb'] });
+    expect(tr.apply(end(true)).completeTaskIds).toEqual([]);
   });
 });
 

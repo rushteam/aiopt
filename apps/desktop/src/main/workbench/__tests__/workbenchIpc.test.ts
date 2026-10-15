@@ -34,6 +34,8 @@ function setup(picked: string | null = '/work/app') {
     removeTask: vi.fn(async () => {}),
     taskOutput: vi.fn(async () => 'out'),
     runAll: vi.fn(() => 0),
+    approveTasks: vi.fn(),
+    runPlan: vi.fn(),
     openConversation: vi.fn(async () => {}),
     deleteConversation: vi.fn(),
     updateSettings: vi.fn(),
@@ -60,7 +62,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder } = setup();
-    expect(CHANNELS).toHaveLength(22);
+    expect(CHANNELS).toHaveLength(24);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',

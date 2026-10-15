@@ -1,9 +1,11 @@
 // Workbench — a multi-agent work assistant built from pi + herdr (see shared/workbench.ts).
 //
 // Two panes under one status bar: on the left, the chat with the COORDINATOR (a headless pi
-// that breaks work down and proposes tasks); on the right, the task board. A proposed task
-// runs only when the user picks a folder and presses Run; it then runs as its own pi WORKER in
-// a herdr pane, which the user can also watch or take over from a terminal.
+// that breaks work down and proposes tasks), which leads; on the right, the PLAN of the
+// conversation it is in — its tasks as a DAG, with the selected node's detail. Nothing runs
+// until the user approves a task or the whole plan; approved tasks then start as their
+// dependencies finish, each as its own pi WORKER in a herdr pane (which the user can also
+// watch or take over from a terminal), and the coordinator reviews each one to done.
 //
 // The renderer holds no capability here: every action is a named IPC call carrying an opaque
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
@@ -15,37 +17,26 @@ import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
 import {
   abortChat,
-  createTask,
   deleteConversation,
   openConversation,
   resetChat,
-  runAllTasks,
   sendChat,
   startWorkbench,
   stopWorkbench,
-  updateTask,
 } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { CheckboxField } from '../../components/ui/Checkbox';
-import { Select } from '../../components/ui/Select';
 import { workbenchErrorMessage } from './errors';
 import {
   WORKBENCH_LIMITS,
   isLiveTaskStatus,
-  taskAllows,
   type ChatItem,
   type ConversationView,
-  type FolderView,
-  type TaskStatus,
   type TaskView,
   type WorkbenchSnapshot,
-  shouldShowTaskPlan,
-  taskDependenciesMet,
 } from '../../../shared/workbench';
-import { TaskDagView } from './TaskDagView';
+import { PlanPanel } from './PlanPanel';
+import { ProposalCard } from './ProposalCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
-import { TaskChatPane } from './TaskChatPane';
-import { TaskBoardTabRow } from './TaskBoardTabRow';
 import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
@@ -109,9 +100,18 @@ export function WorkbenchHome() {
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <WorkbenchSplitPane
             resizeLabel={t('workbench.splitResizeHandle')}
-            left={<ChatPane wb={wb} t={t} run={run} busy={busy} onToggle={() => void toggle()} />}
+            left={
+              <ChatPane
+                wb={wb}
+                t={t}
+                run={run}
+                busy={busy}
+                onToggle={() => void toggle()}
+                onSelectTask={setSelectedTaskId}
+              />
+            }
             right={
-              <TaskBoard wb={wb} t={t} run={run} liveCount={liveCount} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
+              <PlanPanel wb={wb} t={t} run={run} selectedId={selectedTaskId} onSelectTask={setSelectedTaskId} />
             }
           />
         </div>
@@ -147,12 +147,14 @@ function ChatPane({
   run,
   busy,
   onToggle,
+  onSelectTask,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
   busy: boolean;
   onToggle: () => void;
+  onSelectTask: (id: string) => void;
 }) {
   const [draft, setDraft] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -269,9 +271,13 @@ function ChatPane({
             {ready ? t('workbench.chat.empty') : t('workbench.chat.notRunning')}
           </p>
         )}
-        {wb.chat.map((item) => (
-          <ChatEntry key={item.id} item={item} tasks={wb.tasks} t={t} />
-        ))}
+        {wb.chat.map((item) =>
+          item.kind === 'proposal' ? (
+            <ProposalCard key={item.id} taskIds={item.taskIds} wb={wb} t={t} run={run} onSelectTask={onSelectTask} />
+          ) : (
+            <ChatEntry key={item.id} item={item} tasks={wb.tasks} t={t} />
+          ),
+        )}
       </div>
       <div style={{ flexShrink: 0 }}>
         <WorkbenchChatComposer
@@ -382,6 +388,9 @@ function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskVie
           ))}
         </div>
       );
+    case 'proposal':
+      // Drawn by ChatPane as a ProposalCard (it needs the board and the runner).
+      return null;
   }
 }
 
@@ -523,282 +532,6 @@ function HistoryPanel({
 // ─── Task board ──────────────────────────────────────────────────────────────
 
 // Live work first, then what's waiting for a decision, then what's finished.
-const STATUS_GROUP: Record<TaskStatus, number> = {
-  blocked: 0,
-  review: 0,
-  working: 1,
-  starting: 1,
-  proposed: 2,
-  failed: 3,
-  stopped: 3,
-  done: 4,
-};
-
-function TaskBoard({
-  wb,
-  t,
-  run,
-  liveCount,
-  selectedId,
-  onSelectTask,
-}: {
-  wb: WorkbenchSnapshot;
-  t: TranslateFn;
-  run: Runner;
-  liveCount: number;
-  selectedId: string | null;
-  onSelectTask: (id: string | null) => void;
-}) {
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const tasks = [...wb.tasks].sort(
-    (a, b) => STATUS_GROUP[a.status] - STATUS_GROUP[b.status] || a.createdAt - b.createdAt,
-  );
-  const full = wb.tasks.length >= WORKBENCH_LIMITS.tasks;
-  const canRun = wb.status === 'ready' && wb.herdrAvailable && liveCount < WORKBENCH_LIMITS.liveTasks;
-  // Only proposals that already name a folder can go; the rest wait for the user to pick one.
-  const runnable = wb.tasks.filter(
-    (task) =>
-      task.status === 'proposed' &&
-      task.folderId !== null &&
-      wb.folders.some((f) => f.id === task.folderId) &&
-      taskDependenciesMet(task, wb.tasks),
-  ).length;
-  useEffect(() => {
-    if (tasks.length === 0) {
-      onSelectTask(null);
-      return;
-    }
-    if (!selectedId || !tasks.some((task) => task.id === selectedId)) onSelectTask(tasks[0]!.id);
-  }, [tasks, selectedId, onSelectTask]);
-  const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
-
-  return (
-    <section
-      aria-label={t('workbench.tasks.title')}
-      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-    >
-      <TaskBoardTabRow
-        tasks={tasks}
-        selectedId={selectedId}
-        onSelect={onSelectTask}
-        t={t}
-        wb={wb}
-        run={run}
-        onEditTask={(id) => setEditingId(id)}
-        liveCount={liveCount}
-        onNewTask={() => setCreating(true)}
-        creating={creating}
-        taskFull={full}
-        canRun={canRun}
-        runnable={runnable}
-        selectedTask={selectedTask}
-        sessionReady={wb.status === 'ready'}
-      />
-      {creating && (
-        <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
-          <TaskForm
-            t={t}
-            folders={wb.folders}
-            submitLabel={t('workbench.tasks.create')}
-            initial={{ title: '', prompt: '', folderId: wb.folders.length === 1 ? (wb.folders[0]?.id ?? null) : null, isolated: false }}
-            onCancel={() => setCreating(false)}
-            onSubmit={async (draft) => {
-              if (await run(() => createTask(draft))) setCreating(false);
-            }}
-          />
-        </div>
-      )}
-      {shouldShowTaskPlan(wb.tasks) && (
-        <details style={{ borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
-          <summary
-            style={{
-              padding: '4px 12px',
-              fontSize: fontSize.xs,
-              color: token('textMuted'),
-              cursor: 'pointer',
-              listStyle: 'none',
-            }}
-          >
-            {t('workbench.plan.title')}
-          </summary>
-          <TaskDagView tasks={wb.tasks} selectedId={selectedId} onSelect={onSelectTask} t={t} />
-        </details>
-      )}
-      {selectedTask && editingId === selectedTask.id ? (
-        <div style={{ padding: space.md, borderBottom: `1px solid ${token('border')}`, flexShrink: 0 }}>
-          <TaskForm
-            t={t}
-            folders={wb.folders}
-            submitLabel={t('workbench.tasks.save')}
-            lockPlace={selectedTask.worktreeDisplay !== null}
-            initial={{
-              title: selectedTask.title,
-              prompt: selectedTask.prompt,
-              folderId: selectedTask.folderId,
-              isolated: selectedTask.isolated,
-            }}
-            onCancel={() => setEditingId(null)}
-            onSubmit={async (draft) => {
-              const placeLocked = selectedTask.worktreeDisplay !== null;
-              const ok = await run(() =>
-                updateTask(
-                  placeLocked
-                    ? { taskId: selectedTask.id, title: draft.title, prompt: draft.prompt }
-                    : { taskId: selectedTask.id, ...draft },
-                ),
-              );
-              if (ok) setEditingId(null);
-            }}
-          />
-        </div>
-      ) : null}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {selectedTask ? (
-          <TaskChatPane task={selectedTask} wb={wb} t={t} run={run} />
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: space.lg, flex: 1 }}>
-            <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.base }}>{t('workbench.tasks.empty')}</p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-interface Draft {
-  title: string;
-  prompt: string;
-  folderId: string | null;
-  isolated: boolean;
-}
-
-function TaskForm({
-  t,
-  folders,
-  initial,
-  submitLabel,
-  lockPlace = false,
-  onSubmit,
-  onCancel,
-}: {
-  t: TranslateFn;
-  folders: readonly FolderView[];
-  initial: Draft;
-  submitLabel: string;
-  /** The task already has a worktree, so where it runs can't change. */
-  lockPlace?: boolean;
-  onSubmit: (draft: Draft) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [draft, setDraft] = useState<Draft>(initial);
-  const [saving, setSaving] = useState(false);
-  const valid = draft.title.trim() !== '' && draft.prompt.trim() !== '';
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!valid || saving) return;
-        setSaving(true);
-        void onSubmit({ ...draft, title: draft.title.trim(), prompt: draft.prompt.trim() }).finally(() => setSaving(false));
-      }}
-      style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: space.md }}
-    >
-      <label style={fieldStyle}>
-        <span style={labelStyle}>{t('workbench.tasks.titleLabel')}</span>
-        <input
-          value={draft.title}
-          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-          maxLength={WORKBENCH_LIMITS.taskTitle}
-          style={inputStyle}
-        />
-      </label>
-      <label style={fieldStyle}>
-        <span style={labelStyle}>{t('workbench.tasks.promptLabel')}</span>
-        <textarea
-          value={draft.prompt}
-          onChange={(e) => setDraft({ ...draft, prompt: e.target.value })}
-          maxLength={WORKBENCH_LIMITS.taskPrompt}
-          rows={5}
-          placeholder={t('workbench.tasks.promptPlaceholder')}
-          style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
-        />
-        <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('workbench.tasks.promptHint')}</span>
-      </label>
-      {!lockPlace && (
-        <PlacePicker
-          t={t}
-          folders={folders}
-          folderId={draft.folderId}
-          isolated={draft.isolated}
-          onChange={(folderId, isolated) => setDraft({ ...draft, folderId, isolated })}
-        />
-      )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: space.md }}>
-        <button type="button" onClick={onCancel} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
-          {t('workbench.cancel')}
-        </button>
-        <button
-          type="submit"
-          disabled={!valid || saving}
-          {...hoverBackground(token('accent'), token('accentHover'))}
-          style={{ ...smallAccentStyle, opacity: !valid || saving ? disabledOpacity : 1 }}
-        >
-          {submitLabel}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/** The folder select + the "own worktree" switch (only offered for a git folder). */
-function PlacePicker({
-  t,
-  folders,
-  folderId,
-  isolated,
-  disabled = false,
-  onChange,
-}: {
-  t: TranslateFn;
-  folders: readonly FolderView[];
-  folderId: string | null;
-  isolated: boolean;
-  disabled?: boolean;
-  onChange: (folderId: string | null, isolated: boolean) => void;
-}) {
-  const folder = folders.find((f) => f.id === folderId) ?? null;
-  const canIsolate = folder?.isGitRepo === true;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, flexWrap: 'wrap' }}>
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, minWidth: 0 }}>
-        <span style={labelStyle}>{t('workbench.tasks.folderLabel')}</span>
-        <Select
-          value={folder?.id ?? ''}
-          disabled={disabled}
-          size="sm"
-          style={{ maxWidth: 220 }}
-          onChange={(value) => {
-            const next = folders.find((f) => f.id === value) ?? null;
-            onChange(next?.id ?? null, next?.isGitRepo ? isolated : false);
-          }}
-          options={[
-            { value: '', label: t('workbench.tasks.noFolder') },
-            ...folders.map((f) => ({ value: f.id, label: f.name })),
-          ]}
-        />
-      </label>
-      <CheckboxField
-        title={canIsolate ? undefined : t('workbench.tasks.isolatedUnavailable')}
-        label={t('workbench.tasks.isolated')}
-        checked={isolated && canIsolate}
-        disabled={disabled || !canIsolate}
-        onChange={(next) => onChange(folderId, next)}
-        style={{ fontSize: fontSize.sm }}
-      />
-    </div>
-  );
-}
 
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -849,38 +582,10 @@ const preStyle: CSSProperties = {
   userSelect: 'text',
 };
 
-const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: space.xs };
 
-const labelStyle: CSSProperties = { fontSize: fontSize.sm, fontWeight: 600, color: token('textMuted') };
 
-const inputStyle: CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: radius.sm,
-  border: `1px solid ${token('borderStrong')}`,
-  background: token('bg'),
-  color: token('text'),
-  fontSize: fontSize.md,
-};
 
-const smallAccentStyle: CSSProperties = {
-  padding: '4px 12px',
-  borderRadius: radius.sm,
-  border: `1px solid ${token('accent')}`,
-  background: token('accent'),
-  color: token('accentText'),
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
-};
 
-const smallGhostStyle: CSSProperties = {
-  padding: '4px 12px',
-  borderRadius: radius.sm,
-  border: `1px solid ${token('borderStrong')}`,
-  background: 'transparent',
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
-};
 
 const actionButtonStyle: CSSProperties = {
   padding: '4px 10px',
@@ -893,7 +598,6 @@ const actionButtonStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const dangerActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: token('danger') };
 
 const chipCloseStyle: CSSProperties = {
   display: 'inline-grid',

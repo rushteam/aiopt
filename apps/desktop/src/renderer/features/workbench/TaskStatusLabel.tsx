@@ -4,7 +4,9 @@ import type { TaskStatus } from '../../../shared/workbench';
 
 const dotStyle = { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 } as const;
 
-export function StatusLabel({ status, t }: { status: TaskStatus; t: TranslateFn }) {
+/** `approved` turns a waiting `proposed` task into "approved, queued" (it starts on its own). */
+export function StatusLabel({ status, approved = false, t }: { status: TaskStatus; approved?: boolean; t: TranslateFn }) {
+  const queued = approved && status === 'proposed';
   const dot =
     status === 'working' || status === 'starting'
       ? token('accent')
@@ -12,11 +14,13 @@ export function StatusLabel({ status, t }: { status: TaskStatus; t: TranslateFn 
         ? token('danger')
         : status === 'review' || status === 'done'
           ? token('success')
-          : token('borderStrong');
+          : queued
+            ? token('accent')
+            : token('borderStrong');
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: space.xs, flexShrink: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
       <span aria-hidden style={{ ...dotStyle, background: dot }} />
-      {t(`workbench.taskStatus.${status}`)}
+      {queued ? t('workbench.plan.queued') : t(`workbench.taskStatus.${status}`)}
     </span>
   );
 }

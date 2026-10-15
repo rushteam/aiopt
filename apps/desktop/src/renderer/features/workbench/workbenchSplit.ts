@@ -1,7 +1,8 @@
 /** Persisted fraction of workbench width for the coordinator pane (0–1). */
 export const WORKBENCH_SPLIT_STORAGE_KEY = 'workbench.chatPaneRatio';
 
-export const WORKBENCH_SPLIT_DEFAULT = 0.42;
+// The coordinator leads, so it gets the larger share by default.
+export const WORKBENCH_SPLIT_DEFAULT = 0.56;
 export const WORKBENCH_SPLIT_MIN = 0.22;
 export const WORKBENCH_SPLIT_MAX = 0.68;
 

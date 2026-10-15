@@ -29,12 +29,16 @@ export const PROPOSE_TASKS_TOOL = 'propose_tasks';
 /** Ask main to launch existing board tasks (see orchestratorExtension.ts). */
 export const LAUNCH_TASKS_TOOL = 'launch_tasks';
 
+/** Mark reviewed tasks of the current plan done (see orchestratorExtension.ts). */
+export const COMPLETE_TASKS_TOOL = 'complete_tasks';
+
 export interface TranscriptEffects {
   proposed: ProposedTask[];
   launchTaskIds: string[];
+  completeTaskIds: string[];
 }
 
-const NO_EFFECTS: TranscriptEffects = { proposed: [], launchTaskIds: [] };
+const NO_EFFECTS: TranscriptEffects = { proposed: [], launchTaskIds: [], completeTaskIds: [] };
 
 /** The custom message the extension injects when AiOpt reports task changes. */
 export const TASK_UPDATE_MESSAGE = 'aiopt-task-update';
@@ -56,6 +60,11 @@ export interface Transcript {
   /** Record a local error line (e.g. a failed prompt) in the transcript. */
   pushError(message: string): void;
   pushNotice(code: WorkbenchNotice): void;
+  /**
+   * Record the board tasks a proposal created, for the approval card. During a turn the card
+   * waits for the turn to end, so it lands below the coordinator's reply.
+   */
+  pushProposal(taskIds: readonly string[]): void;
   /** Replace the transcript with a saved session's messages (pi `get_messages`). */
   load(messages: readonly unknown[]): void;
   items(): ChatItem[];
@@ -135,7 +144,7 @@ export function extractProposedTasks(details: unknown): ProposedTask[] {
   return out;
 }
 
-/** Validate a `launch_tasks` details payload into opaque task ids main minted. */
+/** Validate a `launch_tasks` / `complete_tasks` details payload into opaque task ids main minted. */
 export function extractLaunchTaskIds(details: unknown): string[] {
   const raw = asRecord(details)?.task_ids;
   if (!Array.isArray(raw)) return [];
@@ -167,6 +176,17 @@ export function createTranscript(): Transcript {
   let isStreaming = false;
   let seq = 0;
   const nextId = () => `c${(seq += 1)}`;
+  /**
+   * Approval cards proposed during the current turn. They join the transcript when the turn
+   * ends, so a card sits below the coordinator's reply ("approve it in the card below").
+   */
+  let heldProposals: string[][] = [];
+
+  function releaseProposals(): void {
+    const held = heldProposals;
+    heldProposals = [];
+    for (const taskIds of held) push({ kind: 'proposal', id: nextId(), taskIds });
+  }
 
   function push(item: ChatItem): void {
     items.push(item);
@@ -263,10 +283,14 @@ export function createTranscript(): Transcript {
           isStreaming = true;
           return NO_EFFECTS;
         case 'agent_end':
-          if (event.willRetry !== true) isStreaming = false;
+          if (event.willRetry !== true) {
+            isStreaming = false;
+            releaseProposals();
+          }
           return NO_EFFECTS;
         case 'agent_settled':
           isStreaming = false;
+          releaseProposals();
           return NO_EFFECTS;
         case 'message_start': {
           const message = asRecord(event.message);
@@ -329,10 +353,13 @@ export function createTranscript(): Transcript {
           }
           if (isError) return NO_EFFECTS;
           if (event.toolName === PROPOSE_TASKS_TOOL) {
-            return { proposed: extractProposedTasks(result?.details), launchTaskIds: [] };
+            return { ...NO_EFFECTS, proposed: extractProposedTasks(result?.details) };
           }
           if (event.toolName === LAUNCH_TASKS_TOOL) {
-            return { proposed: [], launchTaskIds: extractLaunchTaskIds(result?.details) };
+            return { ...NO_EFFECTS, launchTaskIds: extractLaunchTaskIds(result?.details) };
+          }
+          if (event.toolName === COMPLETE_TASKS_TOOL) {
+            return { ...NO_EFFECTS, completeTaskIds: extractLaunchTaskIds(result?.details) };
           }
           return NO_EFFECTS;
         }
@@ -351,17 +378,27 @@ export function createTranscript(): Transcript {
     pushNotice(code) {
       push({ kind: 'notice', id: nextId(), code });
     },
+    pushProposal(taskIds) {
+      const ids = taskIds.filter(isValidWorkbenchId).slice(0, WORKBENCH_LIMITS.tasksPerProposal);
+      if (ids.length === 0) return;
+      // Mid-turn the reply is still coming; outside a turn there is nothing to wait for.
+      if (isStreaming) heldProposals.push(ids);
+      else push({ kind: 'proposal', id: nextId(), taskIds: ids });
+    },
     load(messages) {
       items = [];
       isStreaming = false;
+      heldProposals = [];
       for (const message of messages) loadMessage(message);
     },
     // A structural copy, so a caller holding the array can't mutate the live transcript.
-    items: () => items.map((item) => ({ ...item })),
+    items: () =>
+      items.map((item) => (item.kind === 'proposal' ? { ...item, taskIds: [...item.taskIds] } : { ...item })),
     streaming: () => isStreaming,
     clear() {
       items = [];
       isStreaming = false;
+      heldProposals = [];
     },
   };
 }
