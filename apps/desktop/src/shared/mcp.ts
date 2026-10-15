@@ -65,28 +65,44 @@ export interface McpVarView {
 }
 
 /**
- * Where a library server stands in one agent's live config:
- * - `off`       — not enabled for this agent (AiOpt keeps it out of the file);
- * - `synced`    — enabled, and the agent file holds exactly what AiOpt would write;
- * - `missing`   — enabled, but the agent file has no entry by that name;
- * - `different` — enabled, but the entry was edited outside AiOpt (re-sync overwrites it).
+ * How a server compares between the library and one agent's live config, the same four
+ * states as skills:
+ * - `same`         — both have it and the agent file holds exactly what the library would write;
+ * - `library-only` — only the library has it (push writes it in);
+ * - `agent-only`   — only the agent file has it (pull adopts it into the library);
+ * - `differs`      — both have it, with different specs or values (diff, then pick a side).
  */
-export type McpAgentState = 'off' | 'synced' | 'missing' | 'different';
+export type McpSyncState = 'same' | 'library-only' | 'agent-only' | 'differs';
 
+/** A library server, minus credential values. */
 export interface McpServerView extends McpServerShape {
   name: string;
   env: McpVarView[];
   headers: McpVarView[];
-  agents: Record<McpAgentId, McpAgentState>;
 }
 
-/** A server found in an agent's config that is not in the library yet. */
-export interface McpImportCandidate {
-  agentId: McpAgentId;
+/** A server as an agent file has it: spec and key names, never values. */
+export interface McpAgentEntry extends McpServerShape {
+  envKeys: string[];
+  headerKeys: string[];
+}
+
+/** One agent's cell in a matrix row. */
+export interface McpCell {
+  state: McpSyncState;
+  entry: McpAgentEntry | null;
+  /** The library spec can be written into this agent (Codex has no SSE). */
+  supported: boolean;
+}
+
+/**
+ * One row of the sync matrix: the union of names in the library and in every readable agent
+ * file. An agent key is absent when neither side has the server, or the agent file is unreadable.
+ */
+export interface McpMatrixRow {
   name: string;
-  transport: McpTransport;
-  /** `command args…` or the URL — for display; no env/header values. */
-  summary: string;
+  library: McpServerView | null;
+  agents: Partial<Record<McpAgentId, McpCell>>;
 }
 
 export interface McpAgentInfo {
@@ -99,9 +115,8 @@ export interface McpAgentInfo {
 }
 
 export interface McpSnapshot {
-  servers: McpServerView[];
+  rows: McpMatrixRow[];
   agents: McpAgentInfo[];
-  candidates: McpImportCandidate[];
   /** False when the OS secret store is unavailable — env/header values cannot be saved. */
   secretsAvailable: boolean;
 }
@@ -112,34 +127,59 @@ export interface McpVarInput {
   value?: string;
 }
 
+/** Saves into the library only; agents change only on push. */
 export interface McpSaveRequest extends McpServerShape {
   name: string;
   /** Set when renaming or editing an existing server. */
   originalName?: string;
   env: McpVarInput[];
   headers: McpVarInput[];
-  agents: McpAgentId[];
-}
-
-export interface McpToggleRequest {
-  name: string;
-  agentId: McpAgentId;
-  enabled: boolean;
 }
 
 export interface McpNameRequest {
   name: string;
 }
 
-export interface McpImportRequest {
+export interface McpAgentRequest {
   agentId: McpAgentId;
   name: string;
+}
+
+export interface McpPushRequest {
+  name: string;
+  agentIds: McpAgentId[];
+}
+
+export interface McpMergeRequest extends McpAgentRequest {
+  /** Field ids from the diff whose agent side the library takes. */
+  agentPicks: string[];
 }
 
 /** `saved: false` — the user declined the write in the confirmation dialog. */
 export interface McpWriteResult {
   saved: boolean;
   snapshot: McpSnapshot;
+}
+
+/**
+ * One differing field, relative to the library (as skills' files are):
+ * `added` = only the library has it, `deleted` = only the agent has it, `modified` = both differ.
+ * Field ids: `spec` (transport + command/args or url), `env:<KEY>`, `header:<KEY>`.
+ * `library` / `agent` carry the spec summaries for `spec` only — env/header VALUES never leave main.
+ */
+export interface McpFieldDiff {
+  field: string;
+  kind: 'spec' | 'env' | 'header';
+  key?: string;
+  status: 'added' | 'modified' | 'deleted';
+  library?: string;
+  agent?: string;
+}
+
+export interface McpDiffResult {
+  agentId: McpAgentId;
+  name: string;
+  fields: McpFieldDiff[];
 }
 
 /** Shell-ish one-line summary of a spec, for the list and the confirmation dialog. */

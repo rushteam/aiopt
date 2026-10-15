@@ -1,12 +1,14 @@
-// The MCP server library and its sync into agent configs.
+// The MCP server library and its sync with each agent's own MCP config — the same model as
+// skills: the snapshot is a live comparison of the library against every agent file, and
+// nothing moves between them unless the user pulls, pushes, merges or deletes.
 //
-// Library (userData/mcp-servers.json): name, transport, command/args or url, env/header KEYS,
-// and which agents each server is enabled for. Values: one main-only secret per server
-// (`main_mcp_<hex name>`) holding `{ env, headers }`. The renderer never sees a value.
+// Library (userData/mcp-servers.json): name, transport, command/args or url, and env/header
+// KEYS. Values: one main-only secret per server (`main_mcp_<hex name>`) holding
+// `{ env, headers }`. The renderer never sees a value.
 //
-// Writes into agent files happen only for agents a server is enabled for, and every save or
-// enable that puts a spec into an agent file is confirmed first through the injected
-// `confirmWrite` — a main-side native dialog the renderer cannot answer.
+// Library edits, pulls, merges and library deletes never touch an agent file. A push puts a
+// spec into an agent file, so it is confirmed first through the injected `confirmWrite` — a
+// main-side native dialog the renderer cannot answer. Deleting an agent's entry only removes.
 
 import { readUtf8WithoutBom, writeFileAtomicSync } from '../storeFile';
 import { throwIpcError } from '../ipc/validate';
@@ -21,11 +23,15 @@ import {
   isMcpName,
   mcpSummary,
   type McpAgentId,
+  type McpAgentEntry,
   type McpAgentInfo,
-  type McpAgentState,
-  type McpImportCandidate,
+  type McpCell,
+  type McpDiffResult,
+  type McpFieldDiff,
+  type McpMatrixRow,
   type McpSaveRequest,
   type McpServerShape,
+  type McpServerView,
   type McpSnapshot,
   type McpTransport,
   type McpWriteResult,
@@ -46,7 +52,6 @@ interface LibraryServer extends McpServerShape {
   name: string;
   envKeys: string[];
   headerKeys: string[];
-  agents: McpAgentId[];
 }
 
 interface LibraryDoc {
@@ -89,10 +94,7 @@ function validLibraryServer(raw: unknown): LibraryServer | null {
   if (o.transport !== 'stdio' && o.transport !== 'http' && o.transport !== 'sse') return null;
   const strings = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-  const agents = strings(o.agents).filter((a): a is McpAgentId =>
-    (MCP_AGENT_IDS as readonly string[]).includes(a),
-  );
-  const base = { name: o.name, envKeys: strings(o.envKeys), headerKeys: strings(o.headerKeys), agents };
+  const base = { name: o.name, envKeys: strings(o.envKeys), headerKeys: strings(o.headerKeys) };
   if (o.transport === 'stdio') {
     if (typeof o.command !== 'string' || o.command === '') return null;
     return { ...base, transport: 'stdio', command: o.command, args: strings(o.args) };
@@ -137,7 +139,6 @@ export function validateSaveRequest(raw: unknown): McpSaveRequest {
     transport,
     env: [],
     headers: [],
-    agents: [],
   };
   if (transport === 'stdio') {
     if (typeof o.command !== 'string' || o.command.trim() === '' || o.command.length > MCP_LIMITS.maxCommand) {
@@ -164,16 +165,6 @@ export function validateSaveRequest(raw: unknown): McpSaveRequest {
   // Env vars belong to a spawned process, headers to a connection: each only on its transport.
   out.env = transport === 'stdio' ? vars(o.env, MCP_ENV_KEY_RE, 'env') : vars(o.env, null, 'env');
   out.headers = transport === 'stdio' ? vars(o.headers, null, 'headers') : vars(o.headers, MCP_HEADER_KEY_RE, 'headers');
-  if (!Array.isArray(o.agents)) throwIpcError('INVALID_PARAMS', 'agents must be an array');
-  const agents = new Set<McpAgentId>();
-  for (const a of o.agents) {
-    if (!(MCP_AGENT_IDS as readonly unknown[]).includes(a)) throwIpcError('INVALID_PARAMS', 'invalid agent');
-    if (!agentSupportsTransport(a as McpAgentId, transport)) {
-      throwIpcError('UNSUPPORTED_CAPABILITY', `${String(a)} does not support ${transport} servers`);
-    }
-    agents.add(a as McpAgentId);
-  }
-  out.agents = MCP_AGENT_IDS.filter((a) => agents.has(a));
   return out;
 }
 
@@ -243,6 +234,12 @@ export function createMcpStore(deps: McpStoreDeps) {
     deps.secrets.set(secretKey(name), JSON.stringify(v));
   };
 
+  const assertSecretsFor = (v: Values): void => {
+    if (Object.keys(v.env).length + Object.keys(v.headers).length > 0 && !deps.secrets.isAvailable()) {
+      throwIpcError('PRECONDITION_FAILED', 'OS secret encryption is unavailable');
+    }
+  };
+
   const find = (name: string): LibraryServer | undefined => doc.servers.find((s) => s.name === name);
 
   const readAll = (): Record<McpAgentId, AgentMcpRead> =>
@@ -255,6 +252,15 @@ export function createMcpStore(deps: McpStoreDeps) {
         throwIpcError('PRECONDITION_FAILED', `${a} MCP config could not be read; fix or move it first`);
       }
     }
+  };
+
+  /** The agent's live entry, or NOT_FOUND. Unreadable files are PRECONDITION_FAILED. */
+  const agentEntry = (agentId: McpAgentId, name: string): LiveMcpServer => {
+    const r = readAgentMcp(agentId);
+    if (r.state === 'unreadable') throwIpcError('PRECONDITION_FAILED', `${agentId} MCP config could not be read`);
+    const live = r.servers.get(name);
+    if (!live) throwIpcError('NOT_FOUND', 'server not found in agent config');
+    return live;
   };
 
   const applyToAgents = (writes: Map<McpAgentId, { put: Map<string, LiveMcpServer>; drop: Set<string> }>): void => {
@@ -286,53 +292,126 @@ export function createMcpStore(deps: McpStoreDeps) {
     headerKeys: s.headerKeys,
   });
 
+  const view = (s: LibraryServer): McpServerView => {
+    const values = readValues(s.name);
+    return {
+      name: s.name,
+      transport: s.transport,
+      ...(s.transport === 'stdio' ? { command: s.command, args: s.args } : { url: s.url }),
+      env: s.envKeys.map((key) => ({ key, set: Object.hasOwn(values.env, key) })),
+      headers: s.headerKeys.map((key) => ({ key, set: Object.hasOwn(values.headers, key) })),
+    };
+  };
+
+  const entryView = (l: LiveMcpServer): McpAgentEntry => ({
+    transport: l.transport,
+    ...(l.transport === 'stdio' ? { command: l.command, args: l.args ?? [] } : { url: l.url }),
+    envKeys: Object.keys(l.env),
+    headerKeys: Object.keys(l.headers),
+  });
+
+  /** Library-known names present in each readable agent file (unreadable agents omitted). */
+  const presentSets = (live: Record<McpAgentId, AgentMcpRead>): McpEnabledSets => {
+    const out: McpEnabledSets = {};
+    for (const a of MCP_AGENT_IDS) {
+      const r = live[a];
+      if (r.state === 'ok') out[a] = doc.servers.filter((s) => r.servers.has(s.name)).map((s) => s.name);
+    }
+    return out;
+  };
+
+  /** Every field that differs; empty when the two are the same server. */
+  const fieldDiff = (agentId: McpAgentId, s: LibraryServer, got: LiveMcpServer): McpFieldDiff[] => {
+    const want = liveTransportFor(agentId, toLive(s, readValues(s.name)));
+    const fields: McpFieldDiff[] = [];
+    const specSame =
+      want.transport === got.transport &&
+      (want.transport === 'stdio'
+        ? want.command === got.command && JSON.stringify(want.args ?? []) === JSON.stringify(got.args ?? [])
+        : want.url === got.url);
+    if (!specSame) {
+      fields.push({ field: 'spec', kind: 'spec', status: 'modified', library: mcpSummary(s), agent: mcpSummary(got) });
+    }
+    for (const [kind, a, b] of [
+      ['env', want.env, got.env],
+      ['header', want.headers, got.headers],
+    ] as const) {
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+      for (const key of keys) {
+        const inA = Object.hasOwn(a, key);
+        const inB = Object.hasOwn(b, key);
+        if (inA && inB && a[key] === b[key]) continue;
+        fields.push({ field: `${kind}:${key}`, kind, key, status: inA && inB ? 'modified' : inA ? 'added' : 'deleted' });
+      }
+    }
+    return fields;
+  };
+
+  const checkLimits = (live: LiveMcpServer): void => {
+    const tooBig =
+      (live.command?.length ?? 0) > MCP_LIMITS.maxCommand ||
+      (live.args?.length ?? 0) > MCP_LIMITS.maxArgs ||
+      (live.args ?? []).some((a) => a.length > MCP_LIMITS.maxArg) ||
+      (live.url?.length ?? 0) > MCP_LIMITS.maxUrl ||
+      Object.keys(live.env).length + Object.keys(live.headers).length > MCP_LIMITS.maxVars ||
+      [...Object.values(live.env), ...Object.values(live.headers)].some((v) => v.length > MCP_LIMITS.maxVarValue);
+    if (tooBig) throwIpcError('INVALID_PARAMS', 'server spec exceeds limits');
+  };
+
+  /** Put a server into the library (replacing one of the same name) with its values. */
+  const putLibrary = (next: LibraryServer, values: Values): void => {
+    const existing = find(next.name);
+    if (!existing && doc.servers.length >= MCP_LIMITS.maxServers) throwIpcError('PRECONDITION_FAILED', 'too many servers');
+    assertSecretsFor(values);
+    writeValues(next.name, values);
+    doc = { servers: existing ? doc.servers.map((s) => (s.name === next.name ? next : s)) : [...doc.servers, next] };
+    persist();
+  };
+
+  const fromLive = (name: string, live: LiveMcpServer): LibraryServer => ({
+    name,
+    transport: live.transport,
+    ...(live.transport === 'stdio' ? { command: live.command, args: live.args ?? [] } : { url: live.url }),
+    envKeys: Object.keys(live.env),
+    headerKeys: Object.keys(live.headers),
+  });
+
   return {
     snapshot(): McpSnapshot {
       const live = readAll();
-      const libraryNames = new Set(doc.servers.map((s) => s.name));
-      const servers = doc.servers.map((s) => {
-        const values = readValues(s.name);
-        const want = toLive(s, values);
-        const agents = Object.fromEntries(
-          MCP_AGENT_IDS.map((a): [McpAgentId, McpAgentState] => {
-            if (!s.agents.includes(a)) return [a, 'off'];
-            const r = live[a];
-            if (r.state !== 'ok') return [a, 'different'];
-            const got = r.servers.get(s.name);
-            if (!got) return [a, 'missing'];
-            return [a, sameMcpServer(liveTransportFor(a, want), got) ? 'synced' : 'different'];
-          }),
-        ) as Record<McpAgentId, McpAgentState>;
-        return {
-          name: s.name,
-          transport: s.transport,
-          ...(s.transport === 'stdio' ? { command: s.command, args: s.args } : { url: s.url }),
-          env: s.envKeys.map((key) => ({ key, set: Object.hasOwn(values.env, key) })),
-          headers: s.headerKeys.map((key) => ({ key, set: Object.hasOwn(values.headers, key) })),
-          agents,
-        };
-      });
-      const candidates: McpImportCandidate[] = [];
-      const agents: McpAgentInfo[] = MCP_AGENT_IDS.map((agentId) => {
-        const r = live[agentId];
-        if (r.state === 'ok') {
-          for (const [name, s] of r.servers) {
-            if (!libraryNames.has(name) && isMcpName(name)) {
-              candidates.push({ agentId, name, transport: s.transport, summary: mcpSummary(s) });
-            }
-          }
+      const names = new Set(doc.servers.map((s) => s.name));
+      for (const a of MCP_AGENT_IDS) {
+        const r = live[a];
+        if (r.state === 'ok') for (const n of r.servers.keys()) if (isMcpName(n)) names.add(n);
+      }
+      const rows: McpMatrixRow[] = [...names].sort((x, y) => x.localeCompare(y)).map((name) => {
+        const s = find(name);
+        const want = s ? toLive(s, readValues(name)) : null;
+        const agents: Partial<Record<McpAgentId, McpCell>> = {};
+        for (const a of MCP_AGENT_IDS) {
+          const r = live[a];
+          if (r.state !== 'ok') continue;
+          const got = r.servers.get(name);
+          const supported = s ? agentSupportsTransport(a, s.transport) : true;
+          if (s && got) {
+            const same = sameMcpServer(liveTransportFor(a, want!), got);
+            agents[a] = { state: same ? 'same' : 'differs', entry: entryView(got), supported };
+          } else if (s) agents[a] = { state: 'library-only', entry: null, supported };
+          else if (got) agents[a] = { state: 'agent-only', entry: entryView(got), supported };
         }
-        return {
-          agentId,
-          installed: deps.isInstalled(agentId),
-          configDisplayPath: deps.displayPath(mcpConfigPath(agentId)),
-          unreadable: r.state === 'unreadable',
-        };
+        return { name, library: s ? view(s) : null, agents };
       });
-      return { servers, agents, candidates, secretsAvailable: deps.secrets.isAvailable() };
+      const agents: McpAgentInfo[] = MCP_AGENT_IDS.map((agentId) => ({
+        agentId,
+        installed: deps.isInstalled(agentId),
+        configDisplayPath: deps.displayPath(mcpConfigPath(agentId)),
+        unreadable: live[agentId].state === 'unreadable',
+      }));
+      return { rows, agents, secretsAvailable: deps.secrets.isAvailable() };
     },
 
-    async save(req: McpSaveRequest): Promise<McpWriteResult> {
+    /** Add or edit a library server. Agent files are not touched; they show `differs` until pushed. */
+    save(req: McpSaveRequest): McpSnapshot {
       const previous = req.originalName !== undefined ? find(req.originalName) : undefined;
       if (req.originalName !== undefined && !previous) throwIpcError('NOT_FOUND', 'server not found');
       if (req.name !== req.originalName && find(req.name)) throwIpcError('ALREADY_EXISTS', 'a server with this name exists');
@@ -356,100 +435,141 @@ export function createMcpStore(deps: McpStoreDeps) {
         ...(req.transport === 'stdio' ? { command: req.command, args: req.args ?? [] } : { url: req.url }),
         envKeys: req.env.map((v) => v.key),
         headerKeys: req.headers.map((v) => v.key),
-        agents: req.agents,
       };
-      const writes = emptyWrites();
-      for (const a of next.agents) writes.get(a)!.put.set(next.name, toLive(next, values));
-      if (previous) {
-        for (const a of previous.agents) {
-          if (!next.agents.includes(a) || previous.name !== next.name) writes.get(a)!.drop.add(previous.name);
-        }
-      }
-      const touched = MCP_AGENT_IDS.filter((a) => writes.get(a)!.put.size + writes.get(a)!.drop.size > 0);
-      assertWritable(touched);
-      if (Object.keys(values.env).length + Object.keys(values.headers).length > 0 && !deps.secrets.isAvailable()) {
-        throwIpcError('PRECONDITION_FAILED', 'OS secret encryption is unavailable');
-      }
-      if (next.agents.length > 0 && !(await deps.confirmWrite([confirmFor(next, next.agents)]))) {
-        return { saved: false, snapshot: this.snapshot() };
-      }
+      assertSecretsFor(values);
       writeValues(next.name, values);
       if (previous && previous.name !== next.name) deps.secrets.delete(secretKey(previous.name));
       doc = {
-        servers: previous
-          ? doc.servers.map((s) => (s.name === previous.name ? next : s))
-          : [...doc.servers, next],
+        servers: previous ? doc.servers.map((s) => (s.name === previous.name ? next : s)) : [...doc.servers, next],
       };
       persist();
-      applyToAgents(writes);
-      return { saved: true, snapshot: this.snapshot() };
-    },
-
-    async toggle(name: string, agentId: McpAgentId, enabled: boolean): Promise<McpWriteResult> {
-      const s = find(name);
-      if (!s) throwIpcError('NOT_FOUND', 'server not found');
-      if (enabled === s.agents.includes(agentId)) return { saved: true, snapshot: this.snapshot() };
-      if (enabled && !agentSupportsTransport(agentId, s.transport)) {
-        throwIpcError('UNSUPPORTED_CAPABILITY', `${agentId} does not support ${s.transport} servers`);
-      }
-      assertWritable([agentId]);
-      if (enabled && !(await deps.confirmWrite([confirmFor(s, [agentId])]))) {
-        return { saved: false, snapshot: this.snapshot() };
-      }
-      const updated: LibraryServer = {
-        ...s,
-        agents: enabled ? MCP_AGENT_IDS.filter((a) => a === agentId || s.agents.includes(a)) : s.agents.filter((a) => a !== agentId),
-      };
-      doc = { servers: doc.servers.map((x) => (x.name === name ? updated : x)) };
-      persist();
-      const writes = emptyWrites();
-      if (enabled) writes.get(agentId)!.put.set(name, toLive(s, readValues(name)));
-      else writes.get(agentId)!.drop.add(name);
-      applyToAgents(writes);
-      return { saved: true, snapshot: this.snapshot() };
-    },
-
-    /** Rewrite a server into every agent it is enabled for (fixes `missing` / `different`). */
-    resync(name: string): McpSnapshot {
-      const s = find(name);
-      if (!s) throwIpcError('NOT_FOUND', 'server not found');
-      assertWritable(s.agents);
-      const writes = emptyWrites();
-      const live = toLive(s, readValues(name));
-      for (const a of s.agents) writes.get(a)!.put.set(name, live);
-      applyToAgents(writes);
       return this.snapshot();
-    },
-
-    remove(name: string): McpSnapshot {
-      const s = find(name);
-      if (!s) throwIpcError('NOT_FOUND', 'server not found');
-      assertWritable(s.agents);
-      const writes = emptyWrites();
-      for (const a of s.agents) writes.get(a)!.drop.add(name);
-      doc = { servers: doc.servers.filter((x) => x.name !== name) };
-      persist();
-      deps.secrets.delete(secretKey(name));
-      applyToAgents(writes);
-      return this.snapshot();
-    },
-
-    enabledSets(): McpEnabledSets {
-      const out: McpEnabledSets = {};
-      for (const a of MCP_AGENT_IDS) out[a] = doc.servers.filter((s) => s.agents.includes(a)).map((s) => s.name);
-      return out;
     },
 
     /**
-     * Plan making each agent's enabled servers equal the given sets (agents absent from
-     * `sets` are left alone). Enabling writes commands into agent files, so a non-empty
-     * enable list goes through ONE confirmation; disabling only removes and needs none.
+     * Copy an agent's entry into the library (creating or overwriting it), values into the
+     * secret store. No agent file is written, so no confirmation: the spec is the user's own.
+     */
+    pull(agentId: McpAgentId, name: string): McpSnapshot {
+      const live = agentEntry(agentId, name);
+      checkLimits(live);
+      putLibrary(fromLive(name, live), { env: { ...live.env }, headers: { ...live.headers } });
+      log.info('mcp.pulled', { agentId });
+      return this.snapshot();
+    },
+
+    /**
+     * Write the library spec into the given agents, overwriting their entry. One native
+     * confirmation lists every agent; what is written is exactly what the dialog showed.
+     */
+    async push(name: string, agentIds: McpAgentId[]): Promise<McpWriteResult> {
+      const s = find(name);
+      if (!s) throwIpcError('NOT_FOUND', 'server not found');
+      for (const a of agentIds) {
+        if (!agentSupportsTransport(a, s.transport)) {
+          throwIpcError('UNSUPPORTED_CAPABILITY', `${a} does not support ${s.transport} servers`);
+        }
+      }
+      assertWritable(agentIds);
+      const live = toLive(s, readValues(name));
+      if (!(await deps.confirmWrite([confirmFor(s, agentIds)]))) return { saved: false, snapshot: this.snapshot() };
+      const writes = emptyWrites();
+      for (const a of agentIds) writes.get(a)!.put.set(name, live);
+      applyToAgents(writes);
+      return { saved: true, snapshot: this.snapshot() };
+    },
+
+    /** Remove a server from the library and its values. Agent files are left as they are. */
+    remove(name: string): McpSnapshot {
+      if (!find(name)) throwIpcError('NOT_FOUND', 'server not found');
+      doc = { servers: doc.servers.filter((x) => x.name !== name) };
+      persist();
+      deps.secrets.delete(secretKey(name));
+      return this.snapshot();
+    },
+
+    /** Remove one agent's entry. The library and other agents are left as they are. */
+    removeFromAgent(agentId: McpAgentId, name: string): McpSnapshot {
+      agentEntry(agentId, name);
+      const writes = emptyWrites();
+      writes.get(agentId)!.drop.add(name);
+      applyToAgents(writes);
+      return this.snapshot();
+    },
+
+    /** Which fields differ between the library and one agent. Values are never included. */
+    diff(agentId: McpAgentId, name: string): McpDiffResult {
+      const s = find(name);
+      if (!s) throwIpcError('NOT_FOUND', 'server not found');
+      return { agentId, name, fields: fieldDiff(agentId, s, agentEntry(agentId, name)) };
+    },
+
+    /**
+     * Take the picked fields from the agent into the library; the rest keep the library
+     * version. Only the library changes. Picks not in the current diff are dropped.
+     */
+    merge(agentId: McpAgentId, name: string, agentPicks: string[]): McpSnapshot {
+      const s = find(name);
+      if (!s) throwIpcError('NOT_FOUND', 'server not found');
+      const got = agentEntry(agentId, name);
+      const known = new Set(fieldDiff(agentId, s, got).map((f) => f.field));
+      const picks = new Set(agentPicks.filter((p) => known.has(p)));
+      if (picks.size === 0) return this.snapshot();
+      const values = readValues(name);
+      const env = pick(values.env, s.envKeys);
+      const headers = pick(values.headers, s.headerKeys);
+      const envKeys = [...s.envKeys];
+      const headerKeys = [...s.headerKeys];
+      for (const [prefix, map, keys, from] of [
+        ['env:', env, envKeys, got.env],
+        ['header:', headers, headerKeys, got.headers],
+      ] as const) {
+        for (const p of picks) {
+          if (!p.startsWith(prefix)) continue;
+          const key = p.slice(prefix.length);
+          if (Object.hasOwn(from, key)) {
+            map[key] = from[key]!;
+            if (!keys.includes(key)) keys.push(key);
+          } else {
+            delete map[key];
+            keys.splice(keys.indexOf(key), 1);
+          }
+        }
+      }
+      const spec: McpServerShape = picks.has('spec')
+        ? got.transport === 'stdio'
+          ? { transport: 'stdio', command: got.command, args: got.args ?? [] }
+          : // Codex reads every remote server back as http; keep the library's SSE choice there.
+            { transport: agentId === 'codex' && s.transport === 'sse' ? 'sse' : got.transport, url: got.url }
+        : s.transport === 'stdio'
+          ? { transport: 'stdio', command: s.command, args: s.args ?? [] }
+          : { transport: s.transport, url: s.url };
+      // Env belongs to a command, headers to a connection: drop what the transport cannot carry.
+      const stdio = spec.transport === 'stdio';
+      const next: LibraryServer = { name, ...spec, envKeys: stdio ? envKeys : [], headerKeys: stdio ? [] : headerKeys };
+      checkLimits(toLive(next, { env, headers }));
+      putLibrary(next, { env: stdio ? env : {}, headers: stdio ? {} : headers });
+      log.info('mcp.merged', { agentId, fields: picks.size });
+      return this.snapshot();
+    },
+
+    /** Per agent, the library servers its file has — what a config profile records. */
+    enabledSets(): McpEnabledSets {
+      return presentSets(readAll());
+    },
+
+    /**
+     * Plan making each agent's library servers equal the given sets (agents absent from
+     * `sets` are left alone). Only library-known names are ever added or removed — an entry
+     * the user wrote by hand into an agent file is never touched. Adding writes commands into
+     * agent files, so a non-empty add list goes through ONE confirmation; removing needs none.
      * Unreadable target files refuse the whole plan before the dialog.
      */
     async planEnabledSets(sets: McpEnabledSets): Promise<McpEnabledSetsPlan> {
       const diff = () => {
-        const enable = new Map<string, McpAgentId[]>();
-        const disable = new Map<string, McpAgentId[]>();
+        const present = presentSets(readAll());
+        const add = new Map<string, McpAgentId[]>();
+        const drop = new Map<string, McpAgentId[]>();
         let skipped = 0;
         for (const a of MCP_AGENT_IDS) {
           const want = sets[a];
@@ -459,23 +579,23 @@ export function createMcpStore(deps: McpStoreDeps) {
             const s = find(n);
             if (!s || !agentSupportsTransport(a, s.transport)) skipped += 1;
           }
+          const has = new Set(present[a] ?? []);
           for (const s of doc.servers) {
-            const on = s.agents.includes(a);
             const should = wanted.has(s.name) && agentSupportsTransport(a, s.transport);
-            const into = should && !on ? enable : !should && on ? disable : null;
+            const into = should && !has.has(s.name) ? add : !wanted.has(s.name) && has.has(s.name) ? drop : null;
             if (into) into.set(s.name, [...(into.get(s.name) ?? []), a]);
           }
         }
-        return { enable, disable, skipped };
+        return { add, drop, skipped };
       };
-      const planned = diff();
       const touched = new Set<McpAgentId>();
-      for (const m of [planned.enable, planned.disable]) for (const agents of m.values()) agents.forEach((a) => touched.add(a));
+      for (const a of MCP_AGENT_IDS) if (sets[a]) touched.add(a);
       assertWritable(touched);
+      const planned = diff();
       // What the user saw: name → spec summary, so a spec edited during the dialog is not written.
       const confirmed = new Map<string, string>();
-      if (planned.enable.size > 0) {
-        const reqs = [...planned.enable].map(([n, agents]) => confirmFor(find(n)!, agents));
+      if (planned.add.size > 0) {
+        const reqs = [...planned.add].map(([n, agents]) => confirmFor(find(n)!, agents));
         if (!(await deps.confirmWrite(reqs))) return { proceed: false, skipped: planned.skipped, commit: () => {} };
         for (const r of reqs) confirmed.set(r.name, r.summary);
       }
@@ -483,69 +603,25 @@ export function createMcpStore(deps: McpStoreDeps) {
         proceed: true,
         skipped: planned.skipped,
         commit: () => {
-          const { enable, disable } = diff();
+          const { add, drop } = diff();
           const writes = emptyWrites();
-          const nextAgents = new Map(doc.servers.map((s) => [s.name, new Set(s.agents)]));
-          for (const [n, agents] of disable) {
-            for (const a of agents) {
-              nextAgents.get(n)!.delete(a);
-              writes.get(a)!.drop.add(n);
-            }
-          }
-          for (const [n, agents] of enable) {
+          for (const [n, agents] of drop) for (const a of agents) writes.get(a)!.drop.add(n);
+          for (const [n, agents] of add) {
             const s = find(n)!;
             if (confirmed.get(n) !== mcpSummary(s)) continue;
             const live = toLive(s, readValues(n));
-            for (const a of agents) {
-              if (!(planned.enable.get(n) ?? []).includes(a)) continue;
-              nextAgents.get(n)!.add(a);
-              writes.get(a)!.put.set(n, live);
-            }
+            for (const a of agents) if ((planned.add.get(n) ?? []).includes(a)) writes.get(a)!.put.set(n, live);
           }
-          doc = { servers: doc.servers.map((s) => ({ ...s, agents: MCP_AGENT_IDS.filter((a) => nextAgents.get(s.name)!.has(a)) })) };
-          persist();
           applyToAgents(writes);
         },
       };
-    },
-
-    /**
-     * Adopt a server already in an agent's config into the library, enabled for that agent.
-     * Nothing is written to any agent file, so no confirmation: the spec is the user's own.
-     */
-    import(agentId: McpAgentId, name: string): McpSnapshot {
-      if (find(name)) throwIpcError('ALREADY_EXISTS', 'a server with this name exists');
-      if (doc.servers.length >= MCP_LIMITS.maxServers) throwIpcError('PRECONDITION_FAILED', 'too many servers');
-      const r = readAgentMcp(agentId);
-      const live = r.state === 'ok' ? r.servers.get(name) : undefined;
-      if (!live) throwIpcError('NOT_FOUND', 'server not found in agent config');
-      const tooBig =
-        (live.command?.length ?? 0) > MCP_LIMITS.maxCommand ||
-        (live.args?.length ?? 0) > MCP_LIMITS.maxArgs ||
-        (live.url?.length ?? 0) > MCP_LIMITS.maxUrl ||
-        Object.keys(live.env).length + Object.keys(live.headers).length > MCP_LIMITS.maxVars;
-      if (tooBig) throwIpcError('INVALID_PARAMS', 'server spec exceeds limits');
-      const values: Values = { env: { ...live.env }, headers: { ...live.headers } };
-      writeValues(name, values);
-      const s: LibraryServer = {
-        name,
-        transport: live.transport,
-        ...(live.transport === 'stdio' ? { command: live.command, args: live.args ?? [] } : { url: live.url }),
-        envKeys: Object.keys(live.env),
-        headerKeys: Object.keys(live.headers),
-        agents: [agentId],
-      };
-      doc = { servers: [...doc.servers, s] };
-      persist();
-      log.info('mcp.imported', { agentId });
-      return this.snapshot();
     },
   };
 }
 
 export type McpStore = ReturnType<typeof createMcpStore>;
 
-/** Per agent, the library servers enabled for it — what a config profile records. */
+/** Per agent, the library servers present in its file — what a config profile records. */
 export type McpEnabledSets = Partial<Record<McpAgentId, string[]>>;
 
 /** A profile's MCP change, confirmed before anything (bindings included) is applied. */

@@ -1,7 +1,7 @@
 # MCP servers
 
-AiOpt keeps one library of MCP servers and writes it into each supported agent's own MCP
-config. Code: `apps/desktop/src/main/mcp/`, shared types `src/shared/mcp.ts`, screen
+AiOpt keeps one library of MCP servers and syncs it with each supported agent's own MCP
+config, the same way the Skills screen syncs skills. Code: `apps/desktop/src/main/mcp/`, shared types `src/shared/mcp.ts`, screen
 `src/renderer/features/mcp/McpHome.tsx`.
 
 ## 1. Why this is a security-sensitive area
@@ -10,16 +10,20 @@ An MCP entry is **a command the agent will run** (stdio) or **a URL it will conn
 send headers to** (http / sse). Writing one into an agent config is code execution on the
 user's machine, deferred to the next agent start. So:
 
-- **Every write that puts a spec into an agent file is confirmed in main.** `save` (when the
-  server is enabled for any agent) and an enabling `toggle` call `confirmWrite`, a native
-  `dialog.showMessageBox` built in `services.ts` from `mcpConfirm.ts`. The renderer cannot
-  answer or skip it. Cancel is the default and the Escape answer. A declined write returns
-  `{ saved: false }` and changes nothing — not the library, not the secret store, not any file.
+- **Only `push` writes a spec into an agent file, and every push is confirmed in main.**
+  `push(name, agentIds)` calls `confirmWrite`, a native `dialog.showMessageBox` built in
+  `services.ts` from `mcpConfirm.ts`. Push-to-all is one call and one dialog. The renderer
+  cannot answer or skip it. Cancel is the default and the Escape answer. A declined push
+  returns `{ saved: false }` and changes no file.
 - The dialog shows the server name, the target agents, the exact command + args or URL (cut
   at 2000 characters with a visible `…`), and env/header **key names only**.
-- No confirmation for: `resync` (re-writes the spec the user already confirmed), turning an
-  agent off, `delete` (only removes), and `import` (writes no agent file; the spec is already
-  the user's own).
+- No native confirmation for operations that never put a spec into an agent file:
+  - `save`: library and secret store only. Agents that had the old spec show `differs`.
+  - `pull`: copies an agent's entry, values included, into the library.
+  - `merge`: takes picked agent fields into the library.
+  - `delete`: library and secrets only. **It never touches agent files.**
+  - `deleteAgent`: removes one entry from one agent file.
+  The screen asks for a second, in-screen confirmation before overwrites, merges and deletes.
 - All handlers call `assertTrustedSender()` first and validate the payload in main
   (`validateSaveRequest`, name pattern, enum agent ids). Renderer input never becomes a path:
   files are the fixed `MCP_CONFIG_FILES` in `agentPaths.ts`, also on the agent-config allowlist.
@@ -52,8 +56,16 @@ user's machine, deferred to the next agent start. So:
   `.aiopt.bak` → atomic replace). Names AiOpt does not manage are left exactly as they are.
 - **Unmodelled fields are kept** on rewrite (timeouts, `trust`, Codex `startup_timeout_sec`,
   `[mcp_servers.x.tools.*]` sub-tables) and ignored when computing drift.
-- Drift states per agent: `off`, `synced`, `missing` (not in the file), `different` (edited
-  outside AiOpt, or the file is unreadable). `resync` rewrites enabled agents.
+- **Matrix.** Rows are the union of names in the library and in every readable agent file.
+  Per agent the cell is `same`, `library-only` (push), `agent-only` (pull), or `differs`
+  (diff, then push, pull or merge). It is absent when neither side has the server.
+  `supported: false` marks an agent that cannot take the library's transport. An unreadable
+  file has no cells, and its agent is flagged `unreadable`.
+- **Diff and merge.** The diff lists the fields `spec`, `env:<KEY>` and `header:<KEY>` with a
+  status relative to the library. It carries spec summaries only; values are compared in main
+  and never sent. `merge` takes the picked agent fields into the library. When `spec` is
+  picked, the transport follows the agent. Env is kept only for stdio and headers only for
+  remote.
 
 ## 4. Coexisting with provider binding
 
@@ -70,7 +82,8 @@ Codex `config.toml` and Gemini `settings.json` are also written by the binding a
 ## 5. Config profiles
 
 A binding profile (`binding-profiles.json`) also records, per MCP agent, the **names** of the
-library servers enabled for it (`mcp`, names only — no spec, no values). Profiles saved before
+library servers present in that agent's file (`mcp`, names only — no spec, no values). Agent
+entries that are not in the library are not recorded, and applying a profile never touches them. Profiles saved before
 this existed have no `mcp` part, and applying them leaves MCP alone.
 
 Applying a profile (`providerManager.applyBindingProfile`, through the injected
@@ -90,7 +103,8 @@ Applying a profile (`providerManager.applyBindingProfile`, through the injected
 
 `src/main/mcp/__tests__/` covers the TOML splitter, strict reads and key preservation per
 agent, file modes, adapter apply/restore keeping MCP, the store (confirm declined writes
-nothing, values never in the snapshot or library file, rename, toggle, drift + resync,
-unreadable and no-encryption refusals before confirmation, import writes no agent file,
-profile enabled-set plans), IPC
+nothing, values never in the snapshot, diff or library file, save touches no agent, rename,
+pull, library delete leaves agent files intact, deleteAgent, diff + merge picks, unsupported
+transport and unreadable / no-encryption refusals before confirmation, profile enabled-set
+plans), IPC
 (untrusted sender rejected before side effects, payload validation) and the dialog content.

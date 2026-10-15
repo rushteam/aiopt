@@ -53,6 +53,7 @@ import type {
 } from '../shared/agentSessions';
 import type {
   McpAgentId,
+  McpDiffResult,
   McpSaveRequest,
   McpSnapshot,
   McpWriteResult,
@@ -327,19 +328,24 @@ const api = {
 
   /**
    * MCP servers. A server is named by its validated name; env/header values go IN with a
-   * save (omit `value` to keep the stored one) but never come back out. `save` and an
-   * enabling `toggle` resolve only after the user answers main's native confirmation;
-   * `saved: false` means they declined.
+   * save (omit `value` to keep the stored one) but never come back out. Save, pull, merge
+   * and delete change only the library; `push` resolves only after the user answers main's
+   * native confirmation (`saved: false` means they declined); `deleteAgent` only removes.
    */
   mcp: {
     get: (): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpGet),
-    save: (req: McpSaveRequest): Promise<McpWriteResult> => ipcRenderer.invoke(IPC_CHANNELS.mcpSave, req),
-    toggle: (name: string, agentId: McpAgentId, enabled: boolean): Promise<McpWriteResult> =>
-      ipcRenderer.invoke(IPC_CHANNELS.mcpToggle, { name, agentId, enabled }),
-    resync: (name: string): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpResync, { name }),
+    save: (req: McpSaveRequest): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpSave, req),
+    pull: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpPull, { agentId, name }),
+    push: (name: string, agentIds: McpAgentId[]): Promise<McpWriteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpPush, { name, agentIds }),
     delete: (name: string): Promise<McpSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.mcpDelete, { name }),
-    import: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
-      ipcRenderer.invoke(IPC_CHANNELS.mcpImport, { agentId, name }),
+    deleteAgent: (agentId: McpAgentId, name: string): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpDeleteAgent, { agentId, name }),
+    diff: (agentId: McpAgentId, name: string): Promise<McpDiffResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpDiff, { agentId, name }),
+    merge: (agentId: McpAgentId, name: string, agentPicks: string[]): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpMerge, { agentId, name, agentPicks }),
   },
 
   /**

@@ -1,18 +1,22 @@
-// MCP — one library of MCP servers, synced into each agent's own MCP config.
+// MCP — one library of MCP servers, kept in sync with each agent's own MCP config.
 //
-// The library lives in main. This screen lists servers with a per-agent on/off checkbox
-// and drift state, edits a server in a modal form, and offers to import servers already
-// present in an agent config. Env/header VALUES are write-only here: the form sends a new
-// value or nothing ("keep"), and main never sends one back. Saving or enabling a server
-// opens main's native confirmation; a declined write comes back as `saved: false`.
+// Same shape as the Skills screen: a sync MATRIX (a server per row; the library and each
+// agent per column; a state chip per cell) and, for the selected server, a DETAIL panel
+// with per-agent actions (pull ← / push → / diff / delete from agent) plus library actions
+// (edit, push to all, delete from library). Rows are the union of the library and every
+// readable agent file, so deleting a library entry never hides what an agent still has.
+//
+// Env/header VALUES are write-only here: the form sends a new value or nothing ("keep"),
+// and main never sends one back — not in the snapshot, not in the diff. Pushing into an
+// agent file opens main's native confirmation; a declined push comes back as `saved: false`.
+// Overwrites, merges and deletes take a second in-screen confirmation first, as in Skills.
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
-import { elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
-import { ScrollTabScreen, tabScreenSectionStyle } from '../../components/TabScreenShell';
+import { ScrollTabScreen } from '../../components/TabScreenShell';
 import { LoadingButton } from '../../components/ui/LoadingButton';
-import { Checkbox } from '../../components/ui/Checkbox';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   buttonAccentChrome,
   buttonGhostChrome,
@@ -23,17 +27,20 @@ import {
 import { AGENT_SPECS } from '../../../shared/aiProviders';
 import { ipcErrorFromUnknown } from '../../../shared/ipc-errors';
 import {
-  MCP_AGENT_IDS,
   MCP_TRANSPORTS,
-  agentSupportsTransport,
   isMcpName,
   mcpSummary,
   type McpAgentId,
-  type McpAgentState,
+  type McpAgentInfo,
+  type McpDiffResult,
+  type McpFieldDiff,
+  type McpMatrixRow,
   type McpSaveRequest,
   type McpServerView,
   type McpSnapshot,
+  type McpSyncState,
   type McpTransport,
+  type McpWriteResult,
 } from '../../../shared/mcp';
 
 const mono = 'ui-monospace, monospace';
@@ -45,14 +52,24 @@ function errorText(t: TranslateFn, err: unknown): string {
   return translated !== key ? translated : t('mcp.errors.generic');
 }
 
+const agentName = (id: McpAgentId): string => AGENT_SPECS[id].name;
+
+interface Confirm {
+  text: string;
+  confirmLabel: string;
+  run: () => void;
+}
+
 export function McpHome() {
   const t = useT();
   const [snap, setSnap] = useState<McpSnapshot | null>(null);
   const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<McpServerView | 'new' | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [diff, setDiff] = useState<McpDiffResult | null>(null);
 
   const load = useCallback(() => {
     setFailed(false);
@@ -63,10 +80,19 @@ export function McpHome() {
   }, []);
   useEffect(load, [load]);
 
-  /** Run one action; `saved: false` from a write means the user declined the dialog. */
-  const run = useCallback(
-    async (key: string, action: () => Promise<McpSnapshot | { saved: boolean; snapshot: McpSnapshot }>) => {
-      setBusy(key);
+  // Keep the selection valid across reloads; drop the diff/confirm when it changes.
+  useEffect(() => {
+    if (snap && selected && !snap.rows.some((r) => r.name === selected)) setSelected(null);
+  }, [snap, selected]);
+  useEffect(() => {
+    setDiff(null);
+    setConfirm(null);
+  }, [selected]);
+
+  /** Run one action under a shared busy/notice guard; `saved: false` = the user declined. */
+  const act = useCallback(
+    async (action: () => Promise<McpSnapshot | McpWriteResult>): Promise<boolean> => {
+      setBusy(true);
       setNotice(null);
       try {
         const r = await action();
@@ -79,24 +105,38 @@ export function McpHome() {
         setNotice({ text: errorText(t, err), error: true });
         return false;
       } finally {
-        setBusy(null);
+        setBusy(false);
+        setConfirm(null);
       }
     },
     [t],
   );
 
+  const onLoadDiff = async (agentId: McpAgentId, name: string) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      setDiff(await window.aiopt.mcp.diff(agentId, name));
+    } catch (err) {
+      setNotice({ text: errorText(t, err), error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectedRow = snap && selected ? snap.rows.find((r) => r.name === selected) ?? null : null;
   const unreadable = snap?.agents.filter((a) => a.unreadable) ?? [];
 
   return (
     <ScrollTabScreen>
       <h1 className="sr-only">{t('mcp.title')}</h1>
-      <section style={{ ...tabScreenSectionStyle, display: 'flex', gap: space.md, alignItems: 'center' }}>
-        <p style={{ margin: 0, flex: 1, fontSize: fontSize.sm, color: token('textMuted') }}>{t('mcp.intro')}</p>
+      <section style={toolbarStyle}>
+        <p style={{ margin: 0, flex: 1, minWidth: 240, fontSize: fontSize.sm, color: token('textMuted') }}>{t('mcp.intro')}</p>
+        <button type="button" onClick={() => setEditing('new')} disabled={!snap} style={buttonAccentChrome('md')}>
+          {t('mcp.add')}
+        </button>
         <button type="button" onClick={load} style={buttonGhostChrome('md')}>
           {t('mcp.refresh')}
-        </button>
-        <button type="button" onClick={() => setEditing('new')} style={buttonAccentChrome('md')}>
-          {t('mcp.add')}
         </button>
       </section>
 
@@ -105,12 +145,10 @@ export function McpHome() {
           {notice.text}
         </p>
       )}
-      {snap && !snap.secretsAvailable && (
-        <p style={warnStyle}>{t('mcp.secretsUnavailable')}</p>
-      )}
+      {snap && !snap.secretsAvailable && <p style={warnStyle}>{t('mcp.secretsUnavailable')}</p>}
       {unreadable.map((a) => (
         <p key={a.agentId} style={warnStyle}>
-          {t('mcp.unreadable').replace('{{agent}}', AGENT_SPECS[a.agentId].name).replace('{{path}}', a.configDisplayPath)}
+          {t('mcp.unreadable').replace('{{agent}}', agentName(a.agentId)).replace('{{path}}', a.configDisplayPath)}
         </p>
       ))}
 
@@ -120,59 +158,40 @@ export function McpHome() {
         <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('mcp.loading')}</p>
       ) : (
         <>
-          {snap.servers.length === 0 ? (
-            <p style={{ fontSize: fontSize.md, color: token('textMuted') }}>{t('mcp.empty')}</p>
+          {snap.rows.length === 0 ? (
+            <div style={emptyStyle}>
+              <p style={{ margin: 0, fontSize: fontSize.md }}>{t('mcp.empty')}</p>
+            </div>
           ) : (
-            <ul style={listStyle}>
-              {snap.servers.map((s, i) => (
-                <ServerRow
-                  key={s.name}
-                  server={s}
-                  first={i === 0}
-                  busy={busy}
-                  t={t}
-                  onToggle={(agentId, enabled) =>
-                    void run(`toggle:${s.name}:${agentId}`, () => window.aiopt.mcp.toggle(s.name, agentId, enabled))
-                  }
-                  onResync={() => void run(`resync:${s.name}`, () => window.aiopt.mcp.resync(s.name))}
-                  onEdit={() => setEditing(s)}
-                  onDelete={() => setDeleting(s.name)}
-                />
-              ))}
-            </ul>
+            <div style={{ overflowX: 'auto', marginTop: space.sm }}>
+              <Matrix rows={snap.rows} agents={snap.agents} selected={selected} onSelect={setSelected} t={t} />
+            </div>
           )}
           <p style={{ margin: `${space.md}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>
-            {t('mcp.files')}{' '}
-            {snap.agents.map((a) => `${AGENT_SPECS[a.agentId].name} ${a.configDisplayPath}`).join(' · ')}
+            {t('mcp.files')} {snap.agents.map((a) => `${agentName(a.agentId)} ${a.configDisplayPath}`).join(' · ')}
           </p>
           <p style={{ margin: `${space.xs}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.claudeNote')}</p>
 
-          {snap.candidates.length > 0 && (
-            <section style={{ marginTop: space['2xl'] }}>
-              <h2 style={{ margin: `0 0 ${space.sm}px`, fontSize: fontSize.lg }}>{t('mcp.importTitle')}</h2>
-              <p style={{ margin: `0 0 ${space.md}px`, fontSize: fontSize.sm, color: token('textMuted') }}>{t('mcp.importIntro')}</p>
-              <ul style={listStyle}>
-                {snap.candidates.map((c, i) => (
-                  <li key={`${c.agentId}:${c.name}`} style={{ ...rowStyle, borderTop: i === 0 ? 'none' : `1px solid ${token('border')}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: fontSize.md, fontWeight: 500 }}>
-                        {c.name} <span style={badgeStyle}>{c.transport}</span>
-                      </div>
-                      <div style={summaryStyle}>{`${AGENT_SPECS[c.agentId].name} · ${c.summary}`}</div>
-                    </div>
-                    <LoadingButton
-                      variant="ghost"
-                      size="sm"
-                      loading={busy === `import:${c.agentId}:${c.name}`}
-                      disabled={busy !== null || snap.servers.some((s) => s.name === c.name)}
-                      onClick={() => void run(`import:${c.agentId}:${c.name}`, () => window.aiopt.mcp.import(c.agentId, c.name))}
-                    >
-                      {t('mcp.import')}
-                    </LoadingButton>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          {selectedRow && (
+            <DetailPanel
+              row={selectedRow}
+              agents={snap.agents}
+              busy={busy}
+              confirm={confirm}
+              setConfirm={setConfirm}
+              diff={diff}
+              t={t}
+              onEdit={() => selectedRow.library && setEditing(selectedRow.library)}
+              onLoadDiff={(agentId) => void onLoadDiff(agentId, selectedRow.name)}
+              onCloseDiff={() => setDiff(null)}
+              onPull={(agentId) => void act(() => window.aiopt.mcp.pull(agentId, selectedRow.name))}
+              onPush={(agentIds) => void act(() => window.aiopt.mcp.push(selectedRow.name, agentIds))}
+              onMerge={(agentId, picks) =>
+                void act(() => window.aiopt.mcp.merge(agentId, selectedRow.name, picks)).then((ok) => ok && setDiff(null))
+              }
+              onDelete={() => void act(() => window.aiopt.mcp.delete(selectedRow.name))}
+              onDeleteAgent={(agentId) => void act(() => window.aiopt.mcp.deleteAgent(agentId, selectedRow.name))}
+            />
           )}
         </>
       )}
@@ -180,117 +199,472 @@ export function McpHome() {
       {editing && snap && (
         <ServerForm
           initial={editing === 'new' ? null : editing}
-          existingNames={snap.servers.map((s) => s.name)}
+          existingNames={snap.rows.filter((r) => r.library).map((r) => r.name)}
           secretsAvailable={snap.secretsAvailable}
           t={t}
           onClose={() => setEditing(null)}
           onSave={async (req) => {
-            let saved = false;
-            const ok = await run('save', async () => {
-              const r = await window.aiopt.mcp.save(req);
-              saved = r.saved;
-              return r;
-            });
-            if (ok && saved) setEditing(null);
+            const ok = await act(() => window.aiopt.mcp.save(req));
+            if (ok) {
+              setEditing(null);
+              setSelected(req.name);
+            }
           }}
-          saving={busy === 'save'}
-        />
-      )}
-      {deleting && (
-        <ConfirmDialog
-          title={t('mcp.deleteTitle').replace('{{name}}', deleting)}
-          message={t('mcp.deleteMessage')}
-          confirmLabel={t('mcp.delete')}
-          cancelLabel={t('mcp.cancel')}
-          danger
-          busy={busy === 'delete'}
-          onCancel={() => setDeleting(null)}
-          onConfirm={() => {
-            const name = deleting;
-            void run('delete', () => window.aiopt.mcp.delete(name)).then(() => setDeleting(null));
-          }}
+          saving={busy}
         />
       )}
     </ScrollTabScreen>
   );
 }
 
-function ServerRow({
-  server: s,
-  first,
-  busy,
+function Matrix({
+  rows,
+  agents,
+  selected,
+  onSelect,
   t,
-  onToggle,
-  onResync,
-  onEdit,
-  onDelete,
 }: {
-  server: McpServerView;
-  first: boolean;
-  busy: string | null;
+  rows: McpMatrixRow[];
+  agents: McpAgentInfo[];
+  selected: string | null;
+  onSelect: (name: string) => void;
   t: TranslateFn;
-  onToggle: (agentId: McpAgentId, enabled: boolean) => void;
-  onResync: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
 }) {
-  const drift = MCP_AGENT_IDS.some((a) => s.agents[a] === 'missing' || s.agents[a] === 'different');
-  const keys = [...s.env, ...s.headers];
+  const gridTemplateColumns = `minmax(150px, 1.4fr) 84px ${agents.map(() => '96px').join(' ')}`;
   return (
-    <li style={{ ...rowStyle, alignItems: 'flex-start', borderTop: first ? 'none' : `1px solid ${token('border')}` }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: fontSize.md, fontWeight: 500 }}>
-          {s.name} <span style={badgeStyle}>{s.transport}</span>
-        </div>
-        <div style={summaryStyle} title={mcpSummary(s)}>{mcpSummary(s)}</div>
-        {keys.length > 0 && (
-          <div style={{ fontSize: fontSize.xs, color: token('textMuted'), marginTop: space.xs }}>
-            {keys.map((k) => (k.set ? k.key : `${k.key} (${t('mcp.valueMissing')})`)).join(', ')}
+    <div style={{ minWidth: 'fit-content', background: token('bg') }}>
+      <div style={{ ...matrixRowStyle, gridTemplateColumns }}>
+        <div style={headCellStyle}>{t('mcp.server')}</div>
+        <div style={{ ...headCellStyle, textAlign: 'center' }}>{t('mcp.library')}</div>
+        {agents.map((a) => (
+          <div key={a.agentId} style={{ ...headCellStyle, textAlign: 'center' }} title={agentName(a.agentId)}>
+            {agentName(a.agentId)}
           </div>
-        )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg, marginTop: space.md }}>
-          {MCP_AGENT_IDS.map((agentId) => {
-            const supported = agentSupportsTransport(agentId, s.transport);
-            const state = s.agents[agentId];
-            const id = `mcp-${s.name}-${agentId}`;
-            return (
-              <span key={agentId} style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, fontSize: fontSize.sm }}>
-                <Checkbox
-                  id={id}
-                  checked={state !== 'off'}
-                  disabled={!supported || busy !== null}
-                  onChange={(next) => onToggle(agentId, next)}
-                />
-                <label htmlFor={id} style={{ color: supported ? token('text') : token('textMuted') }}>
-                  {AGENT_SPECS[agentId].name}
-                </label>
-                <StateLabel state={supported ? state : null} t={t} />
-              </span>
-            );
-          })}
-        </div>
+        ))}
       </div>
-      <div style={{ display: 'flex', gap: space.sm, flexShrink: 0 }}>
-        {drift && (
-          <LoadingButton variant="ghost" size="sm" loading={busy === `resync:${s.name}`} disabled={busy !== null} onClick={onResync}>
-            {t('mcp.resync')}
-          </LoadingButton>
-        )}
-        <button type="button" onClick={onEdit} disabled={busy !== null} style={buttonGhostChrome('sm')}>
-          {t('mcp.edit')}
-        </button>
-        <button type="button" onClick={onDelete} disabled={busy !== null} style={{ ...buttonGhostChrome('sm'), color: token('danger') }}>
-          {t('mcp.delete')}
-        </button>
-      </div>
-    </li>
+      {rows.map((row) => {
+        const isSel = row.name === selected;
+        return (
+          <button
+            key={row.name}
+            type="button"
+            aria-pressed={isSel}
+            onClick={() => onSelect(row.name)}
+            {...hoverBackground(isSel ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
+            style={{
+              ...matrixRowStyle,
+              gridTemplateColumns,
+              width: '100%',
+              textAlign: 'left',
+              border: 'none',
+              borderTop: `1px solid ${token('border')}`,
+              background: isSel ? token('surfaceHover') : 'transparent',
+              cursor: 'pointer',
+              color: token('text'),
+            }}
+          >
+            <div style={{ ...bodyCellStyle, fontWeight: isSel ? 600 : 400 }}>{row.name}</div>
+            <div style={{ ...bodyCellStyle, justifyContent: 'center' }}>
+              {row.library ? (
+                <span style={{ fontSize: fontSize.xs, color: token('accent') }} title={t('mcp.state.inLibrary')}>●</span>
+              ) : (
+                <Absent />
+              )}
+            </div>
+            {agents.map((a) => (
+              <div key={a.agentId} style={{ ...bodyCellStyle, justifyContent: 'center' }}>
+                <CellChip info={a} cell={row.agents[a.agentId]} t={t} />
+              </div>
+            ))}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function StateLabel({ state, t }: { state: McpAgentState | null; t: TranslateFn }) {
-  if (state === null) return <span style={{ color: token('textMuted'), fontSize: fontSize.xs }}>{t('mcp.state.unsupported')}</span>;
-  if (state === 'off' || state === 'synced') return null;
-  return <span style={{ color: token('danger'), fontSize: fontSize.xs }}>{t(`mcp.state.${state}`)}</span>;
+function CellChip({ info, cell, t }: { info: McpAgentInfo; cell: McpMatrixRow['agents'][McpAgentId]; t: TranslateFn }) {
+  if (info.unreadable) return <MutedNote text={t('mcp.state.unreadable')} />;
+  if (!cell) return <Absent />;
+  if (cell.state === 'library-only' && !cell.supported) return <MutedNote text={t('mcp.state.unsupported')} />;
+  return <StateChip state={cell.state} t={t} />;
+}
+
+function DetailPanel({
+  row,
+  agents,
+  busy,
+  confirm,
+  setConfirm,
+  diff,
+  t,
+  onEdit,
+  onLoadDiff,
+  onCloseDiff,
+  onPull,
+  onPush,
+  onMerge,
+  onDelete,
+  onDeleteAgent,
+}: {
+  row: McpMatrixRow;
+  agents: McpAgentInfo[];
+  busy: boolean;
+  confirm: Confirm | null;
+  setConfirm: (c: Confirm | null) => void;
+  diff: McpDiffResult | null;
+  t: TranslateFn;
+  onEdit: () => void;
+  onLoadDiff: (agentId: McpAgentId) => void;
+  onCloseDiff: () => void;
+  onPull: (agentId: McpAgentId) => void;
+  onPush: (agentIds: McpAgentId[]) => void;
+  onMerge: (agentId: McpAgentId, picks: string[]) => void;
+  onDelete: () => void;
+  onDeleteAgent: (agentId: McpAgentId) => void;
+}) {
+  const lib = row.library;
+  const keys = lib ? [...lib.env, ...lib.headers] : [];
+  // Agents push-to-all reaches: readable, and able to take this transport.
+  const pushTargets = agents.filter((a) => !a.unreadable && row.agents[a.agentId]?.supported).map((a) => a.agentId);
+  // Deleting the only copy anywhere escalates the confirmation.
+  const copyCount = (lib ? 1 : 0) + agents.filter((a) => row.agents[a.agentId]?.entry).length;
+
+  return (
+    <section style={detailStyle}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0, fontSize: fontSize.xl }}>{row.name}</h2>
+        {lib && <span style={badgeStyle}>{t(`mcp.transport.${lib.transport}`)}</span>}
+      </div>
+      {lib ? (
+        <>
+          <div style={summaryStyle} title={mcpSummary(lib)}>{mcpSummary(lib)}</div>
+          {keys.length > 0 && (
+            <div style={{ fontSize: fontSize.xs, color: token('textMuted'), marginTop: space.xs }}>
+              {keys.map((k) => (k.set ? k.key : `${k.key} (${t('mcp.valueMissing')})`)).join(', ')}
+            </div>
+          )}
+        </>
+      ) : (
+        <p style={{ margin: `${space.xs}px 0 0`, color: token('textMuted'), fontSize: fontSize.base }}>{t('mcp.detail.notInLibrary')}</p>
+      )}
+
+      {lib && (
+        <div style={{ display: 'flex', gap: space.md, flexWrap: 'wrap', margin: `${space.lg}px 0` }}>
+          <button type="button" disabled={busy} onClick={onEdit} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+            {t('mcp.actions.edit')}
+          </button>
+          {pushTargets.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                setConfirm({ text: t('mcp.confirm.pushAll'), confirmLabel: t('mcp.actions.push'), run: () => onPush(pushTargets) })
+              }
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={smallGhostStyle}
+            >
+              {t('mcp.actions.pushAll')}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirm({ text: t('mcp.confirm.delete'), confirmLabel: t('mcp.actions.delete'), run: onDelete })}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={{ ...smallGhostStyle, color: token('danger'), borderColor: token('danger') }}
+          >
+            {t('mcp.actions.delete')}
+          </button>
+        </div>
+      )}
+      {!lib && <div style={{ height: space.lg }} />}
+
+      {confirm && (
+        <div style={confirmBarStyle}>
+          <span style={{ fontSize: fontSize.md, marginRight: 'auto' }}>{confirm.text}</span>
+          <button type="button" disabled={busy} onClick={confirm.run} {...hoverBackground(token('danger'), token('dangerHover'))} style={dangerStyle}>
+            {confirm.confirmLabel}
+          </button>
+          <button type="button" onClick={() => setConfirm(null)} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+            {t('mcp.confirm.cancel')}
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden' }}>
+        {agents.map((a, i) => {
+          const cell = row.agents[a.agentId];
+          const state = cell?.state;
+          const canPush = cell?.supported === true;
+          return (
+            <div
+              key={a.agentId}
+              style={{ display: 'flex', alignItems: 'center', gap: space.md, padding: '10px 14px', borderTop: i === 0 ? 'none' : `1px solid ${token('border')}` }}
+            >
+              <span style={{ fontSize: fontSize.md, minWidth: 120 }}>{agentName(a.agentId)}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 'auto', minWidth: 0 }}>
+                <span>
+                  <CellChip info={a} cell={cell} t={t} />
+                </span>
+                {cell?.entry && (state === 'agent-only' || state === 'differs') && (
+                  <span style={{ ...summaryStyle, marginTop: 0, fontSize: fontSize.xs }} title={mcpSummary(cell.entry)}>
+                    {mcpSummary(cell.entry)}
+                  </span>
+                )}
+                {cell && !canPush && lib && state !== 'library-only' && (
+                  <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.detail.cannotPush')}</span>
+                )}
+              </div>
+              {/* agent-only → pull creates the library entry (no agent file changes). */}
+              {state === 'agent-only' && <ActionButton label={t('mcp.actions.pull')} disabled={busy} onClick={() => onPull(a.agentId)} />}
+              {/* library-only → push writes the agent file (main confirms natively). */}
+              {state === 'library-only' && canPush && (
+                <ActionButton label={t('mcp.actions.push')} disabled={busy} onClick={() => onPush([a.agentId])} />
+              )}
+              {state === 'differs' && (
+                <>
+                  <ActionButton label={t('mcp.actions.diff')} disabled={busy} onClick={() => onLoadDiff(a.agentId)} />
+                  {canPush && (
+                    <ActionButton
+                      label={t('mcp.actions.push')}
+                      disabled={busy}
+                      onClick={() =>
+                        setConfirm({ text: t('mcp.confirm.overwriteAgent'), confirmLabel: t('mcp.actions.push'), run: () => onPush([a.agentId]) })
+                      }
+                    />
+                  )}
+                  <ActionButton
+                    label={t('mcp.actions.pull')}
+                    disabled={busy}
+                    onClick={() =>
+                      setConfirm({ text: t('mcp.confirm.overwriteLibrary'), confirmLabel: t('mcp.actions.pull'), run: () => onPull(a.agentId) })
+                    }
+                  />
+                </>
+              )}
+              {cell?.entry && (
+                <ActionButton
+                  label={t('mcp.actions.deleteAgent')}
+                  danger
+                  disabled={busy}
+                  onClick={() =>
+                    setConfirm({
+                      text: copyCount <= 1 ? t('mcp.confirm.deleteAgentLast') : t('mcp.confirm.deleteAgent'),
+                      confirmLabel: t('mcp.actions.delete'),
+                      run: () => onDeleteAgent(a.agentId),
+                    })
+                  }
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {diff && diff.name === row.name && (
+        <DiffPanel
+          key={`${diff.agentId}/${diff.name}`}
+          result={diff}
+          busy={busy}
+          t={t}
+          onClose={onCloseDiff}
+          onMerge={(picks) =>
+            setConfirm({ text: t('mcp.confirm.merge'), confirmLabel: t('mcp.diff.merge'), run: () => onMerge(diff.agentId, picks) })
+          }
+        />
+      )}
+    </section>
+  );
+}
+
+function fieldLabel(f: McpFieldDiff, t: TranslateFn): string {
+  if (f.kind === 'spec') return t('mcp.diff.spec');
+  return `${t(f.kind === 'env' ? 'mcp.diff.env' : 'mcp.diff.header')} ${f.key ?? ''}`;
+}
+
+function DiffPanel({
+  result,
+  busy,
+  t,
+  onClose,
+  onMerge,
+}: {
+  result: McpDiffResult;
+  busy: boolean;
+  t: TranslateFn;
+  onClose: () => void;
+  onMerge: (picks: string[]) => void;
+}) {
+  const [agentPicks, setAgentPicks] = useState<Set<string>>(new Set());
+  const picks = result.fields.filter((f) => agentPicks.has(f.field)).map((f) => f.field);
+  return (
+    <div style={{ marginTop: space.lg, border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: space.md, padding: '10px 14px', background: token('surface') }}>
+        <strong style={{ fontSize: fontSize.md }}>
+          {t('mcp.diff.title')} · {agentName(result.agentId)}
+        </strong>
+        <button type="button" onClick={onClose} {...hoverBackground('transparent', token('surfaceHover'))} style={{ ...smallGhostStyle, marginLeft: 'auto' }}>
+          {t('mcp.diff.close')}
+        </button>
+      </div>
+      {result.fields.length === 0 ? (
+        <p style={{ margin: 0, padding: '12px 14px', color: token('textMuted'), fontSize: fontSize.md }}>{t('mcp.diff.empty')}</p>
+      ) : (
+        <>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {result.fields.map((f) => (
+              <li key={f.field} style={{ borderTop: `1px solid ${token('border')}`, padding: '8px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: space.md, fontSize: fontSize.base }}>
+                  <span style={{ ...diffTagStyle, color: diffColor(f.status) }}>{t(`mcp.diff.${f.status}`)}</span>
+                  <span style={{ fontFamily: mono, fontSize: fontSize.sm, wordBreak: 'break-all', marginRight: 'auto' }}>{fieldLabel(f, t)}</span>
+                  <PickToggle
+                    value={agentPicks.has(f.field) ? 'agent' : 'library'}
+                    disabled={busy}
+                    t={t}
+                    onChange={(side) =>
+                      setAgentPicks((prev) => {
+                        const next = new Set(prev);
+                        if (side === 'agent') next.add(f.field);
+                        else next.delete(f.field);
+                        return next;
+                      })
+                    }
+                  />
+                </div>
+                {f.kind === 'spec' && (
+                  <div style={specGridStyle}>
+                    <SpecSide title={t('mcp.diff.library')} text={f.library} t={t} />
+                    <SpecSide title={t('mcp.diff.agent')} text={f.agent} t={t} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', alignItems: 'center', gap: space.md, padding: '10px 14px', borderTop: `1px solid ${token('border')}` }}>
+            <span style={{ fontSize: fontSize.xs, color: token('textMuted'), marginRight: 'auto' }}>{t('mcp.diff.mergeHint')}</span>
+            <button
+              type="button"
+              disabled={busy || picks.length === 0}
+              onClick={() => onMerge(picks)}
+              {...hoverBackground(token('accent'), token('accentHover'))}
+              style={{
+                ...buttonAccentChrome('sm'),
+                opacity: busy || picks.length === 0 ? disabledOpacity : 1,
+                cursor: busy || picks.length === 0 ? 'default' : 'pointer',
+              }}
+            >
+              {t('mcp.diff.merge')}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SpecSide({ title, text, t }: { title: string; text: string | undefined; t: TranslateFn }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: fontSize.xs, fontWeight: 600, color: token('textMuted'), marginBottom: 4 }}>{title}</div>
+      {text === undefined ? (
+        <p style={{ margin: 0, fontSize: fontSize.xs, color: token('textMuted'), fontStyle: 'italic' }}>{t('mcp.diff.absent')}</p>
+      ) : (
+        <pre style={specPreStyle}>{text}</pre>
+      )}
+    </div>
+  );
+}
+
+function PickToggle({
+  value,
+  disabled,
+  onChange,
+  t,
+}: {
+  value: 'library' | 'agent';
+  disabled: boolean;
+  onChange: (side: 'library' | 'agent') => void;
+  t: TranslateFn;
+}) {
+  const options = [
+    { side: 'library' as const, label: t('mcp.diff.useLibrary') },
+    { side: 'agent' as const, label: t('mcp.diff.useAgent') },
+  ];
+  return (
+    <div role="group" style={segmentedRootStyle}>
+      {options.map(({ side, label }, index) => {
+        const active = value === side;
+        return (
+          <button
+            key={side}
+            type="button"
+            aria-pressed={active}
+            disabled={disabled}
+            onClick={() => onChange(side)}
+            style={{
+              ...segmentButtonChrome('sm'),
+              borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
+              background: active ? token('accent') : 'transparent',
+              color: active ? token('accentText') : token('text'),
+              cursor: disabled || active ? 'default' : 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActionButton({ label, disabled, onClick, danger = false }: { label: string; disabled: boolean; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      {...hoverBackground('transparent', token('surfaceHover'))}
+      style={danger ? { ...actionButtonStyle, color: token('danger') } : actionButtonStyle}
+    >
+      {label}
+    </button>
+  );
+}
+
+const STATE_COLOR: Record<McpSyncState, 'textMuted' | 'accent' | 'danger'> = {
+  same: 'textMuted',
+  'library-only': 'accent',
+  'agent-only': 'accent',
+  differs: 'danger',
+};
+
+const STATE_KEY: Record<McpSyncState, string> = {
+  same: 'same',
+  'library-only': 'libraryOnly',
+  'agent-only': 'agentOnly',
+  differs: 'differs',
+};
+
+function StateChip({ state, t }: { state: McpSyncState; t: TranslateFn }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: fontSize.xs, color: token(STATE_COLOR[state]), whiteSpace: 'nowrap' }}>
+      <span aria-hidden>{state === 'same' ? '✓' : state === 'differs' ? '△' : '●'}</span>
+      {t(`mcp.state.${STATE_KEY[state]}`)}
+    </span>
+  );
+}
+
+function MutedNote({ text }: { text: string }) {
+  return <span style={{ fontSize: fontSize.xs, color: token('textMuted'), whiteSpace: 'nowrap' }}>{text}</span>;
+}
+
+function Absent() {
+  return <span style={{ color: token('textMuted') }} aria-hidden>—</span>;
+}
+
+function diffColor(status: McpFieldDiff['status']): string {
+  return token(status === 'deleted' ? 'danger' : status === 'added' ? 'accent' : 'text');
 }
 
 interface VarRow {
@@ -325,9 +699,6 @@ function ServerForm({
   const toRows = (list: McpServerView['env']): VarRow[] => list.map((v) => ({ key: v.key, value: '', stored: v.set }));
   const [env, setEnv] = useState<VarRow[]>(toRows(initial?.env ?? []));
   const [headers, setHeaders] = useState<VarRow[]>(toRows(initial?.headers ?? []));
-  const [agents, setAgents] = useState<Set<McpAgentId>>(
-    new Set(initial ? MCP_AGENT_IDS.filter((a) => initial.agents[a] !== 'off') : []),
-  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -362,7 +733,6 @@ function ServerForm({
         : { url: url.trim() }),
       env: transport === 'stdio' ? out : [],
       headers: transport === 'stdio' ? [] : out,
-      agents: MCP_AGENT_IDS.filter((a) => agents.has(a) && agentSupportsTransport(a, transport)),
     });
   };
 
@@ -466,35 +836,7 @@ function ServerForm({
             {needsSecret && !secretsAvailable && <span style={hintErrorStyle}>{t('mcp.secretsUnavailable')}</span>}
             <span style={{ fontSize: fontSize.xs }}>{t('mcp.form.valuesNote')}</span>
           </div>
-          <div style={fieldStyle}>
-            <span>{t('mcp.form.agents')}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.lg }}>
-              {MCP_AGENT_IDS.map((agentId) => {
-                const supported = agentSupportsTransport(agentId, transport);
-                const id = `mcp-form-agent-${agentId}`;
-                return (
-                  <span key={agentId} style={{ display: 'inline-flex', alignItems: 'center', gap: space.sm, color: token('text') }}>
-                    <Checkbox
-                      id={id}
-                      checked={supported && agents.has(agentId)}
-                      disabled={!supported}
-                      onChange={(next) => {
-                        const n = new Set(agents);
-                        if (next) n.add(agentId);
-                        else n.delete(agentId);
-                        setAgents(n);
-                      }}
-                    />
-                    <label htmlFor={id} style={{ color: supported ? token('text') : token('textMuted') }}>
-                      {AGENT_SPECS[agentId].name}
-                      {!supported && ` (${t('mcp.state.unsupported')})`}
-                    </label>
-                  </span>
-                );
-              })}
-            </div>
-            <span style={{ fontSize: fontSize.xs }}>{t('mcp.form.confirmNote')}</span>
-          </div>
+          <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.form.libraryNote')}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: space.md, marginTop: space['2xl'] }}>
           <button type="button" onClick={onClose} style={buttonGhostChrome('md')}>
@@ -509,21 +851,7 @@ function ServerForm({
   );
 }
 
-const listStyle: CSSProperties = {
-  listStyle: 'none',
-  margin: 0,
-  padding: 0,
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.lg,
-  background: token('surface'),
-};
 
-const rowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: space.lg,
-  padding: `${space.lg}px ${space.xl}px`,
-};
 
 const summaryStyle: CSSProperties = {
   fontFamily: mono,
@@ -590,3 +918,96 @@ const textareaStyle: CSSProperties = {
 };
 
 const hintErrorStyle: CSSProperties = { fontSize: fontSize.xs, color: token('danger') };
+
+const toolbarStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.md,
+  flexWrap: 'wrap',
+  margin: `0 0 ${space.xl}px`,
+};
+
+const emptyStyle: CSSProperties = {
+  marginTop: space['2xl'],
+  padding: '32px 24px',
+  border: `1px dashed ${token('border')}`,
+  borderRadius: radius.lg,
+  textAlign: 'center',
+};
+
+const matrixRowStyle: CSSProperties = { display: 'grid', alignItems: 'center', gap: space.md, padding: '8px 12px' };
+
+const headCellStyle: CSSProperties = {
+  fontSize: fontSize.sm,
+  fontWeight: 600,
+  color: token('textMuted'),
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+
+const bodyCellStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  fontSize: fontSize.md,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
+const detailStyle: CSSProperties = {
+  marginTop: space['2xl'],
+  padding: space['2xl'],
+  border: `1px solid ${token('border')}`,
+  borderRadius: radius.lg,
+  background: token('surface'),
+};
+
+const smallGhostStyle: CSSProperties = { ...buttonGhostChrome('sm'), borderRadius: radius.sm };
+
+const actionButtonStyle: CSSProperties = {
+  padding: '4px 10px',
+  borderRadius: radius.sm,
+  border: `1px solid ${token('border')}`,
+  background: 'transparent',
+  color: token('text'),
+  cursor: 'pointer',
+  fontSize: fontSize.sm,
+  whiteSpace: 'nowrap',
+};
+
+const dangerStyle: CSSProperties = {
+  padding: '6px 14px',
+  borderRadius: radius.md,
+  border: `1px solid ${token('danger')}`,
+  background: token('danger'),
+  color: token('accentText'),
+  cursor: 'pointer',
+  fontSize: fontSize.sm,
+};
+
+const confirmBarStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.md,
+  padding: '10px 14px',
+  marginBottom: space.lg,
+  borderRadius: radius.md,
+  border: `1px solid ${token('danger')}`,
+};
+
+const diffTagStyle: CSSProperties = { fontSize: fontSize.xs, fontWeight: 600, textTransform: 'uppercase', minWidth: 64 };
+
+const specGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space.md, padding: '8px 0 4px 76px' };
+
+const specPreStyle: CSSProperties = {
+  margin: 0,
+  padding: space.sm,
+  borderRadius: radius.sm,
+  border: `1px solid ${token('border')}`,
+  background: token('surfaceHover'),
+  fontFamily: mono,
+  fontSize: fontSize.xs,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+};

@@ -224,26 +224,43 @@ const localUsageSnapshot: LocalUsageSnapshot = {
   sessionCount: 41,
 };
 
-// Demo MCP library: one stdio server synced to two agents, one remote server with a
-// header, one server found in Codex's config that is not in the library yet.
+// Demo MCP library: one stdio server in sync with two agents, one remote server whose
+// Gemini copy differs (and Codex cannot take), one server only Codex has.
+const fsView = {
+  name: 'filesystem',
+  transport: 'stdio' as const,
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-filesystem', '~/Projects'],
+  env: [],
+  headers: [],
+};
+const fsEntry = { transport: fsView.transport, command: fsView.command, args: fsView.args, envKeys: [], headerKeys: [] };
 const mcpSnapshot: McpSnapshot = {
-  servers: [
-    {
-      name: 'filesystem',
-      transport: 'stdio',
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem', '~/Projects'],
-      env: [],
-      headers: [],
-      agents: { claude: 'synced', codex: 'synced', gemini: 'off' },
-    },
+  rows: [
     {
       name: 'docs-search',
-      transport: 'http',
-      url: 'https://mcp.example.com/mcp',
-      env: [],
-      headers: [{ key: 'Authorization', set: true }],
-      agents: { claude: 'synced', codex: 'off', gemini: 'different' },
+      library: { name: 'docs-search', transport: 'http', url: 'https://mcp.example.com/mcp', env: [], headers: [{ key: 'Authorization', set: true }] },
+      agents: {
+        claude: { state: 'same', supported: true, entry: { transport: 'http', url: 'https://mcp.example.com/mcp', envKeys: [], headerKeys: ['Authorization'] } },
+        codex: { state: 'library-only', supported: true, entry: null },
+        gemini: { state: 'differs', supported: true, entry: { transport: 'http', url: 'https://mcp.example.com/v2/mcp', envKeys: [], headerKeys: ['Authorization'] } },
+      },
+    },
+    {
+      name: 'filesystem',
+      library: fsView,
+      agents: {
+        claude: { state: 'same', supported: true, entry: fsEntry },
+        codex: { state: 'same', supported: true, entry: fsEntry },
+        gemini: { state: 'library-only', supported: true, entry: null },
+      },
+    },
+    {
+      name: 'github',
+      library: null,
+      agents: {
+        codex: { state: 'agent-only', supported: true, entry: { transport: 'stdio', command: 'github-mcp-server', args: ['stdio'], envKeys: ['GITHUB_TOKEN'], headerKeys: [] } },
+      },
     },
   ],
   agents: [
@@ -251,7 +268,6 @@ const mcpSnapshot: McpSnapshot = {
     { agentId: 'codex', installed: true, configDisplayPath: '~/.codex/config.toml', unreadable: false },
     { agentId: 'gemini', installed: true, configDisplayPath: '~/.gemini/settings.json', unreadable: false },
   ],
-  candidates: [{ agentId: 'codex', name: 'github', transport: 'stdio', summary: 'github-mcp-server stdio' }],
   secretsAvailable: true,
 };
 
@@ -534,10 +550,12 @@ const bridge: AiOptBridge = {
   mcp: {
     get: async () => mcpSnapshot,
     save: refused,
-    toggle: refused,
-    resync: refused,
+    pull: refused,
+    push: refused,
     delete: refused,
-    import: refused,
+    deleteAgent: refused,
+    diff: refused,
+    merge: refused,
   },
   skills: {
     get: async () => skillsSnapshot,

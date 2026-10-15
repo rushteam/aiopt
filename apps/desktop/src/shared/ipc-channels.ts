@@ -22,11 +22,13 @@ import type {
   SessionTranscript,
 } from './agentSessions';
 import type {
-  McpImportRequest,
+  McpAgentRequest,
+  McpDiffResult,
+  McpMergeRequest,
   McpNameRequest,
+  McpPushRequest,
   McpSaveRequest,
   McpSnapshot,
-  McpToggleRequest,
   McpWriteResult,
 } from './mcp';
 import type {
@@ -165,16 +167,18 @@ export const IPC_CHANNELS = {
   sessionsCopyResume: 'sessions:copy-resume',
   sessionsExport: 'sessions:export',
 
-  // MCP servers. One library in AiOpt, synced into each agent's MCP config. Env/header
-  // VALUES never cross to the renderer (names + set flag only). Save and enable put a
-  // command/URL into an agent config, so main confirms them in a native dialog first —
-  // see shared/mcp.ts and docs/dev-rules/mcp-servers.md.
+  // MCP servers. One library in AiOpt, compared live with each agent's MCP config and synced
+  // only on an explicit pull / push / merge / delete. Env/header VALUES never cross to the
+  // renderer (names + set flag only). A push puts a command/URL into an agent config, so
+  // main confirms it in a native dialog first — see docs/dev-rules/mcp-servers.md.
   mcpGet: 'mcp:get',
   mcpSave: 'mcp:save',
-  mcpToggle: 'mcp:toggle',
-  mcpResync: 'mcp:resync',
+  mcpPull: 'mcp:pull',
+  mcpPush: 'mcp:push',
   mcpDelete: 'mcp:delete',
-  mcpImport: 'mcp:import',
+  mcpDeleteAgent: 'mcp:delete-agent',
+  mcpDiff: 'mcp:diff',
+  mcpMerge: 'mcp:merge',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -1049,11 +1053,13 @@ export interface IpcContract {
   [IPC_CHANNELS.sessionsCopyResume]: { request: SessionRef; result: Record<string, never> };
   [IPC_CHANNELS.sessionsExport]: { request: SessionRef; result: SessionsExportResult };
   [IPC_CHANNELS.mcpGet]: { request: void; result: McpSnapshot };
-  [IPC_CHANNELS.mcpSave]: { request: McpSaveRequest; result: McpWriteResult };
-  [IPC_CHANNELS.mcpToggle]: { request: McpToggleRequest; result: McpWriteResult };
-  [IPC_CHANNELS.mcpResync]: { request: McpNameRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpSave]: { request: McpSaveRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpPull]: { request: McpAgentRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpPush]: { request: McpPushRequest; result: McpWriteResult };
   [IPC_CHANNELS.mcpDelete]: { request: McpNameRequest; result: McpSnapshot };
-  [IPC_CHANNELS.mcpImport]: { request: McpImportRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpDeleteAgent]: { request: McpAgentRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpDiff]: { request: McpAgentRequest; result: McpDiffResult };
+  [IPC_CHANNELS.mcpMerge]: { request: McpMergeRequest; result: McpSnapshot };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

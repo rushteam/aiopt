@@ -11,7 +11,7 @@ import { createInMemoryRegistry, type IpcInvokeMeta } from '../../ipc/registry';
 import { throwIpcError } from '../../ipc/validate';
 import { IPC_CHANNELS } from '../../../shared/ipc-channels';
 import { isIpcError, decodeIpcError } from '../../../shared/ipc-errors';
-import type { McpSaveRequest } from '../../../shared/mcp';
+import type { McpSaveRequest, McpSnapshot } from '../../../shared/mcp';
 
 let home: string;
 let dir: string;
@@ -72,7 +72,6 @@ const fsServer: McpSaveRequest = {
   args: ['-y', 'server-fs'],
   env: [{ key: 'TOKEN', value: 'secret-1' }],
   headers: [],
-  agents: ['claude', 'codex'],
 };
 
 function codeOf(err: unknown): string {
@@ -110,145 +109,205 @@ describe('validateSaveRequest', () => {
     expect(bad({ ...http, url: 'file:///etc/passwd' })).toBe('INVALID_PARAMS');
     expect(bad({ ...http, url: 'https://u:p@m.example' })).toBe('INVALID_PARAMS');
     expect(bad({ ...http, url: 'https://m.example', env: [{ key: 'A', value: 'v' }] })).toBe('INVALID_PARAMS');
-    expect(bad({ ...http, transport: 'sse', url: 'https://m.example', agents: ['codex'] })).toBe('UNSUPPORTED_CAPABILITY');
-    expect(bad({ agents: ['pi'] })).toBe('INVALID_PARAMS');
   });
 });
 
+const writeClaude = (servers: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+  fs.writeFileSync(claudeFile(), JSON.stringify({ ...extra, mcpServers: servers }));
+const ghEntry = { type: 'stdio', command: 'gh-mcp', args: [], env: { GH_TOKEN: 'ghp' } };
+const rowOf = (snap: McpSnapshot, name: string) => snap.rows.find((r) => r.name === name);
+
 describe('mcp store', () => {
-  it('save writes enabled agents after confirmation; values never reach the snapshot', async () => {
+  it('save changes only the library; values never reach the snapshot or the library file', () => {
     const { store, secrets, confirmWrite } = makeStore();
-    const r = await store.save(validateSaveRequest(fsServer));
-    expect(r.saved).toBe(true);
-    expect(confirmWrite).toHaveBeenCalledOnce();
-    const req = confirmWrite.mock.calls[0]![0][0];
-    expect(req).toMatchObject({ name: 'fs', agentIds: ['claude', 'codex'], envKeys: ['TOKEN'] });
-    expect(JSON.stringify(req)).not.toContain('secret-1');
-
-    expect(claudeServers().fs).toMatchObject({ command: 'npx', env: { TOKEN: 'secret-1' } });
-    const codex = readAgentMcp('codex');
-    expect(codex.state === 'ok' && codex.servers.get('fs')?.env).toEqual({ TOKEN: 'secret-1' });
-
-    expect(JSON.stringify(r.snapshot)).not.toContain('secret-1');
+    const snap = store.save(validateSaveRequest(fsServer));
+    expect(confirmWrite).not.toHaveBeenCalled();
+    expect(fs.existsSync(claudeFile())).toBe(false);
+    expect(JSON.stringify(snap)).not.toContain('secret-1');
     expect(fs.readFileSync(path.join(dir, 'mcp-servers.json'), 'utf8')).not.toContain('secret-1');
     expect([...secrets.map.values()].join()).toContain('secret-1');
-    expect(r.snapshot.servers[0]).toMatchObject({
-      env: [{ key: 'TOKEN', set: true }],
-      agents: { claude: 'synced', codex: 'synced', gemini: 'off' },
+    expect(rowOf(snap, 'fs')).toMatchObject({
+      library: { env: [{ key: 'TOKEN', set: true }] },
+      agents: { claude: { state: 'library-only' }, codex: { state: 'library-only' }, gemini: { state: 'library-only' } },
     });
   });
 
-  it('a declined confirmation writes nothing anywhere', async () => {
-    const { store, secrets } = makeStore({ confirm: false });
-    const r = await store.save(validateSaveRequest(fsServer));
-    expect(r.saved).toBe(false);
-    expect(r.snapshot.servers).toEqual([]);
-    expect(fs.existsSync(claudeFile())).toBe(false);
-    expect(fs.existsSync(path.join(dir, 'mcp-servers.json'))).toBe(false);
-    expect(secrets.map.size).toBe(0);
-  });
-
-  it('omitted values keep the stored value; rename moves the secret and the agent entry', async () => {
-    const { store, secrets } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
-    await store.save(validateSaveRequest({ ...fsServer, name: 'files', originalName: 'fs', env: [{ key: 'TOKEN' }], agents: ['claude'] }));
-    expect(Object.keys(claudeServers())).toEqual(['files']);
-    expect(claudeServers().files!.env).toEqual({ TOKEN: 'secret-1' });
+  it('push writes after one confirmation listing every agent; values never in the request', async () => {
+    const { store, confirmWrite } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    const r = await store.push('fs', ['claude', 'codex']);
+    expect(r.saved).toBe(true);
+    expect(confirmWrite).toHaveBeenCalledOnce();
+    const req = confirmWrite.mock.calls[0]![0][0]!;
+    expect(req).toMatchObject({ name: 'fs', agentIds: ['claude', 'codex'], envKeys: ['TOKEN'] });
+    expect(JSON.stringify(req)).not.toContain('secret-1');
+    expect(claudeServers().fs).toMatchObject({ command: 'npx', env: { TOKEN: 'secret-1' } });
     const codex = readAgentMcp('codex');
-    expect(codex.state === 'ok' && codex.servers.size).toBe(0);
-    expect(secrets.map.size).toBe(1);
-    // A new key with no value is listed but not set.
-    const r = await store.save(validateSaveRequest({ ...fsServer, name: 'files', originalName: 'files', env: [{ key: 'OTHER' }], agents: ['claude'] }));
-    expect(r.snapshot.servers[0]!.env).toEqual([{ key: 'OTHER', set: false }]);
-    expect(secrets.map.size).toBe(0);
+    expect(codex.state === 'ok' && codex.servers.get('fs')?.env).toEqual({ TOKEN: 'secret-1' });
+    expect(rowOf(r.snapshot, 'fs')!.agents).toMatchObject({ claude: { state: 'same' }, codex: { state: 'same' }, gemini: { state: 'library-only' } });
+    expect(JSON.stringify(r.snapshot)).not.toContain('secret-1');
   });
 
-  it('save refuses duplicates and missing originals', async () => {
-    const { store } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
-    await expect(store.save(validateSaveRequest(fsServer))).rejects.toSatisfy((e) => codeOf(e) === 'ALREADY_EXISTS');
-    await expect(store.save(validateSaveRequest({ ...fsServer, originalName: 'nope' }))).rejects.toSatisfy((e) => codeOf(e) === 'NOT_FOUND');
-  });
-
-  it('toggle on confirms and writes; toggle off removes without asking', async () => {
-    const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
-    expect(confirmWrite).not.toHaveBeenCalled();
-    expect(fs.existsSync(claudeFile())).toBe(false);
-    let r = await store.toggle('fs', 'claude', true);
-    expect(confirmWrite).toHaveBeenCalledOnce();
-    expect(r.snapshot.servers[0]!.agents.claude).toBe('synced');
-    r = await store.toggle('fs', 'claude', false);
-    expect(confirmWrite).toHaveBeenCalledOnce();
-    expect(claudeServers()).toEqual({});
-    expect(r.snapshot.servers[0]!.agents.claude).toBe('off');
-  });
-
-  it('toggle declined leaves the agent off', async () => {
+  it('a declined push writes nothing', async () => {
     const { store } = makeStore({ confirm: false });
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
-    const r = await store.toggle('fs', 'claude', true);
+    store.save(validateSaveRequest(fsServer));
+    const r = await store.push('fs', ['claude']);
     expect(r.saved).toBe(false);
-    expect(r.snapshot.servers[0]!.agents.claude).toBe('off');
     expect(fs.existsSync(claudeFile())).toBe(false);
   });
 
-  it('detects drift and resync repairs it', async () => {
-    const { store } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
-    const doc = JSON.parse(fs.readFileSync(claudeFile(), 'utf8')) as { mcpServers: Record<string, Record<string, unknown>> };
-    doc.mcpServers.fs!.command = 'evil';
-    fs.writeFileSync(claudeFile(), JSON.stringify(doc));
-    expect(store.snapshot().servers[0]!.agents.claude).toBe('different');
-    fs.writeFileSync(claudeFile(), JSON.stringify({}));
-    expect(store.snapshot().servers[0]!.agents.claude).toBe('missing');
-    expect(store.resync('fs').servers[0]!.agents.claude).toBe('synced');
-  });
-
-  it('refuses to write over an unreadable agent file, before confirming', async () => {
+  it('push refuses an agent that cannot take the transport, before confirming', async () => {
     const { store, confirmWrite } = makeStore();
-    fs.writeFileSync(claudeFile(), '{ broken');
-    await expect(store.save(validateSaveRequest(fsServer))).rejects.toSatisfy((e) => codeOf(e) === 'PRECONDITION_FAILED');
+    store.save(validateSaveRequest({ name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [] }));
+    expect(rowOf(store.snapshot(), 'web')!.agents.codex).toMatchObject({ supported: false });
+    await expect(store.push('web', ['codex'])).rejects.toSatisfy((e) => codeOf(e) === 'UNSUPPORTED_CAPABILITY');
     expect(confirmWrite).not.toHaveBeenCalled();
-    expect(fs.readFileSync(claudeFile(), 'utf8')).toBe('{ broken');
-    expect(store.snapshot().agents.find((a) => a.agentId === 'claude')!.unreadable).toBe(true);
   });
 
-  it('refuses values when secret encryption is unavailable, before confirming', async () => {
-    const { store, confirmWrite } = makeStore({ secrets: memorySecrets(false) });
-    await expect(store.save(validateSaveRequest(fsServer))).rejects.toSatisfy((e) => codeOf(e) === 'PRECONDITION_FAILED');
+  it('editing the library leaves agent files alone; the agent shows differs until pushed', async () => {
+    const { store, confirmWrite } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    await store.push('fs', ['claude']);
+    const before = fs.readFileSync(claudeFile(), 'utf8');
+    confirmWrite.mockClear();
+    const snap = store.save(validateSaveRequest({ ...fsServer, originalName: 'fs', command: 'node' }));
     expect(confirmWrite).not.toHaveBeenCalled();
-    // Without values it still works.
-    expect((await store.save(validateSaveRequest({ ...fsServer, env: [] }))).saved).toBe(true);
+    expect(fs.readFileSync(claudeFile(), 'utf8')).toBe(before);
+    expect(rowOf(snap, 'fs')!.agents.claude!.state).toBe('differs');
   });
 
-  it('remove drops the server from agents, the library and the secret store', async () => {
+  it('omitted values keep the stored value; rename moves the secret, not agent entries', async () => {
     const { store, secrets } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
-    expect(store.remove('fs').servers).toEqual([]);
-    expect(claudeServers()).toEqual({});
+    store.save(validateSaveRequest(fsServer));
+    await store.push('fs', ['claude']);
+    const snap = store.save(validateSaveRequest({ ...fsServer, name: 'files', originalName: 'fs', env: [{ key: 'TOKEN' }] }));
+    expect(Object.keys(claudeServers())).toEqual(['fs']);
+    expect(rowOf(snap, 'fs')).toMatchObject({ library: null, agents: { claude: { state: 'agent-only' } } });
+    expect(rowOf(snap, 'files')!.library!.env).toEqual([{ key: 'TOKEN', set: true }]);
+    expect(secrets.map.size).toBe(1);
+    const r = store.save(validateSaveRequest({ ...fsServer, name: 'files', originalName: 'files', env: [{ key: 'OTHER' }] }));
+    expect(rowOf(r, 'files')!.library!.env).toEqual([{ key: 'OTHER', set: false }]);
     expect(secrets.map.size).toBe(0);
   });
 
-  it('import adopts an agent’s server without writing any agent file', async () => {
-    fs.writeFileSync(claudeFile(), JSON.stringify({ mcpServers: { gh: { type: 'stdio', command: 'gh-mcp', args: [], env: { GH_TOKEN: 'ghp' } } } }));
+  it('save refuses duplicates and missing originals', () => {
+    const { store } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    const codeFrom = (fn: () => unknown): string => {
+      try {
+        fn();
+      } catch (e) {
+        return codeOf(e);
+      }
+      return 'no error';
+    };
+    expect(codeFrom(() => store.save(validateSaveRequest(fsServer)))).toBe('ALREADY_EXISTS');
+    expect(codeFrom(() => store.save(validateSaveRequest({ ...fsServer, originalName: 'nope' })))).toBe('NOT_FOUND');
+  });
+
+  it('the matrix unions library and agent names; an agent-only entry pulls in without writing any file', () => {
+    writeClaude({ gh: ghEntry });
     const before = fs.readFileSync(claudeFile(), 'utf8');
     const { store, confirmWrite, secrets } = makeStore();
     const snap = store.snapshot();
-    expect(snap.candidates).toEqual([{ agentId: 'claude', name: 'gh', transport: 'stdio', summary: expect.any(String) }]);
-    const after = store.import('claude', 'gh');
-    expect(after.candidates).toEqual([]);
-    expect(after.servers[0]).toMatchObject({ name: 'gh', env: [{ key: 'GH_TOKEN', set: true }], agents: { claude: 'synced' } });
+    expect(rowOf(snap, 'gh')).toMatchObject({
+      library: null,
+      agents: { claude: { state: 'agent-only', entry: { command: 'gh-mcp', envKeys: ['GH_TOKEN'] } } },
+    });
+    expect(rowOf(snap, 'gh')!.agents.codex).toBeUndefined();
+    expect(JSON.stringify(snap)).not.toContain('ghp');
+    const after = store.pull('claude', 'gh');
+    expect(rowOf(after, 'gh')).toMatchObject({
+      library: { env: [{ key: 'GH_TOKEN', set: true }] },
+      agents: { claude: { state: 'same' }, codex: { state: 'library-only' } },
+    });
     expect(JSON.stringify(after)).not.toContain('ghp');
     expect([...secrets.map.values()].join()).toContain('ghp');
     expect(fs.readFileSync(claudeFile(), 'utf8')).toBe(before);
     expect(confirmWrite).not.toHaveBeenCalled();
-    expect(() => store.import('claude', 'gh')).toThrow();
+  });
+
+  it('deleting from the library never touches agent files (the reported bug)', () => {
+    writeClaude({ gh: ghEntry });
+    const { store, secrets } = makeStore();
+    store.pull('claude', 'gh');
+    const snap = store.remove('gh');
+    expect(claudeServers().gh).toMatchObject({ command: 'gh-mcp' });
+    expect(secrets.map.size).toBe(0);
+    expect(rowOf(snap, 'gh')).toMatchObject({ library: null, agents: { claude: { state: 'agent-only' } } });
+    // ...so it can be pulled again.
+    expect(rowOf(store.pull('claude', 'gh'), 'gh')!.agents.claude!.state).toBe('same');
+  });
+
+  it('deleteAgent removes only that agent’s entry and keeps other keys', async () => {
+    const { store, confirmWrite } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    await store.push('fs', ['claude', 'codex']);
+    writeClaude({ ...claudeServers(), gh: ghEntry }, { theme: 'dark' });
+    confirmWrite.mockClear();
+    const snap = store.removeFromAgent('claude', 'fs');
+    expect(confirmWrite).not.toHaveBeenCalled();
+    expect(Object.keys(claudeServers())).toEqual(['gh']);
+    expect(JSON.parse(fs.readFileSync(claudeFile(), 'utf8')).theme).toBe('dark');
+    expect(rowOf(snap, 'fs')!.agents).toMatchObject({ claude: { state: 'library-only' }, codex: { state: 'same' } });
+    expect(() => store.removeFromAgent('gemini', 'fs')).toThrow();
+  });
+
+  it('diff lists differing fields without values; merge takes picked agent fields into the library only', async () => {
+    const { store } = makeStore();
+    store.save(validateSaveRequest({ ...fsServer, env: [{ key: 'TOKEN', value: 'secret-1' }, { key: 'KEEP', value: 'k' }] }));
+    await store.push('fs', ['claude']);
+    const doc = JSON.parse(fs.readFileSync(claudeFile(), 'utf8')) as { mcpServers: Record<string, Record<string, unknown>> };
+    doc.mcpServers.fs = { ...doc.mcpServers.fs, command: 'node', env: { TOKEN: 'secret-2', NEW: 'n' } };
+    fs.writeFileSync(claudeFile(), JSON.stringify(doc));
+    const before = fs.readFileSync(claudeFile(), 'utf8');
+
+    const d = store.diff('claude', 'fs');
+    expect(d.fields.map((f) => [f.field, f.status])).toEqual([
+      ['spec', 'modified'],
+      ['env:KEEP', 'added'],
+      ['env:NEW', 'deleted'],
+      ['env:TOKEN', 'modified'],
+    ]);
+    expect(d.fields[0]).toMatchObject({ library: 'npx -y server-fs', agent: 'node -y server-fs' });
+    expect(JSON.stringify(d)).not.toMatch(/secret-|"n"|"k"/);
+
+    // Take the agent's TOKEN and NEW, drop nothing else; an unknown pick is ignored.
+    let snap = store.merge('claude', 'fs', ['env:TOKEN', 'env:NEW', 'env:BOGUS']);
+    expect(fs.readFileSync(claudeFile(), 'utf8')).toBe(before);
+    expect(rowOf(snap, 'fs')!.library).toMatchObject({ command: 'npx', env: [{ key: 'TOKEN', set: true }, { key: 'KEEP', set: true }, { key: 'NEW', set: true }] });
+    expect(store.diff('claude', 'fs').fields.map((f) => f.field)).toEqual(['spec', 'env:KEEP']);
+
+    // Taking the rest makes them the same.
+    snap = store.merge('claude', 'fs', ['spec', 'env:KEEP']);
+    expect(rowOf(snap, 'fs')!.agents.claude!.state).toBe('same');
+    expect(rowOf(snap, 'fs')!.library!.env.map((v) => v.key)).toEqual(['TOKEN', 'NEW']);
+  });
+
+  it('refuses to write over an unreadable agent file, before confirming', async () => {
+    const { store, confirmWrite } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    fs.writeFileSync(claudeFile(), '{ broken');
+    await expect(store.push('fs', ['claude'])).rejects.toSatisfy((e) => codeOf(e) === 'PRECONDITION_FAILED');
+    expect(() => store.removeFromAgent('claude', 'fs')).toThrow();
+    expect(confirmWrite).not.toHaveBeenCalled();
+    expect(fs.readFileSync(claudeFile(), 'utf8')).toBe('{ broken');
+    const snap = store.snapshot();
+    expect(snap.agents.find((a) => a.agentId === 'claude')!.unreadable).toBe(true);
+    expect(rowOf(snap, 'fs')!.agents.claude).toBeUndefined();
+  });
+
+  it('refuses values when secret encryption is unavailable', () => {
+    writeClaude({ gh: ghEntry });
+    const { store } = makeStore({ secrets: memorySecrets(false) });
+    expect(() => store.save(validateSaveRequest(fsServer))).toThrow();
+    expect(() => store.pull('claude', 'gh')).toThrow();
+    expect(rowOf(store.save(validateSaveRequest({ ...fsServer, env: [] })), 'fs')!.library).not.toBeNull();
   });
 
   it('ignores a corrupt library file', () => {
     fs.writeFileSync(path.join(dir, 'mcp-servers.json'), '{"servers":[{"name":"../x","transport":"stdio","command":"c"},{"name":"ok","transport":"stdio","command":"c"}]}');
-    expect(makeStore().store.snapshot().servers.map((s) => s.name)).toEqual(['ok']);
+    expect(makeStore().store.snapshot().rows.map((r) => r.name)).toEqual(['ok']);
   });
 });
 
@@ -257,33 +316,44 @@ describe('mcp IPC', () => {
   const untrusted: IpcInvokeMeta = { assertTrustedSender: () => throwIpcError('PERMISSION_DENIED', 'nope') };
 
   it('rejects an untrusted sender before any side effect', async () => {
+    writeClaude({ gh: ghEntry });
+    const before = fs.readFileSync(claudeFile(), 'utf8');
     const { store, confirmWrite } = makeStore();
     const reg = createInMemoryRegistry();
     registerMcpIpc(reg, store);
     const calls: [string, unknown][] = [
       [IPC_CHANNELS.mcpGet, undefined],
       [IPC_CHANNELS.mcpSave, fsServer],
-      [IPC_CHANNELS.mcpToggle, { name: 'fs', agentId: 'claude', enabled: true }],
-      [IPC_CHANNELS.mcpResync, { name: 'fs' }],
-      [IPC_CHANNELS.mcpDelete, { name: 'fs' }],
-      [IPC_CHANNELS.mcpImport, { agentId: 'claude', name: 'fs' }],
+      [IPC_CHANNELS.mcpPull, { agentId: 'claude', name: 'gh' }],
+      [IPC_CHANNELS.mcpPush, { name: 'gh', agentIds: ['claude'] }],
+      [IPC_CHANNELS.mcpDelete, { name: 'gh' }],
+      [IPC_CHANNELS.mcpDeleteAgent, { agentId: 'claude', name: 'gh' }],
+      [IPC_CHANNELS.mcpDiff, { agentId: 'claude', name: 'gh' }],
+      [IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'gh', agentPicks: ['spec'] }],
     ];
     for (const [ch, payload] of calls) {
       await expect(reg.invoke(ch, payload, untrusted)).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
     }
     expect(confirmWrite).not.toHaveBeenCalled();
-    expect(fs.existsSync(claudeFile())).toBe(false);
+    expect(fs.readFileSync(claudeFile(), 'utf8')).toBe(before);
+    expect(fs.existsSync(path.join(dir, 'mcp-servers.json'))).toBe(false);
   });
 
   it('validates payloads', async () => {
     const { store } = makeStore();
     const reg = createInMemoryRegistry();
     registerMcpIpc(reg, store);
-    await expect(reg.invoke(IPC_CHANNELS.mcpToggle, { name: 'fs', agentId: 'pi', enabled: true }, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
-    await expect(reg.invoke(IPC_CHANNELS.mcpToggle, { name: 'fs', agentId: 'claude', enabled: 'yes' }, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
-    await expect(reg.invoke(IPC_CHANNELS.mcpDelete, { name: '../x' }, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
-    await expect(reg.invoke(IPC_CHANNELS.mcpSave, { ...fsServer, command: 7 }, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
-    await expect(reg.invoke(IPC_CHANNELS.mcpGet, undefined, trusted)).resolves.toMatchObject({ servers: [] });
+    const invalid = async (ch: string, payload: unknown) =>
+      expect(reg.invoke(ch, payload, trusted)).rejects.toMatchObject({ code: 'INVALID_PARAMS' });
+    await invalid(IPC_CHANNELS.mcpPull, { agentId: 'pi', name: 'fs' });
+    await invalid(IPC_CHANNELS.mcpPush, { name: 'fs', agentIds: [] });
+    await invalid(IPC_CHANNELS.mcpPush, { name: 'fs', agentIds: ['claude', 'pi'] });
+    await invalid(IPC_CHANNELS.mcpDeleteAgent, { agentId: 'claude', name: '../x' });
+    await invalid(IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'fs', agentPicks: 'spec' });
+    await invalid(IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'fs', agentPicks: [1] });
+    await invalid(IPC_CHANNELS.mcpDelete, { name: '../x' });
+    await invalid(IPC_CHANNELS.mcpSave, { ...fsServer, command: 7 });
+    await expect(reg.invoke(IPC_CHANNELS.mcpGet, undefined, trusted)).resolves.toMatchObject({ rows: [] });
   });
 });
 
@@ -324,19 +394,25 @@ describe('mcp confirm content', () => {
 });
 
 describe('mcp enabled sets (config profiles)', () => {
-  const web: McpSaveRequest = { name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [], agents: ['claude'] };
+  const web: McpSaveRequest = { name: 'web', transport: 'sse', url: 'https://m.example/sse', env: [], headers: [] };
 
-  it('captures per-agent enabled servers', async () => {
+  it('captures the library servers each agent file has', async () => {
+    writeClaude({ gh: ghEntry });
     const { store } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
-    await store.save(validateSaveRequest(web));
+    store.save(validateSaveRequest(fsServer));
+    store.save(validateSaveRequest(web));
+    await store.push('fs', ['claude', 'codex']);
+    await store.push('web', ['claude']);
+    // `gh` is only in Claude's file, not the library: profiles do not record it.
     expect(store.enabledSets()).toEqual({ claude: ['fs', 'web'], codex: ['fs'], gemini: [] });
   });
 
-  it('applies a set with one confirmation for all enables; disables need none', async () => {
+  it('applies a set with one confirmation for all adds; removals need none; hand-written entries stay', async () => {
+    writeClaude({ gh: ghEntry });
     const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
-    await store.save(validateSaveRequest(web));
+    store.save(validateSaveRequest(fsServer));
+    store.save(validateSaveRequest(web));
+    await store.push('web', ['claude']);
     confirmWrite.mockClear();
     const plan = await store.planEnabledSets({ claude: ['fs', 'gone'], codex: ['fs', 'web'], gemini: ['fs'] });
     expect(confirmWrite).toHaveBeenCalledOnce();
@@ -347,14 +423,15 @@ describe('mcp enabled sets (config profiles)', () => {
     expect(store.enabledSets().claude).toEqual(['web']); // nothing changed before commit
     plan.commit();
     expect(store.enabledSets()).toEqual({ claude: ['fs'], codex: ['fs'], gemini: ['fs'] });
-    expect(Object.keys(claudeServers())).toEqual(['fs']);
+    expect(Object.keys(claudeServers()).sort()).toEqual(['fs', 'gh']);
     const codex = readAgentMcp('codex');
     expect(codex.state === 'ok' && [...codex.servers.keys()]).toEqual(['fs']);
   });
 
-  it('disable-only plans and agents absent from the set skip the dialog', async () => {
+  it('remove-only plans and agents absent from the set skip the dialog', async () => {
     const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest(fsServer));
+    store.save(validateSaveRequest(fsServer));
+    await store.push('fs', ['claude', 'codex']);
     confirmWrite.mockClear();
     const plan = await store.planEnabledSets({ claude: [] });
     expect(confirmWrite).not.toHaveBeenCalled();
@@ -364,7 +441,7 @@ describe('mcp enabled sets (config profiles)', () => {
 
   it('a declined plan changes nothing', async () => {
     const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    store.save(validateSaveRequest(fsServer));
     confirmWrite.mockResolvedValue(false);
     const plan = await store.planEnabledSets({ claude: ['fs'] });
     expect(plan.proceed).toBe(false);
@@ -375,13 +452,12 @@ describe('mcp enabled sets (config profiles)', () => {
 
   it('a spec edited while the dialog was open is not written unconfirmed', async () => {
     const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    store.save(validateSaveRequest(fsServer));
     let release!: (v: boolean) => void;
     confirmWrite.mockImplementationOnce(() => new Promise<boolean>((r) => (release = r)));
     const pending = store.planEnabledSets({ claude: ['fs'] });
     await vi.waitFor(() => expect(confirmWrite).toHaveBeenCalledTimes(1));
-    confirmWrite.mockResolvedValue(true);
-    await store.save(validateSaveRequest({ ...fsServer, originalName: 'fs', command: 'evil', agents: [] }));
+    store.save(validateSaveRequest({ ...fsServer, originalName: 'fs', command: 'evil' }));
     release(true);
     (await pending).commit();
     expect(store.enabledSets().claude).toEqual([]);
@@ -390,7 +466,7 @@ describe('mcp enabled sets (config profiles)', () => {
 
   it('an unreadable target refuses before the dialog', async () => {
     const { store, confirmWrite } = makeStore();
-    await store.save(validateSaveRequest({ ...fsServer, agents: [] }));
+    store.save(validateSaveRequest(fsServer));
     fs.writeFileSync(claudeFile(), '{ broken');
     await expect(store.planEnabledSets({ claude: ['fs'] })).rejects.toSatisfy((e) => codeOf(e) === 'PRECONDITION_FAILED');
     expect(confirmWrite).not.toHaveBeenCalled();
