@@ -43,6 +43,8 @@ main/        privileged process — the trust boundary
   secrets/secretStore.ts safeStorage wrapper                              [later stage]
   demo/*                 the vertical-slice's main side                   [later stage]
   workbench/*            coordinator (pi RPC) + task agents in AiOpt's own herdr session
+  proxy/*                loopback translation proxy (agent ⇄ provider wire formats)
+  upstreams/*            built-in drivers for providers with a private protocol (e.g. cursor/)
 
 preload/preload.ts   minimal contextBridge; strips IpcRendererEvent
 

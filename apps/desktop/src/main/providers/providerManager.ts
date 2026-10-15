@@ -71,6 +71,8 @@ import type { ProviderStore } from './providerStore';
 import { isAllowedAgentConfigPath, resolveAgentConfigRole } from './agentPaths';
 import { describeAgentConfig } from './agentConfigView';
 import type { TranslationProxy } from '../proxy/translationProxy';
+import type { BoundUpstream } from '../upstreams/types';
+import { fetchUpstreamModels, testUpstream } from '../upstreams/providerOps';
 
 /** Main-only secret key holding one provider's API key. */
 export function providerSecretKey(providerId: string): string {
@@ -207,6 +209,9 @@ export function createProviderManager(
   bindingProfiles: BindingProfileStore | null = null,
   bindingApplied: BindingAppliedStore | null = null,
   profileMcp: ProfileMcpHook | null = null,
+  // Upstream drivers (main/upstreams/): a provider a driver serves lists its models and is
+  // tested through the driver rather than an OpenAI-compatible GET /models.
+  upstreamFor: (provider: Provider) => BoundUpstream | null = () => null,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -341,7 +346,13 @@ export function createProviderManager(
     const proxyable = translationSupported(inbound, outbound);
     // OAuth / agent-import tokens never go on disk — always route through the loopback proxy.
     const secretViaProxy = providerNeedsProxyForUpstreamSecret(provider.credentialMode);
-    const direct = sameFormat && (!getProxyMode() || !proxyable) && !secretViaProxy;
+    // A driver-served provider (main/upstreams/) has no HTTP endpoint an agent could call,
+    // and a driver takes OpenAI Chat only (the proxy translates every inbound dialect to it).
+    const driverServed = upstreamFor(provider) !== null;
+    if (driverServed && outbound !== 'openai') {
+      throwIpcError('UNSUPPORTED_CAPABILITY', 'this provider is served in the OpenAI Chat format only');
+    }
+    const direct = sameFormat && (!getProxyMode() || !proxyable) && !secretViaProxy && !driverServed;
 
     if (direct) {
       // Drop any stale route left by a previous proxied binding for this agent.
@@ -635,6 +646,11 @@ export function createProviderManager(
     },
 
     async fetchModels(input) {
+      // A stored provider served by a driver lists through it (a typed key, if any, is
+      // irrelevant: drivers resolve their own credential).
+      const probeProvider = input.providerId ? store.getProvider(input.providerId) : undefined;
+      const driver = probeProvider ? upstreamFor(probeProvider) : null;
+      if (driver) return fetchUpstreamModels(driver);
       return fetchProviderModelsWithMeta(
         {
           apiFormats: normalizeApiFormats(input.apiFormats),
@@ -722,6 +738,8 @@ export function createProviderManager(
       if (!provider) {
         return { ok: false, latencyMs: null, format: null, error: 'not_found' as const };
       }
+      const driver = upstreamFor(provider);
+      if (driver) return testUpstream(driver);
       const apiKey = resolveUpstreamKeyForProvider(provider);
       return testProviderConnectivity(provider, apiKey, fetchImpl);
     },

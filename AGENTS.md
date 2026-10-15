@@ -39,6 +39,8 @@
   provider proxy routing): read `docs/dev-rules/oauth-providers.md`.
 - Before importing agent disk sessions as pool providers (Codex / Claude / Copilot sign-ins):
   read `docs/dev-rules/agent-import-providers.md`.
+- Before adding or changing an upstream driver (a provider served by a private protocol
+  instead of an HTTP POST, e.g. Cursor's agent API): read `docs/dev-rules/upstream-drivers.md`.
 - Before adding a new pool-bindable agent (adapter + on-disk config):
   read `docs/dev-rules/add-bindable-agent.md`.
 - Before changing agent binding apply/re-sync, adapter writeback, or binding drift UI:

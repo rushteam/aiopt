@@ -38,6 +38,8 @@ import { sanitizeOutboundBody } from './sanitize';
 import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage } from './usageSniffer';
+import type { BoundUpstream } from '../upstreams/types';
+import { clientMessage, collectCompletion, createChunkMapper, newCompletionIdentity } from '../upstreams/openaiChatOut';
 import {
   createGeminiToAnthropicStream,
   createGeminiToOpenaiStream,
@@ -98,6 +100,14 @@ export interface TranslationProxyDeps {
    * before (OS-assigned port, in-memory-only tokens that die on restart).
    */
   persistence?: ProxyStateStore;
+  /**
+   * Upstream drivers (see main/upstreams/). A provider a driver serves is answered by the
+   * driver instead of an HTTP POST: the request is first translated to OpenAI Chat (the
+   * route's outbound format) and the driver's answer comes back as OpenAI Chat, so every
+   * inbound dialect reuses the existing translators. Looked up per request (live, like
+   * {@link getKey}); optional — absent or null = the plain HTTP path.
+   */
+  upstreamFor?: (providerId: string) => BoundUpstream | null;
 }
 
 export interface TranslationProxy {
@@ -375,6 +385,17 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         outboundBody.stream_options = { ...existing, include_usage: true };
       }
 
+      const driver = deps.upstreamFor?.(spec.providerId) ?? null;
+      if (driver && spec.outboundFormat !== 'openai') {
+        // Drivers take OpenAI Chat only; applyBinding refuses such a route, so this is stale.
+        sendJson(res, 502, errorEnvelope(spec.inboundFormat, 'the provider is not served in this format'));
+        return;
+      }
+      if (driver) {
+        await serveDriver(driver, res, spec, tf, outboundBody, wantsStream, rest, record);
+        return;
+      }
+
       const apiKey = deps.getKey(spec.providerId);
       const url =
         spec.outboundFormat === 'gemini'
@@ -428,6 +449,96 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       logger.warn('proxy.error', { path: rest, code });
       if (!res.headersSent) sendJson(res, statusForCode(code), errorEnvelope(inbound, message));
       else res.end();
+    }
+  }
+
+  /**
+   * Answer one request through an upstream driver. The body is already OpenAI Chat (the
+   * route's outbound format); the driver's answer is produced as OpenAI Chat and run through
+   * the route's response transforms. The upstream's own error text never reaches the client
+   * and is never logged (status only).
+   */
+  async function serveDriver(
+    driver: BoundUpstream,
+    res: ServerResponse,
+    spec: RouteSpec,
+    tf: DirectionTransforms,
+    body: Record<string, unknown>,
+    wantsStream: boolean,
+    path: string,
+    record: (streamed: boolean, ok: boolean, status: number, counts: { inputTokens: number; outputTokens: number }) => void,
+  ): Promise<void> {
+    const inbound = spec.inboundFormat;
+    const noTokens = { inputTokens: 0, outputTokens: 0 };
+    const upstream = driver.driverId;
+    const controller = new AbortController();
+    res.on('close', () => {
+      if (!res.writableFinished) controller.abort();
+    });
+    let result: Awaited<ReturnType<BoundUpstream['chat']>>;
+    try {
+      result = await driver.chat(body, controller.signal);
+    } catch {
+      result = { error: { status: 502, message: 'driver failure' } };
+    }
+    if ('error' in result) {
+      const status = result.error.status;
+      record(wantsStream, false, status, noTokens);
+      logger.warn('proxy.upstream', { path, status, upstream });
+      const clientStatus = status === 401 || status === 403 ? 401 : status === 429 || status === 400 ? status : 502;
+      sendJson(res, clientStatus, errorEnvelope(inbound, clientMessage(status)));
+      return;
+    }
+    const ident = newCompletionIdentity(typeof body.model === 'string' ? body.model : spec.modelId);
+    if (!wantsStream) {
+      const out = await collectCompletion(result.events, ident);
+      if ('error' in out) {
+        record(false, false, out.error.status, noTokens);
+        logger.warn('proxy.upstream', { path, status: out.error.status, upstream });
+        sendJson(res, 502, errorEnvelope(inbound, clientMessage(out.error.status)));
+        return;
+      }
+      record(false, true, 200, readResponseUsage('openai', out.completion));
+      logger.info('proxy.request', { path, status: 200, stream: false, upstream });
+      sendJson(res, 200, tf.translateResponse(out.completion, spec.modelId));
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+    });
+    const sniffer = createUsageSniffer('openai');
+    const transform = tf.makeStreamTransform(spec.modelId);
+    const mapper = createChunkMapper(ident);
+    let ok = true;
+    let status = 200;
+    const emit = async (events: SseEvent[]): Promise<void> => {
+      for (const event of events) {
+        sniffer.observe(event);
+        for (const frame of transform(event)) await writeBackpressured(res, frame);
+      }
+    };
+    try {
+      for await (const e of result.events) {
+        if ('error' in e) {
+          // Mid-stream failure: end the answer as it stands; the client sees a cut-off.
+          ok = false;
+          status = e.error.status;
+          break;
+        }
+        await emit(mapper.map(e));
+      }
+      if (ok) {
+        await emit(mapper.done());
+        for (const frame of transform.flush?.() ?? []) await writeBackpressured(res, frame);
+      }
+    } catch {
+      ok = false;
+    } finally {
+      record(true, ok, status, sniffer.result());
+      logger.info('proxy.request', { path, status, stream: true, upstream });
+      res.end();
     }
   }
 

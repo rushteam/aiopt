@@ -9,7 +9,8 @@ import type { AgentAdapter, WriteLiveInput } from '../adapters/agentAdapter';
 import type { FetchLike } from '../modelCatalog';
 import type { TranslationProxy } from '../../proxy/translationProxy';
 import type { RouteSpec } from '../../proxy/router';
-import type { AgentId, ApiFormat } from '../../../shared/aiProviders';
+import type { AgentId, ApiFormat, Provider } from '../../../shared/aiProviders';
+import type { BoundUpstream } from '../../upstreams/types';
 import { getAgentDef } from '../../../shared/aiProviders';
 import type { SecretStore } from '../../secrets/secretStore';
 import type { ProvidersSnapshot } from '../../../shared/ipc-channels';
@@ -99,7 +100,12 @@ function fakeProxy() {
 
 function harness(
   installedAgents: AgentId[] = ['claude'],
-  opts: { fetchImpl?: FetchLike; proxyMode?: boolean; profileMcp?: ProfileMcpHook } = {},
+  opts: {
+    fetchImpl?: FetchLike;
+    proxyMode?: boolean;
+    profileMcp?: ProfileMcpHook;
+    upstreamFor?: (provider: Provider) => BoundUpstream | null;
+  } = {},
 ) {
   const store = createProviderStore({ load: () => ({}), save: () => {} });
   const secrets = memorySecrets();
@@ -132,6 +138,7 @@ function harness(
     createBindingProfileStore({ load: () => ({}), save: () => {} }),
     null,
     opts.profileMcp ?? null,
+    opts.upstreamFor,
   );
   return { store, secrets, adapters, calls, restoreCounts, onChange, manager, registered, unregistered, clipboard };
 }
@@ -310,6 +317,40 @@ describe('provider manager — setBinding (the apply flow)', () => {
     const { manager, registered } = harness(['claude']);
     const id = addProvider(manager, { apiFormat: 'anthropic', apiKey: 'sk-live', modelId: 'm1' });
     manager.setBinding('claude', id, 'm1');
+    expect(registered).toHaveLength(0);
+  });
+
+  it('a driver-served provider always routes through the proxy, even same-format with proxy mode off', async () => {
+    const driver: BoundUpstream = {
+      driverId: 'fake',
+      listModels: () => Promise.resolve([{ id: 'd-model' }]),
+      chat: () => Promise.resolve({ error: { status: 500, message: '' } }),
+    };
+    const fetchImpl: FetchLike = () => Promise.reject(new Error('GET /models must not be used'));
+    // cline speaks OpenAI Chat natively: same format, proxy mode off — normally direct.
+    const { manager, registered, calls } = harness(['cline'], {
+      fetchImpl,
+      upstreamFor: (p) => (p.name === 'Provider' ? driver : null),
+    });
+    const id = addProvider(manager, { apiFormat: 'openai', modelId: 'm1' });
+    manager.setBinding('cline', id, 'm1');
+    expect(registered.at(-1)).toMatchObject({ agentId: 'cline', inboundFormat: 'openai', outboundFormat: 'openai' });
+    expect(calls.cline![0]!.provider.baseUrl).toBe('http://127.0.0.1:4567/tok-1');
+    // Model listing and the live test go through the driver.
+    const listed = await manager.fetchModels({ apiFormats: ['openai'], baseUrl: 'https://api.example.com', providerId: id });
+    expect(listed.models).toEqual([{ id: 'd-model' }]);
+    expect(await manager.testProvider(id)).toMatchObject({ ok: true, format: 'openai' });
+  });
+
+  it('refuses binding a driver-served provider over a non-OpenAI outbound format', () => {
+    const driver: BoundUpstream = {
+      driverId: 'fake',
+      listModels: () => Promise.resolve([]),
+      chat: () => Promise.resolve({ error: { status: 500, message: '' } }),
+    };
+    const { manager, registered } = harness(['claude'], { upstreamFor: () => driver });
+    const id = addProvider(manager, { apiFormat: 'anthropic', modelId: 'm1' });
+    expect(() => manager.setBinding('claude', id, 'm1')).toThrow();
     expect(registered).toHaveLength(0);
   });
 
