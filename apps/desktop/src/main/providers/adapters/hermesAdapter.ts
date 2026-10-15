@@ -28,7 +28,7 @@ import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import { restoreKeepingYamlMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug, readYamlConfigDocument } from './bindingLive';
+import { aioptProviderSlug, pruneAioptYamlSeqByName, readYamlConfigDocument } from './bindingLive';
 
 const HERMES_DEF: AgentDef = getAgentDef('hermes')!;
 
@@ -97,6 +97,7 @@ export function createHermesAdapter(): AgentAdapter {
 
       // Upsert our entry, preserving any Hermes-only fields already on it.
       const seq = customProvidersSeq(doc);
+      pruneAioptYamlSeqByName(seq, slug);
       let entry = findEntryBySlug(seq, slug);
       if (!entry) {
         // createNode yields a real YAMLMap (a plain object added to the seq would not be

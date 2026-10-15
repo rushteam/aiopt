@@ -11,7 +11,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const DEF: AgentDef = getAgentDef('zcode')!;
 
@@ -57,6 +57,7 @@ export function createZCodeAdapter(): AgentAdapter {
       };
 
       const providers = objectAt(config, 'provider');
+      pruneAioptKeys(providers, slug);
       providers[slug] = providerEntry;
 
       const next = { ...config, provider: providers };

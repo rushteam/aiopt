@@ -11,7 +11,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const DEF: AgentDef = getAgentDef('omo')!;
 
@@ -54,6 +54,7 @@ export function createOmoAdapter(): AgentAdapter {
 
       const authFile = resolveAgentFile(AGENT_FILES.omo.auth);
       const auth = readJsonObject(authFile);
+      pruneAioptKeys(auth, slug);
       if (apiKey) auth[slug] = { type: 'api_key', key: apiKey };
       else delete auth[slug];
       writeJson(authFile, auth);
@@ -61,6 +62,7 @@ export function createOmoAdapter(): AgentAdapter {
       const modelsFile = resolveAgentFile(AGENT_FILES.omo.models);
       const modelsDoc = readJsonObject(modelsFile);
       const providers = objectAt(modelsDoc, 'providers');
+      pruneAioptKeys(providers, slug);
       providers[slug] = {
         baseUrl: provider.baseUrl,
         api: API_BY_FORMAT[apiFormat],

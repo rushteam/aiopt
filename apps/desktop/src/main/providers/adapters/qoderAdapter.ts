@@ -16,7 +16,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 function objectAt(obj: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = obj[key];
@@ -59,6 +59,7 @@ function createQoderLikeAdapter(agentId: 'qoder' | 'qodercn'): AgentAdapter {
         models,
       };
       if (apiKey) entry.apiKey = apiKey;
+      pruneAioptKeys(providers, slug);
       providers[slug] = entry;
 
       const model = objectAt(config, 'model');

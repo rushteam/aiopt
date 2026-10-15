@@ -3,7 +3,7 @@
 // single on-disk schema across agents (JSON env vs TOML vs YAML vs multi-file).
 
 import fs from 'node:fs';
-import { parseDocument } from 'yaml';
+import { isMap, isScalar, isSeq, parseDocument, type YAMLMap } from 'yaml';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { tomlString } from '../tomlLite';
 
@@ -34,6 +34,43 @@ export function bindingDriftDetected(
 
 export function aioptProviderSlug(applied: AppliedBindingRecord): string | null {
   return applied.providerId ? `aiopt-${applied.providerId}` : null;
+}
+
+/**
+ * Whether `key` is an entry AiOpt wrote for some OTHER provider. Multi-provider configs keep one
+ * `aiopt-<providerId>` entry per provider ever bound, and a binding switch only upserts the new
+ * one — so without pruning, the agent's own model picker keeps offering dead entries (a loopback
+ * URL whose per-binding token is revoked, a deleted provider) and stale keys stay on disk. Only
+ * the `aiopt-` namespace is touched; the user's own entries never match.
+ */
+export function isStaleAioptKey(key: unknown, keep: string): boolean {
+  return typeof key === 'string' && key.startsWith('aiopt-') && key !== keep;
+}
+
+/** Drop every other-provider `aiopt-*` key from a plain JSON object, in place. */
+export function pruneAioptKeys(obj: Record<string, unknown>, keep: string): void {
+  for (const key of Object.keys(obj)) if (isStaleAioptKey(key, keep)) delete obj[key];
+}
+
+/** YAML counterpart of {@link pruneAioptKeys}, for a map node (comments elsewhere survive). */
+export function pruneAioptYamlKeys(map: unknown, keep: string, isStale = isStaleAioptKey): void {
+  if (!isMap(map)) return;
+  const node = map as YAMLMap;
+  node.items = node.items.filter((pair) => {
+    const key = isScalar(pair.key) ? pair.key.value : pair.key;
+    return !isStale(key, keep);
+  });
+}
+
+/** Drop other-provider entries from a YAML sequence of maps keyed by `name` (Hermes). */
+export function pruneAioptYamlSeqByName(seq: unknown, keep: string): void {
+  if (!isSeq(seq)) return;
+  seq.items = seq.items.filter((item) => !(isMap(item) && isStaleAioptKey(item.get('name'), keep)));
+}
+
+/** dsh credential refs AiOpt wrote (`AIOPT_<ID>_KEY`), other than `keep`. */
+export function isStaleDshCredentialRef(key: unknown, keep: string): boolean {
+  return typeof key === 'string' && /^AIOPT_[A-Z0-9_]+_KEY$/.test(key) && key !== keep;
 }
 
 export function readTomlScalar(text: string, key: string): string | null {

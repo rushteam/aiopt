@@ -17,7 +17,7 @@ import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
 import type { LiveBindingSnapshot } from './bindingLive';
-import { aioptProviderSlug } from './bindingLive';
+import { aioptProviderSlug, pruneAioptKeys } from './bindingLive';
 
 const PI_DEF: AgentDef = getAgentDef('pi')!;
 
@@ -64,6 +64,7 @@ export function createPiAdapter(): AgentAdapter {
       // auth.json — set our slug's key (or drop it if no key is stored).
       const authFile = resolveAgentFile(AGENT_FILES.pi.auth);
       const auth = readJsonObject(authFile);
+      pruneAioptKeys(auth, slug);
       if (apiKey) auth[slug] = { type: 'api_key', key: apiKey };
       else delete auth[slug];
       writeJson(authFile, auth);
@@ -72,6 +73,7 @@ export function createPiAdapter(): AgentAdapter {
       const modelsFile = resolveAgentFile(AGENT_FILES.pi.models);
       const modelsDoc = readJsonObject(modelsFile);
       const providers = objectAt(modelsDoc, 'providers');
+      pruneAioptKeys(providers, slug);
       providers[slug] = {
         baseUrl: provider.baseUrl,
         api: API_BY_FORMAT[apiFormat],
