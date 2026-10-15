@@ -95,9 +95,14 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 const AGENT_START_TIMEOUT_MS = 45_000;
 const PANE_BUSY_RETRIES = 6;
 const PANE_BUSY_DELAY_MS = 750;
-/** herdr's ids: `w3`, `w3:t1`, `w3:p2`. */
-const WORKSPACE_ID_RE = /^w[0-9]{1,9}$/;
-const PANE_ID_RE = /^w[0-9]{1,9}:p[0-9]{1,9}$/;
+/**
+ * herdr's ids: `w3`, `w3:t1`, `w3:p2`. The number after each letter is not decimal: herdr
+ * counts in a base-32 alphabet without the look-alike letters (… `w9`, `wA` … `wZ`, `w0`,
+ * `w11` … `w1D` …), so the tenth workspace a session opens is `wA`. Matching digits only made
+ * every launch from then on fail as "herdr returned no pane".
+ */
+const WORKSPACE_ID_RE = /^w[0-9A-Z]{1,9}$/;
+const PANE_ID_RE = /^w[0-9A-Z]{1,9}:p[0-9A-Z]{1,9}$/;
 const MAX_PROMPT = 16_000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {

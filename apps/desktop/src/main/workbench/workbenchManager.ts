@@ -207,6 +207,8 @@ export const WORKBENCH_KEY_ENV = 'AIOPT_WB_KEY';
 
 /** How often herdr is asked for the workers' state. */
 export const POLL_MS = 3000;
+/** How often an idle session is swept for workspaces no task holds (see sweepOrphanWorkspaces). */
+export const SWEEP_EVERY_POLLS = 20;
 const SERVER_READY_TRIES = 40;
 const SERVER_READY_DELAY_MS = 250;
 /** Task changes that land together reach the coordinator as one update. */
@@ -362,6 +364,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let ownsServer = false;
   let cancelPoll: (() => void) | null = null;
   let polling = false;
+  let pollsSinceSweep = 0;
   let startSeq = 0;
   const launching = new Set<string>();
   const transcript = createTranscript();
@@ -1089,6 +1092,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         return;
       }
       setStatus('ready', null);
+      if (herdr) await sweepOrphanWorkspaces(herdr);
       cancelPoll = deps.every(POLL_MS, () => void poll());
       log.info('workbench.started', { herdr: herdr !== null, proxied: resolved.view.proxied });
     } catch (err) {
@@ -1186,9 +1190,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     stopPolling();
     disposeOrchestrator();
     transcript.apply({ type: 'agent_settled' });
-    endLiveTasks();
     const client = herdr;
     herdr = null;
+    // Close what our tasks opened before dropping the ids: the server stop below ends the
+    // workers either way, but a workspace closed here never outlives a failed stop.
+    if (client) await closeTaskWorkspaces(client);
+    endLiveTasks();
     if (client) await client.stopServer();
     ownsServer = false;
     setStatus('stopped', null);
@@ -1509,7 +1516,12 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       t.agentName = agentName;
       await client.agentStart(agentName, paneId, WORKER_PI_ARGS);
       await client.agentPrompt(agentName, t.prompt);
-      if (seq !== startSeq || t.status !== 'starting') return; // Stopped meanwhile.
+      if (seq !== startSeq || t.status !== 'starting') {
+        // Stopped (or the workbench restarted) while the worker came up: nothing will ever
+        // close this workspace if we don't, since stop already ran past it.
+        await closeWorkspace(client, t);
+        return;
+      }
       t.status = 'working';
       t.promptAt = deps.now();
       t.updatedAt = t.promptAt;
@@ -1555,6 +1567,43 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     } catch (err) {
       log.warn('workbench.repo_workspace_close_failed', { code: errorCode(err) });
     }
+  }
+
+  async function closeTaskWorkspaces(client: HerdrClient): Promise<void> {
+    for (const t of tasks.values()) {
+      if (t.workspaceId) await closeWorkspace(client, t);
+    }
+  }
+
+  /**
+   * Close every workspace in AiOpt's own herdr session that no task holds. The session is
+   * AiOpt's alone (WORKBENCH_HERDR_SESSION, never the user's `default`), so anything open there
+   * that no task claims is a leftover: a launch that died half-way, a crash, a pane the user
+   * closed by hand. Bounds what the session can accumulate over a long run.
+   */
+  async function sweepOrphanWorkspaces(client: HerdrClient): Promise<void> {
+    const held = new Set([...tasks.values()].map((t) => t.workspaceId).filter((id): id is string => id !== null));
+    let rows: Awaited<ReturnType<HerdrClient['workspaceList']>>;
+    try {
+      rows = await client.workspaceList();
+    } catch (err) {
+      log.debug('workbench.sweep_list_failed', { code: errorCode(err) });
+      return;
+    }
+    let closed = 0;
+    for (const row of rows) {
+      // Closing a workspace leaves a worktree's checkout on disk (a relaunch reuses it).
+      if (held.has(row.workspaceId)) continue;
+      try {
+        await client.workspaceClose(row.workspaceId);
+        closed += 1;
+      } catch (err) {
+        if (!(err instanceof HerdrError && err.code === 'workspace_not_found')) {
+          log.debug('workbench.sweep_close_failed', { code: errorCode(err) });
+        }
+      }
+    }
+    if (closed > 0) log.info('workbench.swept_workspaces', { closed });
   }
 
   function requireHerdr(): HerdrClient {
@@ -1678,6 +1727,17 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   async function poll(): Promise<void> {
     const client = herdr;
     if (polling || !client || status !== 'ready') return;
+    // Sweep only between launches: a launch opens its workspace before the task records it.
+    pollsSinceSweep += 1;
+    if (pollsSinceSweep >= SWEEP_EVERY_POLLS && launching.size === 0) {
+      pollsSinceSweep = 0;
+      polling = true;
+      try {
+        await sweepOrphanWorkspaces(client);
+      } finally {
+        polling = false;
+      }
+    }
     const watched = [...tasks.values()].filter((t) => isLiveTaskStatus(t.status) && !launching.has(t.id) && t.agentName);
     if (watched.length === 0) return;
     polling = true;

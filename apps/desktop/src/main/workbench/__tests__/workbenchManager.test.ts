@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { decodeIpcError } from '../../../shared/ipc-errors';
 import { WORKBENCH_LIMITS } from '../../../shared/workbench';
 import type { Logger } from '../../logger';
-import { HerdrError, type HerdrAgentRow, type HerdrClient } from '../herdrCli';
+import { HerdrError, type HerdrAgentRow, type HerdrClient, type HerdrWorkspaceRow } from '../herdrCli';
 import type { PiChild } from '../piRpc';
 import {
   LIST_TASKS_TOOL,
@@ -13,6 +13,7 @@ import {
   TASK_UPDATE_COMMAND,
 } from '../orchestratorExtension';
 import {
+  SWEEP_EVERY_POLLS,
   WORKER_PI_ARGS,
   createWorkbenchManager,
   type ResolvedWorkbenchModel,
@@ -148,8 +149,8 @@ function fakeHerdr() {
         repoKey: '/work/app/.git',
       };
     }),
-    workspaceList: vi.fn(async () => []),
-    workspaceClose: vi.fn(async () => {}),
+    workspaceList: vi.fn(async (): Promise<HerdrWorkspaceRow[]> => []),
+    workspaceClose: vi.fn(async (_workspaceId: string) => {}),
     worktreeRemove: vi.fn(async () => {}),
     agentStart: vi.fn(async (name: string, _pane: string) => {
       agents.set(name, { name, status: 'idle', workspaceId: null });
@@ -480,6 +481,66 @@ describe('workbench folders', () => {
     await s.wb.stopTask(running);
     s.wb.removeFolder(s.folderId);
     expect(s.wb.getSnapshot().tasks.find((t) => t.id === waiting)!.folderId).toBeNull();
+  });
+});
+
+describe('workbench herdr cleanup', () => {
+  it('closes every task workspace when the workbench stops', async () => {
+    const s = await withFolder();
+    const a = s.wb.createTask({ title: 'A', prompt: 'p', folderId: s.folderId });
+    const b = s.wb.createTask({ title: 'B', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(a);
+    s.wb.launchTask(b);
+    await flush();
+    s.herdr.client.workspaceClose.mockClear();
+    await s.wb.stop();
+    expect(s.herdr.client.workspaceClose).toHaveBeenCalledTimes(2);
+    expect(s.herdr.client.stopServer).toHaveBeenCalled();
+  });
+
+  it('closes the workspace of a launch that was stopped while its worker came up', async () => {
+    const s = await withFolder();
+    let release!: () => void;
+    s.herdr.client.agentPrompt.mockImplementationOnce(() => new Promise<void>((r) => (release = r)));
+    const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    // The workbench restarts mid-launch: stop() runs before the task has recorded a live worker.
+    const stopping = s.wb.stop();
+    release();
+    await stopping;
+    await flush();
+    const opened = s.herdr.client.workspaceCreate.mock.results.length;
+    expect(opened).toBe(1);
+    expect(s.herdr.client.workspaceClose).toHaveBeenCalled();
+  });
+
+  it('sweeps workspaces no task holds when herdr comes up, and keeps the ones it does', async () => {
+    const s = setup();
+    s.herdr.client.workspaceList.mockResolvedValue([
+      { workspaceId: 'wA', repoKey: null, isLinkedWorktree: false },
+      { workspaceId: 'wB', repoKey: '/r/.git', isLinkedWorktree: true },
+    ]);
+    await s.wb.start();
+    expect(s.herdr.client.workspaceClose.mock.calls.map((c) => c[0])).toEqual(['wA', 'wB']);
+
+    // Later sweeps leave a running task's workspace alone.
+    await s.wb.addFolder('/work/app');
+    const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId: s.wb.getSnapshot().folders[0]!.id });
+    s.wb.launchTask(id);
+    await flush();
+    const held = s.herdr.client.workspaceCreate.mock.results.at(-1)!.value as Promise<{ workspaceId: string }>;
+    const heldId = (await held).workspaceId;
+    s.herdr.client.workspaceList.mockResolvedValue([
+      { workspaceId: heldId, repoKey: null, isLinkedWorktree: false },
+      { workspaceId: 'wZ', repoKey: null, isLinkedWorktree: false },
+    ]);
+    s.herdr.client.workspaceClose.mockClear();
+    for (let i = 0; i < SWEEP_EVERY_POLLS; i += 1) {
+      s.tick();
+      await flush();
+    }
+    expect(s.herdr.client.workspaceClose.mock.calls.map((c) => c[0])).toEqual(['wZ']);
   });
 });
 

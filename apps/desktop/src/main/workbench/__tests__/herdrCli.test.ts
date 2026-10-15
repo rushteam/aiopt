@@ -89,6 +89,18 @@ describe('herdr client', () => {
     });
   });
 
+  it('accepts herdr ids past the ninth workspace (its base-32 numbering: wA, w1D)', async () => {
+    const ref = (w: string) => ({
+      root_pane: { pane_id: `${w}:pB`, tab_id: `${w}:t1`, workspace_id: w },
+      tab: { tab_id: `${w}:t1` },
+      workspace: { workspace_id: w },
+    });
+    const { herdr } = client([ok(ref('wA')), ok(ref('w1D')), ok({})]);
+    expect(await herdr.workspaceCreate('/tmp/app', 'x')).toEqual({ workspaceId: 'wA', tabId: 'wA:t1', paneId: 'wA:pB' });
+    expect((await herdr.workspaceCreate('/tmp/app', 'x')).workspaceId).toBe('w1D');
+    await expect(herdr.workspaceClose('w1D')).resolves.toBeUndefined();
+  });
+
   it('accepts the plain-text success line of integration install, and surfaces its failure', async () => {
     const good = client([{ code: 0, stdout: 'installed pi integration to /x/extensions/herdr-agent-state.ts\n', stderr: '' }]);
     await expect(good.herdr.installPiIntegration()).resolves.toBeUndefined();
@@ -100,6 +112,8 @@ describe('herdr client', () => {
   it('rejects malformed ids, names, branches, and relative paths before exec', async () => {
     const { exec, herdr } = client([]);
     await expect(herdr.workspaceClose('w1; rm')).rejects.toBeInstanceOf(HerdrError);
+    await expect(herdr.workspaceClose('wa')).rejects.toBeInstanceOf(HerdrError);
+    await expect(herdr.agentStart('wb-a', 'w1:p1 --x', [])).rejects.toBeInstanceOf(HerdrError);
     await expect(herdr.agentPrompt('Bad Name', 'hi')).rejects.toBeInstanceOf(HerdrError);
     await expect(herdr.worktreeCreate('/r', 'main')).rejects.toBeInstanceOf(HerdrError);
     await expect(herdr.workspaceCreate('--cwd', 'x')).rejects.toBeInstanceOf(HerdrError);
