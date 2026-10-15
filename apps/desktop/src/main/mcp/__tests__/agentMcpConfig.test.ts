@@ -6,6 +6,9 @@ import { mcpConfigPath, readAgentMcp, sameMcpServer, writeAgentMcp, type LiveMcp
 import { restoreKeepingCodexMcp, restoreKeepingJsonMcp, withCodexMcpBlocks } from '../preserveMcp';
 import { createCodexAdapter } from '../../providers/adapters/codexAdapter';
 import { createGeminiAdapter } from '../../providers/adapters/geminiAdapter';
+import { createOpenCodeAdapter } from '../../providers/adapters/opencodeAdapter';
+import { createHermesAdapter } from '../../providers/adapters/hermesAdapter';
+import { parse } from 'yaml';
 import { AGENT_BACKUP_SUFFIX } from '../../providers/fsutil';
 import type { Provider } from '../../../shared/aiProviders';
 
@@ -185,5 +188,110 @@ describe('preserveMcp helpers', () => {
     const f = writeFile('.codex/config.toml', 'x = 1\n');
     restoreKeepingCodexMcp(f, () => fs.rmSync(f));
     expect(fs.existsSync(f)).toBe(false);
+  });
+});
+
+describe('agent MCP config — Cursor, pi, OpenCode, Hermes', () => {
+  it('Cursor and pi use mcpServers with a bare url; pi drops an sse entry', () => {
+    writeFile('.cursor/mcp.json', JSON.stringify({ mcpServers: { ctx: { url: 'https://c.example/mcp', headers: { A: 'b' } } } }));
+    let r = readAgentMcp('cursor');
+    expect(r.state === 'ok' && r.servers.get('ctx')).toEqual({ transport: 'http', url: 'https://c.example/mcp', env: {}, headers: { A: 'b' } });
+    writeAgentMcp('cursor', put({ fs: stdio, web: sse }), new Set());
+    expect(json(mcpConfigPath('cursor')).mcpServers).toEqual({
+      ctx: { url: 'https://c.example/mcp', headers: { A: 'b' } },
+      fs: { command: 'npx', args: ['-y', 'x'], env: { K: 'v' } },
+      web: { url: 'https://m.example/sse' },
+    });
+
+    // pi's file is new: created owner-only, and an SSE entry someone wrote by hand is not modelled.
+    writeAgentMcp('pi', put({ web: http }), new Set());
+    const f = mcpConfigPath('pi');
+    expect(f).toBe(path.join(home, '.pi/agent/mcp.json'));
+    if (process.platform !== 'win32') expect(fs.statSync(f).mode & 0o777).toBe(0o600);
+    writeFile('.pi/agent/mcp.json', JSON.stringify({ mcpServers: { old: { type: 'sse', url: 'u' }, web: { url: 'https://m.example/mcp', timeout: 30 } } }));
+    r = readAgentMcp('pi');
+    expect(r.state === 'ok' && [...r.servers.keys()]).toEqual(['web']);
+    writeAgentMcp('pi', put({ web: http }), new Set());
+    expect(json(f).mcpServers).toMatchObject({ old: { type: 'sse' }, web: { url: 'https://m.example/mcp', timeout: 30 } });
+  });
+
+  it('OpenCode maps local/remote entries under `mcp` and leaves the binding keys alone', () => {
+    const f = writeFile(
+      '.config/opencode/opencode.json',
+      JSON.stringify({ model: 'aiopt-p/m', provider: { x: {} }, mcp: { pencil: { type: 'local', command: ['pen', '--x'], enabled: true } } }),
+    );
+    let r = readAgentMcp('opencode');
+    expect(r.state === 'ok' && r.servers.get('pencil')).toEqual({ transport: 'stdio', command: 'pen', args: ['--x'], env: {}, headers: {} });
+    writeAgentMcp('opencode', put({ pencil: { ...stdio, command: 'pen2' }, web: http }), new Set());
+    const doc = json(f);
+    expect(doc).toMatchObject({ model: 'aiopt-p/m', provider: { x: {} } });
+    expect(doc.mcp).toEqual({
+      pencil: { type: 'local', command: ['pen2', '-y', 'x'], environment: { K: 'v' }, enabled: true },
+      web: { type: 'remote', url: 'https://m.example/mcp', headers: { Authorization: 'Bearer z' } },
+    });
+    r = readAgentMcp('opencode');
+    expect(r.state === 'ok' && sameMcpServer(r.servers.get('web')!, http)).toBe(true);
+    writeFile('.config/opencode/opencode.json', JSON.stringify({ mcp: [] }));
+    expect(readAgentMcp('opencode').state).toBe('unreadable');
+    expect(() => writeAgentMcp('opencode', put({ web: http }), new Set())).toThrow();
+  });
+
+  it('Hermes edits mcp_servers in place, keeping comments and other keys', () => {
+    const f = writeFile(
+      '.hermes/config.yaml',
+      '# my hermes\nmodel:\n  default: m1 # pinned\ncustom_providers:\n  - name: x\nmcp_servers: {}\n',
+    );
+    let r = readAgentMcp('hermes');
+    expect(r.state === 'ok' && r.servers.size).toBe(0);
+    writeAgentMcp('hermes', put({ fs: stdio, web: http }), new Set(['absent']));
+    const text = fs.readFileSync(f, 'utf8');
+    expect(text).toContain('# my hermes');
+    expect(text).toContain('default: m1 # pinned');
+    const parsed = parse(text) as Record<string, unknown>;
+    expect(parsed.custom_providers).toEqual([{ name: 'x' }]);
+    expect(parsed.mcp_servers).toEqual({
+      fs: { command: 'npx', args: ['-y', 'x'], env: { K: 'v' } },
+      web: { url: 'https://m.example/mcp', headers: { Authorization: 'Bearer z' } },
+    });
+    r = readAgentMcp('hermes');
+    expect(r.state === 'ok' && [...r.servers.keys()]).toEqual(['fs', 'web']);
+    writeAgentMcp('hermes', new Map(), new Set(['fs']));
+    expect(Object.keys((parse(fs.readFileSync(f, 'utf8')) as { mcp_servers: object }).mcp_servers)).toEqual(['web']);
+
+    writeFile('.hermes/config.yaml', 'mcp_servers: [a]\n');
+    expect(readAgentMcp('hermes').state).toBe('unreadable');
+    writeFile('.hermes/config.yaml', 'a: [unclosed\n');
+    expect(readAgentMcp('hermes').state).toBe('unreadable');
+    expect(() => writeAgentMcp('hermes', put({ web: http }), new Set())).toThrow();
+  });
+});
+
+describe('OpenCode and Hermes binding restore keep MCP servers', () => {
+  const p2: Provider = { ...provider, apiFormats: ['openai'] };
+
+  it('OpenCode restore keeps the current mcp section', () => {
+    const f = writeFile('.config/opencode/opencode.json', JSON.stringify({ theme: 'orig' }));
+    const adapter = createOpenCodeAdapter();
+    adapter.writeLive({ provider: p2, apiFormat: 'openai', modelId: 'm1', apiKey: 'k' });
+    writeAgentMcp('opencode', put({ web: http }), new Set());
+    adapter.writeLive({ provider: p2, apiFormat: 'openai', modelId: 'm1', apiKey: 'k' });
+    expect(Object.keys(json(f).mcp as object)).toEqual(['web']);
+    adapter.restoreDefault();
+    const doc = json(f);
+    expect(doc).toMatchObject({ theme: 'orig', mcp: { web: { type: 'remote' } } });
+    expect(doc.provider).toBeUndefined();
+  });
+
+  it('Hermes restore keeps the current mcp_servers', () => {
+    const f = writeFile('.hermes/config.yaml', '# orig\ntheme: orig\n');
+    const adapter = createHermesAdapter();
+    adapter.writeLive({ provider: p2, apiFormat: 'openai', modelId: 'm1', apiKey: 'k' });
+    writeAgentMcp('hermes', put({ fs: stdio }), new Set());
+    adapter.restoreDefault();
+    const text = fs.readFileSync(f, 'utf8');
+    expect(text).toContain('# orig');
+    const doc = parse(text) as Record<string, unknown>;
+    expect(doc).toMatchObject({ theme: 'orig', mcp_servers: { fs: { command: 'npx' } } });
+    expect(doc.custom_providers).toBeUndefined();
   });
 });

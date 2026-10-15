@@ -25,6 +25,7 @@ import {
   segmentedRootStyle,
 } from '../../components/ui/controlStyles';
 import { AGENT_SPECS } from '../../../shared/aiProviders';
+import { visibleMcpAgents } from './mcpColumns';
 import { ipcErrorFromUnknown } from '../../../shared/ipc-errors';
 import {
   MCP_TRANSPORTS,
@@ -124,6 +125,7 @@ export function McpHome() {
     }
   };
 
+  const columns = snap ? visibleMcpAgents(snap.agents, snap.rows) : [];
   const selectedRow = snap && selected ? snap.rows.find((r) => r.name === selected) ?? null : null;
   const unreadable = snap?.agents.filter((a) => a.unreadable) ?? [];
 
@@ -164,18 +166,18 @@ export function McpHome() {
             </div>
           ) : (
             <div style={{ overflowX: 'auto', marginTop: space.sm }}>
-              <Matrix rows={snap.rows} agents={snap.agents} selected={selected} onSelect={setSelected} t={t} />
+              <Matrix rows={snap.rows} agents={columns} selected={selected} onSelect={setSelected} t={t} />
             </div>
           )}
           <p style={{ margin: `${space.md}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>
-            {t('mcp.files')} {snap.agents.map((a) => `${agentName(a.agentId)} ${a.configDisplayPath}`).join(' · ')}
+            {t('mcp.files')} {columns.map((a) => `${agentName(a.agentId)} ${a.configDisplayPath}`).join(' · ')}
           </p>
           <p style={{ margin: `${space.xs}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.claudeNote')}</p>
 
           {selectedRow && (
             <DetailPanel
               row={selectedRow}
-              agents={snap.agents}
+              agents={columns}
               busy={busy}
               confirm={confirm}
               setConfirm={setConfirm}

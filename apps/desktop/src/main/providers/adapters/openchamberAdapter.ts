@@ -11,6 +11,7 @@ import { getAgentDef, wireModelName, type AgentDef, type ApiFormat } from '../..
 import { AGENT_FILES, agentConfigDir, resolveAgentFile } from '../agentPaths';
 import type { AppliedBindingRecord } from '../bindingAppliedStore';
 import { readJsonObject, restoreAgentConfigFile, writeAgentConfigFile } from '../fsutil';
+import { restoreKeepingJsonMcp } from '../../mcp/preserveMcp';
 import type { LiveBindingSnapshot } from './bindingLive';
 import { aioptProviderSlug } from './bindingLive';
 
@@ -90,7 +91,8 @@ export function createOpenChamberAdapter(): AgentAdapter {
     },
 
     restoreDefault() {
-      for (const file of this.configPaths()) restoreAgentConfigFile(file);
+      // The file also holds MCP servers (main/mcp); a restore must not roll those back.
+      for (const file of this.configPaths()) restoreKeepingJsonMcp(file, () => restoreAgentConfigFile(file), 'mcp');
     },
   };
 }

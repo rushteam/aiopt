@@ -9,21 +9,46 @@
 // Pure types, limits and validation shared by main and the renderer.
 
 /** Agents whose MCP config AiOpt can manage. */
-export const MCP_AGENT_IDS = ['claude', 'codex', 'gemini'] as const;
+export const MCP_AGENT_IDS = ['claude', 'codex', 'gemini', 'cursor', 'opencode', 'pi', 'hermes'] as const;
 export type McpAgentId = (typeof MCP_AGENT_IDS)[number];
 
 export const MCP_TRANSPORTS = ['stdio', 'http', 'sse'] as const;
 export type McpTransport = (typeof MCP_TRANSPORTS)[number];
 
-/** Which transports each agent's config can express. Codex has no SSE client. */
+/**
+ * Which transports each agent's config can express. Codex, pi and Hermes have no SSE client.
+ * Cursor and OpenCode take a bare remote `url` and pick streamable HTTP or SSE themselves.
+ */
 export const MCP_AGENT_TRANSPORTS: Record<McpAgentId, readonly McpTransport[]> = {
   claude: ['stdio', 'http', 'sse'],
   codex: ['stdio', 'http'],
   gemini: ['stdio', 'http', 'sse'],
+  cursor: ['stdio', 'http', 'sse'],
+  opencode: ['stdio', 'http', 'sse'],
+  pi: ['stdio', 'http'],
+  hermes: ['stdio', 'http'],
 };
 
 export function agentSupportsTransport(agentId: McpAgentId, transport: McpTransport): boolean {
   return MCP_AGENT_TRANSPORTS[agentId].includes(transport);
+}
+
+/**
+ * Whether an agent's file can tell SSE from streamable HTTP. The others store only a `url`,
+ * so every remote server reads back as `http` and is compared that way.
+ */
+export function agentNamesRemoteTransport(agentId: McpAgentId): boolean {
+  return agentId === 'claude' || agentId === 'gemini';
+}
+
+/** Agents with a stricter server-name charset than {@link MCP_NAME_RE}. pi refuses `.`. */
+const MCP_AGENT_NAME_RE: Partial<Record<McpAgentId, RegExp>> = {
+  pi: /^[A-Za-z0-9_-]+$/,
+};
+
+/** Whether this server (its name and transport) can be written into this agent's file. */
+export function agentAcceptsServer(agentId: McpAgentId, name: string, transport: McpTransport): boolean {
+  return agentSupportsTransport(agentId, transport) && (MCP_AGENT_NAME_RE[agentId]?.test(name) ?? true);
 }
 
 export const MCP_LIMITS = {

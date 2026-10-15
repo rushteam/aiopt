@@ -48,9 +48,13 @@ user's machine, deferred to the next agent start. So:
 | Claude Code | `~/.claude.json` | `mcpServers` (user scope) | Claude's large state file: only `mcpServers` is touched. `type`: stdio / http / sse. Claude rewrites the file often — the UI asks users to quit it first. |
 | Codex | `~/.codex/config.toml` | `[mcp_servers.<name>]` (+ `.env`, `.http_headers`) | No SSE. Line-level block splitter (`codexToml.ts`), no TOML dependency. |
 | Gemini CLI | `~/.gemini/settings.json` | `mcpServers` | `httpUrl` = streamable HTTP, `url` = SSE. |
+| Cursor | `~/.cursor/mcp.json` | `mcpServers` | Bare `url` for any remote server (Cursor picks HTTP or SSE), so remote entries read back as `http`. The only Cursor file AiOpt writes. |
+| OpenCode | `~/.config/opencode/opencode.json` | `mcp` | `{type: local, command: [cmd, ...args], environment}` / `{type: remote, url, headers}`. Also the OpenCode / OpenChamber binding file. Unmodelled fields (`enabled`, `timeout`, `oauth`) are kept. |
+| pi | `~/.pi/agent/mcp.json` | `mcpServers` | No SSE; names only `[A-Za-z0-9_-]` (no `.`). Its own file, not one of the binding's three. |
+| Hermes | `~/.hermes/config.yaml` | `mcp_servers` | No SSE. Edited as a YAML document (`yaml`, already a dependency) so comments and the binding's keys survive. Also the Hermes binding file. |
 
-- **Strict reads.** A file that exists but does not parse (or whose `mcpServers` is not an
-  object) is `unreadable`: shown in the UI, never written. Every write path checks this before
+- **Strict reads.** A file that exists but does not parse (or whose servers section is not an
+  object / YAML map) is `unreadable`: shown in the UI, never written. Every write path checks this before
   touching any file and before the confirmation.
 - **One read-modify-write per agent** through `writeAgentConfigFile` (allowlist → one-time
   `.aiopt.bak` → atomic replace). Names AiOpt does not manage are left exactly as they are.
@@ -59,7 +63,9 @@ user's machine, deferred to the next agent start. So:
 - **Matrix.** Rows are the union of names in the library and in every readable agent file.
   Per agent the cell is `same`, `library-only` (push), `agent-only` (pull), or `differs`
   (diff, then push, pull or merge). It is absent when neither side has the server.
-  `supported: false` marks an agent that cannot take the library's transport. An unreadable
+  `supported: false` marks an agent that cannot take the library's transport or name
+  (`agentAcceptsServer`). The screen shows a column only for agents that are installed, are
+  unreadable, or already have a server; push-to-all targets those columns only. An unreadable
   file has no cells, and its agent is flagged `unreadable`.
 - **Diff and merge.** The diff lists the fields `spec`, `env:<KEY>` and `header:<KEY>` with a
   status relative to the library. It carries spec summaries only; values are compared in main
@@ -69,15 +75,19 @@ user's machine, deferred to the next agent start. So:
 
 ## 4. Coexisting with provider binding
 
-Codex `config.toml` and Gemini `settings.json` are also written by the binding adapters.
-`preserveMcp.ts` makes binding never change MCP:
+Codex `config.toml`, Gemini `settings.json`, OpenCode `opencode.json` (OpenCode and
+OpenChamber) and Hermes `config.yaml` are also written by the binding adapters. `preserveMcp.ts`
+makes binding never change MCP:
 
 - Codex `writeLive` renders a fresh `config.toml` and carries the current `[mcp_servers.*]`
   blocks over (`withCodexMcpBlocks`).
 - Codex and Gemini `restoreDefault` roll the file back from `.aiopt.bak`, then put the current
   MCP section back (`restoreKeepingCodexMcp` / `restoreKeepingJsonMcp`), so restoring a binding
   neither drops a newer server nor revives a deleted one.
-- Gemini `writeLive` already merges JSON, so `mcpServers` survives without special handling.
+- OpenCode / OpenChamber and Hermes `restoreDefault` do the same through
+  `restoreKeepingJsonMcp(file, restore, 'mcp')` and `restoreKeepingYamlMcp`.
+- Gemini, OpenCode, OpenChamber and Hermes `writeLive` already merge into the parsed file, so
+  their MCP section survives without special handling.
 
 ## 5. Config profiles
 
