@@ -410,7 +410,7 @@ export function createProviderManager(
   function assertNoDuplicateAgentImport(agentId: import('../../shared/agentImport').AgentImportAgentId): void {
     for (const p of store.listProviders()) {
       if (providerUsesAgentImport(p.credentialMode) && p.agentImport?.agentId === agentId) {
-        throwIpcError('PRECONDITION_FAILED', 'a provider already imports this agent session');
+        throwIpcError('ALREADY_EXISTS', 'a provider already imports this agent session');
       }
     }
   }
@@ -486,7 +486,13 @@ export function createProviderManager(
     },
 
     scanAgentImports() {
-      return scanAgentImportCandidates();
+      const imported = new Set(
+        store
+          .listProviders()
+          .filter((p) => providerUsesAgentImport(p.credentialMode) && p.agentImport)
+          .map((p) => p.agentImport!.agentId),
+      );
+      return scanAgentImportCandidates().map((c) => (imported.has(c.agentId) ? { ...c, alreadyAdded: true } : c));
     },
 
     addAgentImportProvider(agentId) {

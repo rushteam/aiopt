@@ -62,4 +62,13 @@ export const AGENT_IMPORT_PROVIDER_TEMPLATES: Record<AgentImportAgentId, AgentIm
     apiFormats: ['openai'],
     models: [{ id: 'auto' }],
   },
+  // dsh stores a plain DeepSeek API key (no subscription sign-in), so this is DeepSeek's
+  // public OpenAI-compatible API.
+  dsh: {
+    agentId: 'dsh',
+    name: 'DeepSeek (dsh API key)',
+    baseUrl: 'https://api.deepseek.com',
+    apiFormats: ['openai'],
+    models: [{ id: 'deepseek-chat' }, { id: 'deepseek-reasoner' }],
+  },
 };

@@ -31,5 +31,8 @@ export function agentImportErrorMessage(t: TranslateFn, err: unknown): string {
   if (isAgentImportBridgeStale(err)) {
     return t('providers.import.errors.restartRequired');
   }
+  if (err instanceof Error && decodeIpcError(err.message).code === 'ALREADY_EXISTS') {
+    return t('providers.import.errors.alreadyAdded');
+  }
   return providerErrorMessage(t, err);
 }

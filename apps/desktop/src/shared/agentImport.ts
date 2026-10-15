@@ -15,6 +15,7 @@ export const AGENT_IMPORT_AGENT_IDS = [
   'devin',
   'gemini',
   'cursor',
+  'dsh',
 ] as const;
 
 export type AgentImportAgentId = (typeof AGENT_IMPORT_AGENT_IDS)[number];
@@ -38,6 +39,8 @@ export interface AgentImportCandidate {
   accountLabel: string | null;
   /** Why import is unavailable when `available` is false. */
   reason?: 'not_installed' | 'not_signed_in' | 'unsupported';
+  /** A pool provider already imports this agent's session (one import per agent). */
+  alreadyAdded?: boolean;
 }
 
 /** UI fallback when scan IPC is unavailable — always lists known import agents. */

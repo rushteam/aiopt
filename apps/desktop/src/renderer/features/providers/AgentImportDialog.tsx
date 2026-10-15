@@ -50,6 +50,8 @@ export function AgentImportDialog({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (err) {
       setImportError(agentImportErrorMessage(t, err));
+      // A stale list (added elsewhere meanwhile) — rescan so the row shows "Added".
+      void refresh();
     } finally {
       setBusyId(null);
     }
@@ -119,6 +121,7 @@ export function AgentImportDialog({ onClose }: { onClose: () => void }) {
           <ul style={listStyle}>
             {candidates.map((c) => {
               const isBusy = busyId === c.agentId;
+              const canAdd = c.available && !c.alreadyAdded;
               return (
                 <li key={c.agentId} style={rowStyle}>
                   <div style={rowTextStyle}>
@@ -134,14 +137,18 @@ export function AgentImportDialog({ onClose }: { onClose: () => void }) {
                   </div>
                   <button
                     type="button"
-                    disabled={!c.available || busyId !== null}
+                    disabled={!canAdd || busyId !== null}
                     onClick={() => void onImport(c.agentId)}
-                    {...(c.available
+                    {...(canAdd
                       ? hoverBackground(token('accent'), token('accentHover'))
-                      : hoverBackground('transparent', token('surfaceHover')))}
-                    style={importBtnStyle(c.available, isBusy)}
+                      : hoverBackground('transparent', 'transparent'))}
+                    style={importBtnStyle(canAdd, isBusy)}
                   >
-                    {isBusy ? t('providers.import.adding') : t('providers.import.add')}
+                    {isBusy
+                      ? t('providers.import.adding')
+                      : c.alreadyAdded
+                        ? t('providers.import.added')
+                        : t('providers.import.add')}
                   </button>
                 </li>
               );
