@@ -410,6 +410,8 @@
       "requests": "请求数",
       "inputTokens": "输入",
       "outputTokens": "输出",
+      "cache": "缓存",
+      "reasoning": "推理",
       "totalTokens": "合计",
       "share": "占比"
     },
@@ -461,6 +463,7 @@
       "errors": "失败 {{count}} 次",
       "outputRatio": "输出 / 输入比",
       "cacheHit": "缓存命中率",
+      "reasoningShare": "推理占输出比例",
       "sessions": "会话数"
     },
     "weekday": {

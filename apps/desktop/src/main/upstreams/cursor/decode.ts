@@ -80,13 +80,22 @@ export const isMaxModeRequired = (f: CursorFailure): boolean =>
   /max[ _]mode[ _]required|requires max mode/i.test(f.message);
 
 /** A TurnEndedUpdate as OpenAI usage. Cursor's input_tokens is the whole prompt. */
-function usageOf(uf: ReturnType<typeof fields>): { input: number; output: number; cacheRead: number; reasoning: number } {
+function usageOf(uf: ReturnType<typeof fields>): TurnUsage {
   return {
     input: pbNum(uf, 1),
     output: pbNum(uf, 2),
     cacheRead: pbNum(uf, 3),
+    cacheWrite: pbNum(uf, 4),
     reasoning: pbNum(uf, 5),
   };
+}
+
+interface TurnUsage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  reasoning: number;
 }
 
 type Send = (msg: Buffer) => void;
@@ -164,7 +173,7 @@ export async function* decode(
   let listed = 0;
   let said = 0;
   let wrote = 0;
-  let usage: { input: number; output: number; cacheRead: number; reasoning: number } | null = null;
+  let usage: TurnUsage | null = null;
 
   const stepDone = (): boolean => {
     if (!listed || calls + answered < listed) return false;
@@ -182,7 +191,9 @@ export async function* decode(
         prompt_tokens: input,
         completion_tokens: output,
         total_tokens: input + output,
-        ...(usage?.cacheRead ? { prompt_tokens_details: { cached_tokens: usage.cacheRead } } : {}),
+        ...(usage?.cacheRead || usage?.cacheWrite
+          ? { prompt_tokens_details: { cached_tokens: usage.cacheRead, cache_write_tokens: usage.cacheWrite } }
+          : {}),
         ...(usage?.reasoning ? { completion_tokens_details: { reasoning_tokens: usage.reasoning } } : {}),
       },
     };

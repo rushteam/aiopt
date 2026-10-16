@@ -410,6 +410,8 @@
       "requests": "Anfragen",
       "inputTokens": "Eingabe",
       "outputTokens": "Ausgabe",
+      "cache": "Cache",
+      "reasoning": "Reasoning",
       "totalTokens": "Gesamt",
       "share": "Anteil"
     },
@@ -461,6 +463,7 @@
       "errors": "{{count}} fehlgeschlagen",
       "outputRatio": "Verhältnis Ausgabe / Eingabe",
       "cacheHit": "Cache-Trefferquote",
+      "reasoningShare": "Reasoning-Anteil der Ausgabe",
       "sessions": "Sitzungen"
     },
     "weekday": {

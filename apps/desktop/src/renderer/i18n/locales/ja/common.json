@@ -410,6 +410,8 @@
       "requests": "リクエスト数",
       "inputTokens": "入力",
       "outputTokens": "出力",
+      "cache": "キャッシュ",
+      "reasoning": "推論",
       "totalTokens": "合計",
       "share": "割合"
     },
@@ -461,6 +463,7 @@
       "errors": "失敗 {{count}} 件",
       "outputRatio": "出力 / 入力比",
       "cacheHit": "キャッシュヒット率",
+      "reasoningShare": "出力に占める推論の割合",
       "sessions": "セッション数"
     },
     "weekday": {

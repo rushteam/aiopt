@@ -35,6 +35,9 @@ function input(overrides: Partial<UsageEventInput> = {}): UsageEventInput {
     status: 200,
     inputTokens: 4,
     outputTokens: 6,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
     ...overrides,
   };
 }

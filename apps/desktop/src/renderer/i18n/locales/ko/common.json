@@ -410,6 +410,8 @@
       "requests": "요청 수",
       "inputTokens": "입력",
       "outputTokens": "출력",
+      "cache": "캐시",
+      "reasoning": "추론",
       "totalTokens": "합계",
       "share": "비중"
     },
@@ -461,6 +463,7 @@
       "errors": "실패 {{count}}건",
       "outputRatio": "출력 / 입력 비율",
       "cacheHit": "캐시 적중률",
+      "reasoningShare": "출력 중 추론 비율",
       "sessions": "세션 수"
     },
     "weekday": {

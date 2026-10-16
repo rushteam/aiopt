@@ -37,7 +37,7 @@ import { geminiOutboundUrl, outboundHeaders, outboundUrl, type ProxyFetch } from
 import { sanitizeOutboundBody } from './sanitize';
 import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
-import { createUsageSniffer, readResponseUsage } from './usageSniffer';
+import { createUsageSniffer, readResponseUsage, zeroUsage, type UsageCounts } from './usageSniffer';
 import type { BoundUpstream } from '../upstreams/types';
 import { clientMessage, collectCompletion, createChunkMapper, newCompletionIdentity } from '../upstreams/openaiChatOut';
 import {
@@ -316,7 +316,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       streamed: boolean,
       ok: boolean,
       status: number,
-      counts: { inputTokens: number; outputTokens: number },
+      counts: UsageCounts,
     ): void => {
       if (!deps.recordUsage) return;
       try {
@@ -331,12 +331,15 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
           status,
           inputTokens: counts.inputTokens,
           outputTokens: counts.outputTokens,
+          cacheReadTokens: counts.cacheReadTokens,
+          cacheWriteTokens: counts.cacheWriteTokens,
+          reasoningTokens: counts.reasoningTokens,
         });
       } catch {
         // Usage recording is best-effort; swallow so it can't fail a real request.
       }
     };
-    const noTokens = { inputTokens: 0, outputTokens: 0 };
+    const noTokens = zeroUsage();
 
     try {
       assertInboundPath(spec, rest);
@@ -466,10 +469,10 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
     body: Record<string, unknown>,
     wantsStream: boolean,
     path: string,
-    record: (streamed: boolean, ok: boolean, status: number, counts: { inputTokens: number; outputTokens: number }) => void,
+    record: (streamed: boolean, ok: boolean, status: number, counts: UsageCounts) => void,
   ): Promise<void> {
     const inbound = spec.inboundFormat;
-    const noTokens = { inputTokens: 0, outputTokens: 0 };
+    const noTokens = zeroUsage();
     const upstream = driver.driverId;
     const controller = new AbortController();
     res.on('close', () => {

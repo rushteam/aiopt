@@ -410,6 +410,8 @@
       "requests": "Requêtes",
       "inputTokens": "Entrée",
       "outputTokens": "Sortie",
+      "cache": "Cache",
+      "reasoning": "Raisonnement",
       "totalTokens": "Total",
       "share": "Part"
     },
@@ -461,6 +463,7 @@
       "errors": "{{count}} en échec",
       "outputRatio": "Ratio sortie / entrée",
       "cacheHit": "Taux de succès du cache",
+      "reasoningShare": "Part du raisonnement dans la sortie",
       "sessions": "Sessions"
     },
     "weekday": {
