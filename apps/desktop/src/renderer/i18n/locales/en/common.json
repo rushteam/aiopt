@@ -195,7 +195,8 @@
     },
     "credential": {
       "apiKey": "API key",
-      "oauth": "Subscription sign-in"
+      "oauth": "Subscription sign-in",
+      "agentImport": "Agent sign-in"
     },
     "oauth": {
       "customPkce": "Custom OAuth (advanced…)"
@@ -215,7 +216,8 @@
       "modelId": "Model ID",
       "modelAlias": "Alias",
       "notes": "Notes",
-      "dropRequestFields": "Upstream compatibility"
+      "dropRequestFields": "Upstream compatibility",
+      "agentSession": "Agent session"
     },
     "form": {
       "addTitle": "Add provider",
@@ -266,7 +268,11 @@
       "dropGroupHint": {
         "safe": "Bookkeeping and routing hints. Removing these doesn't change the model's reply.",
         "sensitive": "Removing these changes what comes back: without response_format, guaranteed JSON becomes free text; without thinking or reasoning, the model is quietly downgraded. Use only when the upstream rejects them outright."
-      }
+      },
+      "driverEndpointHint": "Fixed by the built-in protocol driver; cannot be edited.",
+      "driverFormatsHint": "This provider is served by a built-in protocol driver that speaks OpenAI Chat only. Any agent can bind it — AiOpt's proxy translates.",
+      "agentSessionMissing": "No signed-in session found. Sign in in the agent, then reopen this dialog.",
+      "agentSessionHint": "The token is read from the agent on each request and is never stored in AiOpt or written to agent configs. To switch accounts, sign in again in the agent."
     },
     "profiles": {
       "heading": "Binding profiles",

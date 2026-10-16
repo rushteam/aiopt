@@ -188,7 +188,8 @@
     },
     "credential": {
       "apiKey": "API キー",
-      "oauth": "サブスクリプションでログイン"
+      "oauth": "サブスクリプションでログイン",
+      "agentImport": "Agent のサインインを取り込み"
     },
     "oauth": {
       "customPkce": "カスタム OAuth（上級）"
@@ -208,7 +209,8 @@
       "modelId": "モデル ID",
       "modelAlias": "エイリアス",
       "notes": "メモ",
-      "dropRequestFields": "アップストリーム互換性"
+      "dropRequestFields": "アップストリーム互換性",
+      "agentSession": "Agent セッション"
     },
     "form": {
       "addTitle": "プロバイダーを追加",
@@ -259,7 +261,11 @@
       "dropGroupHint": {
         "safe": "記録用・ルーティング用のパラメータです。除去してもモデルの応答は変わりません。",
         "sensitive": "除去すると返る内容が変わります。response_format がないと保証されていた JSON が自由文になり、thinking や reasoning がないとモデルは静かに性能を落とします。アップストリームが明確に拒否する場合のみ使用してください。"
-      }
+      },
+      "driverEndpointHint": "組み込みプロトコルドライバーで固定されており、変更できません。",
+      "driverFormatsHint": "このプロバイダーは組み込みプロトコルドライバーが提供し、OpenAI Chat 形式のみを扱います。どの Agent からもバインドでき、AiOpt のプロキシが形式を変換します。",
+      "agentSessionMissing": "サインイン済みのセッションが見つかりません。Agent でサインインしてから、このダイアログを開き直してください。",
+      "agentSessionHint": "トークンはリクエストごとに Agent から読み取られ、AiOpt に保存されたり Agent の設定に書き込まれたりすることはありません。アカウントを切り替えるには、Agent で再度サインインしてください。"
     },
     "profiles": {
       "heading": "バインドプロファイル",

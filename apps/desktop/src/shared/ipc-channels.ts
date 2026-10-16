@@ -565,6 +565,12 @@ export interface ProviderSummary {
   /** Source agent when `credentialMode` is `agent_import`. */
   agentImportAgentId?: import('./agentImport').AgentImportAgentId;
   /**
+   * Id of the built-in upstream driver that serves this provider (main/upstreams/), when
+   * one does. Such a provider has a fixed endpoint and speaks OpenAI Chat only, so the
+   * edit form locks its base URL and formats. Not secret.
+   */
+  upstreamDriver?: string;
+  /**
    * Request fields the proxy strips before forwarding to this upstream (see
    * `Provider.dropRequestFields`). Not secret — it is a list of well-known API parameter
    * NAMES from a fixed allowlist, carrying no values — so it round-trips to the form like

@@ -195,7 +195,8 @@
     },
     "credential": {
       "apiKey": "API 密钥",
-      "oauth": "订阅登录"
+      "oauth": "订阅登录",
+      "agentImport": "Agent 登录导入"
     },
     "oauth": {
       "customPkce": "自定义 OAuth（高级）"
@@ -215,7 +216,8 @@
       "modelId": "模型 ID",
       "modelAlias": "别名",
       "notes": "备注",
-      "dropRequestFields": "上游兼容性"
+      "dropRequestFields": "上游兼容性",
+      "agentSession": "Agent 会话"
     },
     "form": {
       "addTitle": "添加供应商",
@@ -266,7 +268,11 @@
       "dropGroupHint": {
         "safe": "记账与路由类参数。剥离它们不会改变模型的回复。",
         "sensitive": "剥离这些会改变返回内容：没有 response_format，原本保证的 JSON 会变成自由文本；没有 thinking 或 reasoning，模型会被悄悄降级。仅在上游明确拒绝时使用。"
-      }
+      },
+      "driverEndpointHint": "由内置协议驱动固定，不可修改。",
+      "driverFormatsHint": "该供应商由内置协议驱动提供，只走 OpenAI Chat 格式。任何 Agent 都可以绑定——AiOpt 代理会自动转换格式。",
+      "agentSessionMissing": "没有找到已登录的会话。请先在该 Agent 中登录，再重新打开此窗口。",
+      "agentSessionHint": "每次请求时从 Agent 读取令牌，不会存进 AiOpt，也不会写入 Agent 配置。要切换账号，请在该 Agent 中重新登录。"
     },
     "profiles": {
       "heading": "预设",

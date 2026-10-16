@@ -59,6 +59,7 @@ interface BoundUpstream {
 | `providerManager.applyBinding` | A driver-served provider is **always proxied** (it has no endpoint an agent could call), even same-format with proxy mode off. |
 | `providerManager.fetchModels` / `testProvider` | Go through `listModels` (`upstreams/providerOps.ts`), never `GET /models`. |
 | `translationProxy` | `upstreamFor(providerId)` is looked up live per request; a hit is answered by `serveDriver`. |
+| `providerManager.toSummary` / `updateProvider` | The summary carries `upstreamDriver: <id>`; the edit form shows the base URL and formats read-only (and hides Detect), and `updateProvider` keeps the stored base URL and forces `apiFormats: ['openai']`. An agent-import provider shows its sign-in state instead of an API key field. |
 
 ## 4. Errors and logging
 

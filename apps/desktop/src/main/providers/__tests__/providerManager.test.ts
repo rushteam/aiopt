@@ -342,6 +342,33 @@ describe('provider manager — setBinding (the apply flow)', () => {
     expect(await manager.testProvider(id)).toMatchObject({ ok: true, format: 'openai' });
   });
 
+  it('surfaces the driver id and locks a driver-served provider\'s base URL and formats on update', () => {
+    const driver: BoundUpstream = {
+      driverId: 'fake',
+      listModels: () => Promise.resolve([]),
+      chat: () => Promise.resolve({ error: { status: 500, message: '' } }),
+    };
+    const { manager } = harness([], { upstreamFor: (p) => (p.name.startsWith('Provider') ? driver : null) });
+    const id = addProvider(manager, { apiFormat: 'openai', modelId: 'm1' });
+    const snap = manager.updateProvider({
+      id,
+      name: 'Provider renamed',
+      baseUrl: 'https://elsewhere.example.com',
+      apiFormats: ['anthropic', 'gemini'],
+    });
+    const summary = snap.providers.find((p) => p.id === id)!;
+    expect(summary.upstreamDriver).toBe('fake');
+    expect(summary.name).toBe('Provider renamed');
+    expect(summary.baseUrl).toBe('https://api.example.com');
+    expect(summary.apiFormats).toEqual(['openai']);
+  });
+
+  it('an ordinary provider has no upstreamDriver', () => {
+    const { manager } = harness();
+    const id = addProvider(manager);
+    expect(manager.getSnapshot().providers.find((p) => p.id === id)!.upstreamDriver).toBeUndefined();
+  });
+
   it('refuses binding a driver-served provider over a non-OpenAI outbound format', () => {
     const driver: BoundUpstream = {
       driverId: 'fake',
