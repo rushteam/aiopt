@@ -48,7 +48,11 @@ import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agent
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
 import { createMcpStore, type McpStore } from './mcp/mcpStore';
-import { buildMcpConfirm } from './mcp/mcpConfirm';
+import { buildMcpConfirm, buildMcpGatewayConfirm } from './mcp/mcpConfirm';
+import { createMcpGateway, GATEWAY_PATH, type McpGateway } from './mcp/mcpGateway';
+import { getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { randomBytes } from 'node:crypto';
+import { candidateBinDirs } from './workbench/herdrCli';
 import { resolveMenuLocaleForPreference } from './menu/menuLabels';
 import { homeShortenedPath } from './providers/agentConfigView';
 import { agentConfigDir, agentHome } from './providers/agentPaths';
@@ -89,6 +93,8 @@ let translationProxy: TranslationProxy | null = null;
 let usageStore: UsageStore | null = null;
 let agentSessionStore: AgentSessionStore | null = null;
 let mcpStore: McpStore | null = null;
+let mcpGateway: McpGateway | null = null;
+let gatewayToken: string | null = null;
 let skillsStore: SkillsStore | null = null;
 let workbenchManager: WorkbenchManager | null = null;
 let upstreamRegistry: UpstreamRegistry | null = null;
@@ -305,6 +311,11 @@ export function getTranslationProxy(): TranslationProxy {
       persistence: createProxyStateStore(createFileProxyStatePersistence(proxyStateFilePath())),
       // A driver-served provider is answered by its driver, not an HTTP POST (live lookup).
       upstreamFor: (providerId) => getUpstreamRegistry().forProvider(getProviderStore().getProvider(providerId)),
+      // The opt-in MCP gateway shares this loopback listener under its own path token.
+      gateway: {
+        token: () => (getConfigStore().get('mcpGateway') ? getGatewayToken() : null),
+        handle: (req, res, rest) => getMcpGateway().handle(req, res, rest),
+      },
     });
   }
   return translationProxy;
@@ -332,6 +343,78 @@ export function getUsageStore(): UsageStore {
 export function getAgentSessionStore(): AgentSessionStore {
   if (!agentSessionStore) agentSessionStore = createAgentSessionStore({ home: agentHome });
   return agentSessionStore;
+}
+
+/** Secret-store key of the gateway's path token (main-only; cannot collide with `main_mcp_<hex>`). */
+const GATEWAY_TOKEN_SECRET = 'main_mcp_gateway_token';
+
+/**
+ * The gateway's path token: persisted in the secret store so agent entries survive a
+ * restart, or memory-only (re-add after restart) when encryption is unavailable. Never logged.
+ */
+function getGatewayToken(): string {
+  if (gatewayToken) return gatewayToken;
+  const secrets = getSecretStore();
+  const stored = secrets.isAvailable() ? secrets.get(GATEWAY_TOKEN_SECRET) : null;
+  if (stored && /^[A-Za-z0-9_-]{32,128}$/.test(stored)) {
+    gatewayToken = stored;
+  } else {
+    gatewayToken = `mcp-${randomBytes(24).toString('base64url')}`;
+    if (secrets.isAvailable()) {
+      try {
+        secrets.set(GATEWAY_TOKEN_SECRET, gatewayToken);
+      } catch {
+        // Memory-only for this run; agent entries just show `stale` after a restart.
+      }
+    }
+  }
+  return gatewayToken;
+}
+
+/** Native confirmation shown by main before a server is served through the MCP gateway. */
+async function showNativeConfirm(c: { title: string; message: string; detail: string; confirm: string; cancel: string }): Promise<boolean> {
+  const opts: Electron.MessageBoxOptions = {
+    type: 'warning',
+    buttons: [c.cancel, c.confirm],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    title: c.title,
+    message: c.message,
+    detail: c.detail,
+  };
+  const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const { response } =
+    parent && !parent.isDestroyed() ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts);
+  return response === 1;
+}
+
+/**
+ * The opt-in MCP gateway (docs/dev-rules/mcp-gateway.md). Built lazily; serves only servers
+ * confirmed for it, and only while the `mcpGateway` preference is on.
+ */
+export function getMcpGateway(): McpGateway {
+  if (!mcpGateway) {
+    mcpGateway = createMcpGateway({
+      enabled: () => getConfigStore().get('mcpGateway'),
+      servers: () => getMcpStore().gatewayServers(),
+      port: () => getTranslationProxy().getPort(),
+      childEnv: () => {
+        const env = getDefaultEnvironment();
+        // A Finder launch has a minimal PATH; add the usual install dirs (npx, uvx, docker).
+        env.PATH = candidateBinDirs(process.env.PATH, agentHome()).join(':');
+        return env;
+      },
+      childCwd: () => agentHome(),
+      version: app.getVersion(),
+    });
+  }
+  return mcpGateway;
+}
+
+/** Stop the gateway's sessions and upstream children (gateway off, or quit). Best-effort. */
+export async function shutdownMcpGateway(): Promise<void> {
+  if (mcpGateway) await mcpGateway.stop();
 }
 
 /**
@@ -363,6 +446,19 @@ export function getMcpStore(): McpStore {
         const { response } =
           parent && !parent.isDestroyed() ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts);
         return response === 1;
+      },
+      confirmGateway: (req) => {
+        const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
+        return showNativeConfirm(buildMcpGatewayConfirm(locale, req));
+      },
+      onLibraryChange: () => mcpGateway?.refresh(),
+      gateway: {
+        enabled: () => getConfigStore().get('mcpGateway'),
+        url: () => {
+          const port = getTranslationProxy().getPort();
+          return port > 0 ? `http://127.0.0.1:${port}/${getGatewayToken()}${GATEWAY_PATH}` : null;
+        },
+        status: () => (mcpGateway ? mcpGateway.status() : {}),
       },
     });
   }

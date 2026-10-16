@@ -481,6 +481,36 @@
       "unreadable": "{{agent}}'s MCP config ({{path}}) could not be read. AiOpt will not write it until it is fixed.",
       "files": "Config files:",
       "claudeNote": "Claude Code rewrites ~/.claude.json often. Quit Claude Code before changing its servers so your change is not overwritten.",
+      "gateway": {
+        "title": "MCP gateway",
+        "help": "Off by default. When on, AiOpt serves one MCP endpoint on its local proxy and runs the servers you choose itself, so each agent needs only a single “aiopt” entry instead of a copy of every server.",
+        "served": "Serving {{count}}: {{names}}",
+        "none": "No server is served yet. Select a server below and choose “Serve through the gateway”.",
+        "note": "The “aiopt” entry is a local URL that only works while AiOpt is running and the gateway is on. Start a new agent session to pick up changes.",
+        "add": "Add",
+        "update": "Update",
+        "remove": "Remove",
+        "via": "MCP gateway",
+        "serve": "Serve through the gateway",
+        "reconfirm": "Confirm again",
+        "unserve": "Stop serving",
+        "agent": {
+          "absent": "Not connected",
+          "same": "Connected",
+          "stale": "Points to an old address"
+        },
+        "membership": {
+          "off": "Not served",
+          "on": "Served",
+          "stale": "Spec changed — not served until you confirm again"
+        },
+        "status": {
+          "idle": "Served · starts on first use",
+          "starting": "Starting…",
+          "running": "Running · {{count}} tools",
+          "failed": "Could not start"
+        }
+      },
       "cancel": "Cancel",
       "valueMissing": "no value",
       "server": "Server",

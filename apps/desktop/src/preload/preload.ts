@@ -357,6 +357,12 @@ const api = {
     /** GATED: one stored env/header value in plaintext — only on an explicit reveal click. */
     revealValue: (name: string, kind: 'env' | 'header', key: string): Promise<McpRevealValueResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.mcpRevealValue, { name, kind, key }),
+    /** Serve one library server through the MCP gateway (main confirms natively) or stop. */
+    setGatewayServer: (name: string, on: boolean): Promise<McpWriteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpGatewayServer, { name, on }),
+    /** Add / remove the gateway's `aiopt` entry in these agents' MCP configs. */
+    setGatewayAgents: (agentIds: McpAgentId[], on: boolean): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpGatewayAgents, { agentIds, on }),
   },
 
   /**

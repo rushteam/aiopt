@@ -82,6 +82,17 @@ export const PREFERENCES: { [K in keyof PreferencesShape]: PreferenceDef<K> } = 
       return raw;
     },
   },
+  mcpGateway: {
+    // Off by default: the MCP gateway makes AiOpt itself run the MCP servers the user
+    // confirmed for it and serve them on the loopback proxy (docs/dev-rules/mcp-gateway.md).
+    default: false,
+    validate(raw) {
+      if (typeof raw !== 'boolean') {
+        throwIpcError('INVALID_PARAMS', 'mcpGateway must be a boolean');
+      }
+      return raw;
+    },
+  },
   warnOnQuitWithProxy: {
     // On by default: a real quit with live proxy routes would leave those agents
     // pointing at a dead loopback listener until AiOpt runs again, so warn first.

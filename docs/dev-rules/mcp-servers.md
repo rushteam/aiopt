@@ -124,3 +124,8 @@ pull, library delete leaves agent files intact, deleteAgent, diff + merge picks,
 transport and unreadable / no-encryption refusals before confirmation, profile enabled-set
 plans), IPC
 (untrusted sender rejected before side effects, payload validation) and the dialog content.
+
+## 7. MCP gateway
+
+The opt-in gateway (one `aiopt` entry per agent; AiOpt runs the chosen servers itself) has
+its own rules: read `mcp-gateway.md` before touching it.

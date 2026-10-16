@@ -481,6 +481,36 @@
       "unreadable": "无法读取 {{agent}} 的 MCP 配置（{{path}}）。修复之前 AiOpt 不会写入它。",
       "files": "配置文件：",
       "claudeNote": "Claude Code 会频繁改写 ~/.claude.json。修改它的服务器前请先退出 Claude Code，以免改动被覆盖。",
+      "gateway": {
+        "title": "MCP 网关",
+        "help": "默认关闭。开启后，AiOpt 在本地代理上提供一个 MCP 端点，并由 AiOpt 自己运行你选中的服务器；每个 agent 只需一个「aiopt」条目，不必再各存一份所有服务器。",
+        "served": "正在提供 {{count}} 个：{{names}}",
+        "none": "还没有提供任何服务器。在下方选中一个服务器，然后点「通过网关提供」。",
+        "note": "「aiopt」条目是一个本地 URL，只在 AiOpt 运行且网关开启时可用。改动后请新开一个 agent 会话。",
+        "add": "添加",
+        "update": "更新",
+        "remove": "移除",
+        "via": "MCP 网关",
+        "serve": "通过网关提供",
+        "reconfirm": "重新确认",
+        "unserve": "停止提供",
+        "agent": {
+          "absent": "未接入",
+          "same": "已接入",
+          "stale": "指向旧地址"
+        },
+        "membership": {
+          "off": "未提供",
+          "on": "已提供",
+          "stale": "配置已变更，重新确认前不会提供"
+        },
+        "status": {
+          "idle": "已提供 · 首次使用时启动",
+          "starting": "启动中…",
+          "running": "运行中 · {{count}} 个工具",
+          "failed": "无法启动"
+        }
+      },
       "cancel": "取消",
       "valueMissing": "无值",
       "server": "服务器",

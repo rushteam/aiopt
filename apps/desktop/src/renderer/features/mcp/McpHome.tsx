@@ -44,6 +44,7 @@ import {
   type McpTransport,
   type McpWriteResult,
 } from '../../../shared/mcp';
+import type { McpGatewaySnapshot } from '../../../shared/mcpGateway';
 
 const mono = 'ui-monospace, monospace';
 
@@ -175,6 +176,21 @@ export function McpHome() {
           </p>
           <p style={{ margin: `${space.xs}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.claudeNote')}</p>
 
+          <GatewayPanel
+            gateway={snap.gateway}
+            agents={columns}
+            served={snap.rows.filter((r) => r.library?.gateway === 'on').map((r) => r.name)}
+            busy={busy}
+            t={t}
+            onToggle={(on) =>
+              void act(async () => {
+                await window.aiopt.config.set('mcpGateway', on);
+                return window.aiopt.mcp.get();
+              })
+            }
+            onAgents={(agentIds, on) => void act(() => window.aiopt.mcp.setGatewayAgents(agentIds, on))}
+          />
+
           {selectedRow && (
             <DetailPanel
               row={selectedRow}
@@ -194,6 +210,8 @@ export function McpHome() {
               }
               onDelete={() => void act(() => window.aiopt.mcp.delete(selectedRow.name))}
               onDeleteAgent={(agentId) => void act(() => window.aiopt.mcp.deleteAgent(agentId, selectedRow.name))}
+              gateway={snap.gateway}
+              onGateway={(on) => void act(() => window.aiopt.mcp.setGatewayServer(selectedRow.name, on))}
             />
           )}
         </>
@@ -286,6 +304,96 @@ function Matrix({
   );
 }
 
+function upstreamText(t: TranslateFn, view: McpGatewaySnapshot['upstreams'][string] | undefined): string {
+  if (!view || view.status === 'idle') return t('mcp.gateway.status.idle');
+  if (view.status === 'running') return t('mcp.gateway.status.running').replace('{{count}}', String(view.tools ?? 0));
+  return t(`mcp.gateway.status.${view.status}`);
+}
+
+/**
+ * The opt-in MCP gateway: one switch, then one `aiopt` entry per agent (a loopback URL that
+ * runs nothing). Which servers it serves is chosen per server in the detail panel, where
+ * main confirms each one natively — AiOpt itself runs those.
+ */
+function GatewayPanel({
+  gateway,
+  agents,
+  served,
+  busy,
+  t,
+  onToggle,
+  onAgents,
+}: {
+  gateway: McpGatewaySnapshot;
+  agents: McpAgentInfo[];
+  served: string[];
+  busy: boolean;
+  t: TranslateFn;
+  onToggle: (on: boolean) => void;
+  onAgents: (agentIds: McpAgentId[], on: boolean) => void;
+}) {
+  const readable = agents.filter((a) => !a.unreadable);
+  return (
+    <section style={detailStyle} aria-label={t('mcp.gateway.title')}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: space.lg }}>
+        <div style={{ minWidth: 0, marginRight: 'auto' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: fontSize.xl }}>{t('mcp.gateway.title')}</h2>
+          <p style={{ margin: 0, color: token('textMuted'), fontSize: fontSize.sm }}>{t('mcp.gateway.help')}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={gateway.enabled}
+          aria-label={t('mcp.gateway.title')}
+          disabled={busy}
+          onClick={() => onToggle(!gateway.enabled)}
+          style={{
+            ...switchStyle,
+            background: gateway.enabled ? token('accent') : token('borderStrong'),
+            opacity: busy ? disabledOpacity : 1,
+            cursor: busy ? 'default' : 'pointer',
+          }}
+        >
+          <span aria-hidden style={{ ...switchKnobStyle, left: gateway.enabled ? 22 : 2 }} />
+        </button>
+      </div>
+      {gateway.enabled && (
+        <>
+          <p style={{ margin: `${space.md}px 0`, fontSize: fontSize.sm, color: token('textMuted') }}>
+            {served.length > 0
+              ? t('mcp.gateway.served').replace('{{count}}', String(served.length)).replace('{{names}}', served.join(', '))
+              : t('mcp.gateway.none')}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden' }}>
+            {readable.map((a, i) => {
+              const state = gateway.agents[a.agentId] ?? 'absent';
+              return (
+                <div key={a.agentId} style={{ ...gatewayRowStyle, padding: '10px 14px', borderTop: i === 0 ? 'none' : `1px solid ${token('border')}` }}>
+                  <span style={{ fontSize: fontSize.md, minWidth: 120 }}>{agentName(a.agentId)}</span>
+                  <span style={{ marginRight: 'auto', fontSize: fontSize.sm, color: token(state === 'stale' ? 'danger' : 'textMuted') }}>
+                    {t(`mcp.gateway.agent.${state}`)}
+                  </span>
+                  {state !== 'same' && (
+                    <button type="button" disabled={busy} onClick={() => onAgents([a.agentId], true)} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+                      {t(state === 'stale' ? 'mcp.gateway.update' : 'mcp.gateway.add')}
+                    </button>
+                  )}
+                  {state !== 'absent' && (
+                    <button type="button" disabled={busy} onClick={() => onAgents([a.agentId], false)} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+                      {t('mcp.gateway.remove')}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ margin: `${space.sm}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>{t('mcp.gateway.note')}</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 function CellChip({ info, cell, t }: { info: McpAgentInfo; cell: McpMatrixRow['agents'][McpAgentId]; t: TranslateFn }) {
   if (info.unreadable) return <MutedNote text={t('mcp.state.unreadable')} />;
   if (!cell) return <Absent />;
@@ -309,6 +417,8 @@ function DetailPanel({
   onMerge,
   onDelete,
   onDeleteAgent,
+  gateway,
+  onGateway,
 }: {
   row: McpMatrixRow;
   agents: McpAgentInfo[];
@@ -325,6 +435,8 @@ function DetailPanel({
   onMerge: (agentId: McpAgentId, picks: string[]) => void;
   onDelete: () => void;
   onDeleteAgent: (agentId: McpAgentId) => void;
+  gateway: McpGatewaySnapshot;
+  onGateway: (on: boolean) => void;
 }) {
   const lib = row.library;
   const keys = lib ? [...lib.env, ...lib.headers] : [];
@@ -382,6 +494,27 @@ function DetailPanel({
         </div>
       )}
       {!lib && <div style={{ height: space.lg }} />}
+
+      {lib && gateway.enabled && (
+        <div style={{ ...gatewayRowStyle, marginBottom: space.lg }}>
+          <span style={{ fontSize: fontSize.md, minWidth: 120 }}>{t('mcp.gateway.via')}</span>
+          <span style={{ marginRight: 'auto', fontSize: fontSize.sm, color: token(lib.gateway === 'stale' ? 'danger' : 'textMuted') }}>
+            {lib.gateway === 'on'
+              ? upstreamText(t, gateway.upstreams[row.name])
+              : t(`mcp.gateway.membership.${lib.gateway}`)}
+          </span>
+          {lib.gateway !== 'on' && (
+            <button type="button" disabled={busy} onClick={() => onGateway(true)} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+              {t(lib.gateway === 'stale' ? 'mcp.gateway.reconfirm' : 'mcp.gateway.serve')}
+            </button>
+          )}
+          {lib.gateway !== 'off' && (
+            <button type="button" disabled={busy} onClick={() => onGateway(false)} {...hoverBackground('transparent', token('surfaceHover'))} style={smallGhostStyle}>
+              {t('mcp.gateway.unserve')}
+            </button>
+          )}
+        </div>
+      )}
 
       {confirm && (
         <div style={confirmBarStyle}>
@@ -1033,6 +1166,29 @@ const detailStyle: CSSProperties = {
   border: `1px solid ${token('border')}`,
   borderRadius: radius.lg,
   background: token('surface'),
+};
+
+const gatewayRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: space.md, flexWrap: 'wrap' };
+
+const switchStyle: CSSProperties = {
+  flexShrink: 0,
+  position: 'relative',
+  width: 44,
+  height: 24,
+  borderRadius: 999,
+  border: 'none',
+  padding: 0,
+  transition: 'background 120ms ease',
+};
+
+const switchKnobStyle: CSSProperties = {
+  position: 'absolute',
+  top: 2,
+  width: 20,
+  height: 20,
+  borderRadius: 999,
+  background: token('bg'),
+  transition: 'left 120ms ease',
 };
 
 const smallGhostStyle: CSSProperties = { ...buttonGhostChrome('sm'), borderRadius: radius.sm };

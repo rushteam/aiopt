@@ -160,3 +160,70 @@ export function buildMcpConfirm(locale: string, reqs: McpConfirmRequest[]): McpC
     cancel: l.cancel,
   };
 }
+
+/** The gateway dialog: AiOpt ITSELF will run the command / connect, not an agent. */
+export interface McpGatewayConfirmLabels {
+  title: string;
+  /** `{name}` is replaced. */
+  message: string;
+  note: string;
+  confirm: string;
+}
+
+export const MCP_GATEWAY_CONFIRM_LABELS: Record<MenuLocale, McpGatewayConfirmLabels> = {
+  en: {
+    title: 'Serve through the MCP gateway',
+    message: 'Let AiOpt run MCP server “{name}” for the MCP gateway?',
+    note: 'AiOpt will run this command or connect to this URL itself, with the stored values, whenever an agent uses one of its tools. Only continue if you trust it.',
+    confirm: 'Allow',
+  },
+  'zh-CN': {
+    title: '通过 MCP 网关提供',
+    message: '要让 AiOpt 为 MCP 网关运行 MCP 服务器「{name}」吗？',
+    note: '每当 agent 使用它的工具时，AiOpt 会自己运行这条命令或连接这个 URL，并带上已保存的值。仅在你信任它时继续。',
+    confirm: '允许',
+  },
+  ja: {
+    title: 'MCP ゲートウェイ経由で提供',
+    message: 'MCP ゲートウェイのために AiOpt が MCP サーバー「{name}」を実行しますか？',
+    note: 'エージェントがそのツールを使うたびに、AiOpt 自身が保存済みの値でこのコマンドを実行するか、この URL に接続します。信頼できる場合のみ続行してください。',
+    confirm: '許可',
+  },
+  ko: {
+    title: 'MCP 게이트웨이로 제공',
+    message: 'MCP 게이트웨이를 위해 AiOpt가 MCP 서버 “{name}”을(를) 실행할까요?',
+    note: '에이전트가 이 서버의 도구를 쓸 때마다 AiOpt가 저장된 값으로 이 명령을 직접 실행하거나 이 URL에 연결합니다. 신뢰하는 경우에만 계속하세요.',
+    confirm: '허용',
+  },
+  fr: {
+    title: 'Servir via la passerelle MCP',
+    message: 'Laisser AiOpt exécuter le serveur MCP « {name} » pour la passerelle MCP ?',
+    note: 'AiOpt exécutera lui-même cette commande ou se connectera à cette URL, avec les valeurs enregistrées, chaque fois qu’un agent utilise l’un de ses outils. Ne continuez que si vous lui faites confiance.',
+    confirm: 'Autoriser',
+  },
+  de: {
+    title: 'Über das MCP-Gateway bereitstellen',
+    message: 'Soll AiOpt den MCP-Server „{name}“ für das MCP-Gateway ausführen?',
+    note: 'AiOpt führt diesen Befehl selbst aus oder verbindet sich mit dieser URL, mit den gespeicherten Werten, sobald ein Agent eines seiner Tools nutzt. Fahren Sie nur fort, wenn Sie ihm vertrauen.',
+    confirm: 'Zulassen',
+  },
+  es: {
+    title: 'Servir a través de la pasarela MCP',
+    message: '¿Permitir que AiOpt ejecute el servidor MCP «{name}» para la pasarela MCP?',
+    note: 'AiOpt ejecutará este comando o se conectará a esta URL por sí mismo, con los valores guardados, cada vez que un agente use una de sus herramientas. Continúa solo si confías en él.',
+    confirm: 'Permitir',
+  },
+};
+
+export function buildMcpGatewayConfirm(locale: string, req: McpConfirmRequest): McpConfirmContent {
+  const menuLocale = resolveMenuLocale(locale);
+  const l = MCP_CONFIRM_LABELS[menuLocale];
+  const g = MCP_GATEWAY_CONFIRM_LABELS[menuLocale];
+  return {
+    title: g.title,
+    message: g.message.replace('{name}', req.name),
+    detail: [...specLines(l, req, MAX_DETAIL_SPEC), '', g.note].join('\n'),
+    confirm: g.confirm,
+    cancel: l.cancel,
+  };
+}

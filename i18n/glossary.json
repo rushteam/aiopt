@@ -162,6 +162,14 @@
       "note": "A Model Context Protocol server an agent runs (a local command) or connects to (a URL). AiOpt keeps one library and syncs it with each agent's own MCP config; 'MCP' alone names the tab. Keep 'MCP' untranslated.",
       "translations": { "zh-CN": "MCP 服务器", "ja": "MCP サーバー", "ko": "MCP 서버", "fr": "Serveur MCP", "de": "MCP-Server", "es": "Servidor MCP" },
       "forbidden": { "zh-CN": ["MCP 服务端", "MCP 插件"] }
+    },
+    {
+      "id": "mcp-gateway",
+      "en": "MCP gateway",
+      "status": "proposed",
+      "note": "AiOpt's opt-in single MCP endpoint on its local proxy: AiOpt runs the chosen library servers itself and each agent gets one 'aiopt' entry. Keep 'MCP' untranslated.",
+      "translations": { "zh-CN": "MCP 网关", "ja": "MCP ゲートウェイ", "ko": "MCP 게이트웨이", "fr": "Passerelle MCP", "de": "MCP-Gateway", "es": "Pasarela MCP" },
+      "forbidden": { "zh-CN": ["MCP 代理", "MCP 聚合器"] }
     }
   ]
 }

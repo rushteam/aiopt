@@ -43,6 +43,8 @@ import {
   getUsageStore,
   getAgentSessionStore,
   getMcpStore,
+  getMcpGateway,
+  shutdownMcpGateway,
   getWorkbenchManager,
 } from '../services';
 
@@ -59,6 +61,11 @@ export function registerHandlers(): void {
       rebuildTrayLabels();
     },
     onExperimentalModeChange: () => rebuildTrayLabels(),
+    // Off stops every gateway session and child; on serves on the next request.
+    onMcpGatewayChange: (on) => {
+      if (on) getMcpGateway().refresh();
+      else void shutdownMcpGateway();
+    },
   });
   registerSecretIpc(registry, getSecretStore());
   registerAppInfoIpc(registry, getAppVersions);

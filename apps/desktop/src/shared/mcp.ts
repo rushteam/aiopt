@@ -8,6 +8,8 @@
 //
 // Pure types, limits and validation shared by main and the renderer.
 
+import type { McpGatewayMembership, McpGatewaySnapshot } from './mcpGateway';
+
 /** Agents whose MCP config AiOpt can manage. */
 export const MCP_AGENT_IDS = ['claude', 'codex', 'gemini', 'cursor', 'opencode', 'pi', 'hermes'] as const;
 export type McpAgentId = (typeof MCP_AGENT_IDS)[number];
@@ -104,6 +106,8 @@ export interface McpServerView extends McpServerShape {
   name: string;
   env: McpVarView[];
   headers: McpVarView[];
+  /** Whether the MCP gateway serves it (see docs/dev-rules/mcp-gateway.md). */
+  gateway: McpGatewayMembership;
 }
 
 /** A server as an agent file has it: spec and key names, never values. */
@@ -144,6 +148,18 @@ export interface McpSnapshot {
   agents: McpAgentInfo[];
   /** False when the OS secret store is unavailable — env/header values cannot be saved. */
   secretsAvailable: boolean;
+  gateway: McpGatewaySnapshot;
+}
+
+/** Add (`on`) or remove the gateway entry in these agents' MCP configs. */
+export interface McpGatewayAgentsRequest {
+  agentIds: McpAgentId[];
+  on: boolean;
+}
+
+/** Serve (or stop serving) one library server through the gateway. */
+export interface McpGatewayServerRequest extends McpNameRequest {
+  on: boolean;
 }
 
 /** One env var / header in a save request; omit `value` to keep the stored one. */

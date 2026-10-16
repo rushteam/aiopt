@@ -79,6 +79,26 @@ export function registerMcpIpc(registry: IpcHandlerRegistry, store: McpStore): v
     return { value: store.revealValue(name, kind, key) };
   });
 
+  // Serving a server through the gateway is confirmed natively inside the store.
+  registry.register(IPC_CHANNELS.mcpGatewayServer, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const name = requireName(obj.name);
+    if (typeof obj.on !== 'boolean') throwIpcError('INVALID_PARAMS', 'on must be a boolean');
+    return store.setGateway(name, obj.on);
+  });
+
+  registry.register(IPC_CHANNELS.mcpGatewayAgents, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    if (typeof obj.on !== 'boolean') throwIpcError('INVALID_PARAMS', 'on must be a boolean');
+    if (!Array.isArray(obj.agentIds) || obj.agentIds.length === 0 || obj.agentIds.length > MCP_AGENT_IDS.length) {
+      throwIpcError('INVALID_PARAMS', 'agentIds must be a non-empty array');
+    }
+    const agentIds = [...new Set(obj.agentIds.map((v, i) => requireEnum(v, MCP_AGENT_IDS, `agentIds[${i}]`)))];
+    return store.setGatewayAgents(agentIds, obj.on);
+  });
+
   registry.register(IPC_CHANNELS.mcpMerge, (payload, meta) => {
     meta.assertTrustedSender();
     const { agentId, name } = requireAgentAndName(payload);
