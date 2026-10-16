@@ -51,6 +51,7 @@ export interface ProfileMcpHook {
 }
 import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
+import { zcodeBaseUrl } from '../agentImport/zcodeSession';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
 import { isCombinedProviderId } from '../../shared/combinedProvider';
 import { isAgentImportAgentId } from '../../shared/agentImport';
@@ -516,7 +517,8 @@ export function createProviderManager(
       return this.addProvider({
         name: tpl.name,
         apiFormats: [...tpl.apiFormats],
-        baseUrl: tpl.baseUrl,
+        // A BigModel Coding Plan key is served on BigModel's endpoint, not Z.ai's.
+        baseUrl: agentId === 'zcode' ? zcodeBaseUrl() : tpl.baseUrl,
         models: tpl.models.map((m) => ({ ...m })),
         credentialMode: 'agent_import',
         agentImport: { agentId },

@@ -45,6 +45,9 @@ import { createUpstreamRegistry, type UpstreamRegistry } from './upstreams/types
 import { createCursorClient } from './upstreams/cursor/client';
 import { createCursorDriver } from './upstreams/cursor/driver';
 import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agentCli';
+import { createWorkBuddyDriver, type WorkBuddyFetch } from './upstreams/workbuddy/driver';
+import { createWorkBuddyAuth } from './upstreams/workbuddy/auth';
+import { vendorHeaders } from './proxy/vendorHeaders';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
 import { createMcpStore, type McpStore } from './mcp/mcpStore';
@@ -239,6 +242,12 @@ function getUpstreamRegistry(): UpstreamRegistry {
         client: createCursorClient({ fetchImpl, clientVersion: cursorClientVersion }),
         token: cursorAccessToken,
       }),
+      // Signed-in WorkBuddy desktop (agent import): its headers + body rules over net.fetch.
+      (() => {
+        const auth = createWorkBuddyAuth({ fetchImpl });
+        const wbFetch = ((url, init) => net.fetch(url, init as RequestInit)) as WorkBuddyFetch;
+        return createWorkBuddyDriver({ fetchImpl: wbFetch, account: (signal) => auth.current(signal) });
+      })(),
     ]);
   }
   return upstreamRegistry;
@@ -299,6 +308,9 @@ export function getTranslationProxy(): TranslationProxy {
       getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
       // Prompt-cache breakpoints for Anthropic upstreams (see proxy/promptCache.ts), live.
       getPromptCache: () => getConfigStore().get('promptCache'),
+      // Imported sign-ins that want the key both ways (Command Code, ZCode), live.
+      getExtraHeaders: (providerId, apiKey) =>
+        vendorHeaders(getProviderStore().getProvider(providerId)?.agentImport?.agentId, apiKey),
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).

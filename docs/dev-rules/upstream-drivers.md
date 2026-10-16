@@ -3,7 +3,7 @@
 > **Status:** authoritative development rule
 > **Read before:** adding or changing an upstream driver — a provider AiOpt serves through a
 > private protocol instead of forwarding an HTTP POST to an OpenAI / Anthropic / Gemini
-> compatible endpoint (today: Cursor's agent API).
+> compatible endpoint (today: Cursor's agent API and WorkBuddy's client-shaped chat).
 
 Most providers are a base URL + a key, and the translation proxy forwards to them itself.
 A provider whose upstream speaks something else (Connect + protobuf, a vendor RPC, …) is
@@ -78,7 +78,10 @@ interface BoundUpstream {
 3. If it is an agent-import source, add/adjust the template in
    `shared/agentImportTemplates.ts` (`apiFormats: ['openai']`) and the table in
    [`agent-import-providers.md`](agent-import-providers.md).
-4. Unit-test the pure modules and the driver with a fake client; the generic proxy path is
+4. An HTTP vendor that speaks OpenAI Chat but needs its own headers/body rules reads the
+   answer with `upstreams/openaiChatIn.ts` (`readChatSse`). One that only needs extra headers
+   is not a driver: add it to `proxy/vendorHeaders.ts`.
+5. Unit-test the pure modules and the driver with a fake client; the generic proxy path is
    covered by `upstreams/__tests__/driverProxy.test.ts`.
 
 ## Review checklist

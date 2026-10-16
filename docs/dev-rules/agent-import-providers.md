@@ -27,6 +27,16 @@ into that file** so the agent stays signed in).
 | dsh (DeepSeek Harness) | `$DSH_HOME/.credentials.yaml` (default `~/.dsh`; `AIOPT_AGENT_HOME` wins in dev/test), ref `DEEPSEEK_API_KEY` under `refs:` (v1) or at the root (pre-release flat layout). Symlinks are not followed. Only this ref is read, never the `AIOPT_*_KEY` refs the dsh binding writes. | No — it is a plain API key, never written by an import |
 | Cursor (cursor-agent) | macOS Keychain `cursor-access-token` / account `cursor-user`, else `accessToken` in `auth.json` (`~/.cursor/` on macOS, `%APPDATA%\Cursor\` on Windows, `$XDG_CONFIG_HOME/cursor/` elsewhere) | No file write by AiOpt — a token with < 5 min left is renewed by running `cursor-agent status` (30 s, deduplicated), then re-read |
 
+| Command Code | `~/.commandcode/auth.json` `apiKey` (the CLI's Provider API key). Symlinks are not followed. | No — a plain API key |
+| ZCode | `~/.zcode/v2/credentials.json` (values sealed `enc:v1:` AES-256-GCM with ZCode's own key, `ZCODE_CREDENTIAL_SECRET` or its platform fallback), the `…:coding-plan:…:api-key` entry (Z.ai preferred over BigModel); else `config.json` `provider[…coding-plan].options.apiKey` (ZCode 3.15+). `setting.json` `dataBaseDir` moves the data dir (ignored under `AIOPT_AGENT_HOME`). | No — a plain API key. The base URL (Z.ai or BigModel) is picked at import time from the key's family |
+| WorkBuddy (desktop) | `CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info` under the OS app-data dir. A sealed (`$wbEncrypted`) file reads as signed out. | No file write — a token within 60 s of expiry is renewed **in memory** via `/v2/plugin/auth/token/refresh` |
+
+Command Code and ZCode are **API keys, not sign-ins**, like dsh, and take the key both as a
+bearer token and as `x-api-key` (`main/proxy/vendorHeaders.ts`; Command Code also sends its
+CLI version headers). Not imported: Command Code's Go plan (`/alpha/generate`), ZCode's Start
+Plan JWT, trial/gift models and team seats, and WorkBuddy's international site
+(`workbuddy.ai`).
+
 dsh is the one source that is an **API key, not a sign-in**. It still follows the same split:
 the key stays in dsh's file and is read at request time (a key rotated in dsh takes effect
 without re-import); nothing is copied into AiOpt's secret store. dsh's DeepSeek *account*
@@ -55,6 +65,16 @@ opencode plugin). The driver contract, routing and error rules are in
 - The `x-cursor-client-version` sent is the installed cursor-agent's (`cli-<version>`),
   else a recent fallback (`upstreams/cursor/agentCli.ts`).
 - Not ported yet: the HTTP/1.1 RunSSE fallback and native session reuse across turns.
+
+### WorkBuddy is served by a driver
+
+WorkBuddy speaks OpenAI Chat over HTTP but only answers requests shaped like its own client's,
+so it is the **WorkBuddy upstream driver** (`main/upstreams/workbuddy/`, from magpie's
+WorkBuddy plugin): signed headers (`X-User-Id`, `X-Domain`, `User-Agent: WorkBuddy/<ver>`),
+per-turn conversation ids, a system message always present, flagged phrases rewritten, tool
+names and JSON Schemas made acceptable (names mapped back in the answer), and one retry with an
+empty assistant reply when it refuses a turn after tool results. Its SSE answer is read by the
+shared `upstreams/openaiChatIn.ts`, which later HTTP drivers reuse.
 
 ## Renderer surface
 

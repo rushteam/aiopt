@@ -88,6 +88,8 @@ export interface TranslationProxyDeps {
    * none (see promptCache.ts). Read live per request; absent means off.
    */
   getPromptCache?: () => boolean;
+  /** Extra outbound headers for a provider (imported sign-ins that want the key both ways). */
+  getExtraHeaders?: (providerId: string, apiKey: string | null) => Record<string, string>;
   /**
    * Record one upstream attempt (counts + identifiers only; the store stamps `ts`).
    * Optional so existing constructors/tests need not supply it. Never throws into the
@@ -404,7 +406,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         spec.outboundFormat === 'gemini'
           ? geminiOutboundUrl(spec.upstreamBaseUrl, spec.modelId, wantsStream)
           : outboundUrl(spec.outboundFormat, spec.upstreamBaseUrl);
-      const headers = outboundHeaders(spec.outboundFormat, apiKey);
+      const headers = { ...outboundHeaders(spec.outboundFormat, apiKey), ...deps.getExtraHeaders?.(spec.providerId, apiKey) };
 
       const controller = new AbortController();
       req.on('close', () => controller.abort());

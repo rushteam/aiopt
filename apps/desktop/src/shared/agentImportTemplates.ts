@@ -71,4 +71,37 @@ export const AGENT_IMPORT_PROVIDER_TEMPLATES: Record<AgentImportAgentId, AgentIm
     apiFormats: ['openai'],
     models: [{ id: 'deepseek-chat' }, { id: 'deepseek-reasoner' }],
   },
+  // Command Code's CLI keeps a plain Provider API key in ~/.commandcode/auth.json. Its
+  // Provider API serves the open models on Chat Completions and Claude on Messages.
+  commandcode: {
+    agentId: 'commandcode',
+    name: 'Command Code (CLI sign-in)',
+    baseUrl: 'https://api.commandcode.ai/provider/v1',
+    apiFormats: ['openai', 'anthropic'],
+    models: [
+      { id: 'deepseek/deepseek-v4-pro' },
+      { id: 'zai-org/GLM-5.3' },
+      { id: 'moonshotai/Kimi-K3' },
+      { id: 'claude-sonnet-5' },
+    ],
+  },
+  // ZCode keeps its GLM Coding Plan key (encrypted) in ~/.zcode/v2/credentials.json; the
+  // plan is served on Anthropic Messages. The base is Z.ai's unless the key is BigModel's
+  // (resolved at import — see agentImportService).
+  zcode: {
+    agentId: 'zcode',
+    name: 'ZCode (GLM Coding Plan)',
+    baseUrl: 'https://api.z.ai/api/anthropic',
+    apiFormats: ['anthropic'],
+    models: [{ id: 'GLM-5.3' }, { id: 'GLM-5.3-Flash' }, { id: 'GLM-5.2' }, { id: 'GLM-5-Turbo' }],
+  },
+  // WorkBuddy desktop's sign-in, served by the WorkBuddy upstream driver (its own headers,
+  // streamed Chat Completions at <endpoint>/v2).
+  workbuddy: {
+    agentId: 'workbuddy',
+    name: 'WorkBuddy (desktop sign-in)',
+    baseUrl: 'https://copilot.tencent.com/v2',
+    apiFormats: ['openai'],
+    models: [{ id: 'auto' }, { id: 'glm-5.3' }, { id: 'kimi-k3-1' }, { id: 'deepseek-v4-pro' }],
+  },
 };

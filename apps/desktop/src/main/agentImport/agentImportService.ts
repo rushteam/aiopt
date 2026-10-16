@@ -43,6 +43,17 @@ import {
 } from './geminiSession';
 import { dshInstallDirExists, dshSessionSnapshot, readDshAccessTokenSync } from './dshSession';
 import {
+  commandcodeInstallDirExists,
+  commandcodeSessionSnapshot,
+  readCommandCodeAccessTokenSync,
+} from './commandcodeSession';
+import { readZcodeAccessTokenSync, zcodeInstallDirExists, zcodeSessionSnapshot } from './zcodeSession';
+import {
+  readWorkBuddyAccessTokenSync,
+  workbuddyInstallDirExists,
+  workbuddySessionSnapshot,
+} from './workbuddySession';
+import {
   grokInstallDirExists,
   grokSessionSnapshot,
   readGrokAccessTokenSync,
@@ -57,6 +68,9 @@ function agentInstalled(agentId: AgentImportAgentId): boolean {
   if (agentId === 'gemini') return geminiOAuthCredsExist();
   if (agentId === 'cursor') return cursorAuthFileExists();
   if (agentId === 'dsh') return dshInstallDirExists();
+  if (agentId === 'commandcode') return commandcodeInstallDirExists();
+  if (agentId === 'zcode') return zcodeInstallDirExists();
+  if (agentId === 'workbuddy') return workbuddyInstallDirExists();
   try {
     return fs.existsSync(agentConfigDir(agentId));
   } catch {
@@ -162,8 +176,15 @@ export function scanAgentImportCandidates(): AgentImportCandidate[] {
         reason: snap.available ? undefined : 'not_signed_in',
       };
     }
-    if (agentId === 'dsh') {
-      const snap = dshSessionSnapshot();
+    if (agentId === 'dsh' || agentId === 'commandcode' || agentId === 'zcode' || agentId === 'workbuddy') {
+      const snap =
+        agentId === 'dsh'
+          ? dshSessionSnapshot()
+          : agentId === 'commandcode'
+            ? commandcodeSessionSnapshot()
+            : agentId === 'zcode'
+              ? zcodeSessionSnapshot()
+              : workbuddySessionSnapshot();
       return {
         agentId,
         agentName,
@@ -190,6 +211,9 @@ export function readAgentImportAccessTokenSync(agentId: AgentImportAgentId): str
   if (agentId === 'gemini') return readGeminiAccessTokenSync();
   if (agentId === 'cursor') return readCursorAccessTokenSync();
   if (agentId === 'dsh') return readDshAccessTokenSync();
+  if (agentId === 'commandcode') return readCommandCodeAccessTokenSync();
+  if (agentId === 'zcode') return readZcodeAccessTokenSync();
+  if (agentId === 'workbuddy') return readWorkBuddyAccessTokenSync();
   return null;
 }
 
@@ -205,6 +229,9 @@ export async function readAgentImportAccessToken(
   if (agentId === 'gemini') return readGeminiAccessToken(fetchImpl);
   if (agentId === 'cursor') return readCursorAccessTokenSync();
   if (agentId === 'dsh') return readDshAccessTokenSync();
+  if (agentId === 'commandcode') return readCommandCodeAccessTokenSync();
+  if (agentId === 'zcode') return readZcodeAccessTokenSync();
+  if (agentId === 'workbuddy') return readWorkBuddyAccessTokenSync();
   return null;
 }
 
