@@ -66,7 +66,7 @@ export function App() {
       setSettingsSection(null);
       setTab('workbench');
     } else if (command === MENU_COMMANDS.checkForUpdates) {
-      setSettingsSection('updates');
+      setSettingsSection('about');
       void window.aiopt.update.check();
     }
     else if (command === MENU_COMMANDS.showAbout) setSettingsSection('about');
@@ -110,7 +110,7 @@ export function App() {
         settingsOpen={settingsOpen}
         experimentalMode={experimentalMode}
       />
-      <UpdateNotice onOpen={() => setSettingsSection('updates')} />
+      <UpdateNotice onOpen={() => setSettingsSection('about')} />
       {/* The ambient lines sit behind the tab screens (transparent roots, opaque cards).
           Settings paints its own opaque ground, so it isn't drawn there at all. */}
       <div

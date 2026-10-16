@@ -18,14 +18,14 @@ import { useT } from '../../i18n';
 import { GeneralSection } from './GeneralSection';
 import { ProvidersSettingsSection } from './ProvidersSettingsSection';
 import { ShortcutsSection } from './ShortcutsSection';
-import { UpdateSection } from './UpdateSection';
 import { AboutSection } from './AboutSection';
 
 // NOTE: `AppearanceSection` (now folded into General) and `AccountSection` are
 // intentionally not wired up yet — appearance lives under General, and Account is
 // hidden until the sign-in feature ships. Both components are kept on disk so the
 // entries can be restored without rebuilding them.
-export type SettingsSectionId = 'general' | 'providers' | 'shortcuts' | 'updates' | 'about';
+// Updates live inside About (version, update check and project link on one page).
+export type SettingsSectionId = 'general' | 'providers' | 'shortcuts' | 'about';
 
 interface SectionDef {
   id: SettingsSectionId;
@@ -38,7 +38,6 @@ const SECTIONS = [
   { id: 'general', labelKey: 'general', Component: GeneralSection },
   { id: 'providers', labelKey: 'providers', Component: ProvidersSettingsSection },
   { id: 'shortcuts', labelKey: 'shortcuts', Component: ShortcutsSection },
-  { id: 'updates', labelKey: 'updates', Component: UpdateSection },
   { id: 'about', labelKey: 'about', Component: AboutSection },
 ] as const satisfies readonly SectionDef[];
 

@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "読み込み中…"
+    "loading": "読み込み中…",
+    "homepage": "プロジェクトのホームページ"
   },
   "providers": {
     "title": "プロバイダー",

@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "homepage": "Página del proyecto"
   },
   "providers": {
     "title": "Proveedores",
