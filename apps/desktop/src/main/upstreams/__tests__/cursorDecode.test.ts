@@ -35,7 +35,7 @@ describe('cursor decode', () => {
       { text: 'Hello' },
       {
         stop: 'stop',
-        usage: { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105, prompt_tokens_details: { cached_tokens: 40 } },
+        usage: { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105, prompt_tokens_details: { cached_tokens: 40, cache_write_tokens: 0 } },
       },
     ]);
   });

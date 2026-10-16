@@ -12,9 +12,35 @@ vi.mock('node:child_process', () => ({
 
 import {
   cursorAuthFileExists,
+  cursorEditorStateDb,
   cursorSessionSnapshot,
+  pickCursorToken,
   readCursorAccessTokenSync,
 } from '../cursorSession';
+
+const sqlite = (() => {
+  try {
+    return process.getBuiltinModule?.('node:sqlite') as typeof import('node:sqlite') | undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
+/** An unsigned JWT whose exp is `expSec` (seconds). */
+function jwt(expSec: number): string {
+  const b = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  return `${b({ alg: 'none' })}.${b({ exp: expSec })}.sig`;
+}
+
+function writeEditorDb(rows: Record<string, string>): void {
+  const file = cursorEditorStateDb();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new sqlite!.DatabaseSync(file);
+  db.exec('CREATE TABLE ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)');
+  const ins = db.prepare('INSERT INTO ItemTable (key, value) VALUES (?, ?)');
+  for (const [k, v] of Object.entries(rows)) ins.run(`cursorAuth/${k}`, v);
+  db.close();
+}
 
 let home: string;
 const originalAppData = process.env.APPDATA;
@@ -77,5 +103,32 @@ describe('cursor session import', () => {
     expect(cursorAuthFileExists()).toBe(false);
     writeAuth({ accessToken: 'tok' });
     expect(cursorAuthFileExists()).toBe(true);
+  });
+
+  it('picks the token that runs longest', () => {
+    const now = 1_800_000_000_000;
+    const old = jwt(now / 1000 - 3600);
+    const live = jwt(now / 1000 + 3600);
+    expect(pickCursorToken([old, null, live], now)).toBe(live);
+    expect(pickCursorToken([live, old], now)).toBe(live);
+    expect(pickCursorToken([null, undefined], now)).toBeNull();
+    expect(pickCursorToken([old], now)).toBe(old);
+  });
+
+  it.skipIf(!sqlite)("uses the editor's live token over cursor-agent's expired one", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const expired = jwt(now - 86_400);
+    const live = jwt(now + 86_400);
+    writeAuth({ accessToken: expired });
+    writeEditorDb({ accessToken: live, cachedEmail: 'ed@cursor.com' });
+    expect(readCursorAccessTokenSync()).toBe(live);
+    expect(cursorSessionSnapshot()).toEqual({ available: true, accountLabel: 'ed@cursor.com' });
+  });
+
+  it.skipIf(!sqlite)('reads the editor sign-in alone', () => {
+    const live = jwt(Math.floor(Date.now() / 1000) + 86_400);
+    writeEditorDb({ accessToken: live });
+    expect(cursorAuthFileExists()).toBe(true);
+    expect(readCursorAccessTokenSync()).toBe(live);
   });
 });

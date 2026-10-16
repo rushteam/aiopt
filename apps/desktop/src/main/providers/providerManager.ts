@@ -51,6 +51,7 @@ export interface ProfileMcpHook {
 }
 import { detectProviderFormats } from './formatProbe';
 import { testProviderConnectivity } from './providerTest';
+import { zcodeBaseUrl } from '../agentImport/zcodeSession';
 import { buildCombinedProviderSummary } from '../../shared/combinedProvider';
 import { isCombinedProviderId } from '../../shared/combinedProvider';
 import { isAgentImportAgentId } from '../../shared/agentImport';
@@ -239,6 +240,7 @@ export function createProviderManager(
       oauth: oauthBacked ? provider.oauth : undefined,
       oauthAccountLabel: oauthBacked ? (provider.oauth?.accountLabel ?? null) : importAccountLabel,
       agentImportAgentId: importBacked ? provider.agentImport?.agentId : undefined,
+      upstreamDriver: upstreamFor(provider)?.driverId,
       dropRequestFields: provider.dropRequestFields,
     };
   }
@@ -516,7 +518,8 @@ export function createProviderManager(
       return this.addProvider({
         name: tpl.name,
         apiFormats: [...tpl.apiFormats],
-        baseUrl: tpl.baseUrl,
+        // A BigModel Coding Plan key is served on BigModel's endpoint, not Z.ai's.
+        baseUrl: agentId === 'zcode' ? zcodeBaseUrl() : tpl.baseUrl,
         models: tpl.models.map((m) => ({ ...m })),
         credentialMode: 'agent_import',
         agentImport: { agentId },
@@ -556,6 +559,12 @@ export function createProviderManager(
         (!next.agentImport || !isAgentImportAgentId(next.agentImport.agentId))
       ) {
         throwIpcError('INVALID_PARAMS', 'agent import requires a valid agentId');
+      }
+      // A driver-served provider has a fixed endpoint and speaks OpenAI Chat only (see
+      // docs/dev-rules/upstream-drivers.md §2): its base URL and formats are not editable.
+      if (upstreamFor(existing) !== null) {
+        next.baseUrl = existing.baseUrl;
+        next.apiFormats = ['openai'];
       }
       // Drop-fields is a whole-set replace when present (the form sends a checkbox group,
       // not a patch), so an empty array must CLEAR it rather than read as "unchanged" —

@@ -18,6 +18,9 @@ function event(ts: number): UsageEvent {
     status: 200,
     inputTokens: 1,
     outputTokens: 2,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
   };
 }
 

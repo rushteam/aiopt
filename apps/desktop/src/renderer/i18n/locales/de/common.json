@@ -189,7 +189,8 @@
     },
     "credential": {
       "apiKey": "API-Schlüssel",
-      "oauth": "Abo-Anmeldung"
+      "oauth": "Abo-Anmeldung",
+      "agentImport": "Agent-Anmeldung importiert"
     },
     "oauth": {
       "customPkce": "Eigenes OAuth (Erweitert…)"
@@ -209,7 +210,8 @@
       "modelId": "Modell-ID",
       "modelAlias": "Alias",
       "notes": "Notizen",
-      "dropRequestFields": "Upstream-Kompatibilität"
+      "dropRequestFields": "Upstream-Kompatibilität",
+      "agentSession": "Agent-Sitzung"
     },
     "form": {
       "addTitle": "Anbieter hinzufügen",
@@ -260,7 +262,11 @@
       "dropGroupHint": {
         "safe": "Parameter für Protokollierung und Routing. Ihr Entfernen ändert die Antwort des Modells nicht.",
         "sensitive": "Ihr Entfernen ändert, was zurückkommt: ohne response_format wird garantiertes JSON zu freiem Text, ohne thinking oder reasoning wird das Modell still herabgestuft. Nur verwenden, wenn der Upstream sie ausdrücklich ablehnt."
-      }
+      },
+      "driverEndpointHint": "Durch den integrierten Protokolltreiber festgelegt; nicht änderbar.",
+      "driverFormatsHint": "Dieser Anbieter wird von einem integrierten Protokolltreiber bedient, der nur OpenAI Chat spricht. Jeder Agent kann ihn binden — der Proxy von AiOpt übersetzt.",
+      "agentSessionMissing": "Keine angemeldete Sitzung gefunden. Melde dich im Agent an und öffne diesen Dialog erneut.",
+      "agentSessionHint": "Das Token wird bei jeder Anfrage vom Agent gelesen und weder in AiOpt gespeichert noch in Agent-Konfigurationen geschrieben. Zum Kontowechsel im Agent neu anmelden."
     },
     "profiles": {
       "heading": "Binding-Profile",
@@ -411,6 +417,8 @@
       "requests": "Anfragen",
       "inputTokens": "Eingabe",
       "outputTokens": "Ausgabe",
+      "cache": "Cache",
+      "reasoning": "Reasoning",
       "totalTokens": "Gesamt",
       "share": "Anteil"
     },
@@ -462,6 +470,7 @@
       "errors": "{{count}} fehlgeschlagen",
       "outputRatio": "Verhältnis Ausgabe / Eingabe",
       "cacheHit": "Cache-Trefferquote",
+      "reasoningShare": "Reasoning-Anteil der Ausgabe",
       "sessions": "Sitzungen"
     },
     "weekday": {

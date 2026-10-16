@@ -41,6 +41,9 @@ function input(overrides: Partial<UsageEventInput> = {}): UsageEventInput {
     status: 200,
     inputTokens: 10,
     outputTokens: 20,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
     ...overrides,
   };
 }
@@ -54,6 +57,30 @@ describe('usage store — record + snapshot', () => {
     const snap = store.snapshot();
     expect(snap.totals).toMatchObject({ requests: 1, okRequests: 1, inputTokens: 5, outputTokens: 7, totalTokens: 12 });
     expect(p.all[0]?.ts).toBe(now);
+  });
+
+  it('loads an event recorded before cache/reasoning were tracked, reading them as 0', () => {
+    const now = Date.parse('2026-09-01T00:00:00Z');
+    const legacy = { ...input({ inputTokens: 3, outputTokens: 4 }), ts: now - 1000 } as Record<string, unknown>;
+    delete legacy.cacheReadTokens;
+    delete legacy.cacheWriteTokens;
+    delete legacy.reasoningTokens;
+    const store = createUsageStore(memoryPersistence([legacy]), { now: () => now });
+    expect(store.snapshot().totals).toMatchObject({
+      requests: 1,
+      inputTokens: 3,
+      outputTokens: 4,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      reasoningTokens: 0,
+      totalTokens: 7,
+    });
+  });
+
+  it('records cache and reasoning counts', () => {
+    const store = createUsageStore(memoryPersistence(), { now: () => 1000 });
+    store.record(input({ inputTokens: 5, outputTokens: 7, cacheReadTokens: 100, cacheWriteTokens: 10, reasoningTokens: 2 }));
+    expect(store.snapshot().totals).toMatchObject({ cacheReadTokens: 100, cacheWriteTokens: 10, reasoningTokens: 2, totalTokens: 122 });
   });
 
   it('clear empties the store and rewrites the log', () => {

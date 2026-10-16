@@ -16,6 +16,10 @@ export const AGENT_IMPORT_AGENT_IDS = [
   'gemini',
   'cursor',
   'dsh',
+  'commandcode',
+  'zcode',
+  'workbuddy',
+  'kiro',
 ] as const;
 
 export type AgentImportAgentId = (typeof AGENT_IMPORT_AGENT_IDS)[number];

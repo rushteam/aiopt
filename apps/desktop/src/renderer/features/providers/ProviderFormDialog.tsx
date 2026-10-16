@@ -107,6 +107,11 @@ export function ProviderFormDialog({
   );
   const [presetKey, setPresetKey] = useState('');
   const usesOAuth = credentialMode === 'oauth';
+  // An imported agent sign-in: the token is read from the agent at request time, so there
+  // is no key to type. A built-in driver (Cursor, WorkBuddy, …) also fixes the endpoint and
+  // speaks OpenAI Chat only, so its base URL and formats are shown read-only.
+  const usesAgentImport = credentialMode === 'agent_import';
+  const driverServed = editing && provider.upstreamDriver !== undefined;
   const presetSelected = !editing && presetKey !== '';
   const showManualCredential = !editing && !presetSelected;
   const oauthSubscriptionPresets = PROVIDER_PRESETS.filter((p) => p.credentialMode === 'oauth');
@@ -329,7 +334,7 @@ export function ProviderFormDialog({
           credentialMode,
           oauth: oauthConfig,
           // Blank field on edit = leave the stored key untouched.
-          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
+          apiKey: usesOAuth || usesAgentImport ? undefined : apiKey === '' ? undefined : apiKey,
           // Always sent: it is a checkbox group, so an empty array must clear the set
           // rather than read as "unchanged".
           dropRequestFields: dropFields,
@@ -343,7 +348,7 @@ export function ProviderFormDialog({
           notes: notes === '' ? undefined : notes,
           credentialMode,
           oauth: oauthConfig,
-          apiKey: usesOAuth ? undefined : apiKey === '' ? undefined : apiKey,
+          apiKey: usesOAuth || usesAgentImport ? undefined : apiKey === '' ? undefined : apiKey,
           dropRequestFields: dropFields.length > 0 ? dropFields : undefined,
         });
       }
@@ -399,8 +404,14 @@ export function ProviderFormDialog({
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="https://api.example.com"
-              style={inputStyle}
+              readOnly={driverServed}
+              style={driverServed ? { ...inputStyle, color: token('textMuted') } : inputStyle}
             />
+            {driverServed && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.driverEndpointHint')}
+              </span>
+            )}
           </label>
           {!editing && (
             <label style={fieldStyle}>
@@ -464,6 +475,7 @@ export function ProviderFormDialog({
                 options={[
                   { value: 'api_key', label: t('providers.credential.apiKey') },
                   { value: 'oauth', label: t('providers.credential.oauth') },
+                  { value: 'agent_import', label: t('providers.credential.agentImport') },
                 ]}
                 onChange={() => {}}
               />
@@ -540,7 +552,23 @@ export function ProviderFormDialog({
               </p>
             </>
           )}
-          {!usesOAuth && (
+          {usesAgentImport && (
+            <div style={fieldStyle}>
+              <span>{t('providers.fields.agentSession')}</span>
+              <span style={{ fontSize: fontSize.base }}>
+                {provider?.hasKey
+                  ? t('providers.card.oauthConnected').replace(
+                      '{{account}}',
+                      provider.oauthAccountLabel?.trim() || t('providers.card.oauthAccountUnknown'),
+                    )
+                  : t('providers.form.agentSessionMissing')}
+              </span>
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.agentSessionHint')}
+              </span>
+            </div>
+          )}
+          {!usesOAuth && !usesAgentImport && (
           <div style={fieldStyle}>
             <span>{t('providers.fields.apiKey')}</span>
             <div style={{ display: 'flex', gap: space.sm }}>
@@ -590,6 +618,7 @@ export function ProviderFormDialog({
               <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
                 {t('providers.form.apiFormatsHint')}
               </span>
+              {!driverServed && (
               <button
                 type="button"
                 onClick={() => void onDetectFormats()}
@@ -599,12 +628,19 @@ export function ProviderFormDialog({
               >
                 {detecting ? t('providers.form.detecting') : t('providers.form.detectFormats')}
               </button>
+              )}
             </div>
+            {driverServed && (
+              <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                {t('providers.form.driverFormatsHint')}
+              </span>
+            )}
             <div style={checkGridStyle}>
               {API_FORMATS.map((format) => (
                 <label key={format} style={checkLabelStyle}>
                   <Checkbox
                     checked={apiFormats.includes(format)}
+                    disabled={driverServed}
                     onChange={() => toggleFormat(format)}
                     aria-label={t(`providers.formats.${format}`)}
                   />

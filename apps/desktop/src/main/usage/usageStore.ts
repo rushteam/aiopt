@@ -68,6 +68,10 @@ function validEvent(raw: unknown): UsageEvent | null {
     status: num(o.status),
     inputTokens: num(o.inputTokens),
     outputTokens: num(o.outputTokens),
+    // Absent on events recorded before cache / reasoning were tracked: read as 0.
+    cacheReadTokens: num(o.cacheReadTokens),
+    cacheWriteTokens: num(o.cacheWriteTokens),
+    reasoningTokens: num(o.reasoningTokens),
   };
 }
 

@@ -189,7 +189,8 @@
     },
     "credential": {
       "apiKey": "Clé d’API",
-      "oauth": "Connexion par abonnement"
+      "oauth": "Connexion par abonnement",
+      "agentImport": "Connexion importée de l'agent"
     },
     "oauth": {
       "customPkce": "OAuth personnalisé (avancé…)"
@@ -209,7 +210,8 @@
       "modelId": "ID du modèle",
       "modelAlias": "Alias",
       "notes": "Notes",
-      "dropRequestFields": "Compatibilité amont"
+      "dropRequestFields": "Compatibilité amont",
+      "agentSession": "Session de l'agent"
     },
     "form": {
       "addTitle": "Ajouter un fournisseur",
@@ -260,7 +262,11 @@
       "dropGroupHint": {
         "safe": "Paramètres de suivi et d'acheminement. Les retirer ne change pas la réponse du modèle.",
         "sensitive": "Les retirer change ce qui revient : sans response_format, un JSON garanti devient du texte libre ; sans thinking ni reasoning, le modèle est discrètement dégradé. À utiliser uniquement si le service amont les refuse."
-      }
+      },
+      "driverEndpointHint": "Fixé par le pilote de protocole intégré ; non modifiable.",
+      "driverFormatsHint": "Ce fournisseur est servi par un pilote de protocole intégré qui ne parle que OpenAI Chat. Tout agent peut s'y lier — le proxy d'AiOpt traduit.",
+      "agentSessionMissing": "Aucune session connectée trouvée. Connectez-vous dans l'agent, puis rouvrez cette fenêtre.",
+      "agentSessionHint": "Le jeton est lu depuis l'agent à chaque requête ; il n'est jamais stocké dans AiOpt ni écrit dans la configuration des agents. Pour changer de compte, reconnectez-vous dans l'agent."
     },
     "profiles": {
       "heading": "Profils de liaison",
@@ -411,6 +417,8 @@
       "requests": "Requêtes",
       "inputTokens": "Entrée",
       "outputTokens": "Sortie",
+      "cache": "Cache",
+      "reasoning": "Raisonnement",
       "totalTokens": "Total",
       "share": "Part"
     },
@@ -462,6 +470,7 @@
       "errors": "{{count}} en échec",
       "outputRatio": "Ratio sortie / entrée",
       "cacheHit": "Taux de succès du cache",
+      "reasoningShare": "Part du raisonnement dans la sortie",
       "sessions": "Sessions"
     },
     "weekday": {

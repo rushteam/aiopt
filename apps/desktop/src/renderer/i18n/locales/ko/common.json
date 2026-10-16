@@ -189,7 +189,8 @@
     },
     "credential": {
       "apiKey": "API 키",
-      "oauth": "구독 로그인"
+      "oauth": "구독 로그인",
+      "agentImport": "Agent 로그인 가져오기"
     },
     "oauth": {
       "customPkce": "사용자 OAuth(고급…)"
@@ -209,7 +210,8 @@
       "modelId": "모델 ID",
       "modelAlias": "별칭",
       "notes": "메모",
-      "dropRequestFields": "업스트림 호환성"
+      "dropRequestFields": "업스트림 호환성",
+      "agentSession": "Agent 세션"
     },
     "form": {
       "addTitle": "공급자 추가",
@@ -260,7 +262,11 @@
       "dropGroupHint": {
         "safe": "기록 및 라우팅용 매개변수입니다. 제거해도 모델의 응답은 바뀌지 않습니다.",
         "sensitive": "제거하면 돌아오는 내용이 바뀝니다. response_format이 없으면 보장된 JSON이 자유 텍스트가 되고, thinking이나 reasoning이 없으면 모델이 조용히 downgrade됩니다. 업스트림이 명확히 거부할 때만 사용하세요."
-      }
+      },
+      "driverEndpointHint": "내장 프로토콜 드라이버로 고정되어 있어 바꿀 수 없습니다.",
+      "driverFormatsHint": "이 공급자는 내장 프로토콜 드라이버가 제공하며 OpenAI Chat 형식만 사용합니다. 어떤 Agent든 바인딩할 수 있으며 AiOpt 프록시가 형식을 변환합니다.",
+      "agentSessionMissing": "로그인된 세션을 찾지 못했습니다. Agent에서 로그인한 뒤 이 창을 다시 여세요.",
+      "agentSessionHint": "토큰은 요청마다 Agent에서 읽으며 AiOpt에 저장되거나 Agent 설정에 기록되지 않습니다. 계정을 바꾸려면 Agent에서 다시 로그인하세요."
     },
     "profiles": {
       "heading": "바인딩 프로필",
@@ -411,6 +417,8 @@
       "requests": "요청 수",
       "inputTokens": "입력",
       "outputTokens": "출력",
+      "cache": "캐시",
+      "reasoning": "추론",
       "totalTokens": "합계",
       "share": "비중"
     },
@@ -462,6 +470,7 @@
       "errors": "실패 {{count}}건",
       "outputRatio": "출력 / 입력 비율",
       "cacheHit": "캐시 적중률",
+      "reasoningShare": "출력 중 추론 비율",
       "sessions": "세션 수"
     },
     "weekday": {

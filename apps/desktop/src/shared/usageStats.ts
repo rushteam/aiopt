@@ -39,8 +39,16 @@ export interface UsageEvent {
   ok: boolean;
   /** Upstream HTTP status (0 when the request never reached the provider). */
   status: number;
+  /** Prompt tokens NOT served from or written to the cache. */
   inputTokens: number;
+  /** Generated tokens, reasoning included. */
   outputTokens: number;
+  /** Prompt tokens served from the cache (0 on events recorded before this was tracked). */
+  cacheReadTokens: number;
+  /** Prompt tokens written to the cache. */
+  cacheWriteTokens: number;
+  /** The reasoning part of `outputTokens` (a subset, not added again). */
+  reasoningTokens: number;
 }
 
 /** The proxy-supplied shape: everything but the store-stamped `ts`. */
@@ -53,6 +61,10 @@ export interface UsageTotals {
   errorRequests: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  reasoningTokens: number;
+  /** input + output + cache read + cache write (reasoning is inside output). */
   totalTokens: number;
 }
 
@@ -119,7 +131,17 @@ export function shiftDayKey(ts: number, offset: number): string {
 }
 
 function emptyTotals(): UsageTotals {
-  return { requests: 0, okRequests: 0, errorRequests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  return {
+    requests: 0,
+    okRequests: 0,
+    errorRequests: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+  };
 }
 
 function addEvent(t: UsageTotals, e: UsageEvent): void {
@@ -128,7 +150,10 @@ function addEvent(t: UsageTotals, e: UsageEvent): void {
   else t.errorRequests += 1;
   t.inputTokens += e.inputTokens;
   t.outputTokens += e.outputTokens;
-  t.totalTokens += e.inputTokens + e.outputTokens;
+  t.cacheReadTokens += e.cacheReadTokens;
+  t.cacheWriteTokens += e.cacheWriteTokens;
+  t.reasoningTokens += e.reasoningTokens;
+  t.totalTokens += e.inputTokens + e.outputTokens + e.cacheReadTokens + e.cacheWriteTokens;
 }
 
 function bucketList(map: Map<string, UsageTotals>): UsageBucket[] {

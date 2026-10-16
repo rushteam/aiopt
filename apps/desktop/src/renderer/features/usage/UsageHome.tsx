@@ -42,11 +42,17 @@ const percent = new Intl.NumberFormat(undefined, { style: 'percent', maximumFrac
 
 function proxyDashboard(usage: UsageSnapshot, t: TranslateFn): DashboardData {
   const { totals } = usage;
+  const cacheable = totals.inputTokens + totals.cacheReadTokens;
   return {
-    daily: usage.daily.map((d) => ({ day: d.day, segments: [d.inputTokens, d.outputTokens], count: d.requests })),
+    daily: usage.daily.map((d) => ({
+      day: d.day,
+      segments: [d.inputTokens, d.outputTokens, d.cacheReadTokens + d.cacheWriteTokens],
+      count: d.requests,
+    })),
     segments: [
       { label: t('usage.totals.inputTokens'), color: 'accent' },
       { label: t('usage.totals.outputTokens'), color: 'chartOutput' },
+      { label: t('usage.table.cache'), color: 'chartCache' },
     ],
     retentionDays: usage.retentionDays,
     countLabel: t('usage.totals.requests'),
@@ -59,6 +65,14 @@ function proxyDashboard(usage: UsageSnapshot, t: TranslateFn): DashboardData {
       {
         label: t('usage.summary.outputRatio'),
         value: totals.inputTokens > 0 ? (totals.outputTokens / totals.inputTokens).toFixed(2) : '—',
+      },
+      {
+        label: t('usage.summary.cacheHit'),
+        value: cacheable > 0 ? percent.format(totals.cacheReadTokens / cacheable) : '—',
+      },
+      {
+        label: t('usage.summary.reasoningShare'),
+        value: totals.outputTokens > 0 ? percent.format(totals.reasoningTokens / totals.outputTokens) : '—',
       },
     ],
   };
@@ -95,6 +109,8 @@ function proxyColumns(t: TranslateFn): BreakdownColumn<UsageBucket>[] {
     { label: t('usage.table.requests'), value: (r) => r.requests },
     { label: t('usage.table.inputTokens'), value: (r) => r.inputTokens },
     { label: t('usage.table.outputTokens'), value: (r) => r.outputTokens },
+    { label: t('usage.table.cache'), value: (r) => r.cacheReadTokens + r.cacheWriteTokens },
+    { label: t('usage.table.reasoning'), value: (r) => r.reasoningTokens },
   ];
 }
 

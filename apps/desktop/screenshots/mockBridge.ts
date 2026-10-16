@@ -131,6 +131,9 @@ function totalsOf(requests: number, errors: number, input: number, output: numbe
     errorRequests: errors,
     inputTokens: input,
     outputTokens: output,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
     totalTokens: input + output,
   };
 }

@@ -189,7 +189,8 @@
     },
     "credential": {
       "apiKey": "Clave de API",
-      "oauth": "Inicio de sesión por suscripción"
+      "oauth": "Inicio de sesión por suscripción",
+      "agentImport": "Inicio de sesión importado del agent"
     },
     "oauth": {
       "customPkce": "OAuth personalizado (avanzado…)"
@@ -209,7 +210,8 @@
       "modelId": "ID del modelo",
       "modelAlias": "Alias",
       "notes": "Notas",
-      "dropRequestFields": "Compatibilidad con el upstream"
+      "dropRequestFields": "Compatibilidad con el upstream",
+      "agentSession": "Sesión del agent"
     },
     "form": {
       "addTitle": "Añadir proveedor",
@@ -260,7 +262,11 @@
       "dropGroupHint": {
         "safe": "Parámetros de registro y enrutamiento. Quitarlos no cambia la respuesta del modelo.",
         "sensitive": "Quitarlos cambia lo que se recibe: sin response_format, un JSON garantizado pasa a ser texto libre; sin thinking ni reasoning, el modelo se degrada en silencio. Úsalo solo si el upstream los rechaza."
-      }
+      },
+      "driverEndpointHint": "Fijado por el controlador de protocolo integrado; no se puede editar.",
+      "driverFormatsHint": "Este proveedor lo sirve un controlador de protocolo integrado que solo habla OpenAI Chat. Cualquier agent puede vincularlo: el proxy de AiOpt traduce.",
+      "agentSessionMissing": "No se encontró ninguna sesión iniciada. Inicia sesión en el agent y vuelve a abrir este diálogo.",
+      "agentSessionHint": "El token se lee del agent en cada solicitud; nunca se guarda en AiOpt ni se escribe en la configuración de los agents. Para cambiar de cuenta, vuelve a iniciar sesión en el agent."
     },
     "profiles": {
       "heading": "Perfiles de enlace",
@@ -411,6 +417,8 @@
       "requests": "Solicitudes",
       "inputTokens": "Entrada",
       "outputTokens": "Salida",
+      "cache": "Caché",
+      "reasoning": "Razonamiento",
       "totalTokens": "Total",
       "share": "Porcentaje"
     },
@@ -462,6 +470,7 @@
       "errors": "{{count}} fallidas",
       "outputRatio": "Relación salida / entrada",
       "cacheHit": "Tasa de aciertos de caché",
+      "reasoningShare": "Proporción de razonamiento en la salida",
       "sessions": "Sesiones"
     },
     "weekday": {

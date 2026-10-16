@@ -16,6 +16,9 @@ function event(overrides: Partial<UsageEvent> = {}): UsageEvent {
     status: 200,
     inputTokens: 10,
     outputTokens: 20,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
     ...overrides,
   };
 }
@@ -61,7 +64,7 @@ describe('aggregateUsage — totals', () => {
     const snap = aggregateUsage([
       event({ inputTokens: 10, outputTokens: 20 }),
       event({ ok: false, status: 502, inputTokens: 0, outputTokens: 0 }),
-      event({ inputTokens: 5, outputTokens: 5 }),
+      event({ inputTokens: 5, outputTokens: 5, cacheReadTokens: 30, cacheWriteTokens: 4, reasoningTokens: 3 }),
     ]);
     expect(snap.totals).toEqual({
       requests: 3,
@@ -69,7 +72,11 @@ describe('aggregateUsage — totals', () => {
       errorRequests: 1,
       inputTokens: 15,
       outputTokens: 25,
-      totalTokens: 40,
+      cacheReadTokens: 30,
+      cacheWriteTokens: 4,
+      reasoningTokens: 3,
+      // input + output + cache read + cache write; reasoning is already inside output.
+      totalTokens: 74,
     });
     expect(snap.eventCount).toBe(3);
   });
