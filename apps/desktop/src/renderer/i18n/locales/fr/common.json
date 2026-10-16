@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "homepage": "Page du projet"
   },
   "providers": {
     "title": "Fournisseurs",
@@ -481,6 +482,36 @@
       "unreadable": "La configuration MCP de {{agent}} ({{path}}) est illisible. AiOpt ne l’écrira pas tant qu’elle n’est pas corrigée.",
       "files": "Fichiers de configuration :",
       "claudeNote": "Claude Code réécrit souvent ~/.claude.json. Quittez Claude Code avant de modifier ses serveurs pour que votre changement ne soit pas écrasé.",
+      "gateway": {
+        "title": "Passerelle MCP",
+        "help": "Désactivée par défaut. Activée, AiOpt expose un seul point de terminaison MCP sur son proxy local et exécute lui-même les serveurs choisis : chaque agent n’a besoin que d’une entrée « aiopt ».",
+        "served": "{{count}} servi(s) : {{names}}",
+        "none": "Aucun serveur n’est encore servi. Sélectionnez un serveur ci-dessous et choisissez « Servir via la passerelle ».",
+        "note": "L’entrée « aiopt » est une URL locale qui ne fonctionne que lorsque AiOpt tourne et que la passerelle est activée. Démarrez une nouvelle session d’agent pour prendre en compte les changements.",
+        "add": "Ajouter",
+        "update": "Mettre à jour",
+        "remove": "Retirer",
+        "via": "Passerelle MCP",
+        "serve": "Servir via la passerelle",
+        "reconfirm": "Confirmer à nouveau",
+        "unserve": "Ne plus servir",
+        "agent": {
+          "absent": "Non connecté",
+          "same": "Connecté",
+          "stale": "Pointe vers une ancienne adresse"
+        },
+        "membership": {
+          "off": "Non servi",
+          "on": "Servi",
+          "stale": "Configuration modifiée : non servi tant que vous ne confirmez pas à nouveau"
+        },
+        "status": {
+          "idle": "Servi · démarre à la première utilisation",
+          "starting": "Démarrage…",
+          "running": "En cours · {{count}} outils",
+          "failed": "Démarrage impossible"
+        }
+      },
       "cancel": "Annuler",
       "valueMissing": "sans valeur",
       "server": "Serveur",
@@ -555,6 +586,8 @@
         "key": "Nom",
         "value": "Valeur",
         "valueKeep": "Conserver la valeur actuelle",
+        "showValue": "Afficher la valeur",
+        "hideValue": "Masquer la valeur",
         "removeVar": "Retirer",
         "addVar": "Ajouter",
         "valuesNote": "Les valeurs sont chiffrées dans AiOpt et écrites en clair dans le fichier de configuration de l’agent, qui en a besoin.",

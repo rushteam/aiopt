@@ -41,7 +41,7 @@ describe('config store (layered defaults + overrides)', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('theme')).toBe('system');
     expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
     expect(store.getOverrides()).toEqual({});
   });
 
@@ -50,7 +50,7 @@ describe('config store (layered defaults + overrides)', () => {
     const store = createConfigStore(persistence);
     const next = store.set('theme', 'dark');
     expect(next).toEqual({ theme: 'dark', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
     expect(store.get('theme')).toBe('dark');
     expect(persistence.saved).toEqual({ theme: 'dark' });
   });
@@ -61,7 +61,7 @@ describe('config store (layered defaults + overrides)', () => {
     expect(store.get('theme')).toBe('light');
     const next = store.reset('theme');
     expect(next).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
     // The override key is gone from the persisted blob — not persisted as 'system'.
     expect(persistence.saved).toEqual({});
     expect(store.getOverrides()).toEqual({});
@@ -120,7 +120,7 @@ describe('file preference persistence', () => {
     const file = path.join(dir, 'does-not-exist.json');
     const store = createConfigStore(createFilePreferencePersistence(file));
     expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
   });
 
   // A BOM (Notepad, PowerShell 5.1) made JSON.parse throw, so every override silently reset.
@@ -147,7 +147,7 @@ describe('file preference persistence', () => {
     fs.writeFileSync(file, '{ this is not json', 'utf8');
     const store = createConfigStore(createFilePreferencePersistence(file));
     expect(store.getEffective()).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'app', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
   });
 });
 
@@ -156,10 +156,10 @@ describe('skillsLibrary preference', () => {
     const store = createConfigStore(memoryPersistence());
     expect(store.get('skillsLibrary')).toBe('app');
     expect(store.set('skillsLibrary', 'home')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'home', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
     expect(store.get('skillsLibrary')).toBe('home');
     expect(store.set('skillsLibrary', 'agents')).toEqual({ theme: 'system', language: 'system', skillsLibrary: 'agents', proxyMode: false, warnOnQuitWithProxy: true,
-      experimentalMode: false, promptCache: true });
+      experimentalMode: false, promptCache: true, mcpGateway: false });
     expect(store.get('skillsLibrary')).toBe('agents');
   });
 
@@ -188,6 +188,7 @@ describe('language preference', () => {
       warnOnQuitWithProxy: true,
       experimentalMode: false,
       promptCache: true,
+      mcpGateway: false,
     });
     expect(store.get('language')).toBe('zh-CN');
   });

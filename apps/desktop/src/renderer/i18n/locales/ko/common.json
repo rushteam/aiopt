@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "불러오는 중…"
+    "loading": "불러오는 중…",
+    "homepage": "프로젝트 홈페이지"
   },
   "providers": {
     "title": "공급자",
@@ -481,6 +482,36 @@
       "unreadable": "{{agent}}의 MCP 설정({{path}})을 읽을 수 없습니다. 고칠 때까지 AiOpt는 이 파일에 쓰지 않습니다.",
       "files": "설정 파일:",
       "claudeNote": "Claude Code는 ~/.claude.json을 자주 다시 씁니다. 변경 내용이 덮어쓰이지 않도록 서버를 바꾸기 전에 Claude Code를 종료하세요.",
+      "gateway": {
+        "title": "MCP 게이트웨이",
+        "help": "기본값은 꺼짐입니다. 켜면 AiOpt가 로컬 프록시에서 MCP 엔드포인트 하나를 제공하고, 선택한 서버를 AiOpt가 직접 실행합니다. 각 에이전트에는 “aiopt” 항목 하나만 있으면 됩니다.",
+        "served": "{{count}}개 제공 중: {{names}}",
+        "none": "아직 제공 중인 서버가 없습니다. 아래에서 서버를 선택하고 “게이트웨이로 제공”을 누르세요.",
+        "note": "“aiopt” 항목은 로컬 URL이며 AiOpt가 실행 중이고 게이트웨이가 켜져 있을 때만 동작합니다. 변경 후에는 새 에이전트 세션을 시작하세요.",
+        "add": "추가",
+        "update": "업데이트",
+        "remove": "제거",
+        "via": "MCP 게이트웨이",
+        "serve": "게이트웨이로 제공",
+        "reconfirm": "다시 확인",
+        "unserve": "제공 중지",
+        "agent": {
+          "absent": "연결 안 됨",
+          "same": "연결됨",
+          "stale": "이전 주소를 가리킴"
+        },
+        "membership": {
+          "off": "제공 안 함",
+          "on": "제공 중",
+          "stale": "설정이 바뀌었습니다. 다시 확인할 때까지 제공되지 않습니다"
+        },
+        "status": {
+          "idle": "제공 중 · 처음 사용할 때 시작",
+          "starting": "시작 중…",
+          "running": "실행 중 · 도구 {{count}}개",
+          "failed": "시작할 수 없음"
+        }
+      },
       "cancel": "취소",
       "valueMissing": "값 없음",
       "server": "서버",
@@ -555,6 +586,8 @@
         "key": "이름",
         "value": "값",
         "valueKeep": "현재 값 유지",
+        "showValue": "값 표시",
+        "hideValue": "값 숨기기",
         "removeVar": "제거",
         "addVar": "추가",
         "valuesNote": "값은 AiOpt에 암호화되어 저장되고, 에이전트 설정 파일에는 평문으로 쓰입니다(에이전트가 읽어야 하므로).",

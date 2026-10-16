@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "homepage": "Página del proyecto"
   },
   "providers": {
     "title": "Proveedores",
@@ -481,6 +482,36 @@
       "unreadable": "No se pudo leer la configuración MCP de {{agent}} ({{path}}). AiOpt no la escribirá hasta que se corrija.",
       "files": "Archivos de configuración:",
       "claudeNote": "Claude Code reescribe ~/.claude.json a menudo. Cierra Claude Code antes de cambiar sus servidores para que tu cambio no se sobrescriba.",
+      "gateway": {
+        "title": "Pasarela MCP",
+        "help": "Desactivada por defecto. Al activarla, AiOpt ofrece un único endpoint MCP en su proxy local y ejecuta por sí mismo los servidores que elijas: cada agente solo necesita una entrada «aiopt».",
+        "served": "Sirviendo {{count}}: {{names}}",
+        "none": "Aún no se sirve ningún servidor. Selecciona uno abajo y elige «Servir a través de la pasarela».",
+        "note": "La entrada «aiopt» es una URL local que solo funciona mientras AiOpt está abierto y la pasarela activada. Inicia una nueva sesión del agente para aplicar los cambios.",
+        "add": "Añadir",
+        "update": "Actualizar",
+        "remove": "Quitar",
+        "via": "Pasarela MCP",
+        "serve": "Servir a través de la pasarela",
+        "reconfirm": "Confirmar de nuevo",
+        "unserve": "Dejar de servir",
+        "agent": {
+          "absent": "No conectado",
+          "same": "Conectado",
+          "stale": "Apunta a una dirección antigua"
+        },
+        "membership": {
+          "off": "No servido",
+          "on": "Servido",
+          "stale": "La configuración cambió: no se sirve hasta que confirmes de nuevo"
+        },
+        "status": {
+          "idle": "Servido · se inicia al usarse por primera vez",
+          "starting": "Iniciando…",
+          "running": "En ejecución · {{count}} herramientas",
+          "failed": "No se pudo iniciar"
+        }
+      },
       "cancel": "Cancelar",
       "valueMissing": "sin valor",
       "server": "Servidor",
@@ -555,6 +586,8 @@
         "key": "Nombre",
         "value": "Valor",
         "valueKeep": "Conservar el valor actual",
+        "showValue": "Mostrar valor",
+        "hideValue": "Ocultar valor",
         "removeVar": "Quitar",
         "addVar": "Añadir",
         "valuesNote": "Los valores se guardan cifrados en AiOpt y se escriben en texto plano en el archivo de configuración del agente, que los necesita.",

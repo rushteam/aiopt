@@ -1,9 +1,16 @@
-// About settings — version strings read from main via the app-info IPC.
+// About settings — version strings read from main via the app-info IPC, the update
+// check, and a link to the project's GitHub page.
+//
+// The link is a plain `target="_blank"` anchor: main's window-open handler denies the
+// popup and hands http(s) URLs to the system browser (security/navigation.ts).
 
 import { useEffect, useState } from 'react';
 import type { AppVersionsResult } from '../../../shared/ipc-channels';
 import { token, fontSize } from '../../themes/tokens';
 import { useT } from '../../i18n';
+import { UpdateSection } from './UpdateSection';
+
+export const PROJECT_HOMEPAGE = 'https://github.com/rushteam/aiopt';
 
 export function AboutSection() {
   const t = useT();
@@ -38,7 +45,19 @@ export function AboutSection() {
             </dd>
           </div>
         ))}
+        <dt style={{ color: token('textMuted'), fontSize: fontSize.base }}>{t('about.homepage')}</dt>
+        <dd style={{ margin: 0, fontSize: fontSize.base }}>
+          <a
+            href={PROJECT_HOMEPAGE}
+            target="_blank"
+            rel="noreferrer noopener"
+            style={{ color: token('accent'), textDecoration: 'none' }}
+          >
+            {PROJECT_HOMEPAGE.replace('https://', '')} ↗
+          </a>
+        </dd>
       </dl>
+      <UpdateSection />
     </section>
   );
 }

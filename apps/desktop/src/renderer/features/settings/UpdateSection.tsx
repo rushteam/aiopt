@@ -1,4 +1,5 @@
-// Update settings — shows the current version + update status and a check button.
+// Update block on the About page — update status and a check button (the current
+// version is About's first row).
 //
 // Status is owned by main, which compares against the newest published GitHub Release.
 // We read it once, subscribe to pushes, and reflect the in-flight `checking` state.
@@ -6,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { UpdateStatus } from '../../../shared/ipc-channels';
-import { disabledOpacity, token, fontSize, radius } from '../../themes/tokens';
+import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 
@@ -72,14 +73,8 @@ export function UpdateSection() {
   const checking = pending || status?.state === 'checking';
 
   return (
-    <section>
-      <h2 style={{ margin: '0 0 16px', fontSize: fontSize['2xl'] }}>{t('updates.title')}</h2>
-      <p style={{ margin: '0 0 8px', fontSize: fontSize.md }}>
-        {t('updates.currentVersion')}{' '}
-        <strong style={{ fontFamily: 'ui-monospace, monospace' }}>
-          {status?.currentVersion ?? '…'}
-        </strong>
-      </p>
+    <section style={{ marginTop: space['2xl'] }}>
+      <h3 style={{ margin: '0 0 8px', fontSize: fontSize.lg }}>{t('updates.title')}</h3>
       <p
         style={{
           margin: '0 0 16px',

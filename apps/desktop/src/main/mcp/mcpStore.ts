@@ -10,6 +10,7 @@
 // spec into an agent file, so it is confirmed first through the injected `confirmWrite` — a
 // main-side native dialog the renderer cannot answer. Deleting an agent's entry only removes.
 
+import { createHash } from 'node:crypto';
 import { readUtf8WithoutBom, writeFileAtomicSync } from '../storeFile';
 import { throwIpcError } from '../ipc/validate';
 import { MAIN_ONLY_SECRET_PREFIX, type SecretStore } from '../secrets/secretStore';
@@ -38,6 +39,13 @@ import {
   type McpWriteResult,
 } from '../../shared/mcp';
 import {
+  GATEWAY_SERVER_NAME,
+  type McpGatewayAgentState,
+  type McpGatewayMembership,
+  type McpGatewaySnapshot,
+  type McpGatewayUpstreamView,
+} from '../../shared/mcpGateway';
+import {
   McpConfigUnreadableError,
   mcpConfigPath,
   readAgentMcp,
@@ -53,6 +61,12 @@ interface LibraryServer extends McpServerShape {
   name: string;
   envKeys: string[];
   headerKeys: string[];
+  /**
+   * Set when the user confirmed serving this server through the MCP gateway: the
+   * {@link gatewayFingerprint} they saw. A later spec edit no longer matches, so the server
+   * stops being served until it is confirmed again (see docs/dev-rules/mcp-gateway.md).
+   */
+  gateway?: string;
 }
 
 interface LibraryDoc {
@@ -82,6 +96,46 @@ export interface McpStoreDeps {
   /** Install signal per agent (the agent's config dir exists). */
   isInstalled: (agentId: McpAgentId) => boolean;
   displayPath: (abs: string) => string;
+  /**
+   * Native confirmation before a server is served through the MCP gateway (AiOpt itself
+   * will run the command / connect to the URL). Absent = refuse: fail closed.
+   */
+  confirmGateway?: (req: McpConfirmRequest) => Promise<boolean>;
+  /** Called after any library change, so the gateway can restart changed upstreams. */
+  onLibraryChange?: () => void;
+  /** The live MCP gateway, for the snapshot and the agent entry. Absent = no gateway. */
+  gateway?: McpStoreGatewayHooks;
+}
+
+export interface McpStoreGatewayHooks {
+  /** The `mcpGateway` preference. */
+  enabled(): boolean;
+  /** The endpoint agents connect to (loopback + path token), or null while unbound. MAIN-ONLY. */
+  url(): string | null;
+  status(): Record<string, McpGatewayUpstreamView>;
+}
+
+/** One server the gateway serves, values included. MAIN-ONLY: never log or send over IPC. */
+export interface GatewayServerSpec {
+  name: string;
+  live: LiveMcpServer;
+  /** Changes whenever the spec or a value changes, so the gateway restarts that upstream. */
+  version: string;
+}
+
+/** What the user confirms for the gateway: transport, spec summary, and key names. */
+function gatewayFingerprint(s: LibraryServer): string {
+  return JSON.stringify([s.transport, mcpSummary(s), [...s.envKeys].sort(), [...s.headerKeys].sort()]);
+}
+
+function membership(s: LibraryServer): McpGatewayMembership {
+  if (s.gateway === undefined) return 'off';
+  return s.gateway === gatewayFingerprint(s) ? 'on' : 'stale';
+}
+
+/** The gateway's own entry name is reserved: the library can neither hold nor pull it. */
+export function isReservedMcpName(name: string): boolean {
+  return name.toLowerCase() === GATEWAY_SERVER_NAME;
 }
 
 function secretKey(name: string): string {
@@ -95,7 +149,12 @@ function validLibraryServer(raw: unknown): LibraryServer | null {
   if (o.transport !== 'stdio' && o.transport !== 'http' && o.transport !== 'sse') return null;
   const strings = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-  const base = { name: o.name, envKeys: strings(o.envKeys), headerKeys: strings(o.headerKeys) };
+  const base = {
+    name: o.name,
+    envKeys: strings(o.envKeys),
+    headerKeys: strings(o.headerKeys),
+    ...(typeof o.gateway === 'string' && o.gateway.length <= 16384 ? { gateway: o.gateway } : {}),
+  };
   if (o.transport === 'stdio') {
     if (typeof o.command !== 'string' || o.command === '') return null;
     return { ...base, transport: 'stdio', command: o.command, args: strings(o.args) };
@@ -113,7 +172,7 @@ function loadDoc(filePath: string): LibraryDoc {
     const servers: LibraryServer[] = [];
     for (const item of list) {
       const s = validLibraryServer(item);
-      if (s && !seen.has(s.name)) {
+      if (s && !seen.has(s.name) && !isReservedMcpName(s.name)) {
         seen.add(s.name);
         servers.push(s);
       }
@@ -129,6 +188,7 @@ export function validateSaveRequest(raw: unknown): McpSaveRequest {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throwIpcError('INVALID_PARAMS', 'payload must be an object');
   const o = raw as Record<string, unknown>;
   if (!isMcpName(o.name)) throwIpcError('INVALID_PARAMS', 'invalid server name');
+  if (isReservedMcpName(o.name)) throwIpcError('ALREADY_EXISTS', 'this name is reserved for the MCP gateway');
   if (o.originalName !== undefined && !isMcpName(o.originalName)) throwIpcError('INVALID_PARAMS', 'invalid originalName');
   if (o.transport !== 'stdio' && o.transport !== 'http' && o.transport !== 'sse') {
     throwIpcError('INVALID_PARAMS', 'invalid transport');
@@ -213,6 +273,11 @@ export function createMcpStore(deps: McpStoreDeps) {
 
   const persist = (): void => {
     writeFileAtomicSync(deps.filePath, `${JSON.stringify(doc, null, 2)}\n`);
+    try {
+      deps.onLibraryChange?.();
+    } catch {
+      // Best-effort: the gateway re-reads the library on its next request anyway.
+    }
   };
 
   const readValues = (name: string): Values => {
@@ -301,6 +366,7 @@ export function createMcpStore(deps: McpStoreDeps) {
       ...(s.transport === 'stdio' ? { command: s.command, args: s.args } : { url: s.url }),
       env: s.envKeys.map((key) => ({ key, set: Object.hasOwn(values.env, key) })),
       headers: s.headerKeys.map((key) => ({ key, set: Object.hasOwn(values.headers, key) })),
+      gateway: membership(s),
     };
   };
 
@@ -360,13 +426,28 @@ export function createMcpStore(deps: McpStoreDeps) {
   };
 
   /** Put a server into the library (replacing one of the same name) with its values. */
-  const putLibrary = (next: LibraryServer, values: Values): void => {
-    const existing = find(next.name);
+  const putLibrary = (incoming: LibraryServer, values: Values): void => {
+    const existing = find(incoming.name);
+    // Keep the gateway confirmation; a changed spec turns it `stale` rather than dropping it.
+    const next = existing?.gateway !== undefined ? { ...incoming, gateway: existing.gateway } : incoming;
     if (!existing && doc.servers.length >= MCP_LIMITS.maxServers) throwIpcError('PRECONDITION_FAILED', 'too many servers');
     assertSecretsFor(values);
     writeValues(next.name, values);
     doc = { servers: existing ? doc.servers.map((s) => (s.name === next.name ? next : s)) : [...doc.servers, next] };
     persist();
+  };
+
+  const gatewaySnapshot = (live: Record<McpAgentId, AgentMcpRead>): McpGatewaySnapshot => {
+    const url = deps.gateway?.url() ?? null;
+    const agents: Partial<Record<McpAgentId, McpGatewayAgentState>> = {};
+    for (const a of MCP_AGENT_IDS) {
+      const r = live[a];
+      if (r.state !== 'ok') continue;
+      const got = r.servers.get(GATEWAY_SERVER_NAME);
+      // `stale`: the entry points elsewhere (an old port / token); re-adding fixes it.
+      agents[a] = !got ? 'absent' : got.transport !== 'stdio' && url !== null && got.url === url ? 'same' : 'stale';
+    }
+    return { enabled: deps.gateway?.enabled() ?? false, agents, upstreams: deps.gateway?.status() ?? {} };
   };
 
   const fromLive = (name: string, live: LiveMcpServer): LibraryServer => ({
@@ -383,7 +464,7 @@ export function createMcpStore(deps: McpStoreDeps) {
       const names = new Set(doc.servers.map((s) => s.name));
       for (const a of MCP_AGENT_IDS) {
         const r = live[a];
-        if (r.state === 'ok') for (const n of r.servers.keys()) if (isMcpName(n)) names.add(n);
+        if (r.state === 'ok') for (const n of r.servers.keys()) if (isMcpName(n) && !isReservedMcpName(n)) names.add(n);
       }
       const rows: McpMatrixRow[] = [...names].sort((x, y) => x.localeCompare(y)).map((name) => {
         const s = find(name);
@@ -408,11 +489,47 @@ export function createMcpStore(deps: McpStoreDeps) {
         configDisplayPath: deps.displayPath(mcpConfigPath(agentId)),
         unreadable: live[agentId].state === 'unreadable',
       }));
-      return { rows, agents, secretsAvailable: deps.secrets.isAvailable() };
+      return { rows, agents, secretsAvailable: deps.secrets.isAvailable(), gateway: gatewaySnapshot(live) };
+    },
+
+    /**
+     * Add (or remove) the gateway's single `aiopt` entry in these agents' files. The entry is
+     * a loopback URL to AiOpt itself — it runs nothing — so it needs no native confirmation;
+     * what the gateway serves is confirmed per server (`setGateway`).
+     */
+    setGatewayAgents(agentIds: McpAgentId[], on: boolean): McpSnapshot {
+      assertWritable(agentIds);
+      const writes = emptyWrites();
+      if (on) {
+        const url = deps.gateway?.enabled() ? deps.gateway.url() : null;
+        if (!url) throwIpcError('PRECONDITION_FAILED', 'the MCP gateway is off');
+        const entry: LiveMcpServer = { transport: 'http', url, env: {}, headers: {} };
+        for (const a of agentIds) writes.get(a)!.put.set(GATEWAY_SERVER_NAME, entry);
+      } else {
+        for (const a of agentIds) {
+          const r = readAgentMcp(a);
+          if (r.state === 'ok' && r.servers.has(GATEWAY_SERVER_NAME)) writes.get(a)!.drop.add(GATEWAY_SERVER_NAME);
+        }
+      }
+      applyToAgents(writes);
+      return this.snapshot();
+    },
+
+    /**
+     * GATED: one stored env / header value in plaintext, for the edit form's reveal button.
+     * Deliberately one value per call (no bulk export). Never log the result. Null when the
+     * server is unknown or the key has no stored value.
+     */
+    revealValue(name: string, kind: 'env' | 'header', key: string): string | null {
+      if (!find(name)) return null;
+      const values = readValues(name);
+      const map = kind === 'env' ? values.env : values.headers;
+      return Object.hasOwn(map, key) && typeof map[key] === 'string' ? map[key]! : null;
     },
 
     /** Add or edit a library server. Agent files are not touched; they show `differs` until pushed. */
     save(req: McpSaveRequest): McpSnapshot {
+      if (isReservedMcpName(req.name)) throwIpcError('ALREADY_EXISTS', 'this name is reserved for the MCP gateway');
       const previous = req.originalName !== undefined ? find(req.originalName) : undefined;
       if (req.originalName !== undefined && !previous) throwIpcError('NOT_FOUND', 'server not found');
       if (req.name !== req.originalName && find(req.name)) throwIpcError('ALREADY_EXISTS', 'a server with this name exists');
@@ -436,6 +553,7 @@ export function createMcpStore(deps: McpStoreDeps) {
         ...(req.transport === 'stdio' ? { command: req.command, args: req.args ?? [] } : { url: req.url }),
         envKeys: req.env.map((v) => v.key),
         headerKeys: req.headers.map((v) => v.key),
+        ...(previous?.gateway !== undefined ? { gateway: previous.gateway } : {}),
       };
       assertSecretsFor(values);
       writeValues(next.name, values);
@@ -452,6 +570,7 @@ export function createMcpStore(deps: McpStoreDeps) {
      * secret store. No agent file is written, so no confirmation: the spec is the user's own.
      */
     pull(agentId: McpAgentId, name: string): McpSnapshot {
+      if (isReservedMcpName(name)) throwIpcError('INVALID_PARAMS', 'the MCP gateway entry cannot be pulled');
       const live = agentEntry(agentId, name);
       checkLimits(live);
       putLibrary(fromLive(name, live), { env: { ...live.env }, headers: { ...live.headers } });
@@ -556,6 +675,45 @@ export function createMcpStore(deps: McpStoreDeps) {
       putLibrary(next, { env: stdio ? env : {}, headers: stdio ? {} : headers });
       log.info('mcp.merged', { agentId, fields: picks.size });
       return this.snapshot();
+    },
+
+    /**
+     * Serve (or stop serving) a library server through the MCP gateway. Turning it on means
+     * AiOpt itself will run the command / connect to the URL, so it is confirmed natively
+     * first (also when re-confirming a `stale` one). Turning it off needs no confirmation.
+     */
+    async setGateway(name: string, on: boolean): Promise<McpWriteResult> {
+      const s = find(name);
+      if (!s) throwIpcError('NOT_FOUND', 'server not found');
+      if (!on) {
+        if (s.gateway !== undefined) {
+          doc = { servers: doc.servers.map((x) => (x.name === name ? { ...x, gateway: undefined } : x)) };
+          persist();
+          log.info('mcp.gateway_removed');
+        }
+        return { saved: true, snapshot: this.snapshot() };
+      }
+      if (membership(s) === 'on') return { saved: true, snapshot: this.snapshot() };
+      const req = confirmFor(s, []);
+      if (!deps.confirmGateway || !(await deps.confirmGateway(req))) return { saved: false, snapshot: this.snapshot() };
+      // What the user saw is what gets served: a spec edited during the dialog is not.
+      const now = find(name);
+      if (!now || mcpSummary(now) !== req.summary) return { saved: false, snapshot: this.snapshot() };
+      doc = { servers: doc.servers.map((x) => (x.name === name ? { ...x, gateway: gatewayFingerprint(x) } : x)) };
+      persist();
+      log.info('mcp.gateway_added');
+      return { saved: true, snapshot: this.snapshot() };
+    },
+
+    /** MAIN-ONLY: the servers the gateway may run, with their values. Never log or send this. */
+    gatewayServers(): GatewayServerSpec[] {
+      return doc.servers
+        .filter((s) => membership(s) === 'on')
+        .map((s) => {
+          const live = toLive(s, readValues(s.name));
+          // A digest, so the in-memory version string never holds a value in clear.
+          return { name: s.name, live, version: createHash('sha256').update(JSON.stringify(live)).digest('hex') };
+        });
     },
 
     /** Per agent, the library servers its file has — what a config profile records. */

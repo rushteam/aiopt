@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "読み込み中…"
+    "loading": "読み込み中…",
+    "homepage": "プロジェクトのホームページ"
   },
   "providers": {
     "title": "プロバイダー",
@@ -481,6 +482,36 @@
       "unreadable": "{{agent}} の MCP 設定（{{path}}）を読み取れませんでした。修正されるまで AiOpt は書き込みません。",
       "files": "設定ファイル：",
       "claudeNote": "Claude Code は ~/.claude.json を頻繁に書き換えます。変更が上書きされないよう、サーバーを変更する前に Claude Code を終了してください。",
+      "gateway": {
+        "title": "MCP ゲートウェイ",
+        "help": "既定ではオフです。オンにすると、AiOpt はローカルプロキシ上で 1 つの MCP エンドポイントを提供し、選んだサーバーを AiOpt 自身が実行します。各エージェントには「aiopt」エントリが 1 つあれば十分です。",
+        "served": "{{count}} 個を提供中：{{names}}",
+        "none": "まだ提供しているサーバーはありません。下でサーバーを選び、「ゲートウェイ経由で提供」を選んでください。",
+        "note": "「aiopt」エントリはローカル URL で、AiOpt が起動中かつゲートウェイがオンのときだけ使えます。変更後は新しいエージェントセッションを開始してください。",
+        "add": "追加",
+        "update": "更新",
+        "remove": "削除",
+        "via": "MCP ゲートウェイ",
+        "serve": "ゲートウェイ経由で提供",
+        "reconfirm": "再確認",
+        "unserve": "提供を停止",
+        "agent": {
+          "absent": "未接続",
+          "same": "接続済み",
+          "stale": "古いアドレスを指しています"
+        },
+        "membership": {
+          "off": "未提供",
+          "on": "提供中",
+          "stale": "設定が変更されました。再確認するまで提供されません"
+        },
+        "status": {
+          "idle": "提供中 · 初回使用時に起動",
+          "starting": "起動中…",
+          "running": "実行中 · ツール {{count}} 個",
+          "failed": "起動できませんでした"
+        }
+      },
       "cancel": "キャンセル",
       "valueMissing": "値なし",
       "server": "サーバー",
@@ -555,6 +586,8 @@
         "key": "名前",
         "value": "値",
         "valueKeep": "現在の値を保持",
+        "showValue": "値を表示",
+        "hideValue": "値を隠す",
         "removeVar": "削除",
         "addVar": "追加",
         "valuesNote": "値は AiOpt 内で暗号化して保存され、エージェントの設定ファイルには平文で書き込まれます（エージェントが必要とするため）。",

@@ -97,6 +97,18 @@ The single chat agent on the workbench. It breaks a request into tasks and propo
 - **de**: Koordinator
 - **es**: Coordinador
 
+### MCP gateway (`mcp-gateway`)
+
+AiOpt's opt-in single MCP endpoint on its local proxy: AiOpt runs the chosen library servers itself and each agent gets one 'aiopt' entry. Keep 'MCP' untranslated.
+
+- **zh-CN**: MCP 网关
+  - forbidden: `MCP 代理`, `MCP 聚合器`
+- **ja**: MCP ゲートウェイ
+- **ko**: MCP 게이트웨이
+- **fr**: Passerelle MCP
+- **de**: MCP-Gateway
+- **es**: Pasarela MCP
+
 ### Merge (`merge`)
 
 Reconcile a skill that differs between the central library and an agent by picking, per file, which side's version the library keeps. The picked agent files are written back to the CENTRAL library only (the agent copy is untouched); it is not a line-level 3-way merge. Term still under discussion.

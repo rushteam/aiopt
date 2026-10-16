@@ -18,6 +18,7 @@ import {
   getProviderManager,
   getTranslationProxy,
   getUpdateService,
+  shutdownMcpGateway,
   shutdownWorkbench,
 } from './services';
 import {
@@ -157,6 +158,8 @@ app.on('before-quit', (event) => {
   markQuitting();
   // Ends the orchestrator and AiOpt's herdr session (every worker with it). Non-blocking.
   shutdownWorkbench();
+  // Stops every MCP gateway child (stdio servers AiOpt runs). Non-blocking, best-effort.
+  void shutdownMcpGateway().catch(() => undefined);
   void getTranslationProxy()
     .stop()
     .catch((err) => logger.error('proxy.stop_failed', { message: err instanceof Error ? err.message : String(err) }));

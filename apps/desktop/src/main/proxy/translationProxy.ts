@@ -21,6 +21,7 @@
 // layer (the pure router / translators / SSE codec it composes are). The transport
 // (`ProxyFetch`) and key resolver are injected so it never imports Electron directly.
 
+import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { AgentId, ApiFormat } from '../../shared/aiProviders';
@@ -108,6 +109,25 @@ export interface TranslationProxyDeps {
    * {@link getKey}); optional — absent or null = the plain HTTP path.
    */
   upstreamFor?: (providerId: string) => BoundUpstream | null;
+  /**
+   * The MCP gateway (docs/dev-rules/mcp-gateway.md), served on this same loopback
+   * listener under its own path token. Checked before route tokens; absent = no gateway.
+   */
+  gateway?: ProxyGatewayHook;
+}
+
+/** The MCP gateway as the proxy sees it: its live token and a request handler. */
+export interface ProxyGatewayHook {
+  /** The current gateway path token, or null while the gateway is off. */
+  token(): string | null;
+  handle(req: IncomingMessage, res: ServerResponse, rest: string): Promise<void>;
+}
+
+/** Constant-time string compare, so the gateway token cannot be probed by timing. */
+function sameToken(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
 export interface TranslationProxy {
@@ -301,6 +321,11 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const { token, rest } = parseTokenFromPath(req.url ?? '/');
+    const gatewayToken = deps.gateway?.token() ?? null;
+    if (deps.gateway && gatewayToken && token !== '' && sameToken(token, gatewayToken)) {
+      await deps.gateway.handle(req, res, rest);
+      return;
+    }
     const spec = router.resolve(token);
     if (!spec) {
       // Unknown/missing token: we cannot know the inbound format, so answer generically.

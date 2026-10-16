@@ -31,6 +31,8 @@ export interface ConfigIpcHooks {
   onLanguageChange?: () => void;
   /** Called after `experimentalMode` is set or reset (tray workbench items depend on it). */
   onExperimentalModeChange?: () => void;
+  /** Called after `mcpGateway` is set or reset (start serving / stop every gateway child). */
+  onMcpGatewayChange?: (on: boolean) => void;
 }
 
 export function registerConfigIpc(
@@ -68,6 +70,15 @@ export function registerConfigIpc(
     }
   };
 
+  const reactToMcpGateway = (next: PreferencesShape): void => {
+    if (!hooks.onMcpGatewayChange) return;
+    try {
+      hooks.onMcpGatewayChange(next.mcpGateway);
+    } catch {
+      // Best-effort; the preference is already persisted and gates every gateway request.
+    }
+  };
+
   registry.register(IPC_CHANNELS.configGetAll, (_payload, meta) => {
     meta.assertTrustedSender();
     return store.getEffective();
@@ -83,6 +94,7 @@ export function registerConfigIpc(
     if (key === 'proxyMode') reactToProxyMode(next);
     if (key === 'language') reactToLanguage();
     if (key === 'experimentalMode') reactToExperimentalMode();
+    if (key === 'mcpGateway') reactToMcpGateway(next);
     return next;
   });
 
@@ -95,6 +107,7 @@ export function registerConfigIpc(
     if (key === 'proxyMode') reactToProxyMode(next);
     if (key === 'language') reactToLanguage();
     if (key === 'experimentalMode') reactToExperimentalMode();
+    if (key === 'mcpGateway') reactToMcpGateway(next);
     return next;
   });
 }

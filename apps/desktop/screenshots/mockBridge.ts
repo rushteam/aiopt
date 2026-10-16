@@ -234,13 +234,14 @@ const fsView = {
   args: ['-y', '@modelcontextprotocol/server-filesystem', '~/Projects'],
   env: [],
   headers: [],
+  gateway: 'on' as const,
 };
 const fsEntry = { transport: fsView.transport, command: fsView.command, args: fsView.args, envKeys: [], headerKeys: [] };
 const mcpSnapshot: McpSnapshot = {
   rows: [
     {
       name: 'docs-search',
-      library: { name: 'docs-search', transport: 'http', url: 'https://mcp.example.com/mcp', env: [], headers: [{ key: 'Authorization', set: true }] },
+      library: { name: 'docs-search', transport: 'http', url: 'https://mcp.example.com/mcp', env: [], headers: [{ key: 'Authorization', set: true }], gateway: 'off' },
       agents: {
         claude: { state: 'same', supported: true, entry: { transport: 'http', url: 'https://mcp.example.com/mcp', envKeys: [], headerKeys: ['Authorization'] } },
         codex: { state: 'library-only', supported: true, entry: null },
@@ -274,6 +275,11 @@ const mcpSnapshot: McpSnapshot = {
     { agentId: 'hermes', installed: false, configDisplayPath: '~/.hermes/config.yaml', unreadable: false },
   ],
   secretsAvailable: true,
+  gateway: {
+    enabled: true,
+    agents: { claude: 'same', codex: 'absent', gemini: 'absent' },
+    upstreams: { filesystem: { status: 'running', tools: 14 } },
+  },
 };
 
 const sessionsSnapshot: SessionsSnapshot = {
@@ -367,6 +373,7 @@ const prefs: PreferencesShape = {
   language: lang,
   skillsLibrary: 'home',
   proxyMode: false,
+  mcpGateway: true,
   warnOnQuitWithProxy: true,
   promptCache: true,
   experimentalMode: params.get('experimental') === '1',
@@ -570,6 +577,9 @@ const bridge: AiOptBridge = {
     deleteAgent: refused,
     diff: refused,
     merge: refused,
+    revealValue: async () => ({ value: 'demo-value' }),
+    setGatewayServer: refused,
+    setGatewayAgents: refused,
   },
   skills: {
     get: async () => skillsSnapshot,

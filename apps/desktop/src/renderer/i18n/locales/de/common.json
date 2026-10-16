@@ -123,7 +123,8 @@
     "electron": "Electron",
     "chrome": "Chrome",
     "node": "Node",
-    "loading": "Wird geladen…"
+    "loading": "Wird geladen…",
+    "homepage": "Projektseite"
   },
   "providers": {
     "title": "Anbieter",
@@ -481,6 +482,36 @@
       "unreadable": "Die MCP-Konfiguration von {{agent}} ({{path}}) konnte nicht gelesen werden. AiOpt schreibt sie erst, wenn sie repariert ist.",
       "files": "Konfigurationsdateien:",
       "claudeNote": "Claude Code schreibt ~/.claude.json häufig neu. Beenden Sie Claude Code, bevor Sie seine Server ändern, damit Ihre Änderung nicht überschrieben wird.",
+      "gateway": {
+        "title": "MCP-Gateway",
+        "help": "Standardmäßig aus. Eingeschaltet stellt AiOpt einen einzigen MCP-Endpunkt auf seinem lokalen Proxy bereit und führt die gewählten Server selbst aus – jeder Agent braucht dann nur einen „aiopt“-Eintrag.",
+        "served": "{{count}} bereitgestellt: {{names}}",
+        "none": "Noch wird kein Server bereitgestellt. Wählen Sie unten einen Server und dann „Über das Gateway bereitstellen“.",
+        "note": "Der „aiopt“-Eintrag ist eine lokale URL, die nur funktioniert, solange AiOpt läuft und das Gateway eingeschaltet ist. Starten Sie nach Änderungen eine neue Agent-Sitzung.",
+        "add": "Hinzufügen",
+        "update": "Aktualisieren",
+        "remove": "Entfernen",
+        "via": "MCP-Gateway",
+        "serve": "Über das Gateway bereitstellen",
+        "reconfirm": "Erneut bestätigen",
+        "unserve": "Nicht mehr bereitstellen",
+        "agent": {
+          "absent": "Nicht verbunden",
+          "same": "Verbunden",
+          "stale": "Zeigt auf eine alte Adresse"
+        },
+        "membership": {
+          "off": "Nicht bereitgestellt",
+          "on": "Bereitgestellt",
+          "stale": "Konfiguration geändert – erst nach erneuter Bestätigung bereitgestellt"
+        },
+        "status": {
+          "idle": "Bereitgestellt · startet bei der ersten Nutzung",
+          "starting": "Startet…",
+          "running": "Läuft · {{count}} Tools",
+          "failed": "Start fehlgeschlagen"
+        }
+      },
       "cancel": "Abbrechen",
       "valueMissing": "kein Wert",
       "server": "Server",
@@ -555,6 +586,8 @@
         "key": "Name",
         "value": "Wert",
         "valueKeep": "Aktuellen Wert behalten",
+        "showValue": "Wert anzeigen",
+        "hideValue": "Wert verbergen",
         "removeVar": "Entfernen",
         "addVar": "Hinzufügen",
         "valuesNote": "Werte werden in AiOpt verschlüsselt gespeichert und im Klartext in die Konfigurationsdatei des Agenten geschrieben, da der Agent sie braucht.",
