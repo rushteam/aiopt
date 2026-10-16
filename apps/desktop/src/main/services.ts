@@ -47,6 +47,8 @@ import { createCursorDriver } from './upstreams/cursor/driver';
 import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agentCli';
 import { createWorkBuddyDriver, type WorkBuddyFetch } from './upstreams/workbuddy/driver';
 import { createWorkBuddyAuth } from './upstreams/workbuddy/auth';
+import { createKiroDriver, type KiroFetch } from './upstreams/kiro/driver';
+import { createKiroAuth } from './upstreams/kiro/auth';
 import { vendorHeaders } from './proxy/vendorHeaders';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
@@ -248,6 +250,11 @@ function getUpstreamRegistry(): UpstreamRegistry {
         const wbFetch = ((url, init) => net.fetch(url, init as RequestInit)) as WorkBuddyFetch;
         return createWorkBuddyDriver({ fetchImpl: wbFetch, account: (signal) => auth.current(signal) });
       })(),
+      // Signed-in kiro-cli / Kiro IDE (agent import): Kiro's conversation API over net.fetch.
+      createKiroDriver({
+        fetchImpl: ((url, init) => net.fetch(url, init as RequestInit)) as KiroFetch,
+        auth: createKiroAuth({ fetchImpl }),
+      }),
     ]);
   }
   return upstreamRegistry;

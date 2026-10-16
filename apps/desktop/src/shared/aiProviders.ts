@@ -264,6 +264,13 @@ export const AGENT_SPECS = {
   },
   // MiMo Code (Xiaomi) is an OpenCode fork with the same config shape: provider map +
   // model pointer. Its config lives under ~/.config/mimocode (or $MIMOCODE_HOME/config).
+  // Kiro (kiro-cli / the Kiro IDE) has no custom endpoint; its sign-in is imported and
+  // served by the Kiro upstream driver, so `binding` is null.
+  kiro: {
+    name: 'Kiro',
+    skillsDir: null,
+    binding: null,
+  },
   mimocode: {
     name: 'MiMo Code',
     skillsDir: null,

@@ -3,7 +3,7 @@
 > **Status:** authoritative development rule
 > **Read before:** adding or changing an upstream driver — a provider AiOpt serves through a
 > private protocol instead of forwarding an HTTP POST to an OpenAI / Anthropic / Gemini
-> compatible endpoint (today: Cursor's agent API and WorkBuddy's client-shaped chat).
+> compatible endpoint (today: Cursor's agent API, WorkBuddy's client-shaped chat and Kiro's conversation API).
 
 Most providers are a base URL + a key, and the translation proxy forwards to them itself.
 A provider whose upstream speaks something else (Connect + protobuf, a vendor RPC, …) is

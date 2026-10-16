@@ -104,4 +104,13 @@ export const AGENT_IMPORT_PROVIDER_TEMPLATES: Record<AgentImportAgentId, AgentIm
     apiFormats: ['openai'],
     models: [{ id: 'auto' }, { id: 'glm-5.3' }, { id: 'kimi-k3-1' }, { id: 'deepseek-v4-pro' }],
   },
+  // kiro-cli's / the Kiro IDE's sign-in, served by the Kiro upstream driver (its own
+  // conversation API and AWS event stream; the base is fixed by the driver).
+  kiro: {
+    agentId: 'kiro',
+    name: 'Kiro (sign-in)',
+    baseUrl: 'https://runtime.us-east-1.kiro.dev',
+    apiFormats: ['openai'],
+    models: [{ id: 'auto' }],
+  },
 };

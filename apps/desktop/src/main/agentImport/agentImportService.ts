@@ -53,6 +53,7 @@ import {
   workbuddyInstallDirExists,
   workbuddySessionSnapshot,
 } from './workbuddySession';
+import { kiroInstallDirExists, kiroSessionSnapshot, readKiroAccessTokenSync } from './kiroSession';
 import {
   grokInstallDirExists,
   grokSessionSnapshot,
@@ -71,6 +72,7 @@ function agentInstalled(agentId: AgentImportAgentId): boolean {
   if (agentId === 'commandcode') return commandcodeInstallDirExists();
   if (agentId === 'zcode') return zcodeInstallDirExists();
   if (agentId === 'workbuddy') return workbuddyInstallDirExists();
+  if (agentId === 'kiro') return kiroInstallDirExists();
   try {
     return fs.existsSync(agentConfigDir(agentId));
   } catch {
@@ -176,7 +178,7 @@ export function scanAgentImportCandidates(): AgentImportCandidate[] {
         reason: snap.available ? undefined : 'not_signed_in',
       };
     }
-    if (agentId === 'dsh' || agentId === 'commandcode' || agentId === 'zcode' || agentId === 'workbuddy') {
+    if (agentId === 'dsh' || agentId === 'commandcode' || agentId === 'zcode' || agentId === 'workbuddy' || agentId === 'kiro') {
       const snap =
         agentId === 'dsh'
           ? dshSessionSnapshot()
@@ -184,7 +186,9 @@ export function scanAgentImportCandidates(): AgentImportCandidate[] {
             ? commandcodeSessionSnapshot()
             : agentId === 'zcode'
               ? zcodeSessionSnapshot()
-              : workbuddySessionSnapshot();
+              : agentId === 'workbuddy'
+                ? workbuddySessionSnapshot()
+                : kiroSessionSnapshot();
       return {
         agentId,
         agentName,
@@ -214,6 +218,7 @@ export function readAgentImportAccessTokenSync(agentId: AgentImportAgentId): str
   if (agentId === 'commandcode') return readCommandCodeAccessTokenSync();
   if (agentId === 'zcode') return readZcodeAccessTokenSync();
   if (agentId === 'workbuddy') return readWorkBuddyAccessTokenSync();
+  if (agentId === 'kiro') return readKiroAccessTokenSync();
   return null;
 }
 
@@ -232,6 +237,7 @@ export async function readAgentImportAccessToken(
   if (agentId === 'commandcode') return readCommandCodeAccessTokenSync();
   if (agentId === 'zcode') return readZcodeAccessTokenSync();
   if (agentId === 'workbuddy') return readWorkBuddyAccessTokenSync();
+  if (agentId === 'kiro') return readKiroAccessTokenSync();
   return null;
 }
 
