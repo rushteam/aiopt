@@ -555,6 +555,8 @@
         "key": "Name",
         "value": "Value",
         "valueKeep": "Keep current value",
+        "showValue": "Show value",
+        "hideValue": "Hide value",
         "removeVar": "Remove",
         "addVar": "Add",
         "valuesNote": "Values are stored encrypted in AiOpt and written into the agent's config file in plain text, which the agent needs.",

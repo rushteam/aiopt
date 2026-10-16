@@ -555,6 +555,8 @@
         "key": "Nombre",
         "value": "Valor",
         "valueKeep": "Conservar el valor actual",
+        "showValue": "Mostrar valor",
+        "hideValue": "Ocultar valor",
         "removeVar": "Quitar",
         "addVar": "Añadir",
         "valuesNote": "Los valores se guardan cifrados en AiOpt y se escriben en texto plano en el archivo de configuración del agente, que los necesita.",

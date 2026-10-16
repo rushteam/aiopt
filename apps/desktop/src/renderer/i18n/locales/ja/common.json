@@ -555,6 +555,8 @@
         "key": "名前",
         "value": "値",
         "valueKeep": "現在の値を保持",
+        "showValue": "値を表示",
+        "hideValue": "値を隠す",
         "removeVar": "削除",
         "addVar": "追加",
         "valuesNote": "値は AiOpt 内で暗号化して保存され、エージェントの設定ファイルには平文で書き込まれます（エージェントが必要とするため）。",

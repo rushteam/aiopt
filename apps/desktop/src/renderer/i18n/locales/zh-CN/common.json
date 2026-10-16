@@ -555,6 +555,8 @@
         "key": "名称",
         "value": "值",
         "valueKeep": "保留当前值",
+        "showValue": "显示值",
+        "hideValue": "隐藏值",
         "removeVar": "移除",
         "addVar": "添加",
         "valuesNote": "值在 AiOpt 中加密保存，并以明文写入 Agent 的配置文件（Agent 需要读取）。",

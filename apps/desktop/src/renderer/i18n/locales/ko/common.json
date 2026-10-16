@@ -555,6 +555,8 @@
         "key": "이름",
         "value": "값",
         "valueKeep": "현재 값 유지",
+        "showValue": "값 표시",
+        "hideValue": "값 숨기기",
         "removeVar": "제거",
         "addVar": "추가",
         "valuesNote": "값은 AiOpt에 암호화되어 저장되고, 에이전트 설정 파일에는 평문으로 쓰입니다(에이전트가 읽어야 하므로).",

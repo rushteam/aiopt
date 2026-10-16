@@ -68,6 +68,17 @@ export function registerMcpIpc(registry: IpcHandlerRegistry, store: McpStore): v
     return store.diff(agentId, name);
   });
 
+  // GATED: the one MCP channel whose result carries a secret value (see mcp-servers.md §2).
+  registry.register(IPC_CHANNELS.mcpRevealValue, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const name = requireName(obj.name);
+    const kind = requireEnum(obj.kind, ['env', 'header'] as const, 'kind');
+    const key = requireString(obj.key, 'key');
+    if (key.length === 0 || key.length > 200) throwIpcError('INVALID_PARAMS', 'invalid key');
+    return { value: store.revealValue(name, kind, key) };
+  });
+
   registry.register(IPC_CHANNELS.mcpMerge, (payload, meta) => {
     meta.assertTrustedSender();
     const { agentId, name } = requireAgentAndName(payload);

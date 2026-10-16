@@ -570,6 +570,7 @@ const bridge: AiOptBridge = {
     deleteAgent: refused,
     diff: refused,
     merge: refused,
+    revealValue: async () => ({ value: 'demo-value' }),
   },
   skills: {
     get: async () => skillsSnapshot,

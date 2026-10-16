@@ -324,6 +324,21 @@ describe('mcp store', () => {
     expect(rowOf(store.save(validateSaveRequest({ ...fsServer, env: [] })), 'fs')!.library).not.toBeNull();
   });
 
+  it('revealValue returns one stored value on request, null for unknown server / key', () => {
+    const { store } = makeStore();
+    store.save(validateSaveRequest({ ...fsServer, env: [{ key: 'TOKEN', value: 'secret-1' }, { key: 'OTHER', value: 'v2' }] }));
+    store.save(validateSaveRequest({ name: 'web', transport: 'http', url: 'https://x.example/mcp', env: [], headers: [{ key: 'Authorization', value: 'Bearer h' }] }));
+    expect(store.revealValue('fs', 'env', 'TOKEN')).toBe('secret-1');
+    expect(store.revealValue('fs', 'env', 'OTHER')).toBe('v2');
+    expect(store.revealValue('web', 'header', 'Authorization')).toBe('Bearer h');
+    expect(store.revealValue('fs', 'header', 'TOKEN')).toBeNull();
+    expect(store.revealValue('fs', 'env', 'MISSING')).toBeNull();
+    expect(store.revealValue('fs', 'env', 'toString')).toBeNull();
+    expect(store.revealValue('nope', 'env', 'TOKEN')).toBeNull();
+    // The snapshot still carries key names only.
+    expect(JSON.stringify(store.snapshot())).not.toContain('secret-1');
+  });
+
   it('ignores a corrupt library file', () => {
     fs.writeFileSync(path.join(dir, 'mcp-servers.json'), '{"servers":[{"name":"../x","transport":"stdio","command":"c"},{"name":"ok","transport":"stdio","command":"c"}]}');
     expect(makeStore().store.snapshot().rows.map((r) => r.name)).toEqual(['ok']);
@@ -349,6 +364,7 @@ describe('mcp IPC', () => {
       [IPC_CHANNELS.mcpDeleteAgent, { agentId: 'claude', name: 'gh' }],
       [IPC_CHANNELS.mcpDiff, { agentId: 'claude', name: 'gh' }],
       [IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'gh', agentPicks: ['spec'] }],
+      [IPC_CHANNELS.mcpRevealValue, { name: 'gh', kind: 'env', key: 'GH_TOKEN' }],
     ];
     for (const [ch, payload] of calls) {
       await expect(reg.invoke(ch, payload, untrusted)).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
@@ -372,7 +388,22 @@ describe('mcp IPC', () => {
     await invalid(IPC_CHANNELS.mcpMerge, { agentId: 'claude', name: 'fs', agentPicks: [1] });
     await invalid(IPC_CHANNELS.mcpDelete, { name: '../x' });
     await invalid(IPC_CHANNELS.mcpSave, { ...fsServer, command: 7 });
+    await invalid(IPC_CHANNELS.mcpRevealValue, { name: '../x', kind: 'env', key: 'K' });
+    await invalid(IPC_CHANNELS.mcpRevealValue, { name: 'fs', kind: 'file', key: 'K' });
+    await invalid(IPC_CHANNELS.mcpRevealValue, { name: 'fs', kind: 'env', key: '' });
+    await invalid(IPC_CHANNELS.mcpRevealValue, { name: 'fs', kind: 'env', key: 3 });
     await expect(reg.invoke(IPC_CHANNELS.mcpGet, undefined, trusted)).resolves.toMatchObject({ rows: [] });
+  });
+
+  it('reveal-value returns the stored value to a trusted sender', async () => {
+    const { store } = makeStore();
+    store.save(validateSaveRequest(fsServer));
+    const reg = createInMemoryRegistry();
+    registerMcpIpc(reg, store);
+    await expect(reg.invoke(IPC_CHANNELS.mcpRevealValue, { name: 'fs', kind: 'env', key: 'TOKEN' }, trusted)).resolves.toEqual({
+      value: 'secret-1',
+    });
+    await expect(reg.invoke(IPC_CHANNELS.mcpRevealValue, { name: 'fs', kind: 'env', key: 'X' }, trusted)).resolves.toEqual({ value: null });
   });
 });
 

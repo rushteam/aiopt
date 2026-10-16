@@ -58,6 +58,7 @@ import type {
   McpDiffResult,
   McpSaveRequest,
   McpSnapshot,
+  McpRevealValueResult,
   McpWriteResult,
 } from '../shared/mcp';
 import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
@@ -353,6 +354,9 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.mcpDiff, { agentId, name }),
     merge: (agentId: McpAgentId, name: string, agentPicks: string[]): Promise<McpSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.mcpMerge, { agentId, name, agentPicks }),
+    /** GATED: one stored env/header value in plaintext — only on an explicit reveal click. */
+    revealValue: (name: string, kind: 'env' | 'header', key: string): Promise<McpRevealValueResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpRevealValue, { name, kind, key }),
   },
 
   /**

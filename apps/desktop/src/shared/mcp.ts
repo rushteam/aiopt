@@ -180,6 +180,21 @@ export interface McpMergeRequest extends McpAgentRequest {
   agentPicks: string[];
 }
 
+/**
+ * GATED: read ONE stored env / header value of a library server in plaintext, so the edit
+ * form can show and change it. Unlike every other MCP channel the result DOES carry a value —
+ * the deliberate, per-click exception documented in mcp-servers.md §2.
+ */
+export interface McpRevealValueRequest extends McpNameRequest {
+  kind: 'env' | 'header';
+  key: string;
+}
+
+/** `value` is null when the server or key has no stored value. */
+export interface McpRevealValueResult {
+  value: string | null;
+}
+
 /** `saved: false` — the user declined the write in the confirmation dialog. */
 export interface McpWriteResult {
   saved: boolean;

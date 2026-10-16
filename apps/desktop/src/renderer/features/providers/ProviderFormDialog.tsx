@@ -39,6 +39,7 @@ import {
   revealProviderKey,
   updateProvider,
 } from '../../lib/providerStore';
+import { EyeIcon } from '../../components/ui/EyeIcon';
 import { providerErrorMessage } from './errors';
 import { PROVIDER_PRESETS } from './presets';
 
@@ -1013,28 +1014,6 @@ const addRowStyle = {
   cursor: 'pointer',
   fontSize: fontSize.base,
 } as const;
-
-// Eye (reveal) / eye-off (mask) glyph. Stroke follows currentColor so it reads
-// correctly in both themes; a slash overlays the eye when the key is shown.
-function EyeIcon({ off }: { off: boolean }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-      {off && <line x1="3" y1="3" x2="21" y2="21" />}
-    </svg>
-  );
-}
 
 // Disclosure chevron: points right when collapsed, down when open. Rotated rather than
 // swapped so the transition reads as one control changing state.

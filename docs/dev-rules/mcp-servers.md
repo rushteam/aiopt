@@ -32,8 +32,14 @@ user's machine, deferred to the next agent start. So:
 
 - Env / header values are stored in the OS secret store under `main_mcp_<hex name>` as one
   JSON `{ env, headers }`. The library file holds key names only.
-- Values never cross IPC. The snapshot reports `{ key, set }`; a save sends a new value or
-  omits it ("keep the stored one" — only under the same server and key).
+- Values do not cross IPC, with one gated exception. The snapshot reports `{ key, set }`; a
+  save sends a new value or omits it ("keep the stored one" — only under the same server and
+  key).
+- **Gated exception: `mcp:reveal-value`.** The edit form's eye button fetches **one** stored
+  value (`{ name, kind: env | header, key }` → `{ value | null }`) so the user can see and
+  change it, like the provider key's reveal. The sender is authorized first; there is no
+  bulk export; the value lives only in the open form's state and is never logged. The
+  snapshot, diff and confirmation dialog still carry key names only.
 - Values cannot contain CR/LF/NUL and are size-limited (`MCP_LIMITS`).
 - If secret encryption is unavailable, a save carrying values is refused **before** the
   confirmation; servers without values still work.
@@ -113,7 +119,7 @@ Applying a profile (`providerManager.applyBindingProfile`, through the injected
 
 `src/main/mcp/__tests__/` covers the TOML splitter, strict reads and key preservation per
 agent, file modes, adapter apply/restore keeping MCP, the store (confirm declined writes
-nothing, values never in the snapshot, diff or library file, save touches no agent, rename,
+nothing, values never in the snapshot, the single-value reveal, diff or library file, save touches no agent, rename,
 pull, library delete leaves agent files intact, deleteAgent, diff + merge picks, unsupported
 transport and unreadable / no-encryption refusals before confirmation, profile enabled-set
 plans), IPC

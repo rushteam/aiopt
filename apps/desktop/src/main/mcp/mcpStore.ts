@@ -411,6 +411,18 @@ export function createMcpStore(deps: McpStoreDeps) {
       return { rows, agents, secretsAvailable: deps.secrets.isAvailable() };
     },
 
+    /**
+     * GATED: one stored env / header value in plaintext, for the edit form's reveal button.
+     * Deliberately one value per call (no bulk export). Never log the result. Null when the
+     * server is unknown or the key has no stored value.
+     */
+    revealValue(name: string, kind: 'env' | 'header', key: string): string | null {
+      if (!find(name)) return null;
+      const values = readValues(name);
+      const map = kind === 'env' ? values.env : values.headers;
+      return Object.hasOwn(map, key) && typeof map[key] === 'string' ? map[key]! : null;
+    },
+
     /** Add or edit a library server. Agent files are not touched; they show `differs` until pushed. */
     save(req: McpSaveRequest): McpSnapshot {
       const previous = req.originalName !== undefined ? find(req.originalName) : undefined;

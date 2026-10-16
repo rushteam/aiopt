@@ -29,6 +29,8 @@ import type {
   McpMergeRequest,
   McpNameRequest,
   McpPushRequest,
+  McpRevealValueRequest,
+  McpRevealValueResult,
   McpSaveRequest,
   McpSnapshot,
   McpWriteResult,
@@ -185,6 +187,8 @@ export const IPC_CHANNELS = {
   mcpDeleteAgent: 'mcp:delete-agent',
   mcpDiff: 'mcp:diff',
   mcpMerge: 'mcp:merge',
+  // GATED: returns one stored env/header value in plaintext (edit form's eye button).
+  mcpRevealValue: 'mcp:reveal-value',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -1075,6 +1079,7 @@ export interface IpcContract {
   [IPC_CHANNELS.mcpDeleteAgent]: { request: McpAgentRequest; result: McpSnapshot };
   [IPC_CHANNELS.mcpDiff]: { request: McpAgentRequest; result: McpDiffResult };
   [IPC_CHANNELS.mcpMerge]: { request: McpMergeRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpRevealValue]: { request: McpRevealValueRequest; result: McpRevealValueResult };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

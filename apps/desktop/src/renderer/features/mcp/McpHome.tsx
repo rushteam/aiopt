@@ -17,6 +17,7 @@ import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
 import { ScrollTabScreen } from '../../components/TabScreenShell';
 import { LoadingButton } from '../../components/ui/LoadingButton';
+import { EyeIcon } from '../../components/ui/EyeIcon';
 import {
   buttonAccentChrome,
   buttonGhostChrome,
@@ -674,6 +675,8 @@ interface VarRow {
   /** Empty string with `stored` → keep the stored value. */
   value: string;
   stored: boolean;
+  /** The value field shows plaintext. */
+  shown: boolean;
 }
 
 function ServerForm({
@@ -698,7 +701,9 @@ function ServerForm({
   const [command, setCommand] = useState(initial?.command ?? '');
   const [args, setArgs] = useState((initial?.args ?? []).join('\n'));
   const [url, setUrl] = useState(initial?.url ?? '');
-  const toRows = (list: McpServerView['env']): VarRow[] => list.map((v) => ({ key: v.key, value: '', stored: v.set }));
+  const toRows = (list: McpServerView['env']): VarRow[] => list.map((v) => ({ key: v.key, value: '', stored: v.set, shown: false }));
+  const [revealing, setRevealing] = useState<number | null>(null);
+  const [revealError, setRevealError] = useState<string | null>(null);
   const [env, setEnv] = useState<VarRow[]>(toRows(initial?.env ?? []));
   const [headers, setHeaders] = useState<VarRow[]>(toRows(initial?.headers ?? []));
 
@@ -715,6 +720,30 @@ function ServerForm({
   const setVars = transport === 'stdio' ? setEnv : setHeaders;
   const varsOk = vars.every((v) => v.key.trim() !== '') && new Set(vars.map((v) => v.key.trim().toLowerCase())).size === vars.length;
   const needsSecret = vars.some((v) => v.value !== '');
+  const varKind: 'env' | 'header' = transport === 'stdio' ? 'env' : 'header';
+
+  // The eye either fetches the stored value (nothing typed yet) or just toggles mask /
+  // plaintext. Fetching is the gated mcp:reveal-value read (one value per click); the value
+  // then lives only in this form's state and is dropped with it. Mirrors the provider key.
+  const toggleValue = async (i: number): Promise<void> => {
+    const row = vars[i];
+    if (!row) return;
+    const update = (patch: Partial<VarRow>) => setVars((prev) => prev.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+    if (row.value === '' && row.stored && initial && !row.shown) {
+      setRevealing(i);
+      setRevealError(null);
+      try {
+        const { value } = await window.aiopt.mcp.revealValue(initial.name, varKind, row.key);
+        if (value !== null) update({ value, shown: true });
+      } catch (err) {
+        setRevealError(errorText(t, err));
+      } finally {
+        setRevealing(null);
+      }
+      return;
+    }
+    update({ shown: !row.shown });
+  };
   const valid =
     isMcpName(name) &&
     !nameTaken &&
@@ -811,14 +840,37 @@ function ServerForm({
                   spellCheck={false}
                 />
                 <input
-                  type="password"
+                  type={v.shown ? 'text' : 'password'}
                   value={v.value}
                   aria-label={t('mcp.form.value')}
                   placeholder={v.stored ? t('mcp.form.valueKeep') : t('mcp.form.value')}
                   onChange={(e) => setVars(vars.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-                  style={{ ...controlInputStyle, flex: 1 }}
+                  style={{ ...controlInputStyle, flex: 1, minWidth: 0, ...(v.shown ? { fontFamily: mono } : {}) }}
                   autoComplete="off"
+                  spellCheck={false}
                 />
+                {(() => {
+                  const canToggle = v.value !== '' || (v.stored && initial !== null);
+                  const label = v.shown ? t('mcp.form.hideValue') : t('mcp.form.showValue');
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void toggleValue(i)}
+                      disabled={!canToggle || revealing === i}
+                      aria-pressed={v.shown}
+                      aria-label={label}
+                      title={label}
+                      {...hoverBackground('transparent', token('surfaceHover'))}
+                      style={{
+                        ...eyeButtonStyle,
+                        cursor: canToggle ? 'pointer' : 'default',
+                        opacity: canToggle ? 1 : disabledOpacity,
+                      }}
+                    >
+                      <EyeIcon off={v.shown} />
+                    </button>
+                  );
+                })()}
                 <button
                   type="button"
                   aria-label={t('mcp.form.removeVar')}
@@ -831,10 +883,15 @@ function ServerForm({
               </div>
             ))}
             <div>
-              <button type="button" onClick={() => setVars([...vars, { key: '', value: '', stored: false }])} style={buttonGhostChrome('sm')}>
+              <button type="button" onClick={() => setVars([...vars, { key: '', value: '', stored: false, shown: false }])} style={buttonGhostChrome('sm')}>
                 {t('mcp.form.addVar')}
               </button>
             </div>
+            {revealError && (
+              <span role="alert" style={hintErrorStyle}>
+                {revealError}
+              </span>
+            )}
             {needsSecret && !secretsAvailable && <span style={hintErrorStyle}>{t('mcp.secretsUnavailable')}</span>}
             <span style={{ fontSize: fontSize.xs }}>{t('mcp.form.valuesNote')}</span>
           </div>
@@ -854,6 +911,19 @@ function ServerForm({
 }
 
 
+
+const eyeButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  width: 38,
+  padding: 0,
+  borderRadius: radius.sm,
+  border: `1px solid ${token('borderStrong')}`,
+  background: 'transparent',
+  color: token('textMuted'),
+};
 
 const summaryStyle: CSSProperties = {
   fontFamily: mono,
