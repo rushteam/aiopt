@@ -6,7 +6,7 @@
 // Electron-free and unit-tested with injected adapters.
 
 import fs from 'node:fs';
-import { BrowserWindow, app, clipboard, dialog, net, safeStorage } from 'electron';
+import { BrowserWindow, app, clipboard, dialog, net, safeStorage, session } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -43,6 +43,7 @@ import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/
 import type { ProxyFetch } from './proxy/upstream';
 import { createUpstreamRegistry, type UpstreamRegistry } from './upstreams/types';
 import { createCursorClient } from './upstreams/cursor/client';
+import { createProxiedHttp2Connect } from './upstreams/http2Proxy';
 import { createCursorDriver } from './upstreams/cursor/driver';
 import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agentCli';
 import { createWorkBuddyDriver, type WorkBuddyFetch } from './upstreams/workbuddy/driver';
@@ -246,9 +247,17 @@ function getUpstreamRegistry(): UpstreamRegistry {
   if (!upstreamRegistry) {
     const fetchImpl = ((url, init) => net.fetch(url, init as RequestInit)) as ProxyFetch;
     upstreamRegistry = createUpstreamRegistry([
-      // Signed-in cursor-agent (agent import). Unary calls over net.fetch; Run over node:http2.
+      // Signed-in cursor-agent (agent import). Unary calls over net.fetch; Run over node:http2,
+      // tunnelled through the same system / env proxy net.fetch would use.
       createCursorDriver({
-        client: createCursorClient({ fetchImpl, clientVersion: cursorClientVersion }),
+        client: createCursorClient({
+          fetchImpl,
+          clientVersion: cursorClientVersion,
+          connect: createProxiedHttp2Connect({
+            resolveProxy: (url) => session.defaultSession.resolveProxy(url),
+            env: process.env,
+          }),
+        }),
         token: cursorAccessToken,
       }),
       // Signed-in WorkBuddy desktop (agent import): its headers + body rules over net.fetch.

@@ -48,7 +48,9 @@ interface BoundUpstream {
   → `chat` returns `{ error: { status: 401 } }` and `listModels` throws `noCredentialError()`.
 - **Inject the transport.** Unary HTTP goes through the injected `ProxyFetch` (Electron
   `net.fetch` in production). A protocol `net.fetch` cannot carry (HTTP/2 bidi streams) may
-  use `node:http2` behind an injectable connector, so tests run without a network.
+  use `node:http2` behind an injectable connector, so tests run without a network. In
+  production that connector is `upstreams/http2Proxy.ts`, which tunnels through the same
+  system / `HTTPS_PROXY` proxy `net.fetch` would use (HTTP CONNECT; TLS stays end-to-end).
 - **Pure parts are pure.** Encoding, decoding, request building and model mapping are
   transport-free modules with unit tests in `upstreams/__tests__/`.
 

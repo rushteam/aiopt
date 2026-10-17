@@ -37,8 +37,11 @@ const HEARTBEAT_MS = 5_000;
 const MODELS_KEEP_MS = 10 * 60_000;
 const MAX_ERROR_BODY = 1 << 20;
 
-/** The HTTP/2 connect function (node:http2's, or a test double). */
-export type Http2Connect = (authority: string) => http2.ClientHttp2Session;
+/**
+ * The HTTP/2 connect function (node:http2's, a proxy-tunnelling one — see
+ * ../http2Proxy.ts — or a test double). May resolve asynchronously (a proxy lookup).
+ */
+export type Http2Connect = (authority: string) => http2.ClientHttp2Session | Promise<http2.ClientHttp2Session>;
 
 export interface CursorClientDeps {
   fetchImpl: ProxyFetch;
@@ -170,15 +173,26 @@ export function createCursorClient(deps: CursorClientDeps): CursorClient {
 
   function open(base: string, headers: Record<string, string>, signal?: AbortSignal): Promise<Opened | { error: CursorFailure }> {
     if (signal?.aborted) return Promise.resolve({ error: { status: 410, message: 'cancelled' } });
+    const u = new URL(base);
+    return Promise.resolve()
+      .then(() => connect(u.origin))
+      .then(
+        (session) => {
+          if (!signal?.aborted) return request(u, session, headers, signal);
+          session.destroy();
+          return { error: { status: 410, message: 'cancelled' } };
+        },
+        () => ({ error: { status: 502, message: 'connect failed' } }),
+      );
+  }
+
+  function request(
+    u: URL,
+    session: http2.ClientHttp2Session,
+    headers: Record<string, string>,
+    signal?: AbortSignal,
+  ): Promise<Opened | { error: CursorFailure }> {
     return new Promise((resolve) => {
-      const u = new URL(base);
-      let session: http2.ClientHttp2Session;
-      try {
-        session = connect(u.origin);
-      } catch {
-        resolve({ error: { status: 502, message: 'connect failed' } });
-        return;
-      }
       let done = false;
       const fail = (message: string, status = 502): void => {
         if (done) return;
