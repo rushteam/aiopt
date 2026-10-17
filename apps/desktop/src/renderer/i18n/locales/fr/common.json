@@ -162,7 +162,8 @@
       "refreshing": "Actualisation…",
       "refreshed": "Actualisé",
       "stopped": "Non actif",
-      "loopbackBlocked": "Les connexions vers 127.0.0.1 sont bloquées : les agents qui passent par le proxy local ne peuvent pas l'atteindre. C'est généralement le pare-feu : autorisez AiOpt à recevoir des connexions (Sécurité Windows → Pare-feu et protection du réseau → Autoriser une application via le pare-feu), puis redémarrez AiOpt."
+      "loopbackBlocked": "Les connexions vers 127.0.0.1 sont bloquées : les agents qui passent par le proxy local ne peuvent pas l'atteindre. C'est généralement le pare-feu : autorisez AiOpt à recevoir des connexions (Sécurité Windows → Pare-feu et protection du réseau → Autoriser une application via le pare-feu), puis redémarrez AiOpt.",
+      "proxyEnvNoLoopback": "Un proxy HTTP est défini dans l'environnement (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY), mais 127.0.0.1 ne figure pas dans NO_PROXY. Les agents qui en héritent peuvent envoyer le trafic du proxy local vers ce proxy et ne pas se connecter. Ajoutez 127.0.0.1,localhost à NO_PROXY, puis redémarrez l'agent."
     },
     "pool": {
       "heading": "Pool de fournisseurs",

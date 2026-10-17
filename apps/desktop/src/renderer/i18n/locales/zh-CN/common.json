@@ -169,7 +169,8 @@
       "refreshing": "刷新中…",
       "refreshed": "已刷新",
       "stopped": "未运行",
-      "loopbackBlocked": "连接 127.0.0.1 的请求被丢弃，经本地代理的 Agent 无法连上。通常是防火墙所致：请允许 AiOpt 接收连接（Windows 安全中心 → 防火墙和网络保护 → 允许应用通过防火墙），然后重启 AiOpt。"
+      "loopbackBlocked": "连接 127.0.0.1 的请求被丢弃，经本地代理的 Agent 无法连上。通常是防火墙所致：请允许 AiOpt 接收连接（Windows 安全中心 → 防火墙和网络保护 → 允许应用通过防火墙），然后重启 AiOpt。",
+      "proxyEnvNoLoopback": "环境变量中设置了 HTTP 代理（HTTPS_PROXY / HTTP_PROXY / ALL_PROXY），但 NO_PROXY 未包含 127.0.0.1。继承该环境的 Agent 可能把本地代理的流量发往外部代理而连接失败。请把 127.0.0.1,localhost 加入 NO_PROXY，然后重启 Agent。"
     },
     "pool": {
       "heading": "供应商池",

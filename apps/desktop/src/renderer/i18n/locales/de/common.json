@@ -162,7 +162,8 @@
       "refreshing": "Wird aktualisiert…",
       "refreshed": "Aktualisiert",
       "stopped": "Nicht aktiv",
-      "loopbackBlocked": "Verbindungen zu 127.0.0.1 werden verworfen, daher erreichen Agents den lokalen Proxy nicht. Meist ist die Firewall die Ursache: Erlauben Sie AiOpt eingehende Verbindungen (Windows-Sicherheit → Firewall- & Netzwerkschutz → App durch Firewall zulassen) und starten Sie AiOpt neu."
+      "loopbackBlocked": "Verbindungen zu 127.0.0.1 werden verworfen, daher erreichen Agents den lokalen Proxy nicht. Meist ist die Firewall die Ursache: Erlauben Sie AiOpt eingehende Verbindungen (Windows-Sicherheit → Firewall- & Netzwerkschutz → App durch Firewall zulassen) und starten Sie AiOpt neu.",
+      "proxyEnvNoLoopback": "In der Umgebung ist ein HTTP-Proxy gesetzt (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY), aber 127.0.0.1 fehlt in NO_PROXY. Agents, die diese Umgebung erben, senden den Verkehr zum lokalen Proxy womöglich an diesen Proxy und können keine Verbindung herstellen. Fügen Sie 127.0.0.1,localhost zu NO_PROXY hinzu und starten Sie den Agent neu."
     },
     "pool": {
       "heading": "Anbieter-Pool",

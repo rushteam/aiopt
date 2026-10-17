@@ -73,6 +73,7 @@ import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
 import { resolveWorkbenchModel } from './workbench/resolveModel';
 import { logger } from './logger';
 import { detectLoopbackBlock } from './proxy/loopbackSelfTest';
+import { loopbackNotExemptFromProxy } from './proxy/proxyEnvCheck';
 import {
   appShortcutsFilePath,
   preferencesFilePath,
@@ -305,7 +306,7 @@ export function getProviderManager(): ProviderManager {
       },
       // Driver-served providers list models / are tested through their driver.
       (provider) => getUpstreamRegistry().forProvider(provider),
-      () => loopbackBlocked,
+      () => ({ loopbackBlocked, proxyEnvNoLoopbackBypass: loopbackNotExemptFromProxy(process.env) }),
     );
   }
   return providerManager;
