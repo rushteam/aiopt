@@ -86,4 +86,40 @@ describe('rmrfSyncWithRetry', () => {
     expect(fs.existsSync(tree)).toBe(false);
     expect(() => rmrfSyncWithRetry(tree)).not.toThrow();
   });
+
+  it('unlinks a directory link inside the tree without touching its target', () => {
+    const outside = path.join(root, 'user-work');
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'keep.txt'), 'mine');
+    const tree = path.join(root, 'skill');
+    fs.mkdirSync(tree);
+    fs.symlinkSync(outside, path.join(tree, 'linked'), 'junction');
+    rmrfSyncWithRetry(tree);
+    expect(fs.existsSync(tree)).toBe(false);
+    expect(fs.readFileSync(path.join(outside, 'keep.txt'), 'utf8')).toBe('mine');
+  });
+
+  it('removes a link passed as the target itself, not what it points at', () => {
+    const outside = path.join(root, 'real');
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'keep.txt'), 'mine');
+    const link = path.join(root, 'link');
+    fs.symlinkSync(outside, link, 'junction');
+    rmrfSyncWithRetry(link);
+    expect(fs.existsSync(link)).toBe(false);
+    expect(fs.existsSync(path.join(outside, 'keep.txt'))).toBe(true);
+  });
+
+  it('retries a busy directory', () => {
+    const tree = path.join(root, 'busy');
+    fs.mkdirSync(tree);
+    const real = fs.rmdirSync;
+    let n = 0;
+    vi.spyOn(fs, 'rmdirSync').mockImplementation((p) => {
+      if (n++ === 0) throw errno('EBUSY');
+      real(p);
+    });
+    rmrfSyncWithRetry(tree);
+    expect(fs.existsSync(tree)).toBe(false);
+  });
 });

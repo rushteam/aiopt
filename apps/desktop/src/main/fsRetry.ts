@@ -15,6 +15,7 @@
 // EACCES still surfaces — it just surfaces a few tens of milliseconds later.
 
 import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * How many times to retry, and the base delay. Node's own `rmSync` retry ramps the delay
@@ -54,9 +55,14 @@ function isTransient(err: unknown): boolean {
  * immediately without burning the retry budget.
  */
 export function renameSyncWithRetry(from: string, to: string): void {
+  retrySync(() => fs.renameSync(from, to));
+}
+
+/** Run `op`, retrying a transient Windows failure with the linear ramp above. */
+function retrySync(op: () => void): void {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      fs.renameSync(from, to);
+      op();
       return;
     } catch (err) {
       if (attempt >= MAX_RETRIES || !isTransient(err)) throw err;
@@ -65,11 +71,50 @@ export function renameSyncWithRetry(from: string, to: string): void {
   }
 }
 
+const isMissing = (err: unknown): boolean => (err as NodeJS.ErrnoException | undefined)?.code === 'ENOENT';
+
 /**
- * `rm -rf` that tolerates absence and retries a busy directory. Delegates to Node's built-in
- * retry rather than reimplementing it — `force` covers ENOENT, `maxRetries`/`retryDelay` cover
- * the Windows cases above.
+ * `rm -rf` that tolerates absence, retries a busy entry, and NEVER follows a link.
+ *
+ * A recursive `fs.rmSync` is not trusted here: on Windows it has followed directory junctions
+ * and deleted the TARGET's contents. The trees this removes are agent skill directories, where
+ * a user linking a skill to their own working copy is ordinary — following that link would
+ * delete the user's real files. So the walk uses only leaf operations: a symlink / junction
+ * (`lstat` reports both as a link) is unlinked itself, a file is removed, and a directory is
+ * emptied the same way and then `rmdir`ed.
  */
 export function rmrfSyncWithRetry(target: string): void {
-  fs.rmSync(target, { recursive: true, force: true, maxRetries: MAX_RETRIES, retryDelay: RETRY_DELAY_MS });
+  let st: fs.Stats;
+  try {
+    st = fs.lstatSync(target);
+  } catch (err) {
+    if (isMissing(err)) return;
+    throw err;
+  }
+  if (st.isSymbolicLink()) {
+    retrySync(() => {
+      try {
+        fs.unlinkSync(target);
+      } catch (err) {
+        if (isMissing(err)) return;
+        // A directory link / junction on Windows refuses unlink (EPERM); rmdir removes the
+        // link itself, never its target's contents.
+        if (process.platform !== 'win32') throw err;
+        fs.rmdirSync(target);
+      }
+    });
+    return;
+  }
+  if (!st.isDirectory()) {
+    retrySync(() => fs.rmSync(target, { force: true }));
+    return;
+  }
+  for (const name of fs.readdirSync(target)) rmrfSyncWithRetry(path.join(target, name));
+  retrySync(() => {
+    try {
+      fs.rmdirSync(target);
+    } catch (err) {
+      if (!isMissing(err)) throw err;
+    }
+  });
 }
