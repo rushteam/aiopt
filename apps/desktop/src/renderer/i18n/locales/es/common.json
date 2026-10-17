@@ -263,6 +263,12 @@
         "safe": "Parámetros de registro y enrutamiento. Quitarlos no cambia la respuesta del modelo.",
         "sensitive": "Quitarlos cambia lo que se recibe: sin response_format, un JSON garantizado pasa a ser texto libre; sin thinking ni reasoning, el modelo se degrada en silencio. Úsalo solo si el upstream los rechaza."
       },
+      "extraBody": "Parámetros de solicitud adicionales (JSON)",
+      "extraBodyHint": "Se combinan en cada solicitud que AiOpt envía a este proveedor, para una opción propia del fabricante que el agente no puede enviar, p. ej. {\"enable_thinking\": false}. Se guardan como configuración en texto plano; no pongas claves ni tokens.",
+      "extraBodyInvalidJson": "No es JSON válido.",
+      "extraBodyNotObject": "Debe ser un objeto JSON.",
+      "extraBodyDeniedKey": "«{{key}}» no se puede definir aquí: define la propia solicitud.",
+      "extraBodyTooLarge": "Demasiado grande: limítalo a unas pocas opciones.",
       "driverEndpointHint": "Fijado por el controlador de protocolo integrado; no se puede editar.",
       "driverFormatsHint": "Este proveedor lo sirve un controlador de protocolo integrado que solo habla OpenAI Chat. Cualquier agent puede vincularlo: el proxy de AiOpt traduce.",
       "agentSessionMissing": "No se encontró ninguna sesión iniciada. Inicia sesión en el agent y vuelve a abrir este diálogo.",

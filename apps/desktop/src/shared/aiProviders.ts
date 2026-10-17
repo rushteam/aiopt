@@ -524,6 +524,81 @@ export function normalizeDropFields(raw: readonly string[]): string[] {
   return DROPPABLE_FIELD_NAMES.filter((f) => wanted.has(f));
 }
 
+// --- Extra request body (per provider) -------------------------------------
+//
+// The inverse escape hatch to drop-fields: some upstreams need a vendor-specific knob the
+// agent cannot send (`enable_thinking` on Qwen, `chat_template_kwargs` on a vLLM relay,
+// `thinking: {type: 'disabled'}` on a reasoning model the user wants fast). `extraBody`
+// is a JSON object the proxy deep-merges into the outbound body for THIS provider only.
+//
+// It is NOT a way to rewrite the request: the keys that define what is being asked
+// (model, messages/input/contents, system prompt, tools, streaming) are refused, so the
+// merge can tune a request but never replace it. Persisted as plaintext JSON — it is
+// configuration, not a credential; the form says so.
+
+/** Top-level keys extraBody may never set — they define the request rather than tune it. */
+export const EXTRA_BODY_DENIED_KEYS: readonly string[] = [
+  'model',
+  'messages',
+  'input',
+  'contents',
+  'prompt',
+  'system',
+  'systemInstruction',
+  'instructions',
+  'stream',
+  'stream_options',
+  'tools',
+  'tool_choice',
+];
+
+/** Serialized size cap: a tuning knob, not a payload. */
+export const EXTRA_BODY_MAX_BYTES = 4096;
+
+/** Why an extraBody value was refused (stable codes; the UI maps them to copy). */
+export type ExtraBodyProblem = 'not_object' | 'denied_key' | 'too_large';
+
+/**
+ * Validate an untrusted extraBody value. Returns the canonical object (possibly empty =
+ * "nothing configured") or a problem. `__proto__`/`constructor`/`prototype` keys are
+ * refused at every depth so a merge can never touch an object prototype.
+ */
+export function checkExtraBody(
+  raw: unknown,
+): { ok: true; value: Record<string, unknown> } | { ok: false; problem: ExtraBodyProblem; key?: string } {
+  if (!isPlainObject(raw)) return { ok: false, problem: 'not_object' };
+  for (const key of Object.keys(raw)) {
+    if (EXTRA_BODY_DENIED_KEYS.includes(key)) return { ok: false, problem: 'denied_key', key };
+  }
+  const unsafe = findUnsafeKey(raw);
+  if (unsafe) return { ok: false, problem: 'denied_key', key: unsafe };
+  const json = JSON.stringify(raw);
+  if (json.length > EXTRA_BODY_MAX_BYTES) return { ok: false, problem: 'too_large' };
+  return { ok: true, value: JSON.parse(json) as Record<string, unknown> };
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+function findUnsafeKey(v: unknown): string | null {
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const k = findUnsafeKey(item);
+      if (k) return k;
+    }
+    return null;
+  }
+  if (!isPlainObject(v)) return null;
+  for (const [k, child] of Object.entries(v)) {
+    if (UNSAFE_KEYS.has(k)) return k;
+    const deep = findUnsafeKey(child);
+    if (deep) return deep;
+  }
+  return null;
+}
+
 /**
  * A provider in the global pool. The API key is deliberately absent — it is stored
  * encrypted in the main-only secret store under `main_provider_<id>_key` and never
@@ -560,6 +635,11 @@ export interface Provider {
    * means strip nothing, which is the default for every provider.
    */
   dropRequestFields?: string[];
+  /**
+   * JSON deep-merged into the outbound body for THIS upstream (see
+   * {@link checkExtraBody}). Never sets the request-defining keys. Absent = nothing.
+   */
+  extraBody?: Record<string, unknown>;
 }
 
 /**

@@ -594,6 +594,8 @@ export interface ProviderSummary {
    * any other editable field. Absent/empty means strip nothing.
    */
   dropRequestFields?: string[];
+  /** JSON merged into the outbound body (`Provider.extraBody`). Not secret. */
+  extraBody?: Record<string, unknown>;
 }
 
 /**
@@ -672,6 +674,8 @@ export interface ProviderAddRequest {
   agentImport?: AgentImportConfig;
   /** Fields the proxy should strip for this upstream; validated against the allowlist. */
   dropRequestFields?: string[];
+  /** JSON merged into the outbound body; validated by `checkExtraBody`. */
+  extraBody?: Record<string, unknown>;
 }
 
 /**
@@ -695,6 +699,8 @@ export interface ProviderUpdateRequest {
    * leaves it untouched. An empty array clears it.
    */
   dropRequestFields?: string[];
+  /** Replaces the whole object when present; omitted leaves it; `{}` clears it. */
+  extraBody?: Record<string, unknown>;
 }
 
 export interface ProviderAgentImportScanResult {

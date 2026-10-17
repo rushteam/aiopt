@@ -263,6 +263,12 @@
         "safe": "記録用・ルーティング用のパラメータです。除去してもモデルの応答は変わりません。",
         "sensitive": "除去すると返る内容が変わります。response_format がないと保証されていた JSON が自由文になり、thinking や reasoning がないとモデルは静かに性能を落とします。アップストリームが明確に拒否する場合のみ使用してください。"
       },
+      "extraBody": "追加リクエストパラメーター（JSON）",
+      "extraBodyHint": "AiOpt がこのプロバイダーに送るすべてのリクエストにマージされます。Agent が送れないベンダー固有のオプション用です（例: {\"enable_thinking\": false}）。通常の設定として平文で保存されるため、キーやトークンは入れないでください。",
+      "extraBodyInvalidJson": "有効な JSON ではありません。",
+      "extraBodyNotObject": "JSON オブジェクトである必要があります。",
+      "extraBodyDeniedKey": "「{{key}}」はリクエストそのものを決めるため、ここでは設定できません。",
+      "extraBodyTooLarge": "大きすぎます。少数のオプションに留めてください。",
       "driverEndpointHint": "組み込みプロトコルドライバーで固定されており、変更できません。",
       "driverFormatsHint": "このプロバイダーは組み込みプロトコルドライバーが提供し、OpenAI Chat 形式のみを扱います。どの Agent からもバインドでき、AiOpt のプロキシが形式を変換します。",
       "agentSessionMissing": "サインイン済みのセッションが見つかりません。Agent でサインインしてから、このダイアログを開き直してください。",

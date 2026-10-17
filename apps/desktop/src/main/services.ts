@@ -319,6 +319,8 @@ export function getTranslationProxy(): TranslationProxy {
       // Per-provider fields to strip from the outbound body (see proxy/sanitize.ts) —
       // resolved live, like the key, so a provider edit needs no rebind.
       getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
+      // Per-provider JSON merged into the outbound body (see proxy/requestFixes.ts), live.
+      getExtraBody: (providerId) => getProviderManager().resolveExtraBody(providerId),
       // Prompt-cache breakpoints for Anthropic upstreams (see proxy/promptCache.ts), live.
       getPromptCache: () => getConfigStore().get('promptCache'),
       // Imported sign-ins that want the key both ways (Command Code, ZCode), live.

@@ -270,6 +270,12 @@
         "safe": "Bookkeeping and routing hints. Removing these doesn't change the model's reply.",
         "sensitive": "Removing these changes what comes back: without response_format, guaranteed JSON becomes free text; without thinking or reasoning, the model is quietly downgraded. Use only when the upstream rejects them outright."
       },
+      "extraBody": "Extra request parameters (JSON)",
+      "extraBodyHint": "Merged into every request AiOpt sends to this provider, for a vendor-specific option the agent can't send — e.g. {\"enable_thinking\": false}. Stored as plain configuration; don't put keys or tokens here.",
+      "extraBodyInvalidJson": "Not valid JSON.",
+      "extraBodyNotObject": "Must be a JSON object.",
+      "extraBodyDeniedKey": "\"{{key}}\" can't be set here — it defines the request itself.",
+      "extraBodyTooLarge": "Too large — keep it to a few options.",
       "driverEndpointHint": "Fixed by the built-in protocol driver; cannot be edited.",
       "driverFormatsHint": "This provider is served by a built-in protocol driver that speaks OpenAI Chat only. Any agent can bind it — AiOpt's proxy translates.",
       "agentSessionMissing": "No signed-in session found. Sign in in the agent, then reopen this dialog.",

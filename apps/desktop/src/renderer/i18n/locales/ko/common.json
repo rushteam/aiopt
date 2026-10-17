@@ -263,6 +263,12 @@
         "safe": "기록 및 라우팅용 매개변수입니다. 제거해도 모델의 응답은 바뀌지 않습니다.",
         "sensitive": "제거하면 돌아오는 내용이 바뀝니다. response_format이 없으면 보장된 JSON이 자유 텍스트가 되고, thinking이나 reasoning이 없으면 모델이 조용히 downgrade됩니다. 업스트림이 명확히 거부할 때만 사용하세요."
       },
+      "extraBody": "추가 요청 매개변수(JSON)",
+      "extraBodyHint": "AiOpt가 이 공급자에게 보내는 모든 요청에 병합됩니다. Agent가 보낼 수 없는 벤더 전용 옵션용입니다(예: {\"enable_thinking\": false}). 일반 설정으로 평문 저장되므로 키나 토큰은 넣지 마세요.",
+      "extraBodyInvalidJson": "올바른 JSON이 아닙니다.",
+      "extraBodyNotObject": "JSON 객체여야 합니다.",
+      "extraBodyDeniedKey": "\"{{key}}\"는 요청 자체를 정의하므로 여기서 설정할 수 없습니다.",
+      "extraBodyTooLarge": "너무 큽니다. 몇 가지 옵션만 두세요.",
       "driverEndpointHint": "내장 프로토콜 드라이버로 고정되어 있어 바꿀 수 없습니다.",
       "driverFormatsHint": "이 공급자는 내장 프로토콜 드라이버가 제공하며 OpenAI Chat 형식만 사용합니다. 어떤 Agent든 바인딩할 수 있으며 AiOpt 프록시가 형식을 변환합니다.",
       "agentSessionMissing": "로그인된 세션을 찾지 못했습니다. Agent에서 로그인한 뒤 이 창을 다시 여세요.",

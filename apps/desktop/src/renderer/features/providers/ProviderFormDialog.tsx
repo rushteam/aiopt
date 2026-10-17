@@ -22,6 +22,7 @@ import {
   DROPPABLE_REQUEST_FIELDS,
   normalizeApiFormats,
   normalizeDropFields,
+  checkExtraBody,
   type ApiFormat,
   type ProviderModel,
 } from '../../../shared/aiProviders';
@@ -123,7 +124,12 @@ export function ProviderFormDialog({
   // The compatibility section starts open only when it already has something in it, so a
   // provider that strips nothing (the default, and the common case) shows a quiet one-line
   // summary instead of a wall of checkboxes.
-  const [compatOpen, setCompatOpen] = useState((provider?.dropRequestFields?.length ?? 0) > 0);
+  const [extraBodyText, setExtraBodyText] = useState(
+    provider?.extraBody ? JSON.stringify(provider.extraBody, null, 2) : '',
+  );
+  const [compatOpen, setCompatOpen] = useState(
+    (provider?.dropRequestFields?.length ?? 0) > 0 || provider?.extraBody !== undefined,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -338,6 +344,8 @@ export function ProviderFormDialog({
           // Always sent: it is a checkbox group, so an empty array must clear the set
           // rather than read as "unchanged".
           dropRequestFields: dropFields,
+          // Always sent too: `{}` clears it.
+          extraBody: 'value' in extraBodyParsed ? extraBodyParsed.value : undefined,
         });
       } else {
         await addProvider({
@@ -350,6 +358,7 @@ export function ProviderFormDialog({
           oauth: oauthConfig,
           apiKey: usesOAuth || usesAgentImport ? undefined : apiKey === '' ? undefined : apiKey,
           dropRequestFields: dropFields.length > 0 ? dropFields : undefined,
+          extraBody: extraBodyKeys.length > 0 && 'value' in extraBodyParsed ? extraBodyParsed.value : undefined,
         });
       }
       onClose();
@@ -367,7 +376,27 @@ export function ProviderFormDialog({
       oauthAuthorizeUrl.trim() !== '' &&
       oauthTokenUrl.trim() !== '');
 
+  // Extra body: blank = nothing; otherwise it must be a JSON object that passes the same
+  // check main applies (main re-validates — this is only for an early, in-place message).
+  const extraBodyParsed = ((): { value: Record<string, unknown> } | { error: string } => {
+    if (extraBodyText.trim() === '') return { value: {} };
+    let raw: unknown;
+    try {
+      raw = JSON.parse(extraBodyText);
+    } catch {
+      return { error: t('providers.form.extraBodyInvalidJson') };
+    }
+    const checked = checkExtraBody(raw);
+    if (checked.ok) return { value: checked.value };
+    if (checked.problem === 'denied_key') return { error: t('providers.form.extraBodyDeniedKey').replace('{{key}}', checked.key ?? '') };
+    if (checked.problem === 'too_large') return { error: t('providers.form.extraBodyTooLarge') };
+    return { error: t('providers.form.extraBodyNotObject') };
+  })();
+  const extraBodyError = 'error' in extraBodyParsed ? extraBodyParsed.error : null;
+  const extraBodyKeys = 'value' in extraBodyParsed ? Object.keys(extraBodyParsed.value) : [];
+
   const canSubmit =
+    extraBodyError === null &&
     name.trim() !== '' &&
     baseUrl.trim() !== '' &&
     apiFormats.length > 0 &&
@@ -760,9 +789,12 @@ export function ProviderFormDialog({
               <Chevron open={compatOpen} />
               <span style={{ color: token('text') }}>{t('providers.fields.dropRequestFields')}</span>
               <span style={{ marginLeft: 'auto', color: token('textMuted'), fontSize: fontSize.sm }}>
-                {dropFields.length === 0
+                {dropFields.length === 0 && extraBodyKeys.length === 0
                   ? t('providers.form.dropNone')
-                  : dropFields.join(', ')}
+                  : [
+                      ...dropFields.map((f) => `−${f}`),
+                      ...extraBodyKeys.map((k) => `+${k}`),
+                    ].join(', ')}
               </span>
             </button>
 
@@ -800,6 +832,27 @@ export function ProviderFormDialog({
                     </div>
                   </fieldset>
                 ))}
+
+                <label style={fieldStyle}>
+                  <span style={{ color: token('text') }}>{t('providers.form.extraBody')}</span>
+                  <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+                    {t('providers.form.extraBodyHint')}
+                  </span>
+                  <textarea
+                    value={extraBodyText}
+                    onChange={(e) => setExtraBodyText(e.target.value)}
+                    placeholder={'{ "enable_thinking": false }'}
+                    spellCheck={false}
+                    rows={4}
+                    aria-invalid={extraBodyError !== null}
+                    style={{ ...inputStyle, ...codeStyle, resize: 'vertical' }}
+                  />
+                  {extraBodyError && (
+                    <span role="alert" style={{ color: token('danger'), fontSize: fontSize.sm }}>
+                      {extraBodyError}
+                    </span>
+                  )}
+                </label>
               </div>
             )}
           </div>

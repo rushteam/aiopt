@@ -36,6 +36,7 @@ import {
 import type { ProxyStateStore } from './proxyStore';
 import { geminiOutboundUrl, outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
 import { sanitizeOutboundBody } from './sanitize';
+import { applyExtraBody, autoFixRequest } from './requestFixes';
 import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage, zeroUsage, type UsageCounts } from './usageSniffer';
@@ -84,6 +85,11 @@ export interface TranslationProxyDeps {
    * means strip nothing, which is the default for every provider.
    */
   getDropFields?: (providerId: string) => readonly string[] | undefined;
+  /**
+   * Resolve a provider's `extraBody` (JSON merged into the outbound body; see
+   * requestFixes.ts), live like `getDropFields`. Absent / undefined = merge nothing.
+   */
+  getExtraBody?: (providerId: string) => Record<string, unknown> | undefined;
   /**
    * Whether to add prompt-cache breakpoints to an Anthropic-format outbound body that has
    * none (see promptCache.ts). Read live per request; absent means off.
@@ -385,8 +391,11 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       // that actually goes on the wire, and so the translators' explicit refusal of an
       // untranslatable field still happens first. Field NAMES only in the log — values
       // can be arbitrary user content.
+      // The provider's extraBody merges first, so drop-fields still has the last word.
+      const extra = applyExtraBody(translatedRequest, deps.getExtraBody?.(spec.providerId));
+      if (extra.keys.length > 0) logger.info('proxy.request_extra_body', { path: rest, fields: extra.keys });
       const { body: sanitizedBody, dropped } = sanitizeOutboundBody(
-        translatedRequest,
+        extra.body,
         deps.getDropFields?.(spec.providerId),
       );
       if (dropped.length > 0) {
@@ -436,12 +445,25 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       const controller = new AbortController();
       req.on('close', () => controller.abort());
 
-      const upstream = await deps
-        .fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(outboundBody), signal: controller.signal })
-        .catch(() => {
-          record(wantsStream, false, 0, noTokens);
-          throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
-        });
+      const send = (body: Record<string, unknown>) =>
+        deps
+          .fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal })
+          .catch(() => {
+            record(wantsStream, false, 0, noTokens);
+            throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
+          });
+      let upstream = await send(outboundBody);
+
+      // One repair attempt for a refused request (see requestFixes.ts). The error body is
+      // read only to pick the fix; it is never logged or forwarded — the fix NAME is.
+      if (upstream.status === 400 || upstream.status === 422) {
+        const errorText = await upstream.text().catch(() => '');
+        const fixed = autoFixRequest(spec.outboundFormat, outboundBody, upstream.status, errorText);
+        if (fixed) {
+          logger.info('proxy.auto_fix', { path: rest, status: upstream.status, code: fixed.fix });
+          upstream = await send(fixed.body);
+        }
+      }
 
       if (upstream.status === 401 || upstream.status === 403) {
         record(wantsStream, false, upstream.status, noTokens);

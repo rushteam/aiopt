@@ -270,6 +270,12 @@
         "safe": "记账与路由类参数。剥离它们不会改变模型的回复。",
         "sensitive": "剥离这些会改变返回内容：没有 response_format，原本保证的 JSON 会变成自由文本；没有 thinking 或 reasoning，模型会被悄悄降级。仅在上游明确拒绝时使用。"
       },
+      "extraBody": "额外请求参数（JSON）",
+      "extraBodyHint": "AiOpt 转发给该供应商的每个请求都会合并这里的参数，用于 Agent 无法发送的供应商专有选项，例如 {\"enable_thinking\": false}。以普通配置明文保存，不要填写密钥或令牌。",
+      "extraBodyInvalidJson": "不是合法的 JSON。",
+      "extraBodyNotObject": "必须是一个 JSON 对象。",
+      "extraBodyDeniedKey": "不能在这里设置“{{key}}”——它决定了请求本身。",
+      "extraBodyTooLarge": "内容过大，只保留少量选项即可。",
       "driverEndpointHint": "由内置协议驱动固定，不可修改。",
       "driverFormatsHint": "该供应商由内置协议驱动提供，只走 OpenAI Chat 格式。任何 Agent 都可以绑定——AiOpt 代理会自动转换格式。",
       "agentSessionMissing": "没有找到已登录的会话。请先在该 Agent 中登录，再重新打开此窗口。",

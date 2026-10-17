@@ -235,6 +235,28 @@ describe('provider IPC — dropRequestFields (strict: an unknown name is refused
   });
 });
 
+describe('provider IPC — extraBody', () => {
+  it('stores a valid object, refuses request-defining keys, and clears with {}', async () => {
+    const { reg } = harness();
+    const added = (await reg.invoke(
+      IPC_CHANNELS.providersAdd,
+      { ...addPayload, extraBody: { enable_thinking: false } },
+      trusted,
+    )) as ProvidersSnapshot;
+    const id = pool(added)[0]!.id;
+    expect(pool(added)[0]!.extraBody).toEqual({ enable_thinking: false });
+    for (const bad of [{ model: 'x' }, { messages: [] }, [], 'x', { a: 'x'.repeat(5000) }]) {
+      expect(await codeOf(() => reg.invoke(IPC_CHANNELS.providersUpdate, { id, extraBody: bad }, trusted))).toBe(
+        'INVALID_PARAMS',
+      );
+    }
+    const kept = (await reg.invoke(IPC_CHANNELS.providersUpdate, { id, name: 'R' }, trusted)) as ProvidersSnapshot;
+    expect(pool(kept)[0]!.extraBody).toEqual({ enable_thinking: false });
+    const cleared = (await reg.invoke(IPC_CHANNELS.providersUpdate, { id, extraBody: {} }, trusted)) as ProvidersSnapshot;
+    expect(pool(cleared)[0]!.extraBody).toBeUndefined();
+  });
+});
+
 describe('provider IPC — flows never leak the key', () => {
   it('add returns a snapshot with hasKey and no plaintext', async () => {
     const { reg, secrets } = harness();

@@ -447,3 +447,65 @@ describe('translation proxy — Gemini upstream', () => {
     expect(usage[0]).toMatchObject({ ok: true, streamed: true, inputTokens: 3, outputTokens: 4 });
   });
 });
+
+describe('translation proxy — extra body + auto-fix retry', () => {
+  const started: TranslationProxy[] = [];
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  async function run(
+    replies: { status: number; text: string }[],
+    extra?: Record<string, unknown>,
+  ): Promise<{ status: number; body: string; sent: Record<string, unknown>[] }> {
+    const sent: Record<string, unknown>[] = [];
+    const impl: ProxyFetch = (_url, init) => {
+      sent.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      const r = replies[Math.min(sent.length - 1, replies.length - 1)]!;
+      return Promise.resolve({
+        ok: r.status < 400,
+        status: r.status,
+        headers: { get: () => 'application/json' },
+        body: null,
+        text: () => Promise.resolve(r.text),
+      });
+    };
+    const proxy = createTranslationProxy({ fetchImpl: impl, getKey: () => 'sk', getExtraBody: () => extra });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(spec());
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-x', max_tokens: 64000, messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    return { status: res.status, body: await res.text(), sent };
+  }
+
+  const ok = { status: 200, text: JSON.stringify({ id: 'x', content: [] }) };
+
+  it('merges the provider extraBody into the outbound body', async () => {
+    const { sent } = await run([ok], { thinking: { type: 'disabled' } });
+    expect(sent[0]).toMatchObject({ thinking: { type: 'disabled' }, model: 'claude-x' });
+  });
+
+  it('retries once with a clamped max_tokens and never forwards the upstream error body', async () => {
+    const { status, sent } = await run([{ status: 400, text: 'max_tokens: must be between 1 and 8192' }, ok]);
+    expect(status).toBe(200);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]!.max_tokens).toBe(8192);
+  });
+
+  it('gives up after one retry with the generic envelope', async () => {
+    const secret = 'max_tokens must be between 1 and 8192 sk-leaky';
+    const { status, body, sent } = await run([{ status: 400, text: secret }]);
+    expect(sent).toHaveLength(2);
+    expect(status).toBe(502);
+    expect(body).not.toContain('sk-leaky');
+  });
+
+  it('does not retry an error it cannot fix', async () => {
+    const { sent } = await run([{ status: 400, text: 'content policy' }]);
+    expect(sent).toHaveLength(1);
+  });
+});
