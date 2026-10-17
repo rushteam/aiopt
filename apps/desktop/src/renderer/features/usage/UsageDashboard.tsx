@@ -716,6 +716,11 @@ function WeekdayPattern({ series, f }: { series: readonly FilledDay[]; f: Format
 export interface BreakdownColumn<R> {
   label: string;
   value: (row: R) => number;
+  /**
+   * Render the cell as text instead of a compact token count (e.g. a ratio). The cell
+   * then carries no full-count tooltip.
+   */
+  format?: (row: R) => string;
 }
 
 export function BreakdownPanel<R extends { key: string; totalTokens: number }>({
@@ -767,11 +772,17 @@ export function BreakdownPanel<R extends { key: string; totalTokens: number }>({
                         </span>
                       </div>
                     </td>
-                    {columns.map((c) => (
-                      <td key={c.label} style={tdNumStyle} title={f.full(c.value(r))}>
-                        {f.compact(c.value(r))}
-                      </td>
-                    ))}
+                    {columns.map((c) =>
+                      c.format ? (
+                        <td key={c.label} style={tdNumStyle}>
+                          {c.format(r)}
+                        </td>
+                      ) : (
+                        <td key={c.label} style={tdNumStyle} title={f.full(c.value(r))}>
+                          {f.compact(c.value(r))}
+                        </td>
+                      ),
+                    )}
                     <td style={{ ...tdNumStyle, fontWeight: 600 }} title={f.full(r.totalTokens)}>
                       {f.compact(r.totalTokens)}
                     </td>
