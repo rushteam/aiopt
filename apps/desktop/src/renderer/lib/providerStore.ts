@@ -74,6 +74,25 @@ export async function removeProvider(id: string): Promise<void> {
   applySnapshot(await window.aiopt.providers.remove(id));
 }
 
+export async function addRoutingGroup(
+  input: import('../../shared/ipc-channels').ProviderRoutingGroupUpsertRequest,
+): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.routingGroupAdd(input));
+}
+
+export async function updateRoutingGroup(
+  input: import('../../shared/ipc-channels').ProviderRoutingGroupUpdateRequest,
+): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.routingGroupUpdate(input));
+}
+
+export async function removeRoutingGroup(id: string): Promise<void> {
+  ensureInitialized();
+  applySnapshot(await window.aiopt.providers.routingGroupRemove(id));
+}
+
 export async function setAgentBinding(
   agentId: AgentId,
   providerId: string,

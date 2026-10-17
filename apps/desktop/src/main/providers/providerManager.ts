@@ -74,6 +74,17 @@ import { describeAgentConfig } from './agentConfigView';
 import type { TranslationProxy } from '../proxy/translationProxy';
 import type { BoundUpstream } from '../upstreams/types';
 import { fetchUpstreamModels, testUpstream } from '../upstreams/providerOps';
+import {
+  isRoutingGroupModelId,
+  isRoutingGroupProviderId,
+  ROUTING_GROUP_MODEL_ID,
+  routingGroupVirtualId,
+  type RoutingGroup,
+  type RoutingGroupSummary,
+} from '../../shared/routingGroups';
+import type { RoutingGroupInput, RoutingGroupStore } from './routingGroupStore';
+import { expandRoutingGroup } from '../proxy/routing/expand';
+import { API_FORMATS } from '../../shared/aiProviders';
 
 /** Main-only secret key holding one provider's API key. */
 export function providerSecretKey(providerId: string): string {
@@ -92,6 +103,20 @@ function dropFieldsPatch(raw: readonly string[] | undefined): { dropRequestField
   return fields.length > 0 ? { dropRequestFields: fields } : {};
 }
 
+/** Refuse a group whose members are not real, non-virtual providers with the named model. */
+function assertRoutingGroupMembers(input: RoutingGroupInput, store: ProviderStore): void {
+  for (const m of input.members) {
+    if (isRoutingGroupProviderId(m.providerId) || isCombinedProviderId(m.providerId)) {
+      throwIpcError('INVALID_PARAMS', 'routing group members must be real providers');
+    }
+    const provider = store.getProvider(m.providerId);
+    if (!provider) throwIpcError('NOT_FOUND', 'group member provider not found');
+    if (!provider.models.some((model) => model.id === m.modelId)) {
+      throwIpcError('NOT_FOUND', 'group member model not found on its provider');
+    }
+  }
+}
+
 export type ProvidersChangeListener = (snapshot: ProvidersSnapshot) => void;
 
 export interface ProviderManager {
@@ -101,6 +126,9 @@ export interface ProviderManager {
   removeProvider(id: string): ProvidersSnapshot;
   setBinding(agentId: AgentId, providerId: string, modelId: string): ProvidersSnapshot;
   clearBinding(agentId: AgentId): ProvidersSnapshot;
+  addRoutingGroup(input: RoutingGroupInput): ProvidersSnapshot;
+  updateRoutingGroup(id: string, input: RoutingGroupInput): ProvidersSnapshot;
+  removeRoutingGroup(id: string): ProvidersSnapshot;
   /**
    * Undo AiOpt's takeover of one agent: restore its native config file(s) to their
    * pre-AiOpt state (backup written back, or the AiOpt-created file removed) AND
@@ -220,6 +248,11 @@ export function createProviderManager(
     loopbackBlocked: false,
     proxyEnvNoLoopbackBypass: false,
   }),
+  // User-defined failover pools (separate file from providers.json). Optional so existing
+  // unit tests need not supply a store; absent → no groups in the snapshot / bind refused.
+  routingGroups: RoutingGroupStore | null = null,
+  /** Drop affinity sticks when a group is removed (proxy runtime). */
+  onRoutingGroupRemoved: (groupId: string) => void = () => {},
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -253,13 +286,44 @@ export function createProviderManager(
     };
   }
 
+  function routingGroupAsProviderSummary(group: RoutingGroupSummary): ProviderSummary {
+    // Virtual pool row so BindingPicker can bind without a separate picker path.
+    // Formats = union of members that still exist; empty when every member is gone.
+    const formats = new Set<ApiFormat>();
+    let hasKey = false;
+    for (const m of group.members) {
+      const p = store.getProvider(m.providerId);
+      if (!p) continue;
+      for (const f of p.apiFormats) formats.add(f);
+      if (toSummary(p).hasKey) hasKey = true;
+    }
+    return {
+      id: group.virtualProviderId,
+      virtual: true,
+      name: group.name,
+      apiFormats: API_FORMATS.filter((f) => formats.has(f)),
+      baseUrl: '',
+      models: [{ id: ROUTING_GROUP_MODEL_ID, alias: group.name }],
+      createdAt: group.createdAt,
+      hasKey,
+      notes: `routing-group:${group.strategy}:${group.affinity}:${group.members.length}`,
+    };
+  }
+
   function snapshot(): ProvidersSnapshot {
     const proxyPort = getProxy().getPort();
     const realProviders = store.listProviders().map(toSummary);
+    const groupSummaries = routingGroups?.summaries() ?? [];
+    const groupRows = groupSummaries.map(routingGroupAsProviderSummary);
     const combined = buildCombinedProviderSummary(realProviders, 'All providers');
-    const providers = combined ? [...realProviders, combined] : realProviders;
+    const providers = [
+      ...realProviders,
+      ...groupRows,
+      ...(combined ? [combined] : []),
+    ];
     return {
       providers,
+      routingGroups: groupSummaries,
       // The live loopback port, or null before the proxy has bound (-1). Not a secret — it
       // already sits in each proxied agent's on-disk baseUrl; the renderer shows it and offers
       // the "refresh port" action. The token is never included.
@@ -310,6 +374,68 @@ export function createProviderManager(
       return readAgentImportAccessTokenSync(probeProvider.agentImport.agentId);
     }
     return secrets.get(providerSecretKey(input.providerId));
+  }
+
+  /**
+   * Bind an agent to a routing group: always via the translation proxy. The registered
+   * route carries `routingGroupId`; concrete upstreams expand at request time. The agent
+   * sees a loopback URL + the group's sentinel model id.
+   */
+  function applyRoutingGroupBinding(agentId: AgentId, group: RoutingGroup): void {
+    const def = getAgentDef(agentId);
+    if (!def) throwIpcError('INVALID_PARAMS', 'unknown agent');
+    const adapter = adapters.get(agentId);
+    if (!adapter) throwIpcError('UNSUPPORTED_CAPABILITY', 'no adapter for this agent yet');
+
+    const inbound = def.acceptedFormats[0];
+    if (!inbound || inbound === 'gemini') {
+      throwIpcError(
+        'UNSUPPORTED_CAPABILITY',
+        'this agent cannot bind a routing group',
+      );
+    }
+
+    const members = expandRoutingGroup(group, agentId, inbound, {
+      getProvider: (id) => store.getProvider(id),
+      getAgentDef: (id) => getAgentDef(id) ?? null,
+    });
+    if (members.length === 0) {
+      throwIpcError('PRECONDITION_FAILED', 'routing group has no reachable members for this agent');
+    }
+
+    // Placeholder upstream fields keep the token stable; the proxy must not use them.
+    const placeholder = members[0]!;
+    const virtualProviderId = routingGroupVirtualId(group.id);
+    const { baseUrl, token } = getProxy().registerRoute({
+      agentId,
+      providerId: virtualProviderId,
+      inboundFormat: inbound,
+      outboundFormat: placeholder.outboundFormat,
+      upstreamBaseUrl: placeholder.upstreamBaseUrl,
+      modelId: ROUTING_GROUP_MODEL_ID,
+      routingGroupId: group.id,
+    });
+
+    adapter.writeLive({
+      provider: {
+        id: virtualProviderId,
+        name: group.name,
+        apiFormats: [inbound],
+        baseUrl,
+        models: [{ id: ROUTING_GROUP_MODEL_ID }],
+        createdAt: group.createdAt,
+        credentialMode: 'api_key',
+      },
+      apiFormat: inbound,
+      modelId: ROUTING_GROUP_MODEL_ID,
+      apiKey: token,
+    });
+    bindingApplied?.set(agentId, {
+      baseUrl,
+      modelId: ROUTING_GROUP_MODEL_ID,
+      authTokenSet: token !== null && token !== '',
+      providerId: virtualProviderId,
+    });
   }
 
   /**
@@ -442,11 +568,18 @@ export function createProviderManager(
     for (const def of AGENTS) {
       const binding = store.getBinding(def.id);
       if (!binding) continue;
-      const provider = store.getProvider(binding.providerId);
-      if (!provider) continue;
-      const model = provider.models.find((m) => m.id === binding.modelId);
-      if (!model) continue;
       try {
+        if (isRoutingGroupProviderId(binding.providerId)) {
+          if (!isRoutingGroupModelId(binding.modelId)) continue;
+          const group = routingGroups?.getByVirtualProviderId(binding.providerId);
+          if (!group) continue;
+          applyRoutingGroupBinding(def.id, group);
+          continue;
+        }
+        const provider = store.getProvider(binding.providerId);
+        if (!provider) continue;
+        const model = provider.models.find((m) => m.id === binding.modelId);
+        if (!model) continue;
         applyBinding(def.id, provider, model);
       } catch (err) {
         // A binding that is no longer bindable (e.g. the provider was edited to a
@@ -630,6 +763,17 @@ export function createProviderManager(
         throwIpcError('INVALID_PARAMS', 'pick a model from the combined list, not the aggregate row');
       }
 
+      if (isRoutingGroupProviderId(providerId)) {
+        if (!isRoutingGroupModelId(modelId)) {
+          throwIpcError('INVALID_PARAMS', 'routing groups bind with the route sentinel model');
+        }
+        const group = routingGroups?.getByVirtualProviderId(providerId);
+        if (!group) throwIpcError('NOT_FOUND', 'routing group not found');
+        applyRoutingGroupBinding(agentId, group);
+        store.setBinding(agentId, { providerId, modelId: ROUTING_GROUP_MODEL_ID });
+        return announce();
+      }
+
       const provider = store.getProvider(providerId);
       if (!provider) throwIpcError('NOT_FOUND', 'provider not found');
       const model = provider.models.find((m) => m.id === modelId);
@@ -643,6 +787,51 @@ export function createProviderManager(
       applyBinding(agentId, provider, model);
 
       store.setBinding(agentId, { providerId, modelId });
+      return announce();
+    },
+
+    addRoutingGroup(input) {
+      if (!routingGroups) throwIpcError('UNSUPPORTED_CAPABILITY', 'routing groups unavailable');
+      assertRoutingGroupMembers(input, store);
+      routingGroups.add(input);
+      return announce();
+    },
+
+    updateRoutingGroup(id, input) {
+      if (!routingGroups) throwIpcError('UNSUPPORTED_CAPABILITY', 'routing groups unavailable');
+      assertRoutingGroupMembers(input, store);
+      routingGroups.replace(id, input);
+      // Re-apply agents bound to this group so a member edit takes effect without a restart.
+      const virtualId = routingGroupVirtualId(id);
+      for (const def of AGENTS) {
+        const binding = store.getBinding(def.id);
+        if (binding?.providerId !== virtualId) continue;
+        const group = routingGroups.get(id);
+        if (!group) continue;
+        try {
+          applyRoutingGroupBinding(def.id, group);
+        } catch (err) {
+          logger.warn('proxy.rebuild_skip', {
+            agent: def.id,
+            code: err instanceof Error ? err.message.match(/^\[([A-Z_]+)\]/)?.[1] : undefined,
+          });
+        }
+      }
+      return announce();
+    },
+
+    removeRoutingGroup(id) {
+      if (!routingGroups) throwIpcError('UNSUPPORTED_CAPABILITY', 'routing groups unavailable');
+      const virtualId = routingGroupVirtualId(id);
+      for (const def of AGENTS) {
+        if (store.getBinding(def.id)?.providerId === virtualId) {
+          getProxy().unregisterRoute({ agentId: def.id });
+          store.clearBinding(def.id);
+          bindingApplied?.clear(def.id);
+        }
+      }
+      routingGroups.remove(id);
+      onRoutingGroupRemoved(id);
       return announce();
     },
 
@@ -710,6 +899,17 @@ export function createProviderManager(
       for (const def of AGENTS) {
         const next = current.bindings[def.id];
         if (next) {
+          if (isRoutingGroupProviderId(next.providerId)) {
+            if (!isRoutingGroupModelId(next.modelId)) continue;
+            const group = routingGroups?.getByVirtualProviderId(next.providerId);
+            if (!group) continue;
+            applyRoutingGroupBinding(def.id, group);
+            store.setBinding(def.id, {
+              providerId: next.providerId,
+              modelId: ROUTING_GROUP_MODEL_ID,
+            });
+            continue;
+          }
           const provider = store.getProvider(next.providerId);
           const model = provider?.models.find((m) => m.id === next.modelId);
           if (!provider || !model) continue;

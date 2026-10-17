@@ -534,3 +534,116 @@ describe('safeRetryAfter', () => {
     expect(safeRetryAfter(null)).toBeNull();
   });
 });
+
+describe('translation proxy — routing group failover', () => {
+  const started: TranslationProxy[] = [];
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  it('tries the next member on 503 and answers from the second seat', async () => {
+    const sentUrls: string[] = [];
+    const impl: ProxyFetch = (url) => {
+      sentUrls.push(String(url));
+      if (sentUrls.length === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 503,
+          headers: { get: () => null },
+          body: null,
+          text: () => Promise.resolve('busy'),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        body: null,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              id: 'msg_ok',
+              type: 'message',
+              role: 'assistant',
+              content: [{ type: 'text', text: 'ok' }],
+              model: 'm2',
+              stop_reason: 'end_turn',
+              usage: { input_tokens: 1, output_tokens: 1 },
+            }),
+          ),
+      });
+    };
+
+    const resting: string[] = [];
+    const successes: string[] = [];
+    const proxy = createTranslationProxy({
+      fetchImpl: impl,
+      getKey: () => 'sk',
+      routing: {
+        cooldown: {
+          rest: () => {},
+          isResting: () => false,
+          restingSeats: () => new Set(),
+          clear: () => {},
+        },
+        plan: () => ({
+          group: {
+            id: 'g1',
+            name: 'g',
+            members: [
+              { providerId: 'p1', modelId: 'm1' },
+              { providerId: 'p2', modelId: 'm2' },
+            ],
+            strategy: 'ordered',
+            affinity: 'off',
+            createdAt: 1,
+          },
+          conversationKey: null,
+          candidates: [
+            {
+              seat: 'p1\u241fm1',
+              providerId: 'p1',
+              modelId: 'm1',
+              outboundFormat: 'anthropic',
+              upstreamBaseUrl: 'https://a.example',
+            },
+            {
+              seat: 'p2\u241fm2',
+              providerId: 'p2',
+              modelId: 'm2',
+              outboundFormat: 'anthropic',
+              upstreamBaseUrl: 'https://b.example',
+            },
+          ],
+        }),
+        onFailover: (seat) => resting.push(seat),
+        onSuccess: (_g, _k, seat) => successes.push(seat),
+        clearGroup: () => {},
+      },
+    });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(
+      spec({
+        providerId: '__aiopt_rg__g1',
+        modelId: '__route__',
+        routingGroupId: 'g1',
+        upstreamBaseUrl: 'https://placeholder.example',
+      }),
+    );
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: '__route__',
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(sentUrls[0]).toContain('a.example');
+    expect(sentUrls[1]).toContain('b.example');
+    expect(resting).toEqual(['p1\u241fm1']);
+    expect(successes).toEqual(['p2\u241fm2']);
+  });
+});

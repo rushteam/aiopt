@@ -34,6 +34,12 @@ export interface RouteSpec {
   upstreamBaseUrl: string;
   /** The wire model id to force onto the upstream request. */
   modelId: string;
+  /**
+   * When set, `providerId` is the group's virtual pool id and concrete upstreams are
+   * expanded at request time (strategy / affinity / failover). The other upstream fields
+   * are placeholders for token stability and must not be used to reach a provider.
+   */
+  routingGroupId?: string;
 }
 
 /** The native inbound path each translatable format's client appends after the token. */
@@ -155,7 +161,8 @@ function sameSpec(a: RouteSpec, b: RouteSpec): boolean {
     a.inboundFormat === b.inboundFormat &&
     a.outboundFormat === b.outboundFormat &&
     a.upstreamBaseUrl === b.upstreamBaseUrl &&
-    a.modelId === b.modelId
+    a.modelId === b.modelId &&
+    (a.routingGroupId ?? undefined) === (b.routingGroupId ?? undefined)
   );
 }
 

@@ -393,6 +393,35 @@
       "settingsStatus": "Activo · {{count}} modelos disponibles",
       "settingsDisabled": "Se activa al añadir al menos un proveedor."
     }
+,
+    "routingGroup": {
+      "heading": "Grupos de enrutamiento",
+      "add": "Añadir grupo de enrutamiento",
+      "addTitle": "Añadir grupo de enrutamiento",
+      "editTitle": "Editar grupo de enrutamiento",
+      "empty": "Aún no hay grupos de enrutamiento. Un grupo es un grupo de conmutación por error de proveedores+modelos que se vincula como una entrada.",
+      "help": "Vincule un agente al grupo para enrutar por el proxy local con conmutación por error. La afinidad mantiene una conversación en el último miembro exitoso.",
+      "helpTooltip": "Grupo de conmutación por error: el proxy prueba miembros en orden de estrategia y cambia antes de cualquier byte de respuesta.",
+      "viaProxy": "vía proxy (conmutación)",
+      "name": "Nombre",
+      "strategy": "Estrategia",
+      "affinity": "Afinidad",
+      "members": "Miembros",
+      "memberProvider": "Proveedor",
+      "memberModel": "Modelo",
+      "addMember": "Añadir miembro",
+      "removeMember": "Quitar",
+      "cardMeta": "{{count}} miembros · {{strategy}} · {{affinity}}",
+      "strategies": {
+        "ordered": "Orden fijo",
+        "rotate": "Rotar",
+        "least_used": "Menos usado"
+      },
+      "affinities": {
+        "off": "Desactivado",
+        "session": "Pegar a la sesión"
+      }
+    }
   },
   "usage": {
     "title": "Uso",

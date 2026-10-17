@@ -168,6 +168,18 @@ A global setting. Off (default) writes same-format bindings as a direct provider
 - **de**: Proxy-Modus
 - **es**: Modo proxy
 
+### Routing group (`routing-group`)
+
+A user-defined failover pool of provider+model members. Agents bind it like one pool entry (virtual provider id + sentinel model). Requests always go through the local translation proxy, which orders members by strategy, optionally sticks a conversation to the last successful seat (affinity), and fails over before any reply bytes. Not 'load balancer' or 'provider chain' in UI copy.
+
+- **zh-CN**: 路由组
+  - forbidden: `负载均衡组`, `供应商链`, `故障转移链`
+- **ja**: ルーティンググループ
+- **ko**: 라우팅 그룹
+- **fr**: Groupe de routage
+- **de**: Routing-Gruppe
+- **es**: Grupo de enrutamiento
+
 ### Skill (`skill`)
 
 A reusable unit of agent capability, stored as a directory containing a SKILL.md (name + description). AiOpt keeps a central library of skills and syncs them with each agent's home skills directory. Term still under discussion.

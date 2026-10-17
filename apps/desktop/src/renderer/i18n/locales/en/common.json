@@ -393,6 +393,35 @@
       "UPSTREAM_ERROR": "Couldn't load models from the provider. Check the Base URL and try again.",
       "INTERNAL": "Something went wrong. Try again."
     }
+,
+    "routingGroup": {
+      "heading": "Routing groups",
+      "add": "Add routing group",
+      "addTitle": "Add routing group",
+      "editTitle": "Edit routing group",
+      "empty": "No routing groups yet. A group is a failover pool of providers+models you can bind like one entry.",
+      "help": "Bind an agent to the group to route through the local proxy with failover. Affinity keeps a conversation on the last successful member.",
+      "helpTooltip": "Failover pool: the proxy tries members in strategy order and switches before any reply bytes when a seat fails.",
+      "viaProxy": "via proxy (failover)",
+      "name": "Name",
+      "strategy": "Strategy",
+      "affinity": "Affinity",
+      "members": "Members",
+      "memberProvider": "Provider",
+      "memberModel": "Model",
+      "addMember": "Add member",
+      "removeMember": "Remove",
+      "cardMeta": "{{count}} members · {{strategy}} · {{affinity}}",
+      "strategies": {
+        "ordered": "Fixed order",
+        "rotate": "Rotate",
+        "least_used": "Least used"
+      },
+      "affinities": {
+        "off": "Off",
+        "session": "Stick to session"
+      }
+    }
   },
   "usage": {
     "title": "Usage",

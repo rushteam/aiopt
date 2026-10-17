@@ -23,6 +23,7 @@ import {
 } from '../../shared/aiProviders';
 import { isAgentImportAgentId } from '../../shared/agentImport';
 import { isOAuthSubscriptionKind, providerUsesOAuth } from '../../shared/oauthProviders';
+import { isRoutingGroupProviderId } from '../../shared/routingGroups';
 import { throwIpcError } from '../ipc/validate';
 
 export interface ProvidersDocument {
@@ -166,8 +167,15 @@ function parseDocument(raw: unknown): ProvidersDocument {
       : {};
   for (const agentId of AGENT_IDS) {
     const binding = validBinding(rawBindings[agentId]);
-    // Drop a binding whose provider no longer exists (dangling pointer).
-    if (binding && seen.has(binding.providerId)) bindings[agentId] = binding;
+    // Drop a binding whose provider no longer exists (dangling pointer). A routing-group
+    // virtual id is not in the provider pool — keep it here; the manager drops it if the
+    // group itself is gone.
+    if (
+      binding &&
+      (seen.has(binding.providerId) || isRoutingGroupProviderId(binding.providerId))
+    ) {
+      bindings[agentId] = binding;
+    }
   }
 
   return { providers, bindings };

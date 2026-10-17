@@ -70,6 +70,10 @@ function validSpec(raw: unknown): RouteSpec | null {
   if (!API_FORMATS.includes(obj.outboundFormat as ApiFormat)) return null;
   if (!nonEmptyString(obj.upstreamBaseUrl)) return null;
   if (!nonEmptyString(obj.modelId)) return null;
+  const routingGroupId =
+    typeof obj.routingGroupId === 'string' && obj.routingGroupId.trim() !== ''
+      ? obj.routingGroupId.trim()
+      : undefined;
   return {
     agentId: obj.agentId as RouteSpec['agentId'],
     providerId: obj.providerId,
@@ -77,6 +81,7 @@ function validSpec(raw: unknown): RouteSpec | null {
     outboundFormat: obj.outboundFormat as ApiFormat,
     upstreamBaseUrl: obj.upstreamBaseUrl,
     modelId: obj.modelId,
+    ...(routingGroupId ? { routingGroupId } : {}),
   };
 }
 

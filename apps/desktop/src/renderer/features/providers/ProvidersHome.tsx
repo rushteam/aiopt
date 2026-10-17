@@ -23,6 +23,10 @@ import { BindingProfileSwitcher } from './BindingProfileSwitcher';
 import { AgentImportDialog } from './AgentImportDialog';
 import { ProvidersSetupGuide } from './ProvidersSetupGuide';
 import { shouldShowProvidersSetupGuide } from './providersSetupState';
+import { RoutingGroupFormDialog } from './RoutingGroupFormDialog';
+import { isRoutingGroupProviderId } from '../../../shared/routingGroups';
+import { removeRoutingGroup } from '../../lib/providerStore';
+import type { RoutingGroupSummary } from '../../../shared/routingGroups';
 
 type Dialog =
   | { kind: 'none' }
@@ -30,11 +34,20 @@ type Dialog =
   | { kind: 'import' }
   | { kind: 'edit'; provider: ProviderSummary }
   | { kind: 'bind'; agent: AgentSummary }
-  | { kind: 'config'; agent: AgentSummary };
+  | { kind: 'config'; agent: AgentSummary }
+  | { kind: 'routing-add' }
+  | { kind: 'routing-edit'; group: RoutingGroupSummary };
 
 export function ProvidersHome() {
   const t = useT();
-  const { providers, agents, proxyPort, loopbackBlocked, proxyEnvNoLoopbackBypass } = useProviders();
+  const {
+    providers,
+    agents,
+    proxyPort,
+    loopbackBlocked,
+    proxyEnvNoLoopbackBypass,
+    routingGroups = [],
+  } = useProviders();
   const [dialog, setDialog] = useState<Dialog>({ kind: 'none' });
   const close = () => setDialog({ kind: 'none' });
 
@@ -52,7 +65,10 @@ export function ProvidersHome() {
   // from fighting: AgentCard leaves its button a ghost while the pool is empty, so
   // exactly one filled accent is ever on this screen.
   const realProviders = useMemo(
-    () => providers.filter((p) => !isCombinedProviderId(p.id)),
+    () =>
+      providers.filter(
+        (p) => !isCombinedProviderId(p.id) && !isRoutingGroupProviderId(p.id),
+      ),
     [providers],
   );
   const poolEmpty = realProviders.length === 0;
@@ -237,11 +253,29 @@ export function ProvidersHome() {
             />
           </section>
         )}
+
+        {(!poolEmpty || routingGroups.length > 0) && (
+          <section style={{ ...tabScreenSectionStyle, marginTop: space['2xl'] }}>
+            <RoutingGroupsSection
+              t={t}
+              groups={routingGroups}
+              canAdd={!poolEmpty}
+              onAdd={() => setDialog({ kind: 'routing-add' })}
+              onEdit={(group) => setDialog({ kind: 'routing-edit', group })}
+            />
+          </section>
+        )}
       </ScrollTabScreen>
 
       {dialog.kind === 'add' && <ProviderFormDialog onClose={close} />}
       {dialog.kind === 'import' && <AgentImportDialog onClose={close} />}
       {dialog.kind === 'edit' && <ProviderFormDialog provider={dialog.provider} onClose={close} />}
+      {dialog.kind === 'routing-add' && (
+        <RoutingGroupFormDialog providers={providers} onClose={close} />
+      )}
+      {dialog.kind === 'routing-edit' && (
+        <RoutingGroupFormDialog providers={providers} initial={dialog.group} onClose={close} />
+      )}
       {dialog.kind === 'bind' && (
         <BindingPicker agent={dialog.agent} providers={providers} onClose={close} />
       )}
@@ -261,6 +295,104 @@ export function ProvidersHome() {
 // and at 16px against a bold 15px card name the ratio was 1.07x — below any usable step,
 // while the eight bold card titles out-shouted the one heading by sheer repetition. 18px
 // against 15px is 1.20x, and the explicit 600 keeps it ahead of `<strong>` card names.
+function RoutingGroupsSection({
+  t,
+  groups,
+  canAdd,
+  onAdd,
+  onEdit,
+}: {
+  t: TranslateFn;
+  groups: RoutingGroupSummary[];
+  canAdd: boolean;
+  onAdd: () => void;
+  onEdit: (group: RoutingGroupSummary) => void;
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
+        <h2 style={{ ...sectionHeadingStyle, margin: 0 }}>{t('providers.routingGroup.heading')}</h2>
+        {canAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={addGhostStyle}
+          >
+            {t('providers.routingGroup.add')}
+          </button>
+        )}
+      </div>
+      {groups.length === 0 ? (
+        <p style={{ fontSize: fontSize.md, color: token('textMuted'), margin: 0 }}>
+          {t('providers.routingGroup.empty')}
+        </p>
+      ) : (
+        <div style={gridStyle}>
+          {groups.map((group) => (
+            <RoutingGroupCard key={group.id} group={group} t={t} onEdit={() => onEdit(group)} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function RoutingGroupCard({
+  group,
+  t,
+  onEdit,
+}: {
+  group: RoutingGroupSummary;
+  t: TranslateFn;
+  onEdit: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <article
+      style={{
+        border: `1px solid ${token('border')}`,
+        borderRadius: radius.lg,
+        padding: space.lg,
+        background: token('surface'),
+        display: 'grid',
+        gap: space.sm,
+      }}
+    >
+      <strong style={{ fontSize: fontSize.md }}>{group.name}</strong>
+      <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
+        {t('providers.routingGroup.cardMeta')
+          .replace('{{count}}', String(group.members.length))
+          .replace('{{strategy}}', t(`providers.routingGroup.strategies.${group.strategy}`))
+          .replace('{{affinity}}', t(`providers.routingGroup.affinities.${group.affinity}`))}
+      </p>
+      <div style={{ display: 'flex', gap: space.sm, marginTop: space.sm }}>
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={busy}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={addGhostStyle}
+        >
+          {t('providers.card.edit')}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void removeRoutingGroup(group.id).finally(() => setBusy(false));
+          }}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={{ ...addGhostStyle, color: token('danger'), borderColor: token('danger') }}
+        >
+          {t('providers.card.delete')}
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function PoolSection({
   t,
   poolEmpty,

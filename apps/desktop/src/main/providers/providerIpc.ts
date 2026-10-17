@@ -25,6 +25,13 @@ import {
   type ApiFormat,
   type ProviderModel,
 } from '../../shared/aiProviders';
+import {
+  ROUTING_AFFINITIES,
+  ROUTING_STRATEGIES,
+  type RoutingAffinity,
+  type RoutingGroupMember,
+  type RoutingStrategy,
+} from '../../shared/routingGroups';
 import type { ProviderManager } from './providerManager';
 import {
   OAUTH_SUBSCRIPTION_KINDS,
@@ -328,4 +335,51 @@ export function registerProviderIpc(
     deps.revealItem(manager.resolveConfigRevealPath(agentId, role));
     return {};
   });
+
+  registry.register(IPC_CHANNELS.providersRoutingGroupAdd, (payload, meta) => {
+    meta.assertTrustedSender();
+    return manager.addRoutingGroup(requireRoutingGroupInput(payload));
+  });
+
+  registry.register(IPC_CHANNELS.providersRoutingGroupUpdate, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const id = requireString(obj.id, 'id');
+    return manager.updateRoutingGroup(id, requireRoutingGroupInput(payload));
+  });
+
+  registry.register(IPC_CHANNELS.providersRoutingGroupRemove, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return manager.removeRoutingGroup(requireString(obj.id, 'id'));
+  });
+}
+
+function requireRoutingGroupInput(payload: unknown): {
+  name: string;
+  members: RoutingGroupMember[];
+  strategy?: RoutingStrategy;
+  affinity?: RoutingAffinity;
+} {
+  const obj = requireObject(payload);
+  const name = requireString(obj.name, 'name');
+  if (!Array.isArray(obj.members) || obj.members.length === 0) {
+    throwIpcError('INVALID_PARAMS', 'members must be a non-empty array');
+  }
+  const members: RoutingGroupMember[] = obj.members.map((entry, i) => {
+    const m = requireObject(entry, `members[${i}]`);
+    return {
+      providerId: requireString(m.providerId, `members[${i}].providerId`),
+      modelId: requireString(m.modelId, `members[${i}].modelId`),
+    };
+  });
+  const strategy =
+    obj.strategy === undefined
+      ? undefined
+      : requireEnum(obj.strategy, ROUTING_STRATEGIES, 'strategy');
+  const affinity =
+    obj.affinity === undefined
+      ? undefined
+      : requireEnum(obj.affinity, ROUTING_AFFINITIES, 'affinity');
+  return { name, members, strategy, affinity };
 }

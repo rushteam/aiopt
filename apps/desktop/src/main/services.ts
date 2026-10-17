@@ -81,12 +81,26 @@ import {
   bindingProfilesFilePath,
   bindingAppliedFilePath,
   proxyStateFilePath,
+  routingAffinityFilePath,
+  routingGroupsFilePath,
   secretsDir,
   skillsLibraryPath,
   usageHistoryFilePath,
   workbenchDir,
   mcpServersFilePath,
 } from './paths';
+import {
+  createFileRoutingGroupPersistence,
+  createRoutingGroupStore,
+  type RoutingGroupStore,
+} from './providers/routingGroupStore';
+import {
+  createFileAffinityPersistence,
+  createSessionAffinityStore,
+  type SessionAffinityStore,
+} from './proxy/routing/sessionAffinity';
+import { createRoutingRuntime, type RoutingRuntime } from './proxy/routing/runtime';
+import { getAgentDef } from '../shared/aiProviders';
 import { IPC_EVENTS, type AppVersionsResult } from '../shared/ipc-channels';
 
 let configStore: ConfigStore | null = null;
@@ -204,6 +218,41 @@ function getProviderStore(): ProviderStore {
 
 let bindingProfileStore: BindingProfileStore | null = null;
 let bindingAppliedStore: BindingAppliedStore | null = null;
+let routingGroupStore: RoutingGroupStore | null = null;
+let sessionAffinityStore: SessionAffinityStore | null = null;
+let routingRuntime: RoutingRuntime | null = null;
+
+function getRoutingGroupStore(): RoutingGroupStore {
+  if (!routingGroupStore) {
+    routingGroupStore = createRoutingGroupStore(
+      createFileRoutingGroupPersistence(routingGroupsFilePath()),
+    );
+  }
+  return routingGroupStore;
+}
+
+function getSessionAffinityStore(): SessionAffinityStore {
+  if (!sessionAffinityStore) {
+    sessionAffinityStore = createSessionAffinityStore(
+      createFileAffinityPersistence(routingAffinityFilePath()),
+    );
+  }
+  return sessionAffinityStore;
+}
+
+function getRoutingRuntime(): RoutingRuntime {
+  if (!routingRuntime) {
+    routingRuntime = createRoutingRuntime({
+      getGroup: (id) => getRoutingGroupStore().get(id),
+      lookups: {
+        getProvider: (id) => getProviderStore().getProvider(id),
+        getAgentDef: (id) => getAgentDef(id) ?? null,
+      },
+      affinity: getSessionAffinityStore(),
+    });
+  }
+  return routingRuntime;
+}
 
 function getBindingProfileStore(): BindingProfileStore {
   if (!bindingProfileStore) {
@@ -307,6 +356,8 @@ export function getProviderManager(): ProviderManager {
       // Driver-served providers list models / are tested through their driver.
       (provider) => getUpstreamRegistry().forProvider(provider),
       () => ({ loopbackBlocked, proxyEnvNoLoopbackBypass: loopbackNotExemptFromProxy(process.env) }),
+      getRoutingGroupStore(),
+      (groupId) => getRoutingRuntime().clearGroup(groupId),
     );
   }
   return providerManager;
@@ -371,6 +422,8 @@ export function getTranslationProxy(): TranslationProxy {
         token: () => (getConfigStore().get('mcpGateway') ? getGatewayToken() : null),
         handle: (req, res, rest) => getMcpGateway().handle(req, res, rest),
       },
+      // Routing groups: expand + strategy / affinity / cooldown at request time.
+      routing: getRoutingRuntime(),
     });
   }
   return translationProxy;

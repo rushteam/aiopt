@@ -13,6 +13,12 @@ import type {
 import type { AgentId, ApiFormat, AgentBinding, ProviderModel } from './aiProviders';
 import type { AgentImportConfig } from './agentImport';
 import type { OAuthProviderConfig, ProviderCredentialMode } from './oauthProviders';
+import type {
+  RoutingAffinity,
+  RoutingGroupMember,
+  RoutingGroupSummary,
+  RoutingStrategy,
+} from './routingGroups';
 import type { UsageSnapshot } from './usageStats';
 import type {
   LocalUsageSnapshot,
@@ -155,6 +161,12 @@ export const IPC_CHANNELS = {
   // credentials-and-local-storage.md §1 forbids them transiting the preload or the renderer,
   // so AiOpt shows STRUCTURE over IPC and hands raw viewing to the OS.
   providersRevealConfig: 'providers:reveal-config',
+  /** Create a routing group (failover pool). */
+  providersRoutingGroupAdd: 'providers:routing-group-add',
+  /** Replace a routing group's name / members / strategy / affinity. */
+  providersRoutingGroupUpdate: 'providers:routing-group-update',
+  /** Delete a routing group and clear bindings that pointed at it. */
+  providersRoutingGroupRemove: 'providers:routing-group-remove',
 
   // Usage statistics. Read the aggregated snapshot of proxied traffic, or clear the
   // history. The recorded events carry only counts + identifiers (never content, keys,
@@ -652,6 +664,8 @@ export interface AgentSummary {
 export interface ProvidersSnapshot {
   providers: ProviderSummary[];
   agents: AgentSummary[];
+  /** User-defined failover pools (also mirrored as virtual rows in `providers`). */
+  routingGroups?: RoutingGroupSummary[];
   /**
    * The live loopback port the translation proxy is bound to, or null before it has bound.
    * NOT a secret — it already sits plaintext in each proxied agent's on-disk baseUrl. The
@@ -753,6 +767,22 @@ export interface ProviderOAuthStartRequest {
 }
 
 export interface ProviderRemoveRequest {
+  id: string;
+}
+
+/** Create / replace a routing group (failover pool). Members must be real providers. */
+export interface ProviderRoutingGroupUpsertRequest {
+  name: string;
+  members: RoutingGroupMember[];
+  strategy?: RoutingStrategy;
+  affinity?: RoutingAffinity;
+}
+
+export interface ProviderRoutingGroupUpdateRequest extends ProviderRoutingGroupUpsertRequest {
+  id: string;
+}
+
+export interface ProviderRoutingGroupRemoveRequest {
   id: string;
 }
 
@@ -1098,6 +1128,18 @@ export interface IpcContract {
   [IPC_CHANNELS.providersRevealConfig]: {
     request: ProviderRevealConfigRequest;
     result: Record<string, never>;
+  };
+  [IPC_CHANNELS.providersRoutingGroupAdd]: {
+    request: ProviderRoutingGroupUpsertRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersRoutingGroupUpdate]: {
+    request: ProviderRoutingGroupUpdateRequest;
+    result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersRoutingGroupRemove]: {
+    request: ProviderRoutingGroupRemoveRequest;
+    result: ProvidersSnapshot;
   };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };
