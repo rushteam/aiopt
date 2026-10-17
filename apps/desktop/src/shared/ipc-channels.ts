@@ -658,6 +658,12 @@ export interface ProvidersSnapshot {
    * renderer displays it and offers "refresh port"; the per-binding token is never included.
    */
   proxyPort: number | null;
+  /**
+   * True when the startup loopback self-test (Windows only) found connections to
+   * 127.0.0.1 being dropped — typically the firewall blocking AiOpt's inbound traffic,
+   * which breaks every proxied agent. Diagnostic only: AiOpt never changes the firewall.
+   */
+  loopbackBlocked?: boolean;
 }
 
 /** Create a provider. `apiKey` (if present) is stored encrypted main-side, never echoed back. */

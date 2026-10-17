@@ -161,7 +161,8 @@
       "refresh": "포트 새로 고침",
       "refreshing": "새로 고치는 중…",
       "refreshed": "새로 고침됨",
-      "stopped": "실행 중 아님"
+      "stopped": "실행 중 아님",
+      "loopbackBlocked": "127.0.0.1 연결이 차단되어 로컬 프록시를 거치는 Agent가 연결할 수 없습니다. 보통 방화벽이 원인입니다. AiOpt가 연결을 받도록 허용한 뒤(Windows 보안 → 방화벽 및 네트워크 보호 → 방화벽을 통해 앱 허용) AiOpt를 다시 시작하세요."
     },
     "pool": {
       "heading": "공급자 풀",

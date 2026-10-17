@@ -161,7 +161,8 @@
       "refresh": "Actualizar puerto",
       "refreshing": "Actualizando…",
       "refreshed": "Actualizado",
-      "stopped": "No está en ejecución"
+      "stopped": "No está en ejecución",
+      "loopbackBlocked": "Las conexiones a 127.0.0.1 se están descartando, así que los agentes que pasan por el proxy local no pueden alcanzarlo. Suele ser el firewall: permite que AiOpt reciba conexiones (Seguridad de Windows → Firewall y protección de red → Permitir una aplicación a través del firewall) y reinicia AiOpt."
     },
     "pool": {
       "heading": "Grupo de proveedores",

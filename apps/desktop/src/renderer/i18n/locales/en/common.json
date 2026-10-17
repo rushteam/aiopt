@@ -168,7 +168,8 @@
       "refresh": "Refresh port",
       "refreshing": "Refreshing…",
       "refreshed": "Refreshed",
-      "stopped": "Not running"
+      "stopped": "Not running",
+      "loopbackBlocked": "Connections to 127.0.0.1 are being dropped, so agents routed through the local proxy can't reach it. A firewall is usually the cause: allow AiOpt to receive connections (Windows Security → Firewall & network protection → Allow an app through firewall), then restart AiOpt."
     },
     "pool": {
       "heading": "Provider pool",

@@ -161,7 +161,8 @@
       "refresh": "Port aktualisieren",
       "refreshing": "Wird aktualisiert…",
       "refreshed": "Aktualisiert",
-      "stopped": "Nicht aktiv"
+      "stopped": "Nicht aktiv",
+      "loopbackBlocked": "Verbindungen zu 127.0.0.1 werden verworfen, daher erreichen Agents den lokalen Proxy nicht. Meist ist die Firewall die Ursache: Erlauben Sie AiOpt eingehende Verbindungen (Windows-Sicherheit → Firewall- & Netzwerkschutz → App durch Firewall zulassen) und starten Sie AiOpt neu."
     },
     "pool": {
       "heading": "Anbieter-Pool",

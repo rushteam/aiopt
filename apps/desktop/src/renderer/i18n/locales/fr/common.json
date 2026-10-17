@@ -161,7 +161,8 @@
       "refresh": "Actualiser le port",
       "refreshing": "Actualisation…",
       "refreshed": "Actualisé",
-      "stopped": "Non actif"
+      "stopped": "Non actif",
+      "loopbackBlocked": "Les connexions vers 127.0.0.1 sont bloquées : les agents qui passent par le proxy local ne peuvent pas l'atteindre. C'est généralement le pare-feu : autorisez AiOpt à recevoir des connexions (Sécurité Windows → Pare-feu et protection du réseau → Autoriser une application via le pare-feu), puis redémarrez AiOpt."
     },
     "pool": {
       "heading": "Pool de fournisseurs",

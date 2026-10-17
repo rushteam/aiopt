@@ -168,7 +168,8 @@
       "refresh": "刷新端口",
       "refreshing": "刷新中…",
       "refreshed": "已刷新",
-      "stopped": "未运行"
+      "stopped": "未运行",
+      "loopbackBlocked": "连接 127.0.0.1 的请求被丢弃，经本地代理的 Agent 无法连上。通常是防火墙所致：请允许 AiOpt 接收连接（Windows 安全中心 → 防火墙和网络保护 → 允许应用通过防火墙），然后重启 AiOpt。"
     },
     "pool": {
       "heading": "供应商池",

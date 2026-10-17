@@ -215,6 +215,8 @@ export function createProviderManager(
   // Upstream drivers (main/upstreams/): a provider a driver serves lists its models and is
   // tested through the driver rather than an OpenAI-compatible GET /models.
   upstreamFor: (provider: Provider) => BoundUpstream | null = () => null,
+  // The startup loopback self-test's verdict (see proxy/loopbackSelfTest.ts); read live.
+  getLoopbackBlocked: () => boolean = () => false,
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -259,6 +261,7 @@ export function createProviderManager(
       // already sits in each proxied agent's on-disk baseUrl; the renderer shows it and offers
       // the "refresh port" action. The token is never included.
       proxyPort: proxyPort >= 0 ? proxyPort : null,
+      ...(getLoopbackBlocked() ? { loopbackBlocked: true } : {}),
       agents: AGENTS.map((def) => ({
         id: def.id,
         name: def.name,

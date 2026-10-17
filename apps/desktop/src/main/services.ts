@@ -71,6 +71,7 @@ import { syncWorkbenchTrayHint } from './tray/tray';
 import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
 import { resolveWorkbenchModel } from './workbench/resolveModel';
 import { logger } from './logger';
+import { detectLoopbackBlock } from './proxy/loopbackSelfTest';
 import {
   appShortcutsFilePath,
   preferencesFilePath,
@@ -295,9 +296,32 @@ export function getProviderManager(): ProviderManager {
       },
       // Driver-served providers list models / are tested through their driver.
       (provider) => getUpstreamRegistry().forProvider(provider),
+      () => loopbackBlocked,
     );
   }
   return providerManager;
+}
+
+let loopbackBlocked = false;
+
+/**
+ * Windows only: check once that a connection to our own 127.0.0.1 listener gets through,
+ * and flag the providers snapshot when it is dropped (a firewall blocking AiOpt's inbound
+ * traffic breaks every proxied agent with an opaque "connection failed"). Diagnose only —
+ * no firewall rule is written and nothing is elevated. Never throws.
+ */
+export async function runStartupLoopbackCheck(): Promise<void> {
+  if (process.platform !== 'win32') return;
+  try {
+    const result = await detectLoopbackBlock();
+    logger.info('proxy.loopback_self_test', { status: result.outcome, code: result.code });
+    if (result.outcome === 'blocked') {
+      loopbackBlocked = true;
+      broadcastToRenderers(IPC_EVENTS.providersChanged, getProviderManager().getSnapshot());
+    }
+  } catch {
+    // A diagnostic must not affect startup.
+  }
 }
 
 /**
