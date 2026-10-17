@@ -157,7 +157,7 @@ describe('requestResponsesToAnthropic', () => {
     expect(requestResponsesToAnthropic({ input: 'x', tool_choice: 'none' }, 'm').tool_choice).toBeUndefined();
   });
 
-  it('rejects previous_response_id, built-in tools, and image parts', () => {
+  it('rejects previous_response_id, built-in tools, and malformed image parts', () => {
     expect(() => requestResponsesToAnthropic({ input: 'hi', previous_response_id: 'resp_x' }, 'm')).toThrow(
       /UNSUPPORTED_CAPABILITY/,
     );

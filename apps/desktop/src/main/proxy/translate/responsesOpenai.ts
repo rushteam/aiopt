@@ -20,6 +20,8 @@ import { decodeReasoning, encodeReasoning } from './reasoningBridge';
 import {
   assertNoUnsupportedResponsesFields,
   isIncompleteStop,
+  rejectUnsupported,
+  type OpenAiContentPart,
   type OpenAiMessage,
   type OpenAiRequest,
   type OpenAiResponse,
@@ -36,6 +38,7 @@ import {
   type ResponsesResponse,
   type ResponsesTextPart,
 } from './types';
+import { responsesImageUrl } from './images';
 
 /** Concatenate the text of a Responses message content (string or input/output_text parts). */
 export function textOfParts(content: string | ResponsesContentPart[]): string {
@@ -44,6 +47,30 @@ export function textOfParts(content: string | ResponsesContentPart[]): string {
     .filter((p): p is ResponsesTextPart => p.type === 'input_text' || p.type === 'output_text')
     .map((p) => p.text)
     .join('');
+}
+
+/** Whether a Responses message content carries an `input_image` part. */
+export function hasImagePart(content: string | ResponsesContentPart[]): content is ResponsesContentPart[] {
+  return Array.isArray(content) && content.some((p) => p.type === 'input_image');
+}
+
+/** Refuse an image anywhere but a user turn (no dialect carries one on another role). */
+export function assertImageOnUserTurn(m: ResponsesMessageItem): void {
+  if (m.role !== 'user' && hasImagePart(m.content)) {
+    rejectUnsupported(`Responses \`input_image\` on a ${m.role} message is not supported by the translation proxy`);
+  }
+}
+
+/** A user message's parts → Chat content parts (text + image_url), in order. */
+function chatPartsOf(content: ResponsesContentPart[]): OpenAiContentPart[] {
+  const parts: OpenAiContentPart[] = [];
+  for (const p of content) {
+    if (p.type === 'input_image') parts.push({ type: 'image_url', image_url: { url: responsesImageUrl(p) } });
+    else if ((p.type === 'input_text' || p.type === 'output_text') && (p as ResponsesTextPart).text !== '') {
+      parts.push({ type: 'text', text: (p as ResponsesTextPart).text });
+    }
+  }
+  return parts;
 }
 
 /** Normalize a Responses `input` (bare string = single user message) into an item list. */
@@ -86,7 +113,11 @@ export function requestResponsesToOpenai(req: ResponsesRequest, modelId: string)
       case 'message': {
         const m = item as ResponsesMessageItem;
         const role = m.role === 'assistant' ? 'assistant' : m.role === 'user' ? 'user' : 'system';
-        const out: OpenAiMessage = { role, content: textOfParts(m.content) };
+        assertImageOnUserTurn(m);
+        const out: OpenAiMessage = {
+          role,
+          content: hasImagePart(m.content) ? chatPartsOf(m.content) : textOfParts(m.content),
+        };
         if (role === 'assistant') takeReasoning(out);
         else pendingReasoning = '';
         messages.push(out);

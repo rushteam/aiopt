@@ -105,9 +105,14 @@ export interface OpenAiToolCall {
   type: 'function';
   function: OpenAiFunctionCall;
 }
+/** A Chat content part: text or an image (see images.ts for the image gate). */
+export type OpenAiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: string } };
 export interface OpenAiMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  /** Parts appear only on a user turn carrying images; every other turn is a string. */
+  content: string | OpenAiContentPart[] | null;
   tool_calls?: OpenAiToolCall[];
   tool_call_id?: string;
   name?: string;
@@ -159,8 +164,8 @@ export interface OpenAiResponse {
 // The Responses API is a THIRD dialect (codex/grok speak it): a request carries an
 // `input` list of typed items (not `messages`), top-level `instructions`, and
 // `max_output_tokens`; a response carries an `output` list of typed items. Only the
-// fields the proxy maps are typed here; images / built-in tools / previous_response_id
-// are refused by {@link assertNoUnsupportedResponsesFields}. `reasoning` is PERMITTED —
+// fields the proxy maps are typed here; built-in tools / previous_response_id / file_id
+// images are refused by {@link assertNoUnsupportedResponsesFields}. `reasoning` is PERMITTED —
 // the Anthropic pair bridges it (see responsesAnthropic.ts); the Chat pair drops it.
 
 /** A text part inside a Responses `message` item (input or output side). */
@@ -292,7 +297,8 @@ export interface ResponsesResponse {
  * {@link assertNoUnsupportedRequestFields} this PERMITS `reasoning` (bridged/dropped per
  * pair). It refuses: `previous_response_id` (we force stateless replay — honoring it
  * would silently lose context the upstream never saw), built-in tools (web_search /
- * file_search / computer_use — no upstream equivalent), and image input parts.
+ * file_search / computer_use — no upstream equivalent), and content parts other than
+ * text and `input_image` (images are validated where they are mapped — images.ts).
  */
 export function assertNoUnsupportedResponsesFields(req: ResponsesRequest): void {
   if (req.previous_response_id !== undefined && req.previous_response_id !== null) {
@@ -309,7 +315,7 @@ export function assertNoUnsupportedResponsesFields(req: ResponsesRequest): void 
     const content = (item as ResponsesMessageItem).content;
     if (!Array.isArray(content)) continue;
     for (const part of content) {
-      if (part.type !== 'input_text' && part.type !== 'output_text') {
+      if (part.type !== 'input_text' && part.type !== 'output_text' && part.type !== 'input_image') {
         rejectUnsupported(`Responses content part "${part.type}" is not supported by the translation proxy`);
       }
     }

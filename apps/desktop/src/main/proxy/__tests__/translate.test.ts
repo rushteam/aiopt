@@ -85,7 +85,7 @@ describe('requestAnthropicToOpenai', () => {
     expect(tool).toEqual({ role: 'tool', tool_call_id: 'tu_1', content: '72F' });
   });
 
-  it('rejects an image block with UNSUPPORTED_CAPABILITY (no silent drop)', () => {
+  it('rejects a malformed image block with UNSUPPORTED_CAPABILITY (no silent drop)', () => {
     const req: AnthropicRequest = {
       max_tokens: 10,
       messages: [{ role: 'user', content: [{ type: 'image', source: { data: 'x' } }] }],

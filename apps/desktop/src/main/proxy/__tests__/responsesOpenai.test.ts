@@ -179,7 +179,7 @@ describe('requestResponsesToOpenai', () => {
     expect(out.tool_choice).toEqual({ type: 'function', function: { name: 'get_weather' } });
   });
 
-  it('rejects previous_response_id, built-in tools, and image parts (no silent drop)', () => {
+  it('rejects previous_response_id, built-in tools, and malformed image parts (no silent drop)', () => {
     expect(() =>
       requestResponsesToOpenai({ input: 'hi', previous_response_id: 'resp_x' }, 'm'),
     ).toThrow(/UNSUPPORTED_CAPABILITY/);

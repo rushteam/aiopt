@@ -15,7 +15,8 @@
 
 import { randomUUID } from 'node:crypto';
 import { namedEventFrame, type SseEvent } from './streaming';
-import { inputItems, textOfParts } from './responsesOpenai';
+import { assertImageOnUserTurn, hasImagePart, inputItems, textOfParts } from './responsesOpenai';
+import { responsesImageUrl, urlToAnthropicImage } from './images';
 import { decodeReasoning, effortToBudget, encodeReasoning } from './reasoningBridge';
 import {
   assertNoUnsupportedResponsesFields,
@@ -79,6 +80,20 @@ export function requestResponsesToAnthropic(req: ResponsesRequest, modelId: stri
     switch (item.type) {
       case 'message': {
         const m = item as ResponsesMessageItem;
+        assertImageOnUserTurn(m);
+        if (hasImagePart(m.content)) {
+          const blocks: AnthropicContentBlock[] = [];
+          for (const p of m.content) {
+            if (p.type === 'input_image') {
+              blocks.push(urlToAnthropicImage(responsesImageUrl(p)) as unknown as AnthropicContentBlock);
+            } else {
+              const t = textOfParts([p]);
+              if (t !== '') blocks.push({ type: 'text', text: t });
+            }
+          }
+          messages.push({ role: 'user', content: blocks });
+          break;
+        }
         const text = textOfParts(m.content);
         if (m.role === 'system' || m.role === 'developer') {
           if (text !== '') systemParts.push(text);

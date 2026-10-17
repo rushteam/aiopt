@@ -13,6 +13,7 @@ import { anthropicFrame } from './streaming';
 import {
   assertNoUnsupportedRequestFields,
   finishReasonToStopReason,
+  rejectUnsupported,
   type AnthropicContentBlock,
   type AnthropicMessage,
   type AnthropicRequest,
@@ -21,6 +22,7 @@ import {
   type OpenAiResponse,
 } from './types';
 import { effortToBudget } from './reasoningBridge';
+import { urlToAnthropicImage, openaiImageUrl } from './images';
 
 /** Anthropic requires max_tokens; when an OpenAI request omits it, fall back to this. */
 export const DEFAULT_MAX_TOKENS = 4096;
@@ -42,6 +44,37 @@ function reasoningOf(m: Record<string, unknown>): string {
   return '';
 }
 
+/** The text of Chat message content: a string, or the concatenated text parts. */
+function chatText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((p) => {
+      const part = p as { type?: unknown; text?: unknown };
+      if (part?.type === 'text') return typeof part.text === 'string' ? part.text : '';
+      return rejectUnsupported(`OpenAI content part "${String(part?.type)}" is not supported here by the translation proxy`);
+    })
+    .join('');
+}
+
+/** User-turn Chat content → Anthropic content (a string, or text + image blocks). */
+function userContent(content: unknown): string | AnthropicContentBlock[] {
+  if (!Array.isArray(content)) return typeof content === 'string' ? content : '';
+  if (!content.some((p) => (p as { type?: unknown })?.type === 'image_url')) return chatText(content);
+  const blocks: AnthropicContentBlock[] = [];
+  for (const p of content) {
+    const part = p as { type?: unknown; text?: unknown };
+    if (part?.type === 'text') {
+      if (typeof part.text === 'string' && part.text !== '') blocks.push({ type: 'text', text: part.text });
+    } else if (part?.type === 'image_url') {
+      blocks.push(urlToAnthropicImage(openaiImageUrl(part)) as unknown as AnthropicContentBlock);
+    } else {
+      rejectUnsupported(`OpenAI content part "${String(part?.type)}" is not supported by the translation proxy`);
+    }
+  }
+  return blocks;
+}
+
 /** Translate an OpenAI Chat Completions request body into an Anthropic Messages body. */
 export function requestOpenaiToAnthropic(req: OpenAiRequest, modelId: string): AnthropicRequest {
   assertNoUnsupportedRequestFields(req, ['reasoning_effort']);
@@ -61,20 +94,21 @@ export function requestOpenaiToAnthropic(req: OpenAiRequest, modelId: string): A
 
   for (const msg of req.messages) {
     switch (msg.role) {
-      case 'system':
-        if (typeof msg.content === 'string') systemParts.push(msg.content);
+      case 'system': {
+        const text = chatText(msg.content);
+        if (text !== '') systemParts.push(text);
         break;
+      }
       case 'user':
-        messages.push({ role: 'user', content: typeof msg.content === 'string' ? msg.content : '' });
+        messages.push({ role: 'user', content: userContent(msg.content) });
         break;
       case 'tool':
-        pushToolResult(msg.tool_call_id ?? '', typeof msg.content === 'string' ? msg.content : '');
+        pushToolResult(msg.tool_call_id ?? '', chatText(msg.content));
         break;
       case 'assistant': {
         const blocks: AnthropicContentBlock[] = [];
-        if (typeof msg.content === 'string' && msg.content !== '') {
-          blocks.push({ type: 'text', text: msg.content });
-        }
+        const text = chatText(msg.content);
+        if (text !== '') blocks.push({ type: 'text', text });
         for (const tc of msg.tool_calls ?? []) {
           blocks.push({
             type: 'tool_use',

@@ -18,11 +18,13 @@ import {
   type AnthropicToolResultBlock,
   type AnthropicRequest,
   type AnthropicResponse,
+  type OpenAiContentPart,
   type OpenAiMessage,
   type OpenAiRequest,
   type OpenAiResponse,
   type OpenAiToolCall,
 } from './types';
+import { anthropicImageToOpenai } from './images';
 
 /** Concatenate the text of a block array (used for `system` and tool_result content). */
 function textOfBlocks(blocks: AnthropicContentBlock[]): string {
@@ -44,11 +46,21 @@ function stringifyToolResult(content: unknown): string {
  * {@link reasoningOfBlocks}); `redacted_thinking` is Anthropic-encrypted reasoning no other
  * vendor can read, so it is dropped from history (it never came from this upstream).
  */
-const TRANSLATABLE_BLOCKS: ReadonlySet<string> = new Set(['text', 'tool_use', 'tool_result', 'thinking', 'redacted_thinking']);
+const TRANSLATABLE_BLOCKS: ReadonlySet<string> = new Set([
+  'text',
+  'tool_use',
+  'tool_result',
+  'thinking',
+  'redacted_thinking',
+  'image',
+]);
 
-/** Guard blocks we cannot translate (image, …) rather than dropping them silently. */
-function assertTranslatableBlock(block: AnthropicContentBlock): void {
-  if (!TRANSLATABLE_BLOCKS.has(block.type)) {
+/**
+ * Guard blocks we cannot translate (document, …) rather than dropping them silently. An image
+ * is translatable on a user turn only — a Chat assistant message cannot carry one.
+ */
+function assertTranslatableBlock(block: AnthropicContentBlock, role: 'user' | 'assistant'): void {
+  if (!TRANSLATABLE_BLOCKS.has(block.type) || (block.type === 'image' && role === 'assistant')) {
     rejectUnsupported(`Anthropic content block "${block.type}" is not supported by the translation proxy`);
   }
 }
@@ -93,7 +105,7 @@ export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string)
       continue;
     }
 
-    for (const block of msg.content) assertTranslatableBlock(block);
+    for (const block of msg.content) assertTranslatableBlock(block, msg.role);
 
     if (msg.role === 'assistant') {
       const text = textOfBlocks(msg.content);
@@ -112,8 +124,10 @@ export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string)
       continue;
     }
 
-    // user turn: tool_result blocks become individual `tool` messages; any text
-    // becomes a trailing user message.
+    // user turn: tool_result blocks become individual `tool` messages; any text becomes a
+    // trailing user message. A Chat `tool` message is text-only, so an image a tool returned
+    // (a screenshot) rides in that trailing user message, ahead of the user's own parts.
+    const toolImages: OpenAiContentPart[] = [];
     for (const block of msg.content) {
       if (block.type === 'tool_result') {
         const tr = block as AnthropicToolResultBlock;
@@ -122,10 +136,26 @@ export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string)
           tool_call_id: tr.tool_use_id,
           content: stringifyToolResult(tr.content),
         });
+        if (Array.isArray(tr.content)) {
+          for (const inner of tr.content as AnthropicContentBlock[]) {
+            if (inner.type === 'image') toolImages.push(anthropicImageToOpenai(inner));
+          }
+        }
       }
     }
-    const userText = textOfBlocks(msg.content);
-    if (userText !== '') messages.push({ role: 'user', content: userText });
+    const hasImage = toolImages.length > 0 || msg.content.some((b) => b.type === 'image');
+    if (!hasImage) {
+      const userText = textOfBlocks(msg.content);
+      if (userText !== '') messages.push({ role: 'user', content: userText });
+      continue;
+    }
+    const parts: OpenAiContentPart[] = [...toolImages];
+    for (const block of msg.content) {
+      const text = (block as { text?: unknown }).text;
+      if (block.type === 'text' && typeof text === 'string' && text !== '') parts.push({ type: 'text', text });
+      else if (block.type === 'image') parts.push(anthropicImageToOpenai(block));
+    }
+    messages.push({ role: 'user', content: parts });
   }
 
   const out: OpenAiRequest = { model: modelId, messages };
