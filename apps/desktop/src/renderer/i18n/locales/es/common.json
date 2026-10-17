@@ -161,7 +161,9 @@
       "refresh": "Actualizar puerto",
       "refreshing": "Actualizando…",
       "refreshed": "Actualizado",
-      "stopped": "No está en ejecución"
+      "stopped": "No está en ejecución",
+      "loopbackBlocked": "Las conexiones a 127.0.0.1 se están descartando, así que los agentes que pasan por el proxy local no pueden alcanzarlo. Suele ser el firewall: permite que AiOpt reciba conexiones (Seguridad de Windows → Firewall y protección de red → Permitir una aplicación a través del firewall) y reinicia AiOpt.",
+      "proxyEnvNoLoopback": "Hay un proxy HTTP definido en el entorno (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY), pero 127.0.0.1 no está en NO_PROXY. Los agentes que lo heredan pueden enviar el tráfico del proxy local a ese proxy y no conectarse. Añade 127.0.0.1,localhost a NO_PROXY y reinicia el agente."
     },
     "pool": {
       "heading": "Grupo de proveedores",
@@ -263,6 +265,12 @@
         "safe": "Parámetros de registro y enrutamiento. Quitarlos no cambia la respuesta del modelo.",
         "sensitive": "Quitarlos cambia lo que se recibe: sin response_format, un JSON garantizado pasa a ser texto libre; sin thinking ni reasoning, el modelo se degrada en silencio. Úsalo solo si el upstream los rechaza."
       },
+      "extraBody": "Parámetros de solicitud adicionales (JSON)",
+      "extraBodyHint": "Se combinan en cada solicitud que AiOpt envía a este proveedor, para una opción propia del fabricante que el agente no puede enviar, p. ej. {\"enable_thinking\": false}. Se guardan como configuración en texto plano; no pongas claves ni tokens.",
+      "extraBodyInvalidJson": "No es JSON válido.",
+      "extraBodyNotObject": "Debe ser un objeto JSON.",
+      "extraBodyDeniedKey": "«{{key}}» no se puede definir aquí: define la propia solicitud.",
+      "extraBodyTooLarge": "Demasiado grande: limítalo a unas pocas opciones.",
       "driverEndpointHint": "Fijado por el controlador de protocolo integrado; no se puede editar.",
       "driverFormatsHint": "Este proveedor lo sirve un controlador de protocolo integrado que solo habla OpenAI Chat. Cualquier agent puede vincularlo: el proxy de AiOpt traduce.",
       "agentSessionMissing": "No se encontró ninguna sesión iniciada. Inicia sesión en el agent y vuelve a abrir este diálogo.",

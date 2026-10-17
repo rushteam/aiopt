@@ -34,7 +34,7 @@ type Dialog =
 
 export function ProvidersHome() {
   const t = useT();
-  const { providers, agents, proxyPort } = useProviders();
+  const { providers, agents, proxyPort, loopbackBlocked, proxyEnvNoLoopbackBypass } = useProviders();
   const [dialog, setDialog] = useState<Dialog>({ kind: 'none' });
   const close = () => setDialog({ kind: 'none' });
 
@@ -131,6 +131,38 @@ export function ProvidersHome() {
         <section style={tabScreenSectionStyle}>
           <h2 style={sectionHeadingStyle}>{t('providers.agents.heading')}</h2>
           <ProxyControlBar proxyPort={proxyPort} anyProxied={anyProxied} />
+          {/* Diagnostic only: AiOpt never changes the firewall itself. */}
+          {loopbackBlocked && (
+            <p
+              role="alert"
+              style={{
+                margin: '0 0 12px',
+                padding: '8px 12px',
+                fontSize: fontSize.sm,
+                color: token('danger'),
+                border: `1px solid ${token('danger')}`,
+                borderRadius: radius.md,
+              }}
+            >
+              {t('providers.proxy.loopbackBlocked')}
+            </p>
+          )}
+          {/* Diagnostic only: AiOpt never edits the user's environment. */}
+          {proxyEnvNoLoopbackBypass && anyProxied && (
+            <p
+              role="status"
+              style={{
+                margin: '0 0 12px',
+                padding: '8px 12px',
+                fontSize: fontSize.sm,
+                color: token('textMuted'),
+                border: `1px solid ${token('border')}`,
+                borderRadius: radius.md,
+              }}
+            >
+              {t('providers.proxy.proxyEnvNoLoopback')}
+            </p>
+          )}
           {poolEmpty && installedAgents.length === 0 && (
             <p style={{ margin: '0 0 12px', fontSize: fontSize.sm, color: token('textMuted') }}>
               {t('providers.agents.waitingForProvider')}

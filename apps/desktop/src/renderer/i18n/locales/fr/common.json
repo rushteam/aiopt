@@ -161,7 +161,9 @@
       "refresh": "Actualiser le port",
       "refreshing": "Actualisation…",
       "refreshed": "Actualisé",
-      "stopped": "Non actif"
+      "stopped": "Non actif",
+      "loopbackBlocked": "Les connexions vers 127.0.0.1 sont bloquées : les agents qui passent par le proxy local ne peuvent pas l'atteindre. C'est généralement le pare-feu : autorisez AiOpt à recevoir des connexions (Sécurité Windows → Pare-feu et protection du réseau → Autoriser une application via le pare-feu), puis redémarrez AiOpt.",
+      "proxyEnvNoLoopback": "Un proxy HTTP est défini dans l'environnement (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY), mais 127.0.0.1 ne figure pas dans NO_PROXY. Les agents qui en héritent peuvent envoyer le trafic du proxy local vers ce proxy et ne pas se connecter. Ajoutez 127.0.0.1,localhost à NO_PROXY, puis redémarrez l'agent."
     },
     "pool": {
       "heading": "Pool de fournisseurs",
@@ -263,6 +265,12 @@
         "safe": "Paramètres de suivi et d'acheminement. Les retirer ne change pas la réponse du modèle.",
         "sensitive": "Les retirer change ce qui revient : sans response_format, un JSON garanti devient du texte libre ; sans thinking ni reasoning, le modèle est discrètement dégradé. À utiliser uniquement si le service amont les refuse."
       },
+      "extraBody": "Paramètres de requête supplémentaires (JSON)",
+      "extraBodyHint": "Fusionnés dans chaque requête qu'AiOpt envoie à ce fournisseur, pour une option propre à l'éditeur que l'agent ne peut pas envoyer — par ex. {\"enable_thinking\": false}. Stockés comme configuration en clair ; n'y mettez ni clé ni jeton.",
+      "extraBodyInvalidJson": "JSON invalide.",
+      "extraBodyNotObject": "Doit être un objet JSON.",
+      "extraBodyDeniedKey": "« {{key}} » ne peut pas être défini ici — il définit la requête elle-même.",
+      "extraBodyTooLarge": "Trop volumineux — limitez-vous à quelques options.",
       "driverEndpointHint": "Fixé par le pilote de protocole intégré ; non modifiable.",
       "driverFormatsHint": "Ce fournisseur est servi par un pilote de protocole intégré qui ne parle que OpenAI Chat. Tout agent peut s'y lier — le proxy d'AiOpt traduit.",
       "agentSessionMissing": "Aucune session connectée trouvée. Connectez-vous dans l'agent, puis rouvrez cette fenêtre.",

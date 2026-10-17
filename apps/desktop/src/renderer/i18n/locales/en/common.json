@@ -168,7 +168,9 @@
       "refresh": "Refresh port",
       "refreshing": "Refreshing…",
       "refreshed": "Refreshed",
-      "stopped": "Not running"
+      "stopped": "Not running",
+      "loopbackBlocked": "Connections to 127.0.0.1 are being dropped, so agents routed through the local proxy can't reach it. A firewall is usually the cause: allow AiOpt to receive connections (Windows Security → Firewall & network protection → Allow an app through firewall), then restart AiOpt.",
+      "proxyEnvNoLoopback": "An HTTP proxy is set in the environment (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY) but 127.0.0.1 is not in NO_PROXY. Agents that inherit it may send local-proxy traffic to that proxy and fail to connect. Add 127.0.0.1,localhost to NO_PROXY, then restart the agent."
     },
     "pool": {
       "heading": "Provider pool",
@@ -270,6 +272,12 @@
         "safe": "Bookkeeping and routing hints. Removing these doesn't change the model's reply.",
         "sensitive": "Removing these changes what comes back: without response_format, guaranteed JSON becomes free text; without thinking or reasoning, the model is quietly downgraded. Use only when the upstream rejects them outright."
       },
+      "extraBody": "Extra request parameters (JSON)",
+      "extraBodyHint": "Merged into every request AiOpt sends to this provider, for a vendor-specific option the agent can't send — e.g. {\"enable_thinking\": false}. Stored as plain configuration; don't put keys or tokens here.",
+      "extraBodyInvalidJson": "Not valid JSON.",
+      "extraBodyNotObject": "Must be a JSON object.",
+      "extraBodyDeniedKey": "\"{{key}}\" can't be set here — it defines the request itself.",
+      "extraBodyTooLarge": "Too large — keep it to a few options.",
       "driverEndpointHint": "Fixed by the built-in protocol driver; cannot be edited.",
       "driverFormatsHint": "This provider is served by a built-in protocol driver that speaks OpenAI Chat only. Any agent can bind it — AiOpt's proxy translates.",
       "agentSessionMissing": "No signed-in session found. Sign in in the agent, then reopen this dialog.",

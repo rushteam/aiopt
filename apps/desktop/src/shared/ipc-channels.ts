@@ -594,6 +594,8 @@ export interface ProviderSummary {
    * any other editable field. Absent/empty means strip nothing.
    */
   dropRequestFields?: string[];
+  /** JSON merged into the outbound body (`Provider.extraBody`). Not secret. */
+  extraBody?: Record<string, unknown>;
 }
 
 /**
@@ -656,6 +658,18 @@ export interface ProvidersSnapshot {
    * renderer displays it and offers "refresh port"; the per-binding token is never included.
    */
   proxyPort: number | null;
+  /**
+   * True when the startup loopback self-test (Windows only) found connections to
+   * 127.0.0.1 being dropped — typically the firewall blocking AiOpt's inbound traffic,
+   * which breaks every proxied agent. Diagnostic only: AiOpt never changes the firewall.
+   */
+  loopbackBlocked?: boolean;
+  /**
+   * True when AiOpt's environment sets an HTTP(S)_PROXY / ALL_PROXY without exempting
+   * 127.0.0.1 in NO_PROXY — agents inheriting it would send their local-proxy traffic to the
+   * outside proxy. Diagnostic only: the environment is never changed, values never sent.
+   */
+  proxyEnvNoLoopbackBypass?: boolean;
 }
 
 /** Create a provider. `apiKey` (if present) is stored encrypted main-side, never echoed back. */
@@ -672,6 +686,8 @@ export interface ProviderAddRequest {
   agentImport?: AgentImportConfig;
   /** Fields the proxy should strip for this upstream; validated against the allowlist. */
   dropRequestFields?: string[];
+  /** JSON merged into the outbound body; validated by `checkExtraBody`. */
+  extraBody?: Record<string, unknown>;
 }
 
 /**
@@ -695,6 +711,8 @@ export interface ProviderUpdateRequest {
    * leaves it untouched. An empty array clears it.
    */
   dropRequestFields?: string[];
+  /** Replaces the whole object when present; omitted leaves it; `{}` clears it. */
+  extraBody?: Record<string, unknown>;
 }
 
 export interface ProviderAgentImportScanResult {

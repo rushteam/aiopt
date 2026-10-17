@@ -145,6 +145,8 @@ export interface ProviderManager {
    * nothing. Carries no secret — these are API parameter names from a fixed allowlist.
    */
   resolveDropFields(providerId: string): readonly string[] | undefined;
+  /** A provider's configured `extraBody`, read live like {@link resolveDropFields}. Not secret. */
+  resolveExtraBody(providerId: string): Record<string, unknown> | undefined;
   /**
    * Startup helper: re-register a proxy route and refresh the on-disk config for every
    * binding. The port + tokens are now persisted and reused, so this is normally an
@@ -213,6 +215,11 @@ export function createProviderManager(
   // Upstream drivers (main/upstreams/): a provider a driver serves lists its models and is
   // tested through the driver rather than an OpenAI-compatible GET /models.
   upstreamFor: (provider: Provider) => BoundUpstream | null = () => null,
+  // Startup proxy diagnostics (proxy/loopbackSelfTest.ts, proxy/proxyEnvCheck.ts); read live.
+  getProxyDiagnostics: () => { loopbackBlocked: boolean; proxyEnvNoLoopbackBypass: boolean } = () => ({
+    loopbackBlocked: false,
+    proxyEnvNoLoopbackBypass: false,
+  }),
 ): ProviderManager {
   function toSummary(provider: Provider): ProviderSummary {
     const oauthBacked = providerUsesOAuth(provider.credentialMode);
@@ -242,6 +249,7 @@ export function createProviderManager(
       agentImportAgentId: importBacked ? provider.agentImport?.agentId : undefined,
       upstreamDriver: upstreamFor(provider)?.driverId,
       dropRequestFields: provider.dropRequestFields,
+      extraBody: provider.extraBody,
     };
   }
 
@@ -256,6 +264,8 @@ export function createProviderManager(
       // already sits in each proxied agent's on-disk baseUrl; the renderer shows it and offers
       // the "refresh port" action. The token is never included.
       proxyPort: proxyPort >= 0 ? proxyPort : null,
+      ...(getProxyDiagnostics().loopbackBlocked ? { loopbackBlocked: true } : {}),
+      ...(getProxyDiagnostics().proxyEnvNoLoopbackBypass ? { proxyEnvNoLoopbackBypass: true } : {}),
       agents: AGENTS.map((def) => ({
         id: def.id,
         name: def.name,
@@ -486,6 +496,7 @@ export function createProviderManager(
         oauth: providerUsesOAuth(credentialMode) ? input.oauth : undefined,
         agentImport: providerUsesAgentImport(credentialMode) ? input.agentImport : undefined,
         ...dropFieldsPatch(input.dropRequestFields),
+        ...(input.extraBody && Object.keys(input.extraBody).length > 0 ? { extraBody: input.extraBody } : {}),
       };
       store.addProvider(provider);
       if (
@@ -574,6 +585,10 @@ export function createProviderManager(
         const patch = dropFieldsPatch(input.dropRequestFields);
         if (patch.dropRequestFields) next.dropRequestFields = patch.dropRequestFields;
         else delete next.dropRequestFields;
+      }
+      if (input.extraBody !== undefined) {
+        if (Object.keys(input.extraBody).length > 0) next.extraBody = input.extraBody;
+        else delete next.extraBody;
       }
       store.replaceProvider(next);
 
@@ -775,6 +790,10 @@ export function createProviderManager(
       // rebind. The store already validated these against the allowlist on load/write, and
       // the proxy's sanitize step re-validates — neither side trusts the other to have done it.
       return store.getProvider(providerId)?.dropRequestFields;
+    },
+
+    resolveExtraBody(providerId) {
+      return store.getProvider(providerId)?.extraBody;
     },
 
     rebuildProxyRoutes() {

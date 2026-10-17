@@ -10,8 +10,6 @@
 // request. A token about to end is renewed by its owner first (`kiro-cli debug
 // refresh-auth-token`, then re-read); failing that (the IDE's, or no kiro-cli on PATH) it is
 // renewed here and held in memory only — the owner renews its own and the newer is used.
-//
-// Ported from magpie's Kiro plugin (readCLI / readIDE / refresh / profileOf).
 
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';

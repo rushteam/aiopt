@@ -161,7 +161,9 @@
       "refresh": "포트 새로 고침",
       "refreshing": "새로 고치는 중…",
       "refreshed": "새로 고침됨",
-      "stopped": "실행 중 아님"
+      "stopped": "실행 중 아님",
+      "loopbackBlocked": "127.0.0.1 연결이 차단되어 로컬 프록시를 거치는 Agent가 연결할 수 없습니다. 보통 방화벽이 원인입니다. AiOpt가 연결을 받도록 허용한 뒤(Windows 보안 → 방화벽 및 네트워크 보호 → 방화벽을 통해 앱 허용) AiOpt를 다시 시작하세요.",
+      "proxyEnvNoLoopback": "환경 변수에 HTTP 프록시(HTTPS_PROXY / HTTP_PROXY / ALL_PROXY)가 설정되어 있지만 NO_PROXY에 127.0.0.1이 없습니다. 이 환경을 물려받은 Agent는 로컬 프록시로 가는 트래픽을 외부 프록시로 보내 연결에 실패할 수 있습니다. NO_PROXY에 127.0.0.1,localhost를 추가한 뒤 Agent를 다시 시작하세요."
     },
     "pool": {
       "heading": "공급자 풀",
@@ -263,6 +265,12 @@
         "safe": "기록 및 라우팅용 매개변수입니다. 제거해도 모델의 응답은 바뀌지 않습니다.",
         "sensitive": "제거하면 돌아오는 내용이 바뀝니다. response_format이 없으면 보장된 JSON이 자유 텍스트가 되고, thinking이나 reasoning이 없으면 모델이 조용히 downgrade됩니다. 업스트림이 명확히 거부할 때만 사용하세요."
       },
+      "extraBody": "추가 요청 매개변수(JSON)",
+      "extraBodyHint": "AiOpt가 이 공급자에게 보내는 모든 요청에 병합됩니다. Agent가 보낼 수 없는 벤더 전용 옵션용입니다(예: {\"enable_thinking\": false}). 일반 설정으로 평문 저장되므로 키나 토큰은 넣지 마세요.",
+      "extraBodyInvalidJson": "올바른 JSON이 아닙니다.",
+      "extraBodyNotObject": "JSON 객체여야 합니다.",
+      "extraBodyDeniedKey": "\"{{key}}\"는 요청 자체를 정의하므로 여기서 설정할 수 없습니다.",
+      "extraBodyTooLarge": "너무 큽니다. 몇 가지 옵션만 두세요.",
       "driverEndpointHint": "내장 프로토콜 드라이버로 고정되어 있어 바꿀 수 없습니다.",
       "driverFormatsHint": "이 공급자는 내장 프로토콜 드라이버가 제공하며 OpenAI Chat 형식만 사용합니다. 어떤 Agent든 바인딩할 수 있으며 AiOpt 프록시가 형식을 변환합니다.",
       "agentSessionMissing": "로그인된 세션을 찾지 못했습니다. Agent에서 로그인한 뒤 이 창을 다시 여세요.",

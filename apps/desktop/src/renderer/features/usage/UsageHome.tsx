@@ -38,6 +38,23 @@ type UsageSource = 'proxy' | 'local';
 
 const percent = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
 
+/**
+ * Cache-hit rate of one row: cache reads over everything that could have been read from
+ * cache (fresh input + cache reads) — the same definition as the summary KPI.
+ */
+function cacheHitRate(r: { inputTokens: number; cacheReadTokens: number }): number {
+  const cacheable = r.inputTokens + r.cacheReadTokens;
+  return cacheable > 0 ? r.cacheReadTokens / cacheable : 0;
+}
+
+function cacheHitColumn<R extends { inputTokens: number; cacheReadTokens: number }>(t: TranslateFn): BreakdownColumn<R> {
+  return {
+    label: t('usage.summary.cacheHit'),
+    value: cacheHitRate,
+    format: (r) => (r.inputTokens + r.cacheReadTokens > 0 ? percent.format(cacheHitRate(r)) : '—'),
+  };
+}
+
 // ─── Source adapters: snapshot → dashboard data ──────────────────────────────
 
 function proxyDashboard(usage: UsageSnapshot, t: TranslateFn): DashboardData {
@@ -110,6 +127,7 @@ function proxyColumns(t: TranslateFn): BreakdownColumn<UsageBucket>[] {
     { label: t('usage.table.inputTokens'), value: (r) => r.inputTokens },
     { label: t('usage.table.outputTokens'), value: (r) => r.outputTokens },
     { label: t('usage.table.cache'), value: (r) => r.cacheReadTokens + r.cacheWriteTokens },
+    cacheHitColumn<UsageBucket>(t),
     { label: t('usage.table.reasoning'), value: (r) => r.reasoningTokens },
   ];
 }
@@ -120,6 +138,7 @@ function localColumns(t: TranslateFn): BreakdownColumn<LocalUsageBucket>[] {
     { label: t('usage.table.inputTokens'), value: (r) => r.inputTokens },
     { label: t('usage.table.outputTokens'), value: (r) => r.outputTokens },
     { label: t('usage.local.cache'), value: (r) => r.cacheReadTokens + r.cacheWriteTokens },
+    cacheHitColumn<LocalUsageBucket>(t),
   ];
 }
 

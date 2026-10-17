@@ -56,8 +56,7 @@ agent file when applicable.
 
 Cursor serves its models over `agent.v1.AgentService/Run` (Connect + protobuf over HTTP/2),
 not an OpenAI-compatible endpoint, so a Cursor import provider is served by the **Cursor
-upstream driver** (`main/upstreams/cursor/`, modelled on magpie's Cursor gateway and its
-opencode plugin). The driver contract, routing and error rules are in
+upstream driver** (`main/upstreams/cursor/`). The driver contract, routing and error rules are in
 [`upstream-drivers.md`](upstream-drivers.md); Cursor specifics:
 
 - Callers' tools are offered as MCP tools under the `aiopt` namespace; Cursor's own
@@ -70,8 +69,7 @@ opencode plugin). The driver contract, routing and error rules are in
 ### WorkBuddy is served by a driver
 
 WorkBuddy speaks OpenAI Chat over HTTP but only answers requests shaped like its own client's,
-so it is the **WorkBuddy upstream driver** (`main/upstreams/workbuddy/`, from magpie's
-WorkBuddy plugin): signed headers (`X-User-Id`, `X-Domain`, `User-Agent: WorkBuddy/<ver>`),
+so it is the **WorkBuddy upstream driver** (`main/upstreams/workbuddy/`): signed headers (`X-User-Id`, `X-Domain`, `User-Agent: WorkBuddy/<ver>`),
 per-turn conversation ids, a system message always present, flagged phrases rewritten, tool
 names and JSON Schemas made acceptable (names mapped back in the answer), and one retry with an
 empty assistant reply when it refuses a turn after tool results. Its SSE answer is read by the
@@ -80,7 +78,7 @@ shared `upstreams/openaiChatIn.ts`, which later HTTP drivers reuse.
 ### Kiro is served by a driver
 
 Kiro has no OpenAI- or Anthropic-compatible endpoint: the **Kiro upstream driver**
-(`main/upstreams/kiro/`, from magpie's Kiro plugin) sends each request whole as a conversation to
+(`main/upstreams/kiro/`) sends each request whole as a conversation to
 `runtime.<region>.kiro.dev/generateAssistantResponse` (the region is the profile ARN's) and
 reads the AWS event-stream answer (text, a leading `<thinking>` split out as reasoning, tool
 calls, token usage or Kiro's context-% estimate). History is made to alternate user/assistant,

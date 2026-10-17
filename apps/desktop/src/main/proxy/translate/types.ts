@@ -3,7 +3,7 @@
 //
 // These interfaces are DELIBERATELY partial: only the fields the proxy actually maps
 // are typed. Everything else is either caught by an explicit unsupported-field guard
-// (features that would silently corrupt output — images, extended thinking) or is
+// (features that would silently corrupt output — images, …) or is
 // dropped/ignored where that is safe (e.g. `cache_control`, which only affects cost).
 //
 // Pure module: no Node/Electron, no I/O. The one dependency is `throwIpcError` (also
@@ -37,7 +37,7 @@ export interface AnthropicToolResultBlock {
   content: unknown;
   is_error?: boolean;
 }
-/** A content block we do not translate (image, thinking, …); caught by the guard. */
+/** Any other block (image, thinking, …): each translator maps or refuses it explicitly. */
 export interface AnthropicUnknownBlock {
   type: string;
   [key: string]: unknown;
@@ -105,12 +105,23 @@ export interface OpenAiToolCall {
   type: 'function';
   function: OpenAiFunctionCall;
 }
+/** A Chat content part: text or an image (see images.ts for the image gate). */
+export type OpenAiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: string } };
 export interface OpenAiMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  /** Parts appear only on a user turn carrying images; every other turn is a string. */
+  content: string | OpenAiContentPart[] | null;
   tool_calls?: OpenAiToolCall[];
   tool_call_id?: string;
   name?: string;
+  /**
+   * The model's own reasoning text on an assistant turn (DeepSeek / Kimi / MiMo / Qwen …).
+   * Thinking-mode upstreams require it replayed on the next turn after a tool call, or
+   * they 400. Only ever carries reasoning the model actually returned — never synthesized.
+   */
+  reasoning_content?: string;
 }
 export interface OpenAiTool {
   type: 'function';
@@ -153,8 +164,8 @@ export interface OpenAiResponse {
 // The Responses API is a THIRD dialect (codex/grok speak it): a request carries an
 // `input` list of typed items (not `messages`), top-level `instructions`, and
 // `max_output_tokens`; a response carries an `output` list of typed items. Only the
-// fields the proxy maps are typed here; images / built-in tools / previous_response_id
-// are refused by {@link assertNoUnsupportedResponsesFields}. `reasoning` is PERMITTED —
+// fields the proxy maps are typed here; built-in tools / previous_response_id / file_id
+// images are refused by {@link assertNoUnsupportedResponsesFields}. `reasoning` is PERMITTED —
 // the Anthropic pair bridges it (see responsesAnthropic.ts); the Chat pair drops it.
 
 /** A text part inside a Responses `message` item (input or output side). */
@@ -189,7 +200,7 @@ export interface ResponsesFunctionCallOutputItem {
 export interface ResponsesReasoningItem {
   type: 'reasoning';
   id?: string;
-  /** Opaque bridge payload (base64 JSON of {thinking, signature}); see responsesAnthropic.ts. */
+  /** Opaque bridge payload (base64 JSON of {thinking, signature}); see reasoningBridge.ts. */
   encrypted_content?: string | null;
   summary?: unknown[];
   [key: string]: unknown;
@@ -286,7 +297,8 @@ export interface ResponsesResponse {
  * {@link assertNoUnsupportedRequestFields} this PERMITS `reasoning` (bridged/dropped per
  * pair). It refuses: `previous_response_id` (we force stateless replay — honoring it
  * would silently lose context the upstream never saw), built-in tools (web_search /
- * file_search / computer_use — no upstream equivalent), and image input parts.
+ * file_search / computer_use — no upstream equivalent), and content parts other than
+ * text and `input_image` (images are validated where they are mapped — images.ts).
  */
 export function assertNoUnsupportedResponsesFields(req: ResponsesRequest): void {
   if (req.previous_response_id !== undefined && req.previous_response_id !== null) {
@@ -303,7 +315,7 @@ export function assertNoUnsupportedResponsesFields(req: ResponsesRequest): void 
     const content = (item as ResponsesMessageItem).content;
     if (!Array.isArray(content)) continue;
     for (const part of content) {
-      if (part.type !== 'input_text' && part.type !== 'output_text') {
+      if (part.type !== 'input_text' && part.type !== 'output_text' && part.type !== 'input_image') {
         rejectUnsupported(`Responses content part "${part.type}" is not supported by the translation proxy`);
       }
     }
@@ -334,14 +346,21 @@ export const UNSUPPORTED_REQUEST_FIELDS: readonly string[] = [
   'logit_bias',
   'audio',
   'modalities',
+  // Thinking knobs: refused by default, but each translator that can map one opts it
+  // back in (anthropicToOpenai: `thinking` → `reasoning_effort`; openaiToAnthropic:
+  // `reasoning_effort` → `thinking`). Passing the allowlist keeps the rest refused.
   'thinking', // Anthropic extended thinking
   'reasoning', // OpenAI reasoning
   'reasoning_effort',
 ];
 
-/** Throw if the request carries any field from {@link UNSUPPORTED_REQUEST_FIELDS}. */
-export function assertNoUnsupportedRequestFields(req: Record<string, unknown>): void {
+/**
+ * Throw if the request carries any field from {@link UNSUPPORTED_REQUEST_FIELDS}, except
+ * the ones a translator maps itself (`allowed`, e.g. anthropic→openai maps `thinking`).
+ */
+export function assertNoUnsupportedRequestFields(req: Record<string, unknown>, allowed: readonly string[] = []): void {
   for (const field of UNSUPPORTED_REQUEST_FIELDS) {
+    if (allowed.includes(field)) continue;
     if (req[field] !== undefined && req[field] !== null) {
       rejectUnsupported(`request field "${field}" is not supported by the translation proxy`);
     }

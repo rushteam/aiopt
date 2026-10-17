@@ -21,6 +21,7 @@ import {
   API_FORMATS,
   DROPPABLE_FIELD_NAMES,
   normalizeDropFields,
+  checkExtraBody,
   type ApiFormat,
   type ProviderModel,
 } from '../../shared/aiProviders';
@@ -65,6 +66,26 @@ function optionalDropFields(raw: unknown): string[] | undefined {
   }
   // Canonical order + de-duped, so the stored value doesn't depend on click order.
   return normalizeDropFields(fields);
+}
+
+/**
+ * Validate an untrusted extraBody: a JSON object without request-defining keys, within the
+ * size cap. Refused (not trimmed) so the user learns their value did not take effect.
+ */
+function optionalExtraBody(raw: unknown): Record<string, unknown> | undefined {
+  if (raw === undefined) return undefined;
+  const checked = checkExtraBody(raw);
+  if (!checked.ok) {
+    throwIpcError(
+      'INVALID_PARAMS',
+      checked.problem === 'denied_key'
+        ? `extraBody may not set "${checked.key}"`
+        : checked.problem === 'too_large'
+          ? 'extraBody is too large'
+          : 'extraBody must be a JSON object',
+    );
+  }
+  return checked.value;
 }
 
 const CREDENTIAL_MODES = ['api_key', 'oauth', 'agent_import'] as const satisfies readonly ProviderCredentialMode[];
@@ -152,6 +173,7 @@ export function registerProviderIpc(
       credentialMode: optionalCredentialMode(obj.credentialMode),
       oauth: optionalOAuth(obj.oauth),
       dropRequestFields: optionalDropFields(obj.dropRequestFields),
+      extraBody: optionalExtraBody(obj.extraBody),
     });
   });
 
@@ -172,6 +194,8 @@ export function registerProviderIpc(
       oauth: optionalOAuth(obj.oauth),
       // Present = replace the whole set (an empty array clears it); omitted = unchanged.
       dropRequestFields: optionalDropFields(obj.dropRequestFields),
+      // Present = replace (`{}` clears); omitted = unchanged.
+      extraBody: optionalExtraBody(obj.extraBody),
     });
   });
 

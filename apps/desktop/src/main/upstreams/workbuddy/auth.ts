@@ -9,8 +9,6 @@
 // Nothing is copied into AiOpt and nothing is written back to the app's file: the file is
 // re-read per request, and a token renewed here (within a minute of its end) is held in
 // memory only — the app renews its own and the newer of the two is used.
-//
-// Ported from magpie's WorkBuddy plugin (readDesktop / fresh / renew).
 
 import fs from 'node:fs';
 import path from 'node:path';

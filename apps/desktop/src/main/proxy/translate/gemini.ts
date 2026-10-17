@@ -33,6 +33,7 @@ import {
   type OpenAiResponse,
   type OpenAiToolCall,
 } from './types';
+import { anthropicImageToUrl, openaiImageUrl, urlToGeminiInline } from './images';
 
 // --- Gemini wire shapes (partial: only what the proxy maps) -------------------
 
@@ -295,6 +296,12 @@ export function requestAnthropicToGemini(req: AnthropicRequest): GeminiRequest {
           });
           break;
         }
+        case 'image':
+          if (msg.role === 'assistant') {
+            rejectUnsupported('an image on an assistant turn is not supported by the translation proxy');
+          }
+          parts.push(urlToGeminiInline(anthropicImageToUrl(block)));
+          break;
         // Prior-turn reasoning cannot be replayed to Gemini; dropping it is lossless for
         // the answer (the signature for tool calls rides in the call id instead).
         case 'thinking':
@@ -502,11 +509,28 @@ export function createGeminiToAnthropicStream(modelId = 'unknown'): FlushableStr
 
 // --- OpenAI Chat → Gemini ---------------------------------------------------
 
-/** Message content as text: a string, or an array of text parts (anything else refused). */
-function openAiText(content: unknown): string {
+/** A user turn's mixed text + image parts → Gemini parts, in order. */
+function userParts(content: unknown[]): GeminiPart[] {
+  const parts: GeminiPart[] = [];
+  for (const part of content) {
+    const p = part as { type?: unknown; text?: unknown };
+    if (p?.type === 'image_url') parts.push(urlToGeminiInline(openaiImageUrl(p)));
+    else if (p?.type === 'text' && typeof p.text === 'string') {
+      if (p.text !== '') parts.push({ text: p.text });
+    } else rejectUnsupported(`OpenAI content part "${String(p?.type)}" is not supported by the translation proxy`);
+  }
+  return parts;
+}
+
+/**
+ * Message content as text: a string, or an array of text parts (anything else refused). A
+ * user turn holding an image returns '' here; its parts are mapped by {@link userParts}.
+ */
+function openAiText(content: unknown, role?: string): string {
   if (content === null || content === undefined) return '';
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
+    if (role === 'user' && content.some((p) => (p as { type?: unknown })?.type === 'image_url')) return '';
     let text = '';
     for (const part of content) {
       const p = part as { type?: unknown; text?: unknown };
@@ -528,13 +552,14 @@ export function requestOpenaiToGemini(req: OpenAiRequest): GeminiRequest {
   const nameById = new Map<string, string>();
 
   for (const msg of req.messages) {
-    const text = openAiText(msg.content as unknown);
+    const text = openAiText(msg.content as unknown, msg.role);
     switch (msg.role) {
       case 'system':
         if (text !== '') systemParts.push(text);
         break;
       case 'user':
         if (text !== '') pushContent(contents, 'user', [{ text }]);
+        else if (Array.isArray(msg.content)) pushContent(contents, 'user', userParts(msg.content));
         break;
       case 'assistant': {
         const parts: GeminiPart[] = [];

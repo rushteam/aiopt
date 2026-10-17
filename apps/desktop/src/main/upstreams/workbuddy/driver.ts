@@ -8,7 +8,7 @@
 // and names the model's tool calls back to the client's own tool names.
 //
 // The account's token is read from the app's own file per request (./auth.ts) and never
-// leaves main. Ported from magpie's WorkBuddy plugin.
+// leaves main.
 
 import { createHash, randomBytes } from 'node:crypto';
 import type { Provider, ProviderModel } from '../../../shared/aiProviders';

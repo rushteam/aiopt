@@ -1,7 +1,6 @@
 // An OpenAI Chat body → the conversation Kiro's `generateAssistantResponse` takes.
 //
-// Ported from magpie's Kiro plugin (buildKiro), which reads Anthropic Messages; here the
-// driver contract's OpenAI Chat is read instead. Kiro's rules, kept as the plugin keeps them:
+// Reads the driver contract's OpenAI Chat. Kiro's rules:
 //   - The history alternates user / assistant; adjacent turns of one role are merged.
 //   - It opens with something the user said and ends with the message being answered.
 //   - Every tool call is answered in the user message right after it (an unanswered one gets

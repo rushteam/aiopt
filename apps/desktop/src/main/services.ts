@@ -6,7 +6,7 @@
 // Electron-free and unit-tested with injected adapters.
 
 import fs from 'node:fs';
-import { BrowserWindow, app, clipboard, dialog, net, safeStorage } from 'electron';
+import { BrowserWindow, app, clipboard, dialog, net, safeStorage, session } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -43,6 +43,7 @@ import { createProxyStateStore, createFileProxyStatePersistence } from './proxy/
 import type { ProxyFetch } from './proxy/upstream';
 import { createUpstreamRegistry, type UpstreamRegistry } from './upstreams/types';
 import { createCursorClient } from './upstreams/cursor/client';
+import { createProxiedHttp2Connect } from './upstreams/http2Proxy';
 import { createCursorDriver } from './upstreams/cursor/driver';
 import { cursorAccessToken, cursorClientVersion } from './upstreams/cursor/agentCli';
 import { createWorkBuddyDriver, type WorkBuddyFetch } from './upstreams/workbuddy/driver';
@@ -71,6 +72,8 @@ import { syncWorkbenchTrayHint } from './tray/tray';
 import { createNodeWorkbenchDeps } from './workbench/nodeDeps';
 import { resolveWorkbenchModel } from './workbench/resolveModel';
 import { logger } from './logger';
+import { detectLoopbackBlock } from './proxy/loopbackSelfTest';
+import { loopbackNotExemptFromProxy } from './proxy/proxyEnvCheck';
 import {
   appShortcutsFilePath,
   preferencesFilePath,
@@ -245,9 +248,17 @@ function getUpstreamRegistry(): UpstreamRegistry {
   if (!upstreamRegistry) {
     const fetchImpl = ((url, init) => net.fetch(url, init as RequestInit)) as ProxyFetch;
     upstreamRegistry = createUpstreamRegistry([
-      // Signed-in cursor-agent (agent import). Unary calls over net.fetch; Run over node:http2.
+      // Signed-in cursor-agent (agent import). Unary calls over net.fetch; Run over node:http2,
+      // tunnelled through the same system / env proxy net.fetch would use.
       createCursorDriver({
-        client: createCursorClient({ fetchImpl, clientVersion: cursorClientVersion }),
+        client: createCursorClient({
+          fetchImpl,
+          clientVersion: cursorClientVersion,
+          connect: createProxiedHttp2Connect({
+            resolveProxy: (url) => session.defaultSession.resolveProxy(url),
+            env: process.env,
+          }),
+        }),
         token: cursorAccessToken,
       }),
       // Signed-in WorkBuddy desktop (agent import): its headers + body rules over net.fetch.
@@ -295,9 +306,32 @@ export function getProviderManager(): ProviderManager {
       },
       // Driver-served providers list models / are tested through their driver.
       (provider) => getUpstreamRegistry().forProvider(provider),
+      () => ({ loopbackBlocked, proxyEnvNoLoopbackBypass: loopbackNotExemptFromProxy(process.env) }),
     );
   }
   return providerManager;
+}
+
+let loopbackBlocked = false;
+
+/**
+ * Windows only: check once that a connection to our own 127.0.0.1 listener gets through,
+ * and flag the providers snapshot when it is dropped (a firewall blocking AiOpt's inbound
+ * traffic breaks every proxied agent with an opaque "connection failed"). Diagnose only —
+ * no firewall rule is written and nothing is elevated. Never throws.
+ */
+export async function runStartupLoopbackCheck(): Promise<void> {
+  if (process.platform !== 'win32') return;
+  try {
+    const result = await detectLoopbackBlock();
+    logger.info('proxy.loopback_self_test', { status: result.outcome, code: result.code });
+    if (result.outcome === 'blocked') {
+      loopbackBlocked = true;
+      broadcastToRenderers(IPC_EVENTS.providersChanged, getProviderManager().getSnapshot());
+    }
+  } catch {
+    // A diagnostic must not affect startup.
+  }
 }
 
 /**
@@ -319,6 +353,8 @@ export function getTranslationProxy(): TranslationProxy {
       // Per-provider fields to strip from the outbound body (see proxy/sanitize.ts) —
       // resolved live, like the key, so a provider edit needs no rebind.
       getDropFields: (providerId) => getProviderManager().resolveDropFields(providerId),
+      // Per-provider JSON merged into the outbound body (see proxy/requestFixes.ts), live.
+      getExtraBody: (providerId) => getProviderManager().resolveExtraBody(providerId),
       // Prompt-cache breakpoints for Anthropic upstreams (see proxy/promptCache.ts), live.
       getPromptCache: () => getConfigStore().get('promptCache'),
       // Imported sign-ins that want the key both ways (Command Code, ZCode), live.

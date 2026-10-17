@@ -4,8 +4,7 @@
 // tool calls, answering what the server asks of the client on the way (blobs it wants, the
 // MCP tool list, the request context) and refusing every one of Cursor's OWN tools (shell,
 // file reads, edits): only the caller's tools are ever offered, and they go back to the
-// caller as OpenAI tool calls rather than being run here. Ported from
-// @magpie-community/opencode-cursor-auth (index.mjs `decode` / `exec` / `failure`).
+// caller as OpenAI tool calls rather than being run here.
 //
 // Pure: transport-free (frames in, `send` out). Unit-tested in upstreams/__tests__/cursorDecode.test.ts.
 

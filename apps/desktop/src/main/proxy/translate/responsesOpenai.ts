@@ -7,16 +7,21 @@
 // have different wire shapes — see shared/aiProviders.ts (ApiFormat) for why they are
 // distinct formats. No I/O, no Electron: unit-testable with plain fixtures.
 //
-// Reasoning is DROPPED on this pair: Chat Completions has no mechanism to echo a
-// model's reasoning back across turns, so a `reasoning` input item is discarded and a
-// top-level `reasoning.effort` is best-effort mapped to `reasoning_effort` (providers
-// that don't understand it ignore it). The lossless bridge lives on the Anthropic pair.
+// Reasoning: a Chat upstream's `reasoning_content` is lifted into a Responses `reasoning`
+// item (unsigned, via reasoningBridge.ts) and, when the client echoes that item back,
+// replayed as `reasoning_content` on the assistant turn it precedes — thinking-mode
+// upstreams (DeepSeek, Kimi, MiMo …) 400 a post-tool-call turn without it. Reasoning items
+// from any other producer (signed Anthropic, OpenAI's own encrypted reasoning) are
+// dropped. A top-level `reasoning.effort` is best-effort mapped to `reasoning_effort`.
 
 import { randomUUID } from 'node:crypto';
 import { namedEventFrame, type SseEvent } from './streaming';
+import { decodeReasoning, encodeReasoning } from './reasoningBridge';
 import {
   assertNoUnsupportedResponsesFields,
   isIncompleteStop,
+  rejectUnsupported,
+  type OpenAiContentPart,
   type OpenAiMessage,
   type OpenAiRequest,
   type OpenAiResponse,
@@ -28,10 +33,12 @@ import {
   type ResponsesInputItem,
   type ResponsesMessageItem,
   type ResponsesOutputItem,
+  type ResponsesReasoningItem,
   type ResponsesRequest,
   type ResponsesResponse,
   type ResponsesTextPart,
 } from './types';
+import { responsesImageUrl } from './images';
 
 /** Concatenate the text of a Responses message content (string or input/output_text parts). */
 export function textOfParts(content: string | ResponsesContentPart[]): string {
@@ -40,6 +47,30 @@ export function textOfParts(content: string | ResponsesContentPart[]): string {
     .filter((p): p is ResponsesTextPart => p.type === 'input_text' || p.type === 'output_text')
     .map((p) => p.text)
     .join('');
+}
+
+/** Whether a Responses message content carries an `input_image` part. */
+export function hasImagePart(content: string | ResponsesContentPart[]): content is ResponsesContentPart[] {
+  return Array.isArray(content) && content.some((p) => p.type === 'input_image');
+}
+
+/** Refuse an image anywhere but a user turn (no dialect carries one on another role). */
+export function assertImageOnUserTurn(m: ResponsesMessageItem): void {
+  if (m.role !== 'user' && hasImagePart(m.content)) {
+    rejectUnsupported(`Responses \`input_image\` on a ${m.role} message is not supported by the translation proxy`);
+  }
+}
+
+/** A user message's parts → Chat content parts (text + image_url), in order. */
+function chatPartsOf(content: ResponsesContentPart[]): OpenAiContentPart[] {
+  const parts: OpenAiContentPart[] = [];
+  for (const p of content) {
+    if (p.type === 'input_image') parts.push({ type: 'image_url', image_url: { url: responsesImageUrl(p) } });
+    else if ((p.type === 'input_text' || p.type === 'output_text') && (p as ResponsesTextPart).text !== '') {
+      parts.push({ type: 'text', text: (p as ResponsesTextPart).text });
+    }
+  }
+  return parts;
 }
 
 /** Normalize a Responses `input` (bare string = single user message) into an item list. */
@@ -69,13 +100,33 @@ export function requestResponsesToOpenai(req: ResponsesRequest, modelId: string)
   if (typeof req.instructions === 'string' && req.instructions !== '') {
     messages.push({ role: 'system', content: req.instructions });
   }
+  // Reasoning echoed back ahead of an assistant turn, waiting for that turn to attach to.
+  let pendingReasoning = '';
+  const takeReasoning = (m: OpenAiMessage): void => {
+    if (pendingReasoning !== '') m.reasoning_content = (m.reasoning_content ?? '') + pendingReasoning;
+    pendingReasoning = '';
+  };
 
   for (const item of inputItems(req.input)) {
+    if (item.type !== 'reasoning' && item.type !== 'message' && item.type !== 'function_call') pendingReasoning = '';
     switch (item.type) {
       case 'message': {
         const m = item as ResponsesMessageItem;
         const role = m.role === 'assistant' ? 'assistant' : m.role === 'user' ? 'user' : 'system';
-        messages.push({ role, content: textOfParts(m.content) });
+        assertImageOnUserTurn(m);
+        const out: OpenAiMessage = {
+          role,
+          content: hasImagePart(m.content) ? chatPartsOf(m.content) : textOfParts(m.content),
+        };
+        if (role === 'assistant') takeReasoning(out);
+        else pendingReasoning = '';
+        messages.push(out);
+        break;
+      }
+      case 'reasoning': {
+        // Only our own unsigned bridge (a Chat upstream's reasoning_content) is replayed.
+        const decoded = decodeReasoning((item as ResponsesReasoningItem).encrypted_content);
+        if (decoded && decoded.signature === '' && decoded.thinking !== '') pendingReasoning += decoded.thinking;
         break;
       }
       case 'function_call': {
@@ -88,10 +139,12 @@ export function requestResponsesToOpenai(req: ResponsesRequest, modelId: string)
         // Coalesce onto the preceding assistant turn when there is one; else open a new
         // assistant message carrying only the tool call.
         const last = messages[messages.length - 1];
-        if (last && last.role === 'assistant') {
+        if (last && last.role === 'assistant' && pendingReasoning === '') {
           (last.tool_calls ??= []).push(toolCall);
         } else {
-          messages.push({ role: 'assistant', content: null, tool_calls: [toolCall] });
+          const out: OpenAiMessage = { role: 'assistant', content: null, tool_calls: [toolCall] };
+          takeReasoning(out);
+          messages.push(out);
         }
         break;
       }
@@ -100,8 +153,7 @@ export function requestResponsesToOpenai(req: ResponsesRequest, modelId: string)
         messages.push({ role: 'tool', tool_call_id: fo.call_id, content: fo.output ?? '' });
         break;
       }
-      // reasoning items and any unknown item type: dropped (guard already refused images
-      // and built-in tools). Chat Completions cannot echo reasoning across turns.
+      // Any unknown item type: dropped (the guard already refused images and built-in tools).
       default:
         break;
     }
@@ -126,12 +178,34 @@ export function requestResponsesToOpenai(req: ResponsesRequest, modelId: string)
   return out;
 }
 
+/** A Chat message / delta's reasoning text (`reasoning_content`, or the `reasoning` alias). */
+function reasoningText(m: Record<string, unknown>): string {
+  if (typeof m.reasoning_content === 'string') return m.reasoning_content;
+  if (typeof m.reasoning === 'string') return m.reasoning;
+  return '';
+}
+
+/**
+ * A Responses reasoning item for a Chat upstream's reasoning: the readable text as a
+ * summary (codex shows it), plus the unsigned bridge payload the client echoes back.
+ */
+function reasoningItem(id: string, text: string): ResponsesOutputItem {
+  return {
+    type: 'reasoning',
+    id,
+    summary: [{ type: 'summary_text', text }],
+    encrypted_content: encodeReasoning({ thinking: text, signature: '' }),
+  };
+}
+
 /** Translate a non-streaming OpenAI Chat completion into a Responses response envelope. */
 export function responseOpenaiToResponses(resp: OpenAiResponse): ResponsesResponse {
   const choice = resp.choices?.[0];
   const message = choice?.message ?? { role: 'assistant', content: null };
   const output: ResponsesOutputItem[] = [];
 
+  const reasoning = reasoningText(message as unknown as Record<string, unknown>);
+  if (reasoning !== '') output.push(reasoningItem(`rs_${randomUUID()}`, reasoning));
   if (typeof message.content === 'string' && message.content !== '') {
     output.push({
       type: 'message',
@@ -187,6 +261,7 @@ export function createOpenaiToResponsesStream(): (event: SseEvent) => string[] {
   // The single open output item (Chat streams text then tools sequentially per choice).
   type OpenItem =
     | { kind: 'text'; index: number; id: string; text: string }
+    | { kind: 'reasoning'; index: number; id: string; text: string }
     | { kind: 'tool'; index: number; id: string; callId: string; name: string; args: string };
   let open: OpenItem | null = null;
   const doneItems: ResponsesOutputItem[] = [];
@@ -241,6 +316,22 @@ export function createOpenaiToResponsesStream(): (event: SseEvent) => string[] {
       };
       doneItems.push(item);
       frames.push(frame('response.output_item.done', { output_index: open.index, item }));
+    } else if (open.kind === 'reasoning') {
+      const part = { type: 'summary_text', text: open.text };
+      frames.push(
+        frame('response.reasoning_summary_text.done', {
+          item_id: open.id,
+          output_index: open.index,
+          summary_index: 0,
+          text: open.text,
+        }),
+      );
+      frames.push(
+        frame('response.reasoning_summary_part.done', { item_id: open.id, output_index: open.index, summary_index: 0, part }),
+      );
+      const item = reasoningItem(open.id, open.text);
+      doneItems.push(item);
+      frames.push(frame('response.output_item.done', { output_index: open.index, item }));
     } else {
       frames.push(
         frame('response.function_call_arguments.done', {
@@ -283,6 +374,24 @@ export function createOpenaiToResponsesStream(): (event: SseEvent) => string[] {
       }),
     );
     open = { kind: 'text', index, id, text: '' };
+    return open;
+  }
+
+  function openReasoning(frames: string[]): OpenItem & { kind: 'reasoning' } {
+    if (open?.kind === 'reasoning') return open;
+    closeOpen(frames);
+    const index = nextOutputIndex++;
+    const id = `rs_${randomUUID()}`;
+    frames.push(frame('response.output_item.added', { output_index: index, item: { type: 'reasoning', id, summary: [] } }));
+    frames.push(
+      frame('response.reasoning_summary_part.added', {
+        item_id: id,
+        output_index: index,
+        summary_index: 0,
+        part: { type: 'summary_text', text: '' },
+      }),
+    );
+    open = { kind: 'reasoning', index, id, text: '' };
     return open;
   }
 
@@ -346,9 +455,24 @@ export function createOpenaiToResponsesStream(): (event: SseEvent) => string[] {
 
     const choice = payload.choices?.[0];
     const delta = (choice?.delta ?? {}) as {
+      [key: string]: unknown;
       content?: unknown;
       tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[];
     };
+
+    const reasoning = reasoningText(delta);
+    if (reasoning !== '') {
+      const item = openReasoning(frames);
+      item.text += reasoning;
+      frames.push(
+        frame('response.reasoning_summary_text.delta', {
+          item_id: item.id,
+          output_index: item.index,
+          summary_index: 0,
+          delta: reasoning,
+        }),
+      );
+    }
 
     if (typeof delta.content === 'string' && delta.content !== '') {
       const item = openText(frames);

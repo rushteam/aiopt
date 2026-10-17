@@ -18,6 +18,7 @@ import {
   getProviderManager,
   getTranslationProxy,
   getUpdateService,
+  runStartupLoopbackCheck,
   shutdownMcpGateway,
   shutdownWorkbench,
 } from './services';
@@ -68,6 +69,8 @@ app.whenReady().then(async () => {
   } catch (err) {
     logger.error('proxy.start_failed', { message: err instanceof Error ? err.message : String(err) });
   }
+  // Windows: flag a firewall that drops loopback traffic (diagnostic only; not awaited).
+  void runStartupLoopbackCheck();
 
   // Native menu dispatches commands to the renderer, so install it before the
   // window loads.

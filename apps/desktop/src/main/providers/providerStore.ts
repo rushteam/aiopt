@@ -15,6 +15,7 @@ import {
   OFFICIAL_PROVIDER_ID_PREFIX,
   normalizeApiFormats,
   normalizeDropFields,
+  checkExtraBody,
   type AgentBinding,
   type AgentId,
   type Provider,
@@ -123,6 +124,11 @@ function validProvider(raw: unknown): Provider | null {
   if (Array.isArray(obj.dropRequestFields)) {
     const fields = normalizeDropFields(obj.dropRequestFields.filter((f): f is string => typeof f === 'string'));
     if (fields.length > 0) provider.dropRequestFields = fields;
+  }
+  // Extra body: a hand-edited value that fails the check is discarded, not fatal.
+  if (obj.extraBody !== undefined) {
+    const checked = checkExtraBody(obj.extraBody);
+    if (checked.ok && Object.keys(checked.value).length > 0) provider.extraBody = checked.value;
   }
   return provider;
 }

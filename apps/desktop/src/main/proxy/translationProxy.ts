@@ -36,6 +36,7 @@ import {
 import type { ProxyStateStore } from './proxyStore';
 import { geminiOutboundUrl, outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
 import { sanitizeOutboundBody } from './sanitize';
+import { applyExtraBody, autoFixRequest } from './requestFixes';
 import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage, zeroUsage, type UsageCounts } from './usageSniffer';
@@ -84,6 +85,11 @@ export interface TranslationProxyDeps {
    * means strip nothing, which is the default for every provider.
    */
   getDropFields?: (providerId: string) => readonly string[] | undefined;
+  /**
+   * Resolve a provider's `extraBody` (JSON merged into the outbound body; see
+   * requestFixes.ts), live like `getDropFields`. Absent / undefined = merge nothing.
+   */
+  getExtraBody?: (providerId: string) => Record<string, unknown> | undefined;
   /**
    * Whether to add prompt-cache breakpoints to an Anthropic-format outbound body that has
    * none (see promptCache.ts). Read live per request; absent means off.
@@ -293,11 +299,31 @@ function errorEnvelope(format: ApiFormat, message: string): unknown {
   return { error: { message, type: 'invalid_request_error' } };
 }
 
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
+function sendJson(res: ServerResponse, status: number, body: unknown, extra: Record<string, string> = {}): void {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...extra });
   res.end(payload);
 }
+
+/**
+ * An upstream `Retry-After`, passed on only when it is a plain delay (seconds, capped at a
+ * day) or a valid HTTP date — never an arbitrary string an upstream could smuggle through.
+ */
+export function safeRetryAfter(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (/^\d{1,6}$/.test(v)) return String(Math.min(Number(v), 86_400));
+  if (v.length <= 64 && /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(v) && !Number.isNaN(Date.parse(v))) {
+    return v;
+  }
+  return null;
+}
+
+/**
+ * Upstream statuses the agent should see as-is (so it backs off) rather than as a generic
+ * 502: rate limited (429) and overloaded (529, Anthropic's). The body stays generic.
+ */
+const PASSTHROUGH_STATUS: ReadonlySet<number> = new Set([429, 529]);
 
 /** Await backpressure drain so a fast upstream can't outrun a slow client. */
 function writeBackpressured(res: ServerResponse, chunk: string): Promise<void> {
@@ -385,8 +411,11 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       // that actually goes on the wire, and so the translators' explicit refusal of an
       // untranslatable field still happens first. Field NAMES only in the log — values
       // can be arbitrary user content.
+      // The provider's extraBody merges first, so drop-fields still has the last word.
+      const extra = applyExtraBody(translatedRequest, deps.getExtraBody?.(spec.providerId));
+      if (extra.keys.length > 0) logger.info('proxy.request_extra_body', { path: rest, fields: extra.keys });
       const { body: sanitizedBody, dropped } = sanitizeOutboundBody(
-        translatedRequest,
+        extra.body,
         deps.getDropFields?.(spec.providerId),
       );
       if (dropped.length > 0) {
@@ -436,12 +465,25 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       const controller = new AbortController();
       req.on('close', () => controller.abort());
 
-      const upstream = await deps
-        .fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(outboundBody), signal: controller.signal })
-        .catch(() => {
-          record(wantsStream, false, 0, noTokens);
-          throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
-        });
+      const send = (body: Record<string, unknown>) =>
+        deps
+          .fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal })
+          .catch(() => {
+            record(wantsStream, false, 0, noTokens);
+            throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
+          });
+      let upstream = await send(outboundBody);
+
+      // One repair attempt for a refused request (see requestFixes.ts). The error body is
+      // read only to pick the fix; it is never logged or forwarded — the fix NAME is.
+      if (upstream.status === 400 || upstream.status === 422) {
+        const errorText = await upstream.text().catch(() => '');
+        const fixed = autoFixRequest(spec.outboundFormat, outboundBody, upstream.status, errorText);
+        if (fixed) {
+          logger.info('proxy.auto_fix', { path: rest, status: upstream.status, code: fixed.fix });
+          upstream = await send(fixed.body);
+        }
+      }
 
       if (upstream.status === 401 || upstream.status === 403) {
         record(wantsStream, false, upstream.status, noTokens);
@@ -453,6 +495,16 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         // Never forward the upstream body (may reflect the key); status is safe.
         record(wantsStream, false, upstream.status, noTokens);
         logger.warn('proxy.upstream', { path: rest, status: upstream.status });
+        if (PASSTHROUGH_STATUS.has(upstream.status)) {
+          const retryAfter = safeRetryAfter(upstream.headers.get('retry-after'));
+          sendJson(
+            res,
+            upstream.status,
+            errorEnvelope(inbound, upstream.status === 429 ? clientMessage(429) : 'the provider is overloaded'),
+            retryAfter ? { 'retry-after': retryAfter } : {},
+          );
+          return;
+        }
         sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${upstream.status}`));
         return;
       }

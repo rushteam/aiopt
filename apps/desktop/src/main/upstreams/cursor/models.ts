@@ -5,8 +5,7 @@
 // `agent.v1.AgentService/GetUsableModels` (what `cursor-agent models` prints) names the
 // variants the account is actually served. The agent API takes a VARIANT's own id (its
 // legacySlug, e.g. `claude-opus-4-5-high`) plus its parameters, in Max Mode when the variant
-// needs it. Ported from @magpie-community/opencode-cursor-auth (index.mjs `modelsOf` /
-// `request` / `pick` / `named` / `branch` / `fitEffort` / `splitID`).
+// needs it.
 //
 // Pure: unit-tested in upstreams/__tests__/cursorModels.test.ts.
 

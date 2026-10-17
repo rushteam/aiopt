@@ -161,7 +161,9 @@
       "refresh": "Port aktualisieren",
       "refreshing": "Wird aktualisiert…",
       "refreshed": "Aktualisiert",
-      "stopped": "Nicht aktiv"
+      "stopped": "Nicht aktiv",
+      "loopbackBlocked": "Verbindungen zu 127.0.0.1 werden verworfen, daher erreichen Agents den lokalen Proxy nicht. Meist ist die Firewall die Ursache: Erlauben Sie AiOpt eingehende Verbindungen (Windows-Sicherheit → Firewall- & Netzwerkschutz → App durch Firewall zulassen) und starten Sie AiOpt neu.",
+      "proxyEnvNoLoopback": "In der Umgebung ist ein HTTP-Proxy gesetzt (HTTPS_PROXY / HTTP_PROXY / ALL_PROXY), aber 127.0.0.1 fehlt in NO_PROXY. Agents, die diese Umgebung erben, senden den Verkehr zum lokalen Proxy womöglich an diesen Proxy und können keine Verbindung herstellen. Fügen Sie 127.0.0.1,localhost zu NO_PROXY hinzu und starten Sie den Agent neu."
     },
     "pool": {
       "heading": "Anbieter-Pool",
@@ -263,6 +265,12 @@
         "safe": "Parameter für Protokollierung und Routing. Ihr Entfernen ändert die Antwort des Modells nicht.",
         "sensitive": "Ihr Entfernen ändert, was zurückkommt: ohne response_format wird garantiertes JSON zu freiem Text, ohne thinking oder reasoning wird das Modell still herabgestuft. Nur verwenden, wenn der Upstream sie ausdrücklich ablehnt."
       },
+      "extraBody": "Zusätzliche Anfrageparameter (JSON)",
+      "extraBodyHint": "Wird in jede Anfrage eingefügt, die AiOpt an diesen Anbieter sendet – für eine herstellerspezifische Option, die der Agent nicht senden kann, z. B. {\"enable_thinking\": false}. Wird als normale Konfiguration im Klartext gespeichert; keine Schlüssel oder Tokens eintragen.",
+      "extraBodyInvalidJson": "Kein gültiges JSON.",
+      "extraBodyNotObject": "Muss ein JSON-Objekt sein.",
+      "extraBodyDeniedKey": "„{{key}}“ kann hier nicht gesetzt werden – es definiert die Anfrage selbst.",
+      "extraBodyTooLarge": "Zu groß – auf wenige Optionen beschränken.",
       "driverEndpointHint": "Durch den integrierten Protokolltreiber festgelegt; nicht änderbar.",
       "driverFormatsHint": "Dieser Anbieter wird von einem integrierten Protokolltreiber bedient, der nur OpenAI Chat spricht. Jeder Agent kann ihn binden — der Proxy von AiOpt übersetzt.",
       "agentSessionMissing": "Keine angemeldete Sitzung gefunden. Melde dich im Agent an und öffne diesen Dialog erneut.",

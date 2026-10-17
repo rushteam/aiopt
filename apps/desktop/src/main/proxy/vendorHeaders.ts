@@ -3,7 +3,7 @@
 // Most providers take the key one way per dialect (outboundHeaders in ./upstream.ts). A few
 // imported sign-ins want it both ways, or want their client's identity:
 //   - Command Code's Provider API: the key as a bearer token AND as x-api-key, with the CLI's
-//     version headers (magpie's Command Code plugin).
+//     version headers.
 //   - ZCode's GLM Coding Plan key: bearer AND x-api-key, on either dialect.
 // Merged over outboundHeaders' result. Pure: unit-tested in __tests__/vendorHeaders.test.ts.
 // The returned map carries the key — never log it.

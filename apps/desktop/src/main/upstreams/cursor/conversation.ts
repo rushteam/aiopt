@@ -4,8 +4,7 @@
 // messages are content-addressed blobs (AI SDK message JSON, keyed by sha256) that the
 // server asks for over the same stream, plus the user's last words as the turn. The
 // caller's tools are offered as MCP tools under one "aiopt" namespace and come back as
-// `CallDynamicTool` calls. Ported from @magpie-community/opencode-cursor-auth (index.mjs
-// `conversation` / `buildRun` / `toolsOf`).
+// `CallDynamicTool` calls.
 //
 // Pure module (apart from uuid/sha256): unit-tested in upstreams/__tests__/cursorConversation.test.ts.
 

@@ -161,7 +161,9 @@
       "refresh": "ポートを更新",
       "refreshing": "更新中…",
       "refreshed": "更新しました",
-      "stopped": "停止中"
+      "stopped": "停止中",
+      "loopbackBlocked": "127.0.0.1 への接続が破棄されているため、ローカルプロキシ経由の Agent が接続できません。原因は通常ファイアウォールです。AiOpt の受信接続を許可してください（Windows セキュリティ → ファイアウォールとネットワーク保護 → ファイアウォールによるアプリケーションの許可）。その後 AiOpt を再起動してください。",
+      "proxyEnvNoLoopback": "環境変数に HTTP プロキシ（HTTPS_PROXY / HTTP_PROXY / ALL_PROXY）が設定されていますが、NO_PROXY に 127.0.0.1 が含まれていません。この環境を引き継ぐ Agent は、ローカルプロキシ宛ての通信を外部プロキシへ送り、接続に失敗する場合があります。NO_PROXY に 127.0.0.1,localhost を追加し、Agent を再起動してください。"
     },
     "pool": {
       "heading": "プロバイダープール",
@@ -263,6 +265,12 @@
         "safe": "記録用・ルーティング用のパラメータです。除去してもモデルの応答は変わりません。",
         "sensitive": "除去すると返る内容が変わります。response_format がないと保証されていた JSON が自由文になり、thinking や reasoning がないとモデルは静かに性能を落とします。アップストリームが明確に拒否する場合のみ使用してください。"
       },
+      "extraBody": "追加リクエストパラメーター（JSON）",
+      "extraBodyHint": "AiOpt がこのプロバイダーに送るすべてのリクエストにマージされます。Agent が送れないベンダー固有のオプション用です（例: {\"enable_thinking\": false}）。通常の設定として平文で保存されるため、キーやトークンは入れないでください。",
+      "extraBodyInvalidJson": "有効な JSON ではありません。",
+      "extraBodyNotObject": "JSON オブジェクトである必要があります。",
+      "extraBodyDeniedKey": "「{{key}}」はリクエストそのものを決めるため、ここでは設定できません。",
+      "extraBodyTooLarge": "大きすぎます。少数のオプションに留めてください。",
       "driverEndpointHint": "組み込みプロトコルドライバーで固定されており、変更できません。",
       "driverFormatsHint": "このプロバイダーは組み込みプロトコルドライバーが提供し、OpenAI Chat 形式のみを扱います。どの Agent からもバインドでき、AiOpt のプロキシが形式を変換します。",
       "agentSessionMissing": "サインイン済みのセッションが見つかりません。Agent でサインインしてから、このダイアログを開き直してください。",
