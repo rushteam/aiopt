@@ -9,6 +9,7 @@
 import { randomUUID } from 'node:crypto';
 import type { SseEvent } from './streaming';
 import { openAiFrame } from './streaming';
+import { thinkingToEffort } from './reasoningBridge';
 import {
   assertNoUnsupportedRequestFields,
   rejectUnsupported,
@@ -38,16 +39,46 @@ function stringifyToolResult(content: unknown): string {
   return JSON.stringify(content ?? '');
 }
 
-/** Guard blocks we cannot translate (image, thinking, …) rather than dropping them silently. */
+/**
+ * Block types this pair maps. `thinking` is replayed as `reasoning_content` (see
+ * {@link reasoningOfBlocks}); `redacted_thinking` is Anthropic-encrypted reasoning no other
+ * vendor can read, so it is dropped from history (it never came from this upstream).
+ */
+const TRANSLATABLE_BLOCKS: ReadonlySet<string> = new Set(['text', 'tool_use', 'tool_result', 'thinking', 'redacted_thinking']);
+
+/** Guard blocks we cannot translate (image, …) rather than dropping them silently. */
 function assertTranslatableBlock(block: AnthropicContentBlock): void {
-  if (block.type !== 'text' && block.type !== 'tool_use' && block.type !== 'tool_result') {
+  if (!TRANSLATABLE_BLOCKS.has(block.type)) {
     rejectUnsupported(`Anthropic content block "${block.type}" is not supported by the translation proxy`);
   }
 }
 
+/**
+ * The reasoning carried by a block array's `thinking` blocks.
+ *
+ * On the REQUEST leg (`unsignedOnly`) this is what the client echoed back: thinking-mode
+ * OpenAI-compatible upstreams (DeepSeek, Kimi, MiMo, Qwen …) 400 a follow-up turn after a
+ * tool call unless the model's own reasoning is replayed as `reasoning_content`. Only
+ * UNSIGNED blocks are replayed — those are what openaiToAnthropic produced from this kind
+ * of upstream. A signed block came from a real Anthropic model (e.g. earlier in the session,
+ * before a rebind), and feeding one vendor's reasoning to another is not ours to do.
+ * Nothing is synthesized from `content`; an empty result means the field is left off.
+ */
+function reasoningOfBlocks(blocks: AnthropicContentBlock[], unsignedOnly = false): string {
+  return blocks
+    .filter((b) => {
+      if (b.type !== 'thinking' || typeof (b as { thinking?: unknown }).thinking !== 'string') return false;
+      if (!unsignedOnly) return true;
+      const sig = (b as { signature?: unknown }).signature;
+      return sig === undefined || sig === null || sig === '';
+    })
+    .map((b) => (b as unknown as { thinking: string }).thinking)
+    .join('');
+}
+
 /** Translate an Anthropic Messages request body into an OpenAI Chat Completions body. */
 export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string): OpenAiRequest {
-  assertNoUnsupportedRequestFields(req);
+  assertNoUnsupportedRequestFields(req, ['thinking']);
 
   const messages: OpenAiMessage[] = [];
 
@@ -75,6 +106,8 @@ export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string)
         }));
       const out: OpenAiMessage = { role: 'assistant', content: text === '' ? null : text };
       if (toolCalls.length > 0) out.tool_calls = toolCalls;
+      const reasoning = reasoningOfBlocks(msg.content, true);
+      if (reasoning !== '') out.reasoning_content = reasoning;
       messages.push(out);
       continue;
     }
@@ -101,6 +134,9 @@ export function requestAnthropicToOpenai(req: AnthropicRequest, modelId: string)
   if (typeof req.top_p === 'number') out.top_p = req.top_p;
   if (Array.isArray(req.stop_sequences) && req.stop_sequences.length > 0) out.stop = req.stop_sequences;
   if (req.stream !== undefined) out.stream = req.stream;
+  // A provider that rejects `reasoning_effort` can list it in its drop-fields.
+  const effort = thinkingToEffort(req.thinking);
+  if (effort) out.reasoning_effort = effort;
 
   if (req.tools) {
     out.tools = req.tools.map((t) => ({
@@ -137,6 +173,8 @@ export function responseAnthropicToOpenai(resp: AnthropicResponse): OpenAiRespon
 
   const message: OpenAiMessage = { role: 'assistant', content: text === '' ? null : text };
   if (toolCalls.length > 0) message.tool_calls = toolCalls;
+  const reasoning = reasoningOfBlocks(resp.content);
+  if (reasoning !== '') message.reasoning_content = reasoning;
 
   const inputTokens = resp.usage?.input_tokens ?? 0;
   const outputTokens = resp.usage?.output_tokens ?? 0;
@@ -215,7 +253,7 @@ export function createAnthropicToOpenaiStream(): (event: SseEvent) => string[] {
       }
       case 'content_block_delta': {
         const index = typeof payload.index === 'number' ? payload.index : 0;
-        const delta = (payload.delta ?? {}) as { type?: string; text?: string; partial_json?: string };
+        const delta = (payload.delta ?? {}) as { type?: string; text?: string; partial_json?: string; thinking?: string };
         const frames: string[] = [];
         if (!sentRole) {
           frames.push(chunk({ role: 'assistant', content: '' }));
@@ -223,6 +261,9 @@ export function createAnthropicToOpenaiStream(): (event: SseEvent) => string[] {
         }
         if (delta.type === 'text_delta' && typeof delta.text === 'string') {
           frames.push(chunk({ content: delta.text }));
+        } else if (delta.type === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking !== '') {
+          // The de-facto Chat Completions field for streamed reasoning.
+          frames.push(chunk({ reasoning_content: delta.thinking }));
         } else if (delta.type === 'input_json_delta' && typeof delta.partial_json === 'string') {
           const toolIndex = toolIndexByBlock.get(index) ?? 0;
           frames.push(chunk({ tool_calls: [{ index: toolIndex, function: { arguments: delta.partial_json } }] }));

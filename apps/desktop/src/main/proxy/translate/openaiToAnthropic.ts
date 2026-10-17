@@ -20,6 +20,7 @@ import {
   type OpenAiRequest,
   type OpenAiResponse,
 } from './types';
+import { effortToBudget } from './reasoningBridge';
 
 /** Anthropic requires max_tokens; when an OpenAI request omits it, fall back to this. */
 export const DEFAULT_MAX_TOKENS = 4096;
@@ -34,9 +35,16 @@ function parseArguments(args: string | undefined): unknown {
   }
 }
 
+/** An OpenAI message / delta's reasoning text (`reasoning_content`, or the `reasoning` alias). */
+function reasoningOf(m: Record<string, unknown>): string {
+  if (typeof m.reasoning_content === 'string') return m.reasoning_content;
+  if (typeof m.reasoning === 'string') return m.reasoning;
+  return '';
+}
+
 /** Translate an OpenAI Chat Completions request body into an Anthropic Messages body. */
 export function requestOpenaiToAnthropic(req: OpenAiRequest, modelId: string): AnthropicRequest {
-  assertNoUnsupportedRequestFields(req);
+  assertNoUnsupportedRequestFields(req, ['reasoning_effort']);
 
   const systemParts: string[] = [];
   const messages: AnthropicMessage[] = [];
@@ -87,8 +95,20 @@ export function requestOpenaiToAnthropic(req: OpenAiRequest, modelId: string): A
     max_tokens: typeof req.max_tokens === 'number' ? req.max_tokens : DEFAULT_MAX_TOKENS,
   };
   if (systemParts.length > 0) out.system = systemParts.join('\n\n');
-  if (typeof req.temperature === 'number') out.temperature = req.temperature;
-  if (typeof req.top_p === 'number') out.top_p = req.top_p;
+  const effort = typeof req.reasoning_effort === 'string' ? req.reasoning_effort : undefined;
+  if (effort && effort !== 'none' && effort !== 'minimal') {
+    // Extended thinking: budget must be ≥ 1024 and < max_tokens (bump max_tokens to fit).
+    // Anthropic refuses temperature/top_p alongside thinking, so they are not forwarded.
+    let maxTokens = out.max_tokens ?? DEFAULT_MAX_TOKENS;
+    let budget = effortToBudget(effort);
+    if (budget >= maxTokens) maxTokens = budget + DEFAULT_MAX_TOKENS;
+    budget = Math.max(1024, Math.min(budget, maxTokens - 1));
+    out.max_tokens = maxTokens;
+    out.thinking = { type: 'enabled', budget_tokens: budget };
+  } else {
+    if (typeof req.temperature === 'number') out.temperature = req.temperature;
+    if (typeof req.top_p === 'number') out.top_p = req.top_p;
+  }
   if (req.stop !== undefined) out.stop_sequences = Array.isArray(req.stop) ? req.stop : [req.stop];
   if (req.stream !== undefined) out.stream = req.stream;
 
@@ -115,6 +135,10 @@ export function responseOpenaiToAnthropic(resp: OpenAiResponse): AnthropicRespon
   const choice = resp.choices?.[0];
   const message = choice?.message ?? { role: 'assistant', content: null };
   const content: AnthropicContentBlock[] = [];
+  // Reasoning first, as Anthropic orders it. Unsigned: it came from a non-Anthropic model,
+  // and the client echoes it back for anthropicToOpenai to replay as `reasoning_content`.
+  const reasoning = reasoningOf(message as unknown as Record<string, unknown>);
+  if (reasoning !== '') content.push({ type: 'thinking', thinking: reasoning, signature: '' });
   if (typeof message.content === 'string' && message.content !== '') {
     content.push({ type: 'text', text: message.content });
   }
@@ -154,7 +178,7 @@ export function createOpenaiToAnthropicStream(): (event: SseEvent) => string[] {
   let model = 'unknown';
   let started = false;
   let finished = false;
-  let openKind: 'text' | 'tool' | null = null;
+  let openKind: 'text' | 'tool' | 'thinking' | null = null;
   let openIndex = -1;
   let nextIndex = 0;
   const toolBlockByOpenAiIndex = new Map<number, number>();
@@ -228,9 +252,33 @@ export function createOpenaiToAnthropicStream(): (event: SseEvent) => string[] {
 
     const choice = payload.choices?.[0];
     const delta = (choice?.delta ?? {}) as {
+      [key: string]: unknown;
       content?: unknown;
       tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[];
     };
+
+    const reasoning = reasoningOf(delta);
+    if (reasoning !== '') {
+      if (openKind !== 'thinking') {
+        closeOpenBlock(frames);
+        openKind = 'thinking';
+        openIndex = nextIndex++;
+        frames.push(
+          anthropicFrame('content_block_start', {
+            type: 'content_block_start',
+            index: openIndex,
+            content_block: { type: 'thinking', thinking: '', signature: '' },
+          }),
+        );
+      }
+      frames.push(
+        anthropicFrame('content_block_delta', {
+          type: 'content_block_delta',
+          index: openIndex,
+          delta: { type: 'thinking_delta', thinking: reasoning },
+        }),
+      );
+    }
 
     if (typeof delta.content === 'string' && delta.content !== '') {
       if (openKind !== 'text') {

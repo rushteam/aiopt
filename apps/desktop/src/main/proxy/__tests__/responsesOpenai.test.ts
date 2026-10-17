@@ -5,6 +5,7 @@ import {
   responseOpenaiToResponses,
 } from '../translate/responsesOpenai';
 import { SseDecoder, type SseEvent } from '../translate/streaming';
+import { encodeReasoning } from '../translate/reasoningBridge';
 import type { OpenAiResponse, ResponsesRequest } from '../translate/types';
 
 function decodeFrames(frames: string[]): SseEvent[] {
@@ -103,6 +104,65 @@ describe('requestResponsesToOpenai', () => {
     expect(out.messages).toEqual([{ role: 'user', content: 'hi' }]);
     expect(out.reasoning_effort).toBe('high');
     expect(JSON.stringify(out)).not.toContain('ignored-on-chat');
+  });
+
+  it('replays our own unsigned reasoning item as reasoning_content on the next assistant turn', () => {
+    const bridge = encodeReasoning({ thinking: 'plan', signature: '' });
+    const signed = encodeReasoning({ thinking: 'claude', signature: 'sig' });
+    const out = requestResponsesToOpenai(
+      {
+        input: [
+          { type: 'message', role: 'user', content: 'go' },
+          { type: 'reasoning', encrypted_content: signed },
+          { type: 'reasoning', encrypted_content: bridge },
+          { type: 'function_call', call_id: 'c1', name: 'f', arguments: '{}' },
+          { type: 'function_call_output', call_id: 'c1', output: 'ok' },
+        ],
+      },
+      'm',
+    );
+    expect(out.messages[1]).toEqual({
+      role: 'assistant',
+      content: null,
+      reasoning_content: 'plan',
+      tool_calls: [{ id: 'c1', type: 'function', function: { name: 'f', arguments: '{}' } }],
+    });
+    expect(JSON.stringify(out)).not.toContain('claude');
+  });
+
+  it('lifts reasoning_content into a reasoning item that round-trips', () => {
+    const resp: OpenAiResponse = {
+      id: 'x',
+      object: 'chat.completion',
+      created: 1,
+      model: 'm',
+      choices: [{ index: 0, message: { role: 'assistant', content: 'hi', reasoning_content: 'why' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    };
+    const output = responseOpenaiToResponses(resp).output;
+    expect(output[0]).toMatchObject({ type: 'reasoning', summary: [{ type: 'summary_text', text: 'why' }] });
+    expect(output[1]).toMatchObject({ type: 'message' });
+    const next = requestResponsesToOpenai(
+      { input: [...(output as never[]), { type: 'message', role: 'user', content: 'more' }] },
+      'm',
+    );
+    expect(next.messages[0]).toEqual({ role: 'assistant', content: 'hi', reasoning_content: 'why' });
+  });
+
+  it('streams reasoning deltas as a reasoning item before the message', () => {
+    const t = createOpenaiToResponsesStream();
+    const events = decodeFrames([
+      ...t(openaiChunk({ choices: [{ delta: { reasoning_content: 'r1' } }] })),
+      ...t(openaiChunk({ choices: [{ delta: { content: 'x' } }] })),
+      ...t(openaiChunk({ choices: [{ delta: {}, finish_reason: 'stop' }] })),
+    ]);
+    const added = events.filter((e) => e.event === 'response.output_item.added').map((e) => JSON.parse(e.data).item.type);
+    expect(added).toEqual(['reasoning', 'message']);
+    const done = events.find((e) => e.event === 'response.completed');
+    const out = JSON.parse(done!.data).response.output;
+    expect(out[0].type).toBe('reasoning');
+    expect(out[0].summary[0].text).toBe('r1');
+    expect(typeof out[0].encrypted_content).toBe('string');
   });
 
   it('maps flat Responses tools + tool_choice to Chat function tools', () => {

@@ -3,7 +3,7 @@
 //
 // These interfaces are DELIBERATELY partial: only the fields the proxy actually maps
 // are typed. Everything else is either caught by an explicit unsupported-field guard
-// (features that would silently corrupt output — images, extended thinking) or is
+// (features that would silently corrupt output — images, …) or is
 // dropped/ignored where that is safe (e.g. `cache_control`, which only affects cost).
 //
 // Pure module: no Node/Electron, no I/O. The one dependency is `throwIpcError` (also
@@ -37,7 +37,7 @@ export interface AnthropicToolResultBlock {
   content: unknown;
   is_error?: boolean;
 }
-/** A content block we do not translate (image, thinking, …); caught by the guard. */
+/** Any other block (image, thinking, …): each translator maps or refuses it explicitly. */
 export interface AnthropicUnknownBlock {
   type: string;
   [key: string]: unknown;
@@ -111,6 +111,12 @@ export interface OpenAiMessage {
   tool_calls?: OpenAiToolCall[];
   tool_call_id?: string;
   name?: string;
+  /**
+   * The model's own reasoning text on an assistant turn (DeepSeek / Kimi / MiMo / Qwen …).
+   * Thinking-mode upstreams require it replayed on the next turn after a tool call, or
+   * they 400. Only ever carries reasoning the model actually returned — never synthesized.
+   */
+  reasoning_content?: string;
 }
 export interface OpenAiTool {
   type: 'function';
@@ -189,7 +195,7 @@ export interface ResponsesFunctionCallOutputItem {
 export interface ResponsesReasoningItem {
   type: 'reasoning';
   id?: string;
-  /** Opaque bridge payload (base64 JSON of {thinking, signature}); see responsesAnthropic.ts. */
+  /** Opaque bridge payload (base64 JSON of {thinking, signature}); see reasoningBridge.ts. */
   encrypted_content?: string | null;
   summary?: unknown[];
   [key: string]: unknown;
@@ -334,14 +340,21 @@ export const UNSUPPORTED_REQUEST_FIELDS: readonly string[] = [
   'logit_bias',
   'audio',
   'modalities',
+  // Thinking knobs: refused by default, but each translator that can map one opts it
+  // back in (anthropicToOpenai: `thinking` → `reasoning_effort`; openaiToAnthropic:
+  // `reasoning_effort` → `thinking`). Passing the allowlist keeps the rest refused.
   'thinking', // Anthropic extended thinking
   'reasoning', // OpenAI reasoning
   'reasoning_effort',
 ];
 
-/** Throw if the request carries any field from {@link UNSUPPORTED_REQUEST_FIELDS}. */
-export function assertNoUnsupportedRequestFields(req: Record<string, unknown>): void {
+/**
+ * Throw if the request carries any field from {@link UNSUPPORTED_REQUEST_FIELDS}, except
+ * the ones a translator maps itself (`allowed`, e.g. anthropic→openai maps `thinking`).
+ */
+export function assertNoUnsupportedRequestFields(req: Record<string, unknown>, allowed: readonly string[] = []): void {
   for (const field of UNSUPPORTED_REQUEST_FIELDS) {
+    if (allowed.includes(field)) continue;
     if (req[field] !== undefined && req[field] !== null) {
       rejectUnsupported(`request field "${field}" is not supported by the translation proxy`);
     }

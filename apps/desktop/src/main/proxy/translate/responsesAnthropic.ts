@@ -9,15 +9,14 @@
 // that MUST be replayed verbatim on the next turn or the model rejects the continuation.
 // The Responses client (codex) is stateless — it echoes back whatever output items it
 // received. So on the RESPONSE leg we fold {thinking, signature} into a Responses
-// `reasoning` item's opaque `encrypted_content` (base64 of JSON); on the REQUEST leg we
-// decode it back into an Anthropic `thinking` block. base64 is ENCODING, not encryption
-// — it is a format bridge, not a security boundary. The payload is the model's own
-// thinking + signature (not a key), but per the proxy rules it is NEVER logged and never
-// reaches the renderer. No I/O, no Electron.
+// `reasoning` item's opaque `encrypted_content`; on the REQUEST leg we decode it back
+// into an Anthropic `thinking` block. The encoding lives in reasoningBridge.ts.
+// No I/O, no Electron.
 
 import { randomUUID } from 'node:crypto';
 import { namedEventFrame, type SseEvent } from './streaming';
 import { inputItems, textOfParts } from './responsesOpenai';
+import { decodeReasoning, effortToBudget, encodeReasoning } from './reasoningBridge';
 import {
   assertNoUnsupportedResponsesFields,
   isIncompleteStop,
@@ -39,34 +38,7 @@ import {
 /** Anthropic requires max_tokens; when a Responses request omits it, fall back to this. */
 export const DEFAULT_MAX_TOKENS = 4096;
 
-/** Decoded extended-thinking payload carried across turns by the bridge. */
-export interface ReasoningPayload {
-  thinking: string;
-  signature: string;
-}
-
-/** Fold a thinking block into the opaque string a Responses reasoning item carries. */
-export function encodeReasoning(payload: ReasoningPayload): string {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
-}
-
-/**
- * Recover a thinking block from a Responses reasoning item's opaque field. Returns null
- * on any malformed input (missing / non-base64 / wrong shape) so a corrupt echo degrades
- * to "no bridged thinking" rather than throwing — the turn proceeds without continuity.
- */
-export function decodeReasoning(encoded: string | null | undefined): ReasoningPayload | null {
-  if (typeof encoded !== 'string' || encoded === '') return null;
-  try {
-    const obj = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as Partial<ReasoningPayload>;
-    if (obj && typeof obj.thinking === 'string' && typeof obj.signature === 'string') {
-      return { thinking: obj.thinking, signature: obj.signature };
-    }
-  } catch {
-    // fall through
-  }
-  return null;
-}
+export { decodeReasoning, encodeReasoning, type ReasoningPayload } from './reasoningBridge';
 
 function parseArguments(args: string | undefined): unknown {
   if (!args) return {};
@@ -74,19 +46,6 @@ function parseArguments(args: string | undefined): unknown {
     return JSON.parse(args);
   } catch {
     return {};
-  }
-}
-
-/** low/medium/high reasoning effort → an Anthropic thinking token budget. */
-function effortToBudget(effort: string | undefined): number {
-  switch (effort) {
-    case 'low':
-      return 1024;
-    case 'high':
-      return 16384;
-    case 'medium':
-    default:
-      return 8192;
   }
 }
 
@@ -148,8 +107,10 @@ export function requestResponsesToAnthropic(req: ResponsesRequest, modelId: stri
       case 'reasoning': {
         // Bridge: decode the echoed reasoning item back into a thinking block so the
         // signature is replayed verbatim. Malformed → skip (no continuity, not fatal).
+        // Unsigned = reasoning from a Chat upstream (reasoningBridge.ts); Anthropic would
+        // reject it, so it is not replayed here.
         const decoded = decodeReasoning((item as ResponsesReasoningItem).encrypted_content);
-        if (decoded) {
+        if (decoded && decoded.signature !== '') {
           assistantBlocks().unshift({
             type: 'thinking',
             thinking: decoded.thinking,
