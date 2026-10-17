@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createTranslationProxy, type TranslationProxy } from '../translationProxy';
+import { createTranslationProxy, safeRetryAfter, type TranslationProxy } from '../translationProxy';
 import type { ProxyStateStore, PersistedRoute } from '../proxyStore';
 import type { ProxyFetch } from '../upstream';
 import type { RouteSpec } from '../router';
@@ -455,9 +455,9 @@ describe('translation proxy — extra body + auto-fix retry', () => {
   });
 
   async function run(
-    replies: { status: number; text: string }[],
+    replies: { status: number; text: string; retryAfter?: string }[],
     extra?: Record<string, unknown>,
-  ): Promise<{ status: number; body: string; sent: Record<string, unknown>[] }> {
+  ): Promise<{ status: number; body: string; sent: Record<string, unknown>[]; retryAfter: string | null }> {
     const sent: Record<string, unknown>[] = [];
     const impl: ProxyFetch = (_url, init) => {
       sent.push(JSON.parse(String(init.body)) as Record<string, unknown>);
@@ -465,7 +465,7 @@ describe('translation proxy — extra body + auto-fix retry', () => {
       return Promise.resolve({
         ok: r.status < 400,
         status: r.status,
-        headers: { get: () => 'application/json' },
+        headers: { get: (n: string) => (n.toLowerCase() === 'retry-after' ? (r.retryAfter ?? null) : 'application/json') },
         body: null,
         text: () => Promise.resolve(r.text),
       });
@@ -479,7 +479,7 @@ describe('translation proxy — extra body + auto-fix retry', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ model: 'claude-x', max_tokens: 64000, messages: [{ role: 'user', content: 'hi' }] }),
     });
-    return { status: res.status, body: await res.text(), sent };
+    return { status: res.status, body: await res.text(), sent, retryAfter: res.headers.get('retry-after') };
   }
 
   const ok = { status: 200, text: JSON.stringify({ id: 'x', content: [] }) };
@@ -507,5 +507,30 @@ describe('translation proxy — extra body + auto-fix retry', () => {
   it('does not retry an error it cannot fix', async () => {
     const { sent } = await run([{ status: 400, text: 'content policy' }]);
     expect(sent).toHaveLength(1);
+  });
+
+  it('passes a 429 through with a safe Retry-After (body still generic)', async () => {
+    const r = await run([{ status: 429, text: 'slow down sk-leaky', retryAfter: '30' }]);
+    expect(r.status).toBe(429);
+    expect(r.retryAfter).toBe('30');
+    expect(r.body).not.toContain('sk-leaky');
+    expect(r.sent).toHaveLength(1);
+  });
+
+  it('passes 529 through and drops a malformed Retry-After', async () => {
+    const r = await run([{ status: 529, text: 'x', retryAfter: '30\r\nx-evil: 1' }]);
+    expect(r.status).toBe(529);
+    expect(r.retryAfter).toBeNull();
+  });
+});
+
+describe('safeRetryAfter', () => {
+  it('accepts seconds (capped) and HTTP dates only', () => {
+    expect(safeRetryAfter('120')).toBe('120');
+    expect(safeRetryAfter('999999')).toBe('86400');
+    expect(safeRetryAfter('Wed, 21 Oct 2015 07:28:00 GMT')).toBe('Wed, 21 Oct 2015 07:28:00 GMT');
+    expect(safeRetryAfter('-1')).toBeNull();
+    expect(safeRetryAfter('soon')).toBeNull();
+    expect(safeRetryAfter(null)).toBeNull();
   });
 });

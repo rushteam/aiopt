@@ -299,11 +299,31 @@ function errorEnvelope(format: ApiFormat, message: string): unknown {
   return { error: { message, type: 'invalid_request_error' } };
 }
 
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
+function sendJson(res: ServerResponse, status: number, body: unknown, extra: Record<string, string> = {}): void {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...extra });
   res.end(payload);
 }
+
+/**
+ * An upstream `Retry-After`, passed on only when it is a plain delay (seconds, capped at a
+ * day) or a valid HTTP date — never an arbitrary string an upstream could smuggle through.
+ */
+export function safeRetryAfter(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (/^\d{1,6}$/.test(v)) return String(Math.min(Number(v), 86_400));
+  if (v.length <= 64 && /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(v) && !Number.isNaN(Date.parse(v))) {
+    return v;
+  }
+  return null;
+}
+
+/**
+ * Upstream statuses the agent should see as-is (so it backs off) rather than as a generic
+ * 502: rate limited (429) and overloaded (529, Anthropic's). The body stays generic.
+ */
+const PASSTHROUGH_STATUS: ReadonlySet<number> = new Set([429, 529]);
 
 /** Await backpressure drain so a fast upstream can't outrun a slow client. */
 function writeBackpressured(res: ServerResponse, chunk: string): Promise<void> {
@@ -475,6 +495,16 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         // Never forward the upstream body (may reflect the key); status is safe.
         record(wantsStream, false, upstream.status, noTokens);
         logger.warn('proxy.upstream', { path: rest, status: upstream.status });
+        if (PASSTHROUGH_STATUS.has(upstream.status)) {
+          const retryAfter = safeRetryAfter(upstream.headers.get('retry-after'));
+          sendJson(
+            res,
+            upstream.status,
+            errorEnvelope(inbound, upstream.status === 429 ? clientMessage(429) : 'the provider is overloaded'),
+            retryAfter ? { 'retry-after': retryAfter } : {},
+          );
+          return;
+        }
         sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${upstream.status}`));
         return;
       }
