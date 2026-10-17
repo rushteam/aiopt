@@ -7,7 +7,6 @@
 // (./eventStream.ts). The models are Kiro's `List-Available-Models` for the account.
 //
 // The token is read from kiro-cli / the IDE per request (./auth.ts) and never leaves main.
-// Ported from magpie's Kiro plugin.
 
 import { randomUUID } from 'node:crypto';
 import type { Provider, ProviderModel } from '../../../shared/aiProviders';

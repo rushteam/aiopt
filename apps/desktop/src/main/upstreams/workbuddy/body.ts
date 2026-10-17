@@ -1,6 +1,6 @@
 // The request body WorkBuddy's chat endpoint takes, made from an OpenAI Chat body.
 //
-// Ported from magpie's WorkBuddy plugin (@magpie-community/opencode-workbuddy-auth):
+// Rules:
 //   - withSystem: a leading system message (WorkBuddy's app always sends one), `developer`
 //     as `system`, `max_completion_tokens` as `max_tokens`, and FLAGGED's words rewritten —
 //     WorkBuddy refuses chats carrying some agents' fixed prompt lines ("unapproved channel").
@@ -225,7 +225,7 @@ function localRef(root: Obj, s: unknown): unknown {
 
 const hasUnion = (b: Obj): boolean => ['allOf', 'anyOf', 'oneOf'].some((k) => Array.isArray(b[k]));
 
-/** Make a tool's parameters an object at the root (unions merged), as magpie does. */
+/** Make a tool's parameters an object at the root (unions merged). */
 function objectRoot(ps: Obj, root: Obj = ps, depth = 0): void {
   const unions = ['allOf', 'anyOf', 'oneOf'].filter((k) => Array.isArray(ps[k]));
   if (ps.type === 'object' && unions.length === 0) return;

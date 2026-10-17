@@ -1,9 +1,8 @@
 // Hand-rolled protobuf + Connect framing for Cursor's agent API.
 //
 // Cursor's `agent.v1.AgentService/Run` speaks Connect over a bidirectional stream of
-// protobuf messages. We do not ship its .proto files; like magpie (internal/gateway/devin.go
-// + cursor.go) and its plugin (@magpie-community/opencode-cursor-auth), the handful of
-// messages we need are written and read by field number.
+// protobuf messages. We do not ship its .proto files; the handful of messages we need are
+// written and read by field number.
 //
 // Pure module: no I/O. Unit-tested in upstreams/__tests__/cursorProtobuf.test.ts.
 

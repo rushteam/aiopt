@@ -10,9 +10,7 @@
 // logs headers, the token, or Cursor's raw error text — callers get a status + a message
 // they must keep main-side (see credentials-and-local-storage.md).
 //
-// Ported from @magpie-community/opencode-cursor-auth (index.mjs `unary` / `agentURL` /
-// `openH2` / `runOnce` / `answerOf`). Not ported: its HTTP/1.1 RunSSE+BidiAppend fallback
-// and its native session retention.
+// Not implemented: an HTTP/1.1 RunSSE+BidiAppend fallback and native session retention.
 
 import { createHash, randomUUID } from 'node:crypto';
 import http2 from 'node:http2';

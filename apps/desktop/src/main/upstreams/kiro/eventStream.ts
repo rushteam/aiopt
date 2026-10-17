@@ -12,7 +12,6 @@
 // With a thinking budget the model thinks aloud inside a leading <thinking>…</thinking> in
 // the text; that is split out as reasoning, however the tags fall across pieces.
 //
-// Ported from magpie's Kiro plugin (frames / frameHeaders / ThinkParser / events).
 // Pure: unit-tested in upstreams/__tests__/kiroEventStream.test.ts.
 
 import type { UpstreamEvent, UpstreamUsage } from '../types';
