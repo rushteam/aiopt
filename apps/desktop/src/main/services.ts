@@ -50,6 +50,8 @@ import { createWorkBuddyDriver, type WorkBuddyFetch } from './upstreams/workbudd
 import { createWorkBuddyAuth } from './upstreams/workbuddy/auth';
 import { createKiroDriver, type KiroFetch } from './upstreams/kiro/driver';
 import { createKiroAuth } from './upstreams/kiro/auth';
+import { createCodeArtsDriver, type CodeArtsFetch } from './upstreams/codearts/driver';
+import { createCodeArtsAuth } from './upstreams/codearts/auth';
 import { vendorHeaders } from './proxy/vendorHeaders';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
@@ -321,6 +323,25 @@ function getUpstreamRegistry(): UpstreamRegistry {
         fetchImpl: ((url, init) => net.fetch(url, init as RequestInit)) as KiroFetch,
         auth: createKiroAuth({ fetchImpl }),
       }),
+      // Huawei CodeArts OAuth (SnapEngine signed chat). Session JSON lives in the oauth secret.
+      (() => {
+        const caFetch = ((url, init) => net.fetch(url, init as RequestInit)) as CodeArtsFetch;
+        const auth = createCodeArtsAuth({
+          secrets: getSecretStore(),
+          oauth: getOAuthManager(),
+          fetchImpl: (url, init) =>
+            caFetch(url, {
+              method: init?.method ?? 'GET',
+              headers: init?.headers ?? {},
+              body: init?.body,
+            }).then(async (res) => ({
+              ok: res.ok,
+              status: res.status,
+              json: async () => JSON.parse(await res.text()),
+            })),
+        });
+        return createCodeArtsDriver({ fetchImpl: caFetch, auth });
+      })(),
     ]);
   }
   return upstreamRegistry;

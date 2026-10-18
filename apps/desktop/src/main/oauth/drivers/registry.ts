@@ -4,6 +4,7 @@ import {
   type OAuthSubscriptionKind,
 } from '../../../shared/oauthProviders';
 import { genericPkceDriver } from './genericPkce';
+import { huaweiCodeartsDriver } from './huaweiCodearts';
 import type { OAuthDriver } from './types';
 
 function stubDriver(kind: OAuthSubscriptionKind): OAuthDriver {
@@ -26,6 +27,7 @@ const DRIVERS: Record<OAuthSubscriptionKind, OAuthDriver> = {
   openai_codex: stubDriver('openai_codex'),
   anthropic_claude: stubDriver('anthropic_claude'),
   github_copilot: stubDriver('github_copilot'),
+  huawei_codearts: huaweiCodeartsDriver,
 };
 
 export function getOAuthDriver(kind: OAuthSubscriptionKind): OAuthDriver {

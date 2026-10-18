@@ -614,11 +614,15 @@ export function createProviderManager(
         }
         assertNoDuplicateAgentImport(input.agentImport.agentId);
       }
+      // CodeArts is SnapEngine-signed OpenAI Chat only; pin the endpoint the driver uses.
+      const codeArtsPinned = input.oauth?.kind === 'huawei_codearts';
       const provider: Provider = {
         id: randomUUID(),
         name: input.name,
-        apiFormats,
-        baseUrl: input.baseUrl,
+        apiFormats: codeArtsPinned ? ['openai'] : apiFormats,
+        baseUrl: codeArtsPinned
+          ? 'https://snap-access.cn-north-4.myhuaweicloud.com/api/v2'
+          : input.baseUrl,
         models: input.models,
         notes: input.notes,
         createdAt: Date.now(),
@@ -706,8 +710,11 @@ export function createProviderManager(
       }
       // A driver-served provider has a fixed endpoint and speaks OpenAI Chat only (see
       // docs/dev-rules/upstream-drivers.md §2): its base URL and formats are not editable.
-      if (upstreamFor(existing) !== null) {
-        next.baseUrl = existing.baseUrl;
+      if (upstreamFor(existing) !== null || next.oauth?.kind === 'huawei_codearts') {
+        next.baseUrl =
+          next.oauth?.kind === 'huawei_codearts'
+            ? 'https://snap-access.cn-north-4.myhuaweicloud.com/api/v2'
+            : existing.baseUrl;
         next.apiFormats = ['openai'];
       }
       // Drop-fields is a whole-set replace when present (the form sends a checkbox group,

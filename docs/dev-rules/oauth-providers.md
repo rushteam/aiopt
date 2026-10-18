@@ -57,6 +57,12 @@ driver metadata** — the add-provider form must not ask for authorize/token URL
 (only pick the subscription preset and Connect). They may ship as stubs until endpoints and
 client policy are approved.
 
+Some vendors need a **custom login** (`OAuthDriver.runLogin`): the driver owns the loopback
+port, authorize URL, and token exchange (e.g. Huawei CodeArts portal + STS PKCE/DPoP). The
+manager still opens the URL via `openExternalUrl` and stores the returned bundle. When the
+access field is a **session JSON** (temporary AK/SK + refresh material), pair it with an
+upstream under `main/upstreams/<id>/` — do not send that JSON as a Bearer header.
+
 **Relation to agent import:** In-app OAuth (PKCE + loopback) stores tokens under
 `main_oauth_provider_<id>`. **Agent import** (`credentialMode: agent_import`) reuses an
 agent’s on-disk sign-in instead — see `agent-import-providers.md`. The two modes are
