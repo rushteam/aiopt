@@ -111,6 +111,21 @@ export const AGENT_SPECS = {
       },
     },
   },
+  // CodeArts (Huawei) keeps custom models in its Electron userData app-settings.json
+  // (platform path under $HOME). Each entry is openai|anthropic with modelUrl + apiKey;
+  // AiOpt writes aiopt-* uids and preserves the user's own customModels.
+  codearts: {
+    name: 'CodeArts',
+    skillsDir: '.codearts/skills',
+    binding: {
+      acceptedFormats: ['openai', 'anthropic'],
+      mode: 'exclusive',
+      installDir: '.codearts',
+      // Canonical declare is the macOS Electron userData path; agentPaths rewrites the
+      // live relative path per platform and allowlists every OS variant.
+      files: { settings: 'Library/Application Support/codearts/app-settings.json' },
+    },
+  },
   // codex/grok speak the OpenAI *Responses* API, not Chat Completions — see ApiFormat.
   codex: {
     name: 'Codex',
