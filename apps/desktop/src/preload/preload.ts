@@ -293,6 +293,16 @@ const api = {
      */
     revealConfig: (agentId: AgentId, role: string): Promise<Record<string, never>> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersRevealConfig, { agentId, role }),
+    routingGroupAdd: (
+      input: import('../shared/ipc-channels').ProviderRoutingGroupUpsertRequest,
+    ): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRoutingGroupAdd, input),
+    routingGroupUpdate: (
+      input: import('../shared/ipc-channels').ProviderRoutingGroupUpdateRequest,
+    ): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRoutingGroupUpdate, input),
+    routingGroupRemove: (id: string): Promise<ProvidersSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRoutingGroupRemove, { id }),
     /** Subscribe to pool/binding changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: ProvidersSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.providersChanged, callback),

@@ -171,5 +171,27 @@
       "translations": { "zh-CN": "MCP 网关", "ja": "MCP ゲートウェイ", "ko": "MCP 게이트웨이", "fr": "Passerelle MCP", "de": "MCP-Gateway", "es": "Pasarela MCP" },
       "forbidden": { "zh-CN": ["MCP 代理", "MCP 聚合器"] }
     }
-  ]
+  ,
+    {
+      "id": "routing-group",
+      "en": "Routing group",
+      "status": "proposed",
+      "note": "A user-defined failover pool of provider+model members. Agents bind it like one pool entry (virtual provider id + sentinel model). Requests always go through the local translation proxy, which orders members by strategy, optionally sticks a conversation to the last successful seat (affinity), and fails over before any reply bytes. Not 'load balancer' or 'provider chain' in UI copy.",
+      "translations": {
+        "zh-CN": "路由组",
+        "ja": "ルーティンググループ",
+        "ko": "라우팅 그룹",
+        "fr": "Groupe de routage",
+        "de": "Routing-Gruppe",
+        "es": "Grupo de enrutamiento"
+      },
+      "forbidden": {
+        "zh-CN": [
+          "负载均衡组",
+          "供应商链",
+          "故障转移链"
+        ]
+      }
+    }
+]
 }

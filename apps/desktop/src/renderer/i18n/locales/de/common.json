@@ -393,6 +393,35 @@
       "settingsStatus": "Aktiv · {{count}} Modelle verfügbar",
       "settingsDisabled": "Wird aktiviert, sobald mindestens ein Anbieter existiert."
     }
+,
+    "routingGroup": {
+      "heading": "Routing-Gruppen",
+      "add": "Routing-Gruppe hinzufügen",
+      "addTitle": "Routing-Gruppe hinzufügen",
+      "editTitle": "Routing-Gruppe bearbeiten",
+      "empty": "Noch keine Routing-Gruppen. Eine Gruppe ist ein Failover-Pool aus Anbietern+Modellen und wird wie ein Eintrag gebunden.",
+      "help": "Binden Sie einen Agent an die Gruppe, um über den lokalen Proxy mit Failover zu routen. Affinität hält eine Konversation beim zuletzt erfolgreichen Mitglied.",
+      "helpTooltip": "Failover-Pool: Der Proxy versucht Mitglieder in Strategie-Reihenfolge und wechselt vor Antwortbytes bei einem Ausfall.",
+      "viaProxy": "über Proxy (Failover)",
+      "name": "Name",
+      "strategy": "Strategie",
+      "affinity": "Affinität",
+      "members": "Mitglieder",
+      "memberProvider": "Anbieter",
+      "memberModel": "Modell",
+      "addMember": "Mitglied hinzufügen",
+      "removeMember": "Entfernen",
+      "cardMeta": "{{count}} Mitglieder · {{strategy}} · {{affinity}}",
+      "strategies": {
+        "ordered": "Feste Reihenfolge",
+        "rotate": "Rotieren",
+        "least_used": "Am wenigsten genutzt"
+      },
+      "affinities": {
+        "off": "Aus",
+        "session": "An Sitzung binden"
+      }
+    }
   },
   "usage": {
     "title": "Nutzung",

@@ -37,6 +37,16 @@ export function bindingProfilesFilePath(): string {
   return path.join(app.getPath('userData'), 'binding-profiles.json');
 }
 
+/** User-defined routing groups (failover pools); separate from providers.json. */
+export function routingGroupsFilePath(): string {
+  return path.join(app.getPath('userData'), 'routing-groups.json');
+}
+
+/** Conversation sticks for routing-group session affinity (ids only; no content). */
+export function routingAffinityFilePath(): string {
+  return path.join(app.getPath('userData'), 'routing-affinity.json');
+}
+
 /** Last binding AiOpt wrote per agent (for config drift detection). */
 export function bindingAppliedFilePath(): string {
   return path.join(app.getPath('userData'), 'binding-applied.json');

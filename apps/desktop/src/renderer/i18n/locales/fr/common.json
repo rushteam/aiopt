@@ -393,6 +393,35 @@
       "settingsStatus": "Activé · {{count}} modèles disponibles",
       "settingsDisabled": "S’active dès qu’au moins un fournisseur est ajouté."
     }
+,
+    "routingGroup": {
+      "heading": "Groupes de routage",
+      "add": "Ajouter un groupe de routage",
+      "addTitle": "Ajouter un groupe de routage",
+      "editTitle": "Modifier le groupe de routage",
+      "empty": "Aucun groupe de routage. Un groupe est un pool de basculement de fournisseurs+modèles, lié comme une seule entrée.",
+      "help": "Liez un agent au groupe pour router via le proxy local avec basculement. L'affinité garde une conversation sur le dernier membre réussi.",
+      "helpTooltip": "Pool de basculement : le proxy essaie les membres dans l'ordre de la stratégie et bascule avant tout octet de réponse.",
+      "viaProxy": "via proxy (basculement)",
+      "name": "Nom",
+      "strategy": "Stratégie",
+      "affinity": "Affinité",
+      "members": "Membres",
+      "memberProvider": "Fournisseur",
+      "memberModel": "Modèle",
+      "addMember": "Ajouter un membre",
+      "removeMember": "Retirer",
+      "cardMeta": "{{count}} membres · {{strategy}} · {{affinity}}",
+      "strategies": {
+        "ordered": "Ordre fixe",
+        "rotate": "Rotation",
+        "least_used": "Moins utilisé"
+      },
+      "affinities": {
+        "off": "Désactivée",
+        "session": "Coller à la session"
+      }
+    }
   },
   "usage": {
     "title": "Utilisation",

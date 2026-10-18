@@ -393,6 +393,35 @@
       "settingsStatus": "有効 · {{count}} モデル",
       "settingsDisabled": "プロバイダーを1つ以上追加すると有効になります。"
     }
+,
+    "routingGroup": {
+      "heading": "ルーティンググループ",
+      "add": "ルーティンググループを追加",
+      "addTitle": "ルーティンググループを追加",
+      "editTitle": "ルーティンググループを編集",
+      "empty": "ルーティンググループはまだありません。グループはフェイルオーバー用のプロバイダー+モデルのプールで、1 件としてバインドできます。",
+      "help": "エージェントをグループにバインドすると、ローカルプロキシ経由でメンバーを試し、応答バイトの前にフェイルオーバーします。アフィニティは会話を最後に成功したメンバーに留めます。",
+      "helpTooltip": "フェイルオーバープール：戦略順に試し、座席が失敗したら応答バイトの前に切り替えます。",
+      "viaProxy": "プロキシ経由（フェイルオーバー）",
+      "name": "名前",
+      "strategy": "戦略",
+      "affinity": "アフィニティ",
+      "members": "メンバー",
+      "memberProvider": "プロバイダー",
+      "memberModel": "モデル",
+      "addMember": "メンバーを追加",
+      "removeMember": "削除",
+      "cardMeta": "{{count}} メンバー · {{strategy}} · {{affinity}}",
+      "strategies": {
+        "ordered": "固定順",
+        "rotate": "ローテーション",
+        "least_used": "最少使用"
+      },
+      "affinities": {
+        "off": "オフ",
+        "session": "セッション固定"
+      }
+    }
   },
   "usage": {
     "title": "使用状況",

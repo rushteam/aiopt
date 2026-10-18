@@ -51,6 +51,8 @@ import {
   responseGeminiToOpenai,
 } from './translate/gemini';
 import type { UsageEventInput } from '../../shared/usageStats';
+import { shouldFailoverStatus, type RoutingCandidate } from '../../shared/routingGroups';
+import type { RoutingRuntime } from './routing/runtime';
 import {
   createOpenaiToAnthropicStream,
   requestOpenaiToAnthropic,
@@ -122,6 +124,11 @@ export interface TranslationProxyDeps {
    * listener under its own path token. Checked before route tokens; absent = no gateway.
    */
   gateway?: ProxyGatewayHook;
+  /**
+   * Routing-group expansion + strategy / affinity / cooldown. Looked up per request when
+   * {@link RouteSpec.routingGroupId} is set. Absent → a group route answers 502.
+   */
+  routing?: RoutingRuntime;
 }
 
 /** The MCP gateway as the proxy sees it: its live token and a request handler. */
@@ -363,9 +370,11 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
     }
 
     const inbound = spec.inboundFormat;
+    const noTokens = zeroUsage();
 
-    // Record one upstream attempt (counts + ids only). Never disturbs the request path.
-    const record = (
+    /** Record one upstream attempt against the seat that actually answered (or failed). */
+    const recordFor = (
+      candidate: RoutingCandidate,
       streamed: boolean,
       ok: boolean,
       status: number,
@@ -375,10 +384,10 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       try {
         deps.recordUsage({
           agentId: spec.agentId,
-          providerId: spec.providerId,
-          model: spec.modelId,
+          providerId: candidate.providerId,
+          model: candidate.modelId,
           inboundFormat: spec.inboundFormat,
-          outboundFormat: spec.outboundFormat,
+          outboundFormat: candidate.outboundFormat,
           streamed,
           ok,
           status,
@@ -392,7 +401,6 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         // Usage recording is best-effort; swallow so it can't fail a real request.
       }
     };
-    const noTokens = zeroUsage();
 
     try {
       assertInboundPath(spec, rest);
@@ -404,128 +412,249 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         throw new Error(encodeIpcError('INVALID_PARAMS', 'request body is not valid JSON'));
       }
 
-      const tf = transformsFor(spec);
-      const translatedRequest = tf.translateRequest(parsed, spec.modelId);
-      // Strip whatever fields THIS provider's upstream is configured to reject (see
-      // sanitize.ts). Runs after translation so a cross-format route sanitizes the body
-      // that actually goes on the wire, and so the translators' explicit refusal of an
-      // untranslatable field still happens first. Field NAMES only in the log — values
-      // can be arbitrary user content.
-      // The provider's extraBody merges first, so drop-fields still has the last word.
-      const extra = applyExtraBody(translatedRequest, deps.getExtraBody?.(spec.providerId));
-      if (extra.keys.length > 0) logger.info('proxy.request_extra_body', { path: rest, fields: extra.keys });
-      const { body: sanitizedBody, dropped } = sanitizeOutboundBody(
-        extra.body,
-        deps.getDropFields?.(spec.providerId),
-      );
-      if (dropped.length > 0) {
-        logger.info('proxy.request_sanitized', { path: rest, fields: dropped });
+      // Build the try-order. A plain binding is one candidate; a routing group expands.
+      let conversationKey: string | null = null;
+      let groupId: string | undefined = spec.routingGroupId;
+      let candidates: RoutingCandidate[];
+      if (groupId) {
+        const planned = deps.routing?.plan(
+          groupId,
+          spec.agentId,
+          inbound,
+          { get: (n) => req.headers[n.toLowerCase()]?.toString() ?? null },
+          parsed,
+        );
+        if (!planned || planned.candidates.length === 0) {
+          sendJson(res, 502, errorEnvelope(inbound, 'routing group has no reachable members'));
+          return;
+        }
+        candidates = planned.candidates;
+        conversationKey = planned.conversationKey;
+      } else {
+        candidates = [
+          {
+            seat: `${spec.providerId}\u241f${spec.modelId}`,
+            providerId: spec.providerId,
+            modelId: spec.modelId,
+            outboundFormat: spec.outboundFormat,
+            upstreamBaseUrl: spec.upstreamBaseUrl,
+          },
+        ];
       }
-      // Add prompt-cache breakpoints for an Anthropic upstream when the body has none (a
-      // translated body never does). A body that already carries any is left alone.
-      let outboundBody = sanitizedBody;
-      if (spec.outboundFormat === 'anthropic' && deps.getPromptCache?.() === true) {
-        const cached = injectPromptCache(sanitizedBody);
-        outboundBody = cached.body;
-        if (cached.added > 0) logger.info('proxy.prompt_cache', { path: rest, breakpoints: cached.added });
-      }
-      // Gemini selects streaming by endpoint, not a body flag, so its translated body has
-      // no `stream`; read the client's own request instead.
-      const wantsStream =
-        spec.outboundFormat === 'gemini'
-          ? parsed.stream === true
-          : (outboundBody as { stream?: unknown }).stream === true;
-
-      // OpenAI Chat streaming omits `usage` unless the request opts in. Inject the standard
-      // flag so codex/opencode → OpenAI-Chat streaming paths still yield token counts. This
-      // is additive and reversible; a provider that rejects it degrades to request-count-only.
-      if (wantsStream && spec.outboundFormat === 'openai') {
-        const existing = (outboundBody.stream_options ?? {}) as Record<string, unknown>;
-        outboundBody.stream_options = { ...existing, include_usage: true };
-      }
-
-      const driver = deps.upstreamFor?.(spec.providerId) ?? null;
-      if (driver && spec.outboundFormat !== 'openai') {
-        // Drivers take OpenAI Chat only; applyBinding refuses such a route, so this is stale.
-        sendJson(res, 502, errorEnvelope(spec.inboundFormat, 'the provider is not served in this format'));
-        return;
-      }
-      if (driver) {
-        await serveDriver(driver, res, spec, tf, outboundBody, wantsStream, rest, record);
-        return;
-      }
-
-      const apiKey = deps.getKey(spec.providerId);
-      const url =
-        spec.outboundFormat === 'gemini'
-          ? geminiOutboundUrl(spec.upstreamBaseUrl, spec.modelId, wantsStream)
-          : outboundUrl(spec.outboundFormat, spec.upstreamBaseUrl);
-      const headers = { ...outboundHeaders(spec.outboundFormat, apiKey), ...deps.getExtraHeaders?.(spec.providerId, apiKey) };
 
       const controller = new AbortController();
       req.on('close', () => controller.abort());
 
-      const send = (body: Record<string, unknown>) =>
-        deps
-          .fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal })
-          .catch(() => {
-            record(wantsStream, false, 0, noTokens);
-            throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
-          });
-      let upstream = await send(outboundBody);
+      let lastFailure: { candidate: RoutingCandidate; status: number; retryAfter: string | null } | null =
+        null;
 
-      // One repair attempt for a refused request (see requestFixes.ts). The error body is
-      // read only to pick the fix; it is never logged or forwarded — the fix NAME is.
-      if (upstream.status === 400 || upstream.status === 422) {
-        const errorText = await upstream.text().catch(() => '');
-        const fixed = autoFixRequest(spec.outboundFormat, outboundBody, upstream.status, errorText);
-        if (fixed) {
-          logger.info('proxy.auto_fix', { path: rest, status: upstream.status, code: fixed.fix });
-          upstream = await send(fixed.body);
+      for (let i = 0; i < candidates.length; i++) {
+        const candidate = candidates[i]!;
+        const more = i < candidates.length - 1;
+        const liveSpec: RouteSpec = {
+          ...spec,
+          providerId: candidate.providerId,
+          outboundFormat: candidate.outboundFormat,
+          upstreamBaseUrl: candidate.upstreamBaseUrl,
+          modelId: candidate.modelId,
+        };
+        const tf = transformsFor(liveSpec);
+        const translatedRequest = tf.translateRequest(parsed, candidate.modelId);
+        const extra = applyExtraBody(translatedRequest, deps.getExtraBody?.(candidate.providerId));
+        if (extra.keys.length > 0) {
+          logger.info('proxy.request_extra_body', { path: rest, fields: extra.keys });
         }
-      }
+        const { body: sanitizedBody, dropped } = sanitizeOutboundBody(
+          extra.body,
+          deps.getDropFields?.(candidate.providerId),
+        );
+        if (dropped.length > 0) {
+          logger.info('proxy.request_sanitized', { path: rest, fields: dropped });
+        }
+        let outboundBody = sanitizedBody;
+        if (candidate.outboundFormat === 'anthropic' && deps.getPromptCache?.() === true) {
+          const cached = injectPromptCache(sanitizedBody);
+          outboundBody = cached.body;
+          if (cached.added > 0) {
+            logger.info('proxy.prompt_cache', { path: rest, breakpoints: cached.added });
+          }
+        }
+        const wantsStream =
+          candidate.outboundFormat === 'gemini'
+            ? parsed.stream === true
+            : (outboundBody as { stream?: unknown }).stream === true;
+        if (wantsStream && candidate.outboundFormat === 'openai') {
+          const existing = (outboundBody.stream_options ?? {}) as Record<string, unknown>;
+          outboundBody.stream_options = { ...existing, include_usage: true };
+        }
 
-      if (upstream.status === 401 || upstream.status === 403) {
-        record(wantsStream, false, upstream.status, noTokens);
-        logger.warn('proxy.upstream', { path: rest, status: upstream.status });
-        sendJson(res, 401, errorEnvelope(inbound, 'the provider rejected the API key'));
+        const driver = deps.upstreamFor?.(candidate.providerId) ?? null;
+        if (driver && candidate.outboundFormat !== 'openai') {
+          recordFor(candidate, wantsStream, false, 502, noTokens);
+          if (more && groupId) {
+            deps.routing?.onFailover(candidate.seat);
+            logger.warn('proxy.failover', { path: rest, status: 502 });
+            continue;
+          }
+          sendJson(res, 502, errorEnvelope(inbound, 'the provider is not served in this format'));
+          return;
+        }
+        if (driver) {
+          // Driver path always finishes the client response; no further failover.
+          // Affinity / rotate advance only after a confirmed HTTP success (below).
+          await serveDriver(driver, res, liveSpec, tf, outboundBody, wantsStream, rest, (s, ok, st, c) =>
+            recordFor(candidate, s, ok, st, c),
+          );
+          return;
+        }
+
+        const apiKey = deps.getKey(candidate.providerId);
+        const url =
+          candidate.outboundFormat === 'gemini'
+            ? geminiOutboundUrl(candidate.upstreamBaseUrl, candidate.modelId, wantsStream)
+            : outboundUrl(candidate.outboundFormat, candidate.upstreamBaseUrl);
+        const headers = {
+          ...outboundHeaders(candidate.outboundFormat, apiKey),
+          ...deps.getExtraHeaders?.(candidate.providerId, apiKey),
+        };
+
+        const send = (body: Record<string, unknown>) =>
+          deps
+            .fetchImpl(url, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(body),
+              signal: controller.signal,
+            })
+            .catch(() => null);
+
+        let upstream = await send(outboundBody);
+        if (!upstream) {
+          recordFor(candidate, wantsStream, false, 0, noTokens);
+          lastFailure = { candidate, status: 0, retryAfter: null };
+          if (more && shouldFailoverStatus(0)) {
+            deps.routing?.onFailover(candidate.seat);
+            logger.warn('proxy.failover', { path: rest, status: 0 });
+            continue;
+          }
+          throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
+        }
+
+        if (upstream.status === 400 || upstream.status === 422) {
+          const errorText = await upstream.text().catch(() => '');
+          const fixed = autoFixRequest(
+            candidate.outboundFormat,
+            outboundBody,
+            upstream.status,
+            errorText,
+          );
+          if (fixed) {
+            logger.info('proxy.auto_fix', { path: rest, status: upstream.status, code: fixed.fix });
+            const retried = await send(fixed.body);
+            if (!retried) {
+              recordFor(candidate, wantsStream, false, 0, noTokens);
+              lastFailure = { candidate, status: 0, retryAfter: null };
+              if (more && shouldFailoverStatus(0)) {
+                deps.routing?.onFailover(candidate.seat);
+                continue;
+              }
+              throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
+            }
+            upstream = retried;
+          } else {
+            // Rebuild a Response-like shell so the failure path below still has status.
+            // autoFix did not apply; the original body was already consumed — treat as final
+            // for this seat (400/422 are not failover statuses).
+            recordFor(candidate, wantsStream, false, upstream.status, noTokens);
+            logger.warn('proxy.upstream', { path: rest, status: upstream.status });
+            sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${upstream.status}`));
+            return;
+          }
+        }
+
+        if (!upstream.ok) {
+          recordFor(candidate, wantsStream, false, upstream.status, noTokens);
+          logger.warn('proxy.upstream', { path: rest, status: upstream.status });
+          const retryAfter = safeRetryAfter(upstream.headers.get('retry-after'));
+          lastFailure = { candidate, status: upstream.status, retryAfter };
+          if (more && shouldFailoverStatus(upstream.status)) {
+            deps.routing?.onFailover(candidate.seat);
+            logger.warn('proxy.failover', { path: rest, status: upstream.status });
+            continue;
+          }
+          if (upstream.status === 401 || upstream.status === 403) {
+            sendJson(res, 401, errorEnvelope(inbound, 'the provider rejected the API key'));
+            return;
+          }
+          if (PASSTHROUGH_STATUS.has(upstream.status)) {
+            sendJson(
+              res,
+              upstream.status,
+              errorEnvelope(
+                inbound,
+                upstream.status === 429 ? clientMessage(429) : 'the provider is overloaded',
+              ),
+              retryAfter ? { 'retry-after': retryAfter } : {},
+            );
+            return;
+          }
+          sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${upstream.status}`));
+          return;
+        }
+
+        if (groupId) deps.routing?.onSuccess(groupId, conversationKey, candidate.seat);
+
+        if (wantsStream) {
+          const sniffer = createUsageSniffer(candidate.outboundFormat);
+          await pipeStream(res, upstream.body, tf, candidate.modelId, rest, upstream.status, sniffer);
+          recordFor(candidate, true, true, upstream.status, sniffer.result());
+        } else {
+          const text = await upstream.text();
+          let upstreamJson: Record<string, unknown>;
+          try {
+            upstreamJson = JSON.parse(text) as Record<string, unknown>;
+          } catch {
+            throw new Error(
+              encodeIpcError('UPSTREAM_ERROR', 'the provider returned an unreadable response'),
+            );
+          }
+          const translated = tf.translateResponse(upstreamJson, candidate.modelId);
+          recordFor(
+            candidate,
+            false,
+            true,
+            upstream.status,
+            readResponseUsage(candidate.outboundFormat, upstreamJson),
+          );
+          logger.info('proxy.request', { path: rest, status: upstream.status, stream: false });
+          sendJson(res, 200, translated);
+        }
         return;
       }
-      if (!upstream.ok) {
-        // Never forward the upstream body (may reflect the key); status is safe.
-        record(wantsStream, false, upstream.status, noTokens);
-        logger.warn('proxy.upstream', { path: rest, status: upstream.status });
-        if (PASSTHROUGH_STATUS.has(upstream.status)) {
-          const retryAfter = safeRetryAfter(upstream.headers.get('retry-after'));
+
+      // Exhausted every candidate without an answer.
+      if (lastFailure) {
+        const { status, retryAfter } = lastFailure;
+        if (status === 401 || status === 403) {
+          sendJson(res, 401, errorEnvelope(inbound, 'the provider rejected the API key'));
+          return;
+        }
+        if (PASSTHROUGH_STATUS.has(status)) {
           sendJson(
             res,
-            upstream.status,
-            errorEnvelope(inbound, upstream.status === 429 ? clientMessage(429) : 'the provider is overloaded'),
+            status,
+            errorEnvelope(inbound, status === 429 ? clientMessage(429) : 'the provider is overloaded'),
             retryAfter ? { 'retry-after': retryAfter } : {},
           );
           return;
         }
-        sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${upstream.status}`));
+        if (status === 0) {
+          throw new Error(encodeIpcError('UPSTREAM_ERROR', 'could not reach the provider'));
+        }
+        sendJson(res, 502, errorEnvelope(inbound, `the provider returned status ${status}`));
         return;
       }
-
-      if (wantsStream) {
-        const sniffer = createUsageSniffer(spec.outboundFormat);
-        await pipeStream(res, upstream.body, tf, spec.modelId, rest, upstream.status, sniffer);
-        record(true, true, upstream.status, sniffer.result());
-      } else {
-        const text = await upstream.text();
-        let upstreamJson: Record<string, unknown>;
-        try {
-          upstreamJson = JSON.parse(text) as Record<string, unknown>;
-        } catch {
-          throw new Error(encodeIpcError('UPSTREAM_ERROR', 'the provider returned an unreadable response'));
-        }
-        const translated = tf.translateResponse(upstreamJson, spec.modelId);
-        record(false, true, upstream.status, readResponseUsage(spec.outboundFormat, upstreamJson));
-        logger.info('proxy.request', { path: rest, status: upstream.status, stream: false });
-        sendJson(res, 200, translated);
-      }
+      sendJson(res, 502, errorEnvelope(inbound, 'routing group has no reachable members'));
     } catch (err) {
       const { code, message } = decodeIpcError(err instanceof Error ? err.message : String(err));
       logger.warn('proxy.error', { path: rest, code });

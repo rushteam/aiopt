@@ -31,6 +31,7 @@ import {
   encodeCombinedModelKey,
   formatModelRef,
 } from '../../../shared/modelRef';
+import { isRoutingGroupProviderId } from '../../../shared/routingGroups';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 import { HelpHint } from '../../components/ui/HelpHint';
@@ -71,10 +72,22 @@ export function BindingPicker({
     [providers, t],
   );
 
-  const routeFor = (p: ProviderSummary) => resolveBindingRoute(agent, p.apiFormats);
+  const routeFor = (p: ProviderSummary) => {
+    // Routing groups always go through the proxy; formats are the union of members.
+    if (isRoutingGroupProviderId(p.id)) {
+      if (p.apiFormats.length === 0) return null;
+      const inbound = agent.acceptedFormats[0];
+      if (!inbound || inbound === 'gemini') return null;
+      return { kind: 'translated' as const, inbound, outbound: p.apiFormats[0]! };
+    }
+    return resolveBindingRoute(agent, p.apiFormats);
+  };
   const ordered = useMemo(() => {
     const rank = (p: ProviderSummary): number => {
       if (isCombinedProviderId(p.id)) return 3;
+      if (isRoutingGroupProviderId(p.id)) {
+        return routeFor(p) === null ? 0 : 1;
+      }
       const route = resolveBindingRoute(agent, p.apiFormats);
       return route === null ? 0 : route.kind === 'native' ? 2 : 1;
     };
@@ -283,9 +296,11 @@ export function BindingPicker({
                               {t(`providers.formats.${format}`)}
                             </span>
                           ))}
-                          {route?.kind === 'translated' && (
+                          {(route?.kind === 'translated' || isRoutingGroupProviderId(provider.id)) && (
                             <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
-                              {t('providers.binding.viaProxy')}
+                              {isRoutingGroupProviderId(provider.id)
+                                ? t('providers.routingGroup.viaProxy')
+                                : t('providers.binding.viaProxy')}
                             </span>
                           )}
                           {route === null && (
@@ -297,6 +312,9 @@ export function BindingPicker({
                       </button>
                       {isCombined && (
                         <HelpHint label={t('providers.combined.helpTooltip')} style={{ marginTop: 10 }} />
+                      )}
+                      {isRoutingGroupProviderId(provider.id) && (
+                        <HelpHint label={t('providers.routingGroup.helpTooltip')} style={{ marginTop: 10 }} />
                       )}
                     </div>
                   </li>
