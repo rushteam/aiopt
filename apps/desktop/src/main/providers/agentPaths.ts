@@ -24,6 +24,24 @@ import {
  * The home directory agent configs live under. `AIOPT_AGENT_HOME` (dev/test
  * sandbox) wins over the real OS home so we never clobber a developer's own config.
  */
+/** CodeArts stores custom models in Electron userData (`app-settings.json`), not under `~/.codearts`. */
+export function codeartsSettingsRelative(platform: NodeJS.Platform = process.platform): string {
+  if (platform === 'darwin') {
+    return path.join('Library', 'Application Support', 'codearts', 'app-settings.json');
+  }
+  if (platform === 'win32') {
+    return path.join('AppData', 'Roaming', 'codearts', 'app-settings.json');
+  }
+  return path.join('.config', 'codearts', 'app-settings.json');
+}
+
+/** Every platform spelling of the CodeArts settings file — all go on the write allowlist. */
+export const CODEARTS_SETTINGS_RELATIVES = [
+  path.join('Library', 'Application Support', 'codearts', 'app-settings.json'),
+  path.join('AppData', 'Roaming', 'codearts', 'app-settings.json'),
+  path.join('.config', 'codearts', 'app-settings.json'),
+] as const;
+
 export function agentHome(): string {
   const override = process.env.AIOPT_AGENT_HOME;
   return override && override.trim() !== '' ? override : os.homedir();
@@ -45,6 +63,11 @@ export const AGENT_FILES = Object.fromEntries(
     .filter(([, spec]) => spec.binding !== null)
     .map(([id, spec]) => [id, spec.binding!.files]),
 ) as { [K in BindableAgentId]: (typeof AGENT_SPECS)[K]['binding'] extends { files: infer F } ? F : never };
+
+// CodeArts' binding file is Electron userData — pick the live OS path for role resolution.
+if ((AGENT_FILES as { codearts?: { settings: string } }).codearts) {
+  (AGENT_FILES as { codearts: { settings: string } }).codearts.settings = codeartsSettingsRelative();
+}
 
 /**
  * MCP config files, relative to home, for the agents whose MCP servers AiOpt manages
@@ -119,8 +142,11 @@ export function resolveAgentConfigRole(id: AgentId, role: string): string | null
 /** Every allowlisted config path across all declared agents, for the current home. */
 function allAllowedConfigPaths(): string[] {
   const home = agentHome();
-  return [...Object.values(AGENT_FILES).flatMap((files) => Object.values(files)), ...Object.values(MCP_CONFIG_FILES)]
-    .map((rel) => path.join(home, rel));
+  return [
+    ...Object.values(AGENT_FILES).flatMap((files) => Object.values(files)),
+    ...Object.values(MCP_CONFIG_FILES),
+    ...CODEARTS_SETTINGS_RELATIVES,
+  ].map((rel) => path.join(home, rel));
 }
 
 /**

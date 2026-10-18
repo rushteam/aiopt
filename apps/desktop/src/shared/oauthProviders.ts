@@ -12,6 +12,7 @@ export const OAUTH_SUBSCRIPTION_KINDS = [
   'openai_codex',
   'anthropic_claude',
   'github_copilot',
+  'huawei_codearts',
 ] as const;
 
 export type OAuthSubscriptionKind = (typeof OAUTH_SUBSCRIPTION_KINDS)[number];

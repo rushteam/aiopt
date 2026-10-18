@@ -7,6 +7,7 @@ import type { AgentId, BindableAgentId } from '../../../shared/aiProviders';
 import type { AgentAdapter } from './agentAdapter';
 import { createClineAdapter } from './clineAdapter';
 import { createClaudeAdapter } from './claudeAdapter';
+import { createCodeArtsAdapter } from './codeartsAdapter';
 import { createCodexAdapter } from './codexAdapter';
 import { createCommandCodeAdapter } from './commandcodeAdapter';
 import { createCrushAdapter } from './crushAdapter';
@@ -31,6 +32,7 @@ import { createZCodeAdapter } from './zcodeAdapter';
 export const BINDABLE_ADAPTER_FACTORIES = {
   claude: createClaudeAdapter,
   cline: createClineAdapter,
+  codearts: createCodeArtsAdapter,
   codex: createCodexAdapter,
   commandcode: createCommandCodeAdapter,
   crush: createCrushAdapter,

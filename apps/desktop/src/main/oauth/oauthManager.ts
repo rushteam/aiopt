@@ -86,7 +86,11 @@ export function createOAuthManager(deps: {
     const driver = driverFor(provider);
     if (!driver.refresh) return bundle;
     const next = await driver.refresh(
-      { config: provider.oauth!, refreshToken: bundle.refreshToken },
+      {
+        config: provider.oauth!,
+        refreshToken: bundle.refreshToken,
+        accessToken: bundle.accessToken,
+      },
       deps.fetchImpl,
     );
     writeOAuthTokens(deps.secrets, provider.id, next);
@@ -117,6 +121,30 @@ export function createOAuthManager(deps: {
     if (pending) throwIpcError('PRECONDITION_FAILED', 'another OAuth login is already in progress');
     const provider = requireOAuthProvider(providerId);
     const driver = driverFor(provider);
+
+    // Drivers with a private protocol (DPoP port binding, non-standard portal) own the
+    // whole browser flow. Generic PKCE keeps using the shared loopback helper below.
+    if (driver.runLogin) {
+      pending = { providerId, state: '', verifier: '' };
+      try {
+        const outcome = await driver.runLogin({
+          fetchImpl: deps.fetchImpl,
+          openExternal: openExternalUrl,
+        });
+        writeOAuthTokens(deps.secrets, providerId, outcome.tokens);
+        const label = outcome.accountLabel?.trim() || 'Connected';
+        deps.store.replaceProvider({
+          ...provider,
+          oauth: { ...provider.oauth!, accountLabel: label },
+        });
+        deps.onProvidersChanged();
+        log.info('oauth.connected', { provider: providerId });
+      } finally {
+        pending = null;
+      }
+      return;
+    }
+
     const { verifier, challenge } = generatePkce();
     const state = generateOAuthState();
     pending = { providerId, state, verifier };

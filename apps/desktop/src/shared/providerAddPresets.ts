@@ -58,6 +58,20 @@ const OAUTH_PRESETS: AddProviderPreset[] = [
     oauthKind: 'github_copilot',
   },
   {
+    key: 'oauth-huawei-codearts',
+    name: 'CodeArts (Huawei)',
+    apiFormats: ['openai'],
+    baseUrl: 'https://snap-access.cn-north-4.myhuaweicloud.com/api/v2',
+    models: [
+      { id: 'GLM-5.2', catalogName: 'GLM-5.2' },
+      { id: 'glm-5.3-flash', catalogName: 'GLM-5.3 Flash' },
+      { id: 'deepseek-v4.1-flash', catalogName: 'DeepSeek V4.1 Flash' },
+      { id: 'openpangu-2.0-pro', catalogName: 'openPangu 2.0 Pro' },
+    ],
+    credentialMode: 'oauth',
+    oauthKind: 'huawei_codearts',
+  },
+  {
     key: 'oauth-generic-pkce',
     name: 'Custom OAuth',
     apiFormats: ['openai'],
