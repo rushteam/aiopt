@@ -586,6 +586,7 @@ const bridge: AiOptBridge = {
     revealValue: async () => ({ value: 'demo-value' }),
     setGatewayServer: refused,
     setGatewayAgents: refused,
+    copyGatewayEndpoint: async () => ({ copied: true }),
   },
   skills: {
     get: async () => skillsSnapshot,

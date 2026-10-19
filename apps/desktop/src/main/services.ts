@@ -581,6 +581,8 @@ export function getMcpStore(): McpStore {
         return showNativeConfirm(buildMcpGatewayConfirm(locale, req));
       },
       onLibraryChange: () => mcpGateway?.refresh(),
+      // Same clipboard pattern as copyProxyConfig: token stays main-side.
+      copyToClipboard: (text) => clipboard.writeText(text),
       gateway: {
         enabled: () => getConfigStore().get('mcpGateway'),
         url: () => {

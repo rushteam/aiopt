@@ -373,6 +373,12 @@ const api = {
     /** Add / remove the gateway's `aiopt` entry in these agents' MCP configs. */
     setGatewayAgents: (agentIds: McpAgentId[], on: boolean): Promise<McpSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.mcpGatewayAgents, { agentIds, on }),
+    /**
+     * Copy the live gateway endpoint to the clipboard (main-side). Returns only whether
+     * the write happened — the token never crosses back over IPC.
+     */
+    copyGatewayEndpoint: (format: 'url' | 'json'): Promise<{ copied: boolean }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.mcpCopyGatewayEndpoint, { format }),
   },
 
   /**

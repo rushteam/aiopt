@@ -32,6 +32,8 @@ import type {
 import type {
   McpAgentRequest,
   McpDiffResult,
+  McpCopyGatewayEndpointRequest,
+  McpCopyGatewayEndpointResult,
   McpGatewayAgentsRequest,
   McpGatewayServerRequest,
   McpMergeRequest,
@@ -207,6 +209,8 @@ export const IPC_CHANNELS = {
   // add / remove its single `aiopt` entry in agent files (a loopback URL; runs nothing).
   mcpGatewayServer: 'mcp:gateway-server',
   mcpGatewayAgents: 'mcp:gateway-agents',
+  // Copy the gateway endpoint to the clipboard main-side (token never returns over IPC).
+  mcpCopyGatewayEndpoint: 'mcp:copy-gateway-endpoint',
 
   // Skills. AiOpt is the central library; these channels discover skills across each
   // agent's global skills dir and sync them. The renderer refers to a skill only by
@@ -1161,6 +1165,10 @@ export interface IpcContract {
   [IPC_CHANNELS.mcpRevealValue]: { request: McpRevealValueRequest; result: McpRevealValueResult };
   [IPC_CHANNELS.mcpGatewayServer]: { request: McpGatewayServerRequest; result: McpWriteResult };
   [IPC_CHANNELS.mcpGatewayAgents]: { request: McpGatewayAgentsRequest; result: McpSnapshot };
+  [IPC_CHANNELS.mcpCopyGatewayEndpoint]: {
+    request: McpCopyGatewayEndpointRequest;
+    result: McpCopyGatewayEndpointResult;
+  };
   [IPC_CHANNELS.skillsGet]: { request: void; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPull]: { request: SkillsPullRequest; result: SkillsSnapshot };
   [IPC_CHANNELS.skillsPush]: { request: SkillsPushRequest; result: SkillsSnapshot };

@@ -40,6 +40,9 @@ opt-in feature; keep every guard below.
    the OS secret store (`main_mcp_gateway_token`; memory-only if encryption is unavailable).
    It is compared in constant time, never logged, never sent over IPC. The snapshot only
    carries `enabled`, per-agent `absent | same | stale`, and upstream `status` + tool count.
+   The UI may ask main to copy the endpoint (`mcp:copy-gateway-endpoint`, formats `url` |
+   `json`) — main writes the OS clipboard and returns only `{ copied }`, same pattern as
+   `providers:copy-proxy-config`.
 6. **Loopback + Host check.** The listener binds `127.0.0.1`. The MCP transport also enables
    DNS-rebinding protection (`allowedHosts` = `127.0.0.1:<port>`, `localhost:<port>`).
 7. **Values main-only.** `gatewayServers()` returns live specs with values for the gateway

@@ -28,8 +28,10 @@ import {
   type McpAgentEntry,
   type McpAgentInfo,
   type McpCell,
+  type McpCopyGatewayEndpointResult,
   type McpDiffResult,
   type McpFieldDiff,
+  type McpGatewayCopyFormat,
   type McpMatrixRow,
   type McpSaveRequest,
   type McpServerShape,
@@ -105,6 +107,13 @@ export interface McpStoreDeps {
   onLibraryChange?: () => void;
   /** The live MCP gateway, for the snapshot and the agent entry. Absent = no gateway. */
   gateway?: McpStoreGatewayHooks;
+  /**
+   * Write text to the OS clipboard (Electron `clipboard.writeText` in production). Used
+   * ONLY by `copyGatewayEndpoint`, which assembles a snippet containing the gateway path
+   * token and writes it here — the token is never returned to the caller. Defaults to a
+   * no-op so existing constructors need not supply it.
+   */
+  copyToClipboard?: (text: string) => void;
 }
 
 export interface McpStoreGatewayHooks {
@@ -516,6 +525,22 @@ export function createMcpStore(deps: McpStoreDeps) {
     },
 
     /**
+     * Copy the live gateway endpoint to the OS clipboard. Like `copyProxyConfig`, the
+     * token-bearing URL never returns over IPC — only a boolean flag does. Off / unbound
+     * → `{ copied: false }` (not an error: the UI only offers this while the gateway is on).
+     */
+    copyGatewayEndpoint(format: McpGatewayCopyFormat): McpCopyGatewayEndpointResult {
+      if (!deps.gateway?.enabled()) return { copied: false };
+      const url = deps.gateway.url();
+      if (!url) return { copied: false };
+      const text = gatewayEndpointSnippet(url, format);
+      deps.copyToClipboard?.(text);
+      // Log the act, never the value — the snippet holds a secret-class token.
+      log.info('mcp.copy_gateway_endpoint', { format });
+      return { copied: true };
+    },
+
+    /**
      * GATED: one stored env / header value in plaintext, for the edit form's reveal button.
      * Deliberately one value per call (no bulk export). Never log the result. Null when the
      * server is unknown or the key has no stored value.
@@ -783,6 +808,16 @@ export function createMcpStore(deps: McpStoreDeps) {
 }
 
 export type McpStore = ReturnType<typeof createMcpStore>;
+
+/**
+ * Clipboard payload for the MCP gateway endpoint. `url` is the bare Streamable HTTP URL
+ * (token in the path). `json` is a paste-ready `mcpServers.aiopt` fragment matching the
+ * shape agents already receive from `setGatewayAgents`.
+ */
+export function gatewayEndpointSnippet(url: string, format: McpGatewayCopyFormat): string {
+  if (format === 'url') return url;
+  return JSON.stringify({ mcpServers: { [GATEWAY_SERVER_NAME]: { type: 'http', url } } }, null, 2);
+}
 
 /** Per agent, the library servers present in its file — what a config profile records. */
 export type McpEnabledSets = Partial<Record<McpAgentId, string[]>>;

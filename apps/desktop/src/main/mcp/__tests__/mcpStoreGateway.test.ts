@@ -40,9 +40,10 @@ function memorySecrets(): SecretStore {
   };
 }
 
-function makeStore(opts: { confirm?: boolean; enabled?: boolean; noConfirm?: boolean } = {}) {
+function makeStore(opts: { confirm?: boolean; enabled?: boolean; noConfirm?: boolean; url?: string | null } = {}) {
   const confirmGateway = vi.fn(async (_req: McpConfirmRequest) => opts.confirm ?? true);
   const onLibraryChange = vi.fn();
+  const clipboard: string[] = [];
   const store = createMcpStore({
     filePath: path.join(dir, 'mcp-servers.json'),
     secrets: memorySecrets(),
@@ -51,13 +52,14 @@ function makeStore(opts: { confirm?: boolean; enabled?: boolean; noConfirm?: boo
     onLibraryChange,
     isInstalled: () => true,
     displayPath: (p) => p,
+    copyToClipboard: (text) => clipboard.push(text),
     gateway: {
       enabled: () => opts.enabled ?? true,
-      url: () => 'http://127.0.0.1:4000/tok/mcp',
+      url: () => (opts.url === undefined ? 'http://127.0.0.1:4000/tok/mcp' : opts.url),
       status: () => ({}),
     },
   });
-  return { store, confirmGateway, onLibraryChange };
+  return { store, confirmGateway, onLibraryChange, clipboard };
 }
 
 const fsServer: McpSaveRequest = {
@@ -170,6 +172,21 @@ describe('mcp store: the reserved gateway entry', () => {
     const { store } = makeStore();
     expect(store.snapshot().gateway.agents.claude).toBe('stale');
   });
+
+  it('copies url/json to the clipboard without returning the token', () => {
+    const { store, clipboard } = makeStore();
+    expect(store.copyGatewayEndpoint('url')).toEqual({ copied: true });
+    expect(clipboard).toEqual(['http://127.0.0.1:4000/tok/mcp']);
+    expect(store.copyGatewayEndpoint('json')).toEqual({ copied: true });
+    expect(JSON.parse(clipboard[1]!)).toEqual({
+      mcpServers: { aiopt: { type: 'http', url: 'http://127.0.0.1:4000/tok/mcp' } },
+    });
+  });
+
+  it('returns copied:false when the gateway is off or unbound', () => {
+    expect(makeStore({ enabled: false }).store.copyGatewayEndpoint('url')).toEqual({ copied: false });
+    expect(makeStore({ url: null }).store.copyGatewayEndpoint('json')).toEqual({ copied: false });
+  });
 });
 
 describe('mcp ipc: gateway channels', () => {
@@ -177,16 +194,29 @@ describe('mcp ipc: gateway channels', () => {
   const untrusted: IpcInvokeMeta = { assertTrustedSender: () => throwIpcError('PERMISSION_DENIED', 'nope') };
 
   it('rejects an untrusted sender before any side effect, and validates payloads', async () => {
-    const { store, confirmGateway } = makeStore();
+    const { store, confirmGateway, clipboard } = makeStore();
     store.save(fsServer);
     const registry = createInMemoryRegistry();
     registerMcpIpc(registry, store);
     await expect(registry.invoke(IPC_CHANNELS.mcpGatewayServer, { name: 'fs', on: true }, untrusted)).rejects.toThrow();
     await expect(registry.invoke(IPC_CHANNELS.mcpGatewayAgents, { agentIds: ['claude'], on: true }, untrusted)).rejects.toThrow();
+    await expect(registry.invoke(IPC_CHANNELS.mcpCopyGatewayEndpoint, { format: 'url' }, untrusted)).rejects.toThrow();
     expect(confirmGateway).not.toHaveBeenCalled();
+    expect(clipboard).toEqual([]);
     expect(fs.existsSync(path.join(home, '.claude.json'))).toBe(false);
     await expect(registry.invoke(IPC_CHANNELS.mcpGatewayServer, { name: 'fs', on: 'yes' }, trusted)).rejects.toThrow();
     await expect(registry.invoke(IPC_CHANNELS.mcpGatewayAgents, { agentIds: ['nope'], on: true }, trusted)).rejects.toThrow();
+    await expect(registry.invoke(IPC_CHANNELS.mcpCopyGatewayEndpoint, { format: 'yaml' }, trusted)).rejects.toThrow();
+  });
+
+  it('copies through ipc without returning the endpoint', async () => {
+    const { store, clipboard } = makeStore();
+    const registry = createInMemoryRegistry();
+    registerMcpIpc(registry, store);
+    await expect(registry.invoke(IPC_CHANNELS.mcpCopyGatewayEndpoint, { format: 'url' }, trusted)).resolves.toEqual({
+      copied: true,
+    });
+    expect(clipboard[0]).toBe('http://127.0.0.1:4000/tok/mcp');
   });
 });
 

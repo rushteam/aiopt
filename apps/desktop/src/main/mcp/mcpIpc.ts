@@ -99,6 +99,14 @@ export function registerMcpIpc(registry: IpcHandlerRegistry, store: McpStore): v
     return store.setGatewayAgents(agentIds, obj.on);
   });
 
+  // Copy the gateway endpoint to the clipboard. Unlike revealValue the token never returns
+  // to the renderer — the store writes the clipboard main-side and hands back only a flag.
+  registry.register(IPC_CHANNELS.mcpCopyGatewayEndpoint, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    return store.copyGatewayEndpoint(requireEnum(obj.format, ['url', 'json'] as const, 'format'));
+  });
+
   registry.register(IPC_CHANNELS.mcpMerge, (payload, meta) => {
     meta.assertTrustedSender();
     const { agentId, name } = requireAgentAndName(payload);
