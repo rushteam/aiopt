@@ -421,6 +421,28 @@
         "off": "Off",
         "session": "Stick to session"
       }
+    },
+    "routingStatus": {
+      "next": "Next",
+      "cooling": "Cooling {{s}}s",
+      "retryNow": "Retry now",
+      "retryNowHint": "End this member's cooldown so the next request may try it first. Changes nothing else.",
+      "okCount": "{{count}} ok",
+      "ready": "Ready",
+      "summary": "Last hour: {{count}} requests · {{failovers}} failed over",
+      "hitShare": "Answers by member, last hour",
+      "noTraffic": "No requests yet this run.",
+      "pinned": "{{count}} sessions pinned",
+      "recent": "Recent routing",
+      "recentShort": "Recent",
+      "recentTitle": "Recent routing",
+      "recentHelp": "The last 100 routing-group requests in this run, kept in memory only. Shows members, status codes and times — never request or reply content.",
+      "allGroups": "All routing groups",
+      "allAgents": "All Agents",
+      "agent": "Agent",
+      "recentEmpty": "No routing-group requests yet.",
+      "sticky": "pinned session",
+      "unreachable": "unreachable"
     }
   },
   "usage": {

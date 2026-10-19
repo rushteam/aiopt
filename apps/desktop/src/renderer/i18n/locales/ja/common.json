@@ -421,6 +421,28 @@
         "off": "オフ",
         "session": "セッション固定"
       }
+    },
+    "routingStatus": {
+      "next": "次",
+      "cooling": "クールダウン中 {{s}}s",
+      "retryNow": "今すぐ復帰",
+      "retryNowHint": "このメンバーのクールダウンを終了し、次のリクエストで優先的に試せるようにします。他には何も変更しません。",
+      "okCount": "成功 {{count}} 回",
+      "ready": "利用可能",
+      "summary": "直近 1 時間：{{count}} 件のリクエスト · {{failovers}} 件フェイルオーバー",
+      "hitShare": "直近 1 時間のメンバー別応答比率",
+      "noTraffic": "今回の起動ではまだリクエストがありません。",
+      "pinned": "{{count}} 件のセッションを固定中",
+      "recent": "最近のルーティング",
+      "recentShort": "最近",
+      "recentTitle": "最近のルーティング",
+      "recentHelp": "今回の起動で直近 100 件のルーティンググループのリクエスト（メモリのみに保持）。メンバー、ステータスコード、所要時間のみを表示し、リクエストや応答の内容は含みません。",
+      "allGroups": "すべてのルーティンググループ",
+      "allAgents": "すべての Agent",
+      "agent": "Agent",
+      "recentEmpty": "ルーティンググループのリクエストはまだありません。",
+      "sticky": "固定セッション",
+      "unreachable": "接続不可"
     }
   },
   "usage": {

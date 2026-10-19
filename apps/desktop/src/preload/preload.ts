@@ -303,6 +303,18 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.providersRoutingGroupUpdate, input),
     routingGroupRemove: (id: string): Promise<ProvidersSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.providersRoutingGroupRemove, { id }),
+    /** Live routing status: member cooldown / counts + recent decisions (no content). */
+    routingStatus: (): Promise<import('../shared/routingStatus').RoutingStatusSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRoutingStatus),
+    /** End one member's cooldown now (main validates the group + member). */
+    routingRetryNow: (
+      input: import('../shared/ipc-channels').ProviderRoutingRetryNowRequest,
+    ): Promise<import('../shared/routingStatus').RoutingStatusSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.providersRoutingRetryNow, input),
+    /** Subscribe to routing-status pushes from main; returns an unsubscribe fn. */
+    onRoutingStatusChanged: (
+      callback: (snapshot: import('../shared/routingStatus').RoutingStatusSnapshot) => void,
+    ): (() => void) => subscribe(IPC_EVENTS.routingStatusChanged, callback),
     /** Subscribe to pool/binding changes pushed from main; returns an unsubscribe fn. */
     onChanged: (callback: (snapshot: ProvidersSnapshot) => void): (() => void) =>
       subscribe(IPC_EVENTS.providersChanged, callback),

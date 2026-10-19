@@ -16,6 +16,7 @@ import {
   throwIpcError,
 } from '../ipc/validate';
 import { IPC_CHANNELS } from '../../shared/ipc-channels';
+import { EMPTY_ROUTING_STATUS, type RoutingStatusSnapshot } from '../../shared/routingStatus';
 import {
   AGENT_IDS,
   API_FORMATS,
@@ -152,6 +153,10 @@ export interface ProviderIpcDeps {
    * the renderer supplied.
    */
   revealItem: (file: string) => void;
+  /** Live routing status (in-memory, content-free). Absent → an empty snapshot. */
+  routingStatus?: () => RoutingStatusSnapshot;
+  /** End one member's cooldown now (in-memory only). */
+  routingRetryNow?: (groupId: string, providerId: string, modelId: string) => boolean;
 }
 
 /** No-op effects, so a caller that doesn't use reveal need not supply one. */
@@ -352,6 +357,21 @@ export function registerProviderIpc(
     meta.assertTrustedSender();
     const obj = requireObject(payload);
     return manager.removeRoutingGroup(requireString(obj.id, 'id'));
+  });
+
+  registry.register(IPC_CHANNELS.providersRoutingStatus, (_payload, meta) => {
+    meta.assertTrustedSender();
+    return deps.routingStatus?.() ?? { ...EMPTY_ROUTING_STATUS, at: Date.now() };
+  });
+
+  registry.register(IPC_CHANNELS.providersRoutingRetryNow, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const groupId = requireString(obj.groupId, 'groupId');
+    const providerId = requireString(obj.providerId, 'providerId');
+    const modelId = requireString(obj.modelId, 'modelId');
+    deps.routingRetryNow?.(groupId, providerId, modelId);
+    return deps.routingStatus?.() ?? { ...EMPTY_ROUTING_STATUS, at: Date.now() };
   });
 }
 

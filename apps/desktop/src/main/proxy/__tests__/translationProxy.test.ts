@@ -5,6 +5,7 @@ import { createTranslationProxy, safeRetryAfter, type TranslationProxy } from '.
 import type { ProxyStateStore, PersistedRoute } from '../proxyStore';
 import type { ProxyFetch } from '../upstream';
 import type { RouteSpec } from '../router';
+import type { RoutingDecisionInput } from '../routing/runtime';
 
 /** A never-called transport — these tests exercise identity/lifecycle, not forwarding. */
 const noopFetch: ProxyFetch = () =>
@@ -576,6 +577,7 @@ describe('translation proxy — routing group failover', () => {
 
     const resting: string[] = [];
     const successes: string[] = [];
+    const decisions: RoutingDecisionInput[] = [];
     const proxy = createTranslationProxy({
       fetchImpl: impl,
       getKey: () => 'sk',
@@ -584,6 +586,8 @@ describe('translation proxy — routing group failover', () => {
           rest: () => {},
           isResting: () => false,
           restingSeats: () => new Set(),
+          restingUntil: () => null,
+          lift: () => false,
           clear: () => {},
         },
         plan: () => ({
@@ -619,6 +623,7 @@ describe('translation proxy — routing group failover', () => {
         onFailover: (seat) => resting.push(seat),
         onSuccess: (_g, _k, seat) => successes.push(seat),
         clearGroup: () => {},
+        recordDecision: (d) => decisions.push(d),
       },
     });
     started.push(proxy);
@@ -645,5 +650,15 @@ describe('translation proxy — routing group failover', () => {
     expect(sentUrls[1]).toContain('b.example');
     expect(resting).toEqual(['p1\u241fm1']);
     expect(successes).toEqual(['p2\u241fm2']);
+    // One decision with the full failover trail — ids / status / ms only.
+    expect(decisions).toHaveLength(1);
+    const d = decisions[0]!;
+    expect(d).toMatchObject({ groupId: 'g1', strategy: 'ordered', sticky: false, ok: true });
+    expect(d.attempts.map((a) => [a.providerId, a.modelId, a.status, a.ok])).toEqual([
+      ['p1', 'm1', 503, false],
+      ['p2', 'm2', 200, true],
+    ]);
+    expect(Object.keys(d.attempts[0]!).sort()).toEqual(['modelId', 'ms', 'ok', 'providerId', 'status']);
+    expect(JSON.stringify(d)).not.toContain('busy');
   });
 });

@@ -421,6 +421,28 @@
         "off": "Aus",
         "session": "An Sitzung binden"
       }
+    },
+    "routingStatus": {
+      "next": "Als Nächstes",
+      "cooling": "Pause {{s}} s",
+      "retryNow": "Jetzt wieder versuchen",
+      "retryNowHint": "Beendet die Pause dieses Mitglieds, damit die nächste Anfrage es zuerst versuchen kann. Ändert sonst nichts.",
+      "okCount": "{{count}} erfolgreich",
+      "ready": "Bereit",
+      "summary": "Letzte Stunde: {{count}} Anfragen · {{failovers}} Failover",
+      "hitShare": "Antworten je Mitglied, letzte Stunde",
+      "noTraffic": "Seit dem Start noch keine Anfragen.",
+      "pinned": "{{count}} Sitzungen angeheftet",
+      "recent": "Letztes Routing",
+      "recentShort": "Verlauf",
+      "recentTitle": "Letztes Routing",
+      "recentHelp": "Die letzten 100 Anfragen an Routing-Gruppen seit dem Start, nur im Speicher gehalten. Zeigt Mitglieder, Statuscodes und Zeiten — nie Inhalte von Anfragen oder Antworten.",
+      "allGroups": "Alle Routing-Gruppen",
+      "allAgents": "Alle Agents",
+      "agent": "Agent",
+      "recentEmpty": "Noch keine Anfragen an Routing-Gruppen.",
+      "sticky": "angeheftete Sitzung",
+      "unreachable": "nicht erreichbar"
     }
   },
   "usage": {

@@ -421,6 +421,28 @@
         "off": "关闭",
         "session": "粘会话"
       }
+    },
+    "routingStatus": {
+      "next": "下一个",
+      "cooling": "冷却中 {{s}}s",
+      "retryNow": "立即恢复",
+      "retryNowHint": "结束该成员的冷却，下一个请求可以优先尝试它。不改动其他任何内容。",
+      "okCount": "成功 {{count}} 次",
+      "ready": "可用",
+      "summary": "近 1 小时：{{count}} 次请求 · {{failovers}} 次故障切换",
+      "hitShare": "近 1 小时各成员应答占比",
+      "noTraffic": "本次运行还没有请求。",
+      "pinned": "已固定 {{count}} 个会话",
+      "recent": "最近路由",
+      "recentShort": "最近",
+      "recentTitle": "最近路由",
+      "recentHelp": "本次运行最近 100 次路由组请求，仅保存在内存中。只显示成员、状态码和耗时，从不包含请求或回复内容。",
+      "allGroups": "全部路由组",
+      "allAgents": "全部 Agent",
+      "agent": "Agent",
+      "recentEmpty": "还没有路由组请求。",
+      "sticky": "已固定会话",
+      "unreachable": "无法连接"
     }
   },
   "usage": {

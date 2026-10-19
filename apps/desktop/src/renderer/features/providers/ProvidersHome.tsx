@@ -27,6 +27,9 @@ import { RoutingGroupFormDialog } from './RoutingGroupFormDialog';
 import { isRoutingGroupProviderId } from '../../../shared/routingGroups';
 import { removeRoutingGroup } from '../../lib/providerStore';
 import type { RoutingGroupSummary } from '../../../shared/routingGroups';
+import { useRoutingStatus } from '../../hooks/useRoutingStatus';
+import { RecentRoutingDrawer, RoutingGroupLiveStatus } from './RoutingStatusViews';
+import type { RoutingGroupStatus } from '../../../shared/routingStatus';
 
 type Dialog =
   | { kind: 'none' }
@@ -36,7 +39,8 @@ type Dialog =
   | { kind: 'bind'; agent: AgentSummary }
   | { kind: 'config'; agent: AgentSummary }
   | { kind: 'routing-add' }
-  | { kind: 'routing-edit'; group: RoutingGroupSummary };
+  | { kind: 'routing-edit'; group: RoutingGroupSummary }
+  | { kind: 'routing-recent'; groupId?: string };
 
 export function ProvidersHome() {
   const t = useT();
@@ -259,9 +263,11 @@ export function ProvidersHome() {
             <RoutingGroupsSection
               t={t}
               groups={routingGroups}
+              providers={providers}
               canAdd={!poolEmpty}
               onAdd={() => setDialog({ kind: 'routing-add' })}
               onEdit={(group) => setDialog({ kind: 'routing-edit', group })}
+              onRecent={(groupId) => setDialog({ kind: 'routing-recent', groupId })}
             />
           </section>
         )}
@@ -275,6 +281,14 @@ export function ProvidersHome() {
       )}
       {dialog.kind === 'routing-edit' && (
         <RoutingGroupFormDialog providers={providers} initial={dialog.group} onClose={close} />
+      )}
+      {dialog.kind === 'routing-recent' && (
+        <RoutingRecentDialog
+          groups={routingGroups}
+          providers={providers}
+          initialGroupId={dialog.groupId}
+          onClose={close}
+        />
       )}
       {dialog.kind === 'bind' && (
         <BindingPicker agent={dialog.agent} providers={providers} onClose={close} />
@@ -295,19 +309,47 @@ export function ProvidersHome() {
 // and at 16px against a bold 15px card name the ratio was 1.07x — below any usable step,
 // while the eight bold card titles out-shouted the one heading by sheer repetition. 18px
 // against 15px is 1.20x, and the explicit 600 keeps it ahead of `<strong>` card names.
+function RoutingRecentDialog({
+  groups,
+  providers,
+  initialGroupId,
+  onClose,
+}: {
+  groups: RoutingGroupSummary[];
+  providers: ProviderSummary[];
+  initialGroupId?: string;
+  onClose: () => void;
+}) {
+  const { recent } = useRoutingStatus();
+  return (
+    <RecentRoutingDrawer
+      recent={recent}
+      groups={groups}
+      providers={providers}
+      initialGroupId={initialGroupId}
+      onClose={onClose}
+    />
+  );
+}
+
 function RoutingGroupsSection({
   t,
   groups,
+  providers,
   canAdd,
   onAdd,
   onEdit,
+  onRecent,
 }: {
   t: TranslateFn;
   groups: RoutingGroupSummary[];
+  providers: ProviderSummary[];
   canAdd: boolean;
   onAdd: () => void;
   onEdit: (group: RoutingGroupSummary) => void;
+  onRecent: (groupId?: string) => void;
 }) {
+  const status = useRoutingStatus();
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: space.lg, marginBottom: 12 }}>
@@ -322,6 +364,16 @@ function RoutingGroupsSection({
             {t('providers.routingGroup.add')}
           </button>
         )}
+        {groups.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onRecent()}
+            {...hoverBackground('transparent', token('surfaceHover'))}
+            style={addGhostStyle}
+          >
+            {t('providers.routingStatus.recent')}
+          </button>
+        )}
       </div>
       {groups.length === 0 ? (
         <p style={{ fontSize: fontSize.md, color: token('textMuted'), margin: 0 }}>
@@ -330,7 +382,15 @@ function RoutingGroupsSection({
       ) : (
         <div style={gridStyle}>
           {groups.map((group) => (
-            <RoutingGroupCard key={group.id} group={group} t={t} onEdit={() => onEdit(group)} />
+            <RoutingGroupCard
+              key={group.id}
+              group={group}
+              status={status.groups.find((g) => g.groupId === group.id)}
+              providers={providers}
+              t={t}
+              onEdit={() => onEdit(group)}
+              onRecent={() => onRecent(group.id)}
+            />
           ))}
         </div>
       )}
@@ -340,12 +400,18 @@ function RoutingGroupsSection({
 
 function RoutingGroupCard({
   group,
+  status,
+  providers,
   t,
   onEdit,
+  onRecent,
 }: {
   group: RoutingGroupSummary;
+  status: RoutingGroupStatus | undefined;
+  providers: ProviderSummary[];
   t: TranslateFn;
   onEdit: () => void;
+  onRecent: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -366,7 +432,8 @@ function RoutingGroupCard({
           .replace('{{strategy}}', t(`providers.routingGroup.strategies.${group.strategy}`))
           .replace('{{affinity}}', t(`providers.routingGroup.affinities.${group.affinity}`))}
       </p>
-      <div style={{ display: 'flex', gap: space.sm, marginTop: space.sm }}>
+      <RoutingGroupLiveStatus group={group} status={status} providers={providers} t={t} />
+      <div style={{ display: 'flex', gap: space.sm, marginTop: space.sm, flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={onEdit}
@@ -375,6 +442,14 @@ function RoutingGroupCard({
           style={addGhostStyle}
         >
           {t('providers.card.edit')}
+        </button>
+        <button
+          type="button"
+          onClick={onRecent}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={addGhostStyle}
+        >
+          {t('providers.routingStatus.recentShort')}
         </button>
         <button
           type="button"

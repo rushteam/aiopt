@@ -421,6 +421,28 @@
         "off": "Desactivado",
         "session": "Pegar a la sesión"
       }
+    },
+    "routingStatus": {
+      "next": "Siguiente",
+      "cooling": "En pausa {{s}} s",
+      "retryNow": "Reintentar ahora",
+      "retryNowHint": "Termina la pausa de este miembro para que la próxima solicitud pueda probarlo primero. No cambia nada más.",
+      "okCount": "{{count}} correctas",
+      "ready": "Disponible",
+      "summary": "Última hora: {{count}} solicitudes · {{failovers}} con conmutación",
+      "hitShare": "Respuestas por miembro, última hora",
+      "noTraffic": "Aún no hay solicitudes en esta ejecución.",
+      "pinned": "{{count}} sesiones fijadas",
+      "recent": "Enrutamiento reciente",
+      "recentShort": "Reciente",
+      "recentTitle": "Enrutamiento reciente",
+      "recentHelp": "Las últimas 100 solicitudes de grupos de enrutamiento en esta ejecución, solo en memoria. Muestra miembros, códigos de estado y tiempos — nunca el contenido de solicitudes o respuestas.",
+      "allGroups": "Todos los grupos de enrutamiento",
+      "allAgents": "Todos los Agents",
+      "agent": "Agent",
+      "recentEmpty": "Aún no hay solicitudes de grupos de enrutamiento.",
+      "sticky": "sesión fijada",
+      "unreachable": "inaccesible"
     }
   },
   "usage": {

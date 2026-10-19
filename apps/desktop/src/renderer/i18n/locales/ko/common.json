@@ -421,6 +421,28 @@
         "off": "끔",
         "session": "세션 고정"
       }
+    },
+    "routingStatus": {
+      "next": "다음",
+      "cooling": "쿨다운 {{s}}s",
+      "retryNow": "지금 복구",
+      "retryNowHint": "이 멤버의 쿨다운을 끝내 다음 요청이 먼저 시도할 수 있게 합니다. 다른 것은 바꾸지 않습니다.",
+      "okCount": "성공 {{count}}회",
+      "ready": "사용 가능",
+      "summary": "최근 1시간: 요청 {{count}}건 · 페일오버 {{failovers}}건",
+      "hitShare": "최근 1시간 멤버별 응답 비율",
+      "noTraffic": "이번 실행에서는 아직 요청이 없습니다.",
+      "pinned": "세션 {{count}}개 고정됨",
+      "recent": "최근 라우팅",
+      "recentShort": "최근",
+      "recentTitle": "최근 라우팅",
+      "recentHelp": "이번 실행의 최근 라우팅 그룹 요청 100건으로, 메모리에만 보관됩니다. 멤버, 상태 코드, 소요 시간만 표시하며 요청이나 응답 내용은 포함하지 않습니다.",
+      "allGroups": "모든 라우팅 그룹",
+      "allAgents": "모든 Agent",
+      "agent": "Agent",
+      "recentEmpty": "아직 라우팅 그룹 요청이 없습니다.",
+      "sticky": "고정된 세션",
+      "unreachable": "연결 불가"
     }
   },
   "usage": {

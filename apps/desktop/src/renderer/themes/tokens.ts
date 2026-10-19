@@ -59,6 +59,9 @@ export const TOKENS = {
   // #2ea043 was 2.83:1 on it — passing at rest, failing under the cursor. Slightly
   // brighter in dark mode so the small dot reads against the darker surface.
   success: { light: '#2b953f', dark: '#3fb950' },
+  // Waiting / degraded state — a routing-group member cooling down after a failure. A
+  // status dot like `success`, so the same 3:1 on bg/surface/surfaceHover applies.
+  warning: { light: '#b0610f', dark: '#e9a04b' },
   // Data-visualization series (Usage chart, token-mix bar, sparklines). Input tokens reuse
   // `accent`; these are the OTHER series, picked to sit apart from accent and from each
   // other. They are graphical objects needed to read the chart, so WCAG 1.4.11's 3:1

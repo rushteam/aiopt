@@ -29,6 +29,8 @@ export interface SessionAffinityStore {
   get(groupId: string, conversationKey: string, now?: number): string | null;
   remember(groupId: string, conversationKey: string, seat: string, now?: number): void;
   clearGroup(groupId: string): void;
+  /** How many live sticks a group holds (a count only — never the keys). */
+  countGroup(groupId: string, now?: number): number;
 }
 
 function validStick(raw: unknown): AffinityStick | null {
@@ -86,6 +88,13 @@ export function createSessionAffinityStore(persistence?: AffinityPersistence): S
       next.unshift({ conversationKey, groupId, seat, at: now });
       sticks = prune(next, now);
       persist();
+    },
+
+    countGroup(groupId, now = Date.now()) {
+      const cutoff = now - ROUTING_AFFINITY_TTL_MS;
+      let n = 0;
+      for (const s of sticks) if (s.groupId === groupId && s.at >= cutoff) n += 1;
+      return n;
     },
 
     clearGroup(groupId) {

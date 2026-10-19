@@ -582,3 +582,53 @@ describe('provider IPC — revealConfig (symbolic in, path out; never reads the 
     expect(revealed).toEqual([]);
   });
 });
+
+describe('provider IPC — routing status', () => {
+  function routingHarness() {
+    const reg = createInMemoryRegistry();
+    const store = createProviderStore({ load: () => ({}), save: () => {} });
+    const manager = createProviderManager(store, memorySecrets(), new Map(), () => {}, () => null as never, () => false);
+    const lifted: string[] = [];
+    registerProviderIpc(reg, manager, {
+      revealItem: () => {},
+      routingStatus: () => ({ at: 7, groups: [], recent: [] }),
+      routingRetryNow: (g, p, m) => {
+        lifted.push(`${g}/${p}/${m}`);
+        return true;
+      },
+    });
+    return { reg, lifted };
+  }
+
+  it('status and retry-now refuse an untrusted sender', async () => {
+    const { reg, lifted } = routingHarness();
+    expect(await codeOf(() => reg.invoke(IPC_CHANNELS.providersRoutingStatus, undefined, untrusted))).toBe(
+      'PERMISSION_DENIED',
+    );
+    expect(
+      await codeOf(() =>
+        reg.invoke(IPC_CHANNELS.providersRoutingRetryNow, { groupId: 'g', providerId: 'p', modelId: 'm' }, untrusted),
+      ),
+    ).toBe('PERMISSION_DENIED');
+    expect(lifted).toEqual([]);
+  });
+
+  it('retry-now validates the payload and returns the fresh snapshot', async () => {
+    const { reg, lifted } = routingHarness();
+    expect(
+      await codeOf(() => reg.invoke(IPC_CHANNELS.providersRoutingRetryNow, { groupId: 'g' }, trusted)),
+    ).toBe('INVALID_PARAMS');
+    const snap = await reg.invoke(
+      IPC_CHANNELS.providersRoutingRetryNow,
+      { groupId: 'g', providerId: 'p', modelId: 'm' },
+      trusted,
+    );
+    expect(snap).toEqual({ at: 7, groups: [], recent: [] });
+    expect(lifted).toEqual(['g/p/m']);
+    expect(await reg.invoke(IPC_CHANNELS.providersRoutingStatus, undefined, trusted)).toEqual({
+      at: 7,
+      groups: [],
+      recent: [],
+    });
+  });
+});

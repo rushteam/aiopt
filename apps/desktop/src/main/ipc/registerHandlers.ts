@@ -37,6 +37,7 @@ import {
   getConfigStore,
   getOAuthManager,
   getProviderManager,
+  getRoutingRuntime,
   getSecretStore,
   getSkillsStore,
   getUpdateService,
@@ -77,6 +78,9 @@ export function registerHandlers(): void {
     // renderer names the file by (agentId, role) and never supplies a path. showItemInFolder
     // (not openPath) so the OS selects the file in its folder — AiOpt never reads it.
     revealItem: (file: string) => shell.showItemInFolder(file),
+    routingStatus: () => getRoutingRuntime().status?.() ?? { at: Date.now(), groups: [], recent: [] },
+    routingRetryNow: (groupId, providerId, modelId) =>
+      getRoutingRuntime().retryNow?.(groupId, providerId, modelId) ?? false,
   });
   registerOAuthProviderIpc(registry, getOAuthManager(), providers);
   registerAgentImportIpc(registry, providers);
