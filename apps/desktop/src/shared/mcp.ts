@@ -162,6 +162,22 @@ export interface McpGatewayServerRequest extends McpNameRequest {
   on: boolean;
 }
 
+/** Formats main may write to the OS clipboard for the gateway endpoint. */
+export type McpGatewayCopyFormat = 'url' | 'json';
+
+/**
+ * Copy the live gateway endpoint to the clipboard (main-side). The URL embeds the
+ * path token, so the result deliberately carries no endpoint data — only whether
+ * the write happened. Format `url` = bare URL; `json` = an `mcpServers.aiopt` snippet.
+ */
+export interface McpCopyGatewayEndpointRequest {
+  format: McpGatewayCopyFormat;
+}
+
+export interface McpCopyGatewayEndpointResult {
+  copied: boolean;
+}
+
 /** One env var / header in a save request; omit `value` to keep the stored one. */
 export interface McpVarInput {
   key: string;

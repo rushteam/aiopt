@@ -189,6 +189,23 @@ export function McpHome() {
               })
             }
             onAgents={(agentIds, on) => void act(() => window.aiopt.mcp.setGatewayAgents(agentIds, on))}
+            onCopy={(format) =>
+              void (async () => {
+                setBusy(true);
+                setNotice(null);
+                try {
+                  const { copied } = await window.aiopt.mcp.copyGatewayEndpoint(format);
+                  setNotice({
+                    text: copied ? t('mcp.gateway.copied') : t('mcp.gateway.copyFailed'),
+                    error: !copied,
+                  });
+                } catch (err) {
+                  setNotice({ text: errorText(t, err), error: true });
+                } finally {
+                  setBusy(false);
+                }
+              })()
+            }
           />
 
           {selectedRow && (
@@ -323,6 +340,7 @@ function GatewayPanel({
   t,
   onToggle,
   onAgents,
+  onCopy,
 }: {
   gateway: McpGatewaySnapshot;
   agents: McpAgentInfo[];
@@ -331,6 +349,7 @@ function GatewayPanel({
   t: TranslateFn;
   onToggle: (on: boolean) => void;
   onAgents: (agentIds: McpAgentId[], on: boolean) => void;
+  onCopy: (format: 'url' | 'json') => void;
 }) {
   const readable = agents.filter((a) => !a.unreadable);
   return (
@@ -364,6 +383,43 @@ function GatewayPanel({
               ? t('mcp.gateway.served').replace('{{count}}', String(served.length)).replace('{{names}}', served.join(', '))
               : t('mcp.gateway.none')}
           </p>
+          <div
+            style={{
+              marginBottom: space.md,
+              padding: '12px 14px',
+              border: `1px solid ${token('border')}`,
+              borderRadius: radius.lg,
+              background: token('surface'),
+            }}
+          >
+            <div style={{ fontSize: fontSize.md, fontWeight: 600, marginBottom: 4 }}>{t('mcp.gateway.connectTitle')}</div>
+            <p style={{ margin: `0 0 ${space.sm}px`, fontSize: fontSize.sm, color: token('textMuted') }}>
+              {t('mcp.gateway.connectHelp')}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.sm }}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onCopy('url')}
+                {...hoverBackground('transparent', token('surfaceHover'))}
+                style={smallGhostStyle}
+              >
+                {t('mcp.gateway.copyUrl')}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onCopy('json')}
+                {...hoverBackground('transparent', token('surfaceHover'))}
+                style={smallGhostStyle}
+              >
+                {t('mcp.gateway.copyJson')}
+              </button>
+            </div>
+            <p style={{ margin: `${space.sm}px 0 0`, fontSize: fontSize.xs, color: token('textMuted') }}>
+              {t('mcp.gateway.connectWarn')}
+            </p>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${token('border')}`, borderRadius: radius.lg, overflow: 'hidden' }}>
             {readable.map((a, i) => {
               const state = gateway.agents[a.agentId] ?? 'absent';
