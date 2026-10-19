@@ -165,6 +165,21 @@ export const controlPaddingX = {
  */
 export const disabledOpacity = 0.5;
 
+/**
+ * Motion durations (ms) and easings. Mode-invariant, so plain values. Every caller still
+ * owns honoring `prefers-reduced-motion` — a token is the speed, not the permission.
+ */
+export const motion = {
+  /** One hop of a routing-flow pulse (Agent → routing group, routing group → member). */
+  flowHop: 600,
+  /** A success / failure mark lingering at a node before it fades. */
+  flowMark: 700,
+  /** Reduced-motion stand-in for a pulse: how long the last path stays highlighted. */
+  flowHighlight: 1000,
+  /** Standard ease for a pulse: quick off the node, settling into the next. */
+  flowEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+} as const;
+
 // ─── Elevation (drop shadows) ─────────────────────────────────────────────────
 // The app's depth language. UNLIKE the scales above, a shadow is mode-aware — one
 // tuned for a light page vanishes on a dark one, so dark is heavier — so it rides

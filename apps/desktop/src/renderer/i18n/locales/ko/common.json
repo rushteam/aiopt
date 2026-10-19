@@ -443,6 +443,14 @@
       "recentEmpty": "아직 라우팅 그룹 요청이 없습니다.",
       "sticky": "고정된 세션",
       "unreachable": "연결 불가"
+    },
+    "routingFlow": {
+      "title": "라우팅 흐름",
+      "idle": "최근 1시간 동안 트래픽 없음",
+      "empty": "요청이 라우팅 그룹을 거치면 여기에 흐름이 표시됩니다.",
+      "more": "외 {{count}}개",
+      "noAgents": "바인딩된 Agent 없음",
+      "pinnedShort": "{{count}}개 고정"
     }
   },
   "usage": {

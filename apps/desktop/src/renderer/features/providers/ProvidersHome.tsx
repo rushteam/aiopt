@@ -29,6 +29,7 @@ import { removeRoutingGroup } from '../../lib/providerStore';
 import type { RoutingGroupSummary } from '../../../shared/routingGroups';
 import { useRoutingStatus } from '../../hooks/useRoutingStatus';
 import { RecentRoutingDrawer, RoutingGroupLiveStatus } from './RoutingStatusViews';
+import { RoutingFlowPanel } from './RoutingFlowPanel';
 import type { RoutingGroupStatus } from '../../../shared/routingStatus';
 
 type Dialog =
@@ -264,6 +265,7 @@ export function ProvidersHome() {
               t={t}
               groups={routingGroups}
               providers={providers}
+              agents={agents}
               canAdd={!poolEmpty}
               onAdd={() => setDialog({ kind: 'routing-add' })}
               onEdit={(group) => setDialog({ kind: 'routing-edit', group })}
@@ -336,6 +338,7 @@ function RoutingGroupsSection({
   t,
   groups,
   providers,
+  agents,
   canAdd,
   onAdd,
   onEdit,
@@ -344,6 +347,7 @@ function RoutingGroupsSection({
   t: TranslateFn;
   groups: RoutingGroupSummary[];
   providers: ProviderSummary[];
+  agents: AgentSummary[];
   canAdd: boolean;
   onAdd: () => void;
   onEdit: (group: RoutingGroupSummary) => void;
@@ -380,6 +384,15 @@ function RoutingGroupsSection({
           {t('providers.routingGroup.empty')}
         </p>
       ) : (
+        <>
+        <RoutingFlowPanel
+          t={t}
+          groups={groups}
+          agents={agents}
+          providers={providers}
+          status={status}
+          onOpenRecent={(groupId) => onRecent(groupId)}
+        />
         <div style={gridStyle}>
           {groups.map((group) => (
             <RoutingGroupCard
@@ -393,6 +406,7 @@ function RoutingGroupsSection({
             />
           ))}
         </div>
+        </>
       )}
     </>
   );

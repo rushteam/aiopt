@@ -443,6 +443,14 @@
       "recentEmpty": "ルーティンググループのリクエストはまだありません。",
       "sticky": "固定セッション",
       "unreachable": "接続不可"
+    },
+    "routingFlow": {
+      "title": "ルーティングフロー",
+      "idle": "直近 1 時間のトラフィックはありません",
+      "empty": "リクエストがルーティンググループを通ると、ここに流れが表示されます。",
+      "more": "他 {{count}} 件",
+      "noAgents": "Agent 未バインド",
+      "pinnedShort": "{{count}} 件固定"
     }
   },
   "usage": {

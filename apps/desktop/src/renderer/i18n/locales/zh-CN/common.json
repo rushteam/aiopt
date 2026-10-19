@@ -443,6 +443,14 @@
       "recentEmpty": "还没有路由组请求。",
       "sticky": "已固定会话",
       "unreachable": "无法连接"
+    },
+    "routingFlow": {
+      "title": "路由流向",
+      "idle": "近 1 小时没有流量",
+      "empty": "有请求经过路由组时，这里会显示流向。",
+      "more": "另 {{count}} 个",
+      "noAgents": "未绑定 Agent",
+      "pinnedShort": "固定 {{count}} 个"
     }
   },
   "usage": {

@@ -443,6 +443,14 @@
       "recentEmpty": "Noch keine Anfragen an Routing-Gruppen.",
       "sticky": "angeheftete Sitzung",
       "unreachable": "nicht erreichbar"
+    },
+    "routingFlow": {
+      "title": "Routing-Fluss",
+      "idle": "Kein Verkehr in der letzten Stunde",
+      "empty": "Sobald Anfragen eine Routing-Gruppe durchlaufen, erscheint hier ihr Fluss.",
+      "more": "+{{count}} weitere",
+      "noAgents": "Kein Agent gebunden",
+      "pinnedShort": "{{count}} angeheftet"
     }
   },
   "usage": {

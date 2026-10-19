@@ -443,6 +443,14 @@
       "recentEmpty": "Aún no hay solicitudes de grupos de enrutamiento.",
       "sticky": "sesión fijada",
       "unreachable": "inaccesible"
+    },
+    "routingFlow": {
+      "title": "Flujo de enrutamiento",
+      "idle": "Sin tráfico en la última hora",
+      "empty": "Cuando las solicitudes pasen por un grupo de enrutamiento, su flujo aparecerá aquí.",
+      "more": "+{{count}} más",
+      "noAgents": "Ningún Agent vinculado",
+      "pinnedShort": "{{count}} fijadas"
     }
   },
   "usage": {

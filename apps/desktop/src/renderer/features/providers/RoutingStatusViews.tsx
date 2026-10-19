@@ -15,8 +15,8 @@ import { AGENT_SPECS } from '../../../shared/aiProviders';
 import { formatModelRef } from '../../../shared/modelRef';
 import { retryRoutingMemberNow } from '../../lib/routingStatusStore';
 
-/** Series colors for the hit-share bar, in member order (cycled). */
-const HIT_COLORS: TokenName[] = ['accent', 'chartOutput', 'chartCache', 'chartTrend'];
+/** Series colors per member, in member order (cycled): hit-share bar + routing flow. */
+export const MEMBER_SERIES_COLORS: TokenName[] = ['accent', 'chartOutput', 'chartCache', 'chartTrend'];
 
 /** A clock that ticks every second only while `active` (cooldown countdowns). */
 export function useTickingNow(active: boolean): number {
@@ -139,7 +139,7 @@ export function RoutingGroupLiveStatus({
                   <span
                     key={i}
                     title={`${memberLabel(providers, group.members[i]?.providerId ?? '', group.members[i]?.modelId ?? '')} · ${h}`}
-                    style={{ flex: `${h} 0 0`, background: token(HIT_COLORS[i % HIT_COLORS.length]!) }}
+                    style={{ flex: `${h} 0 0`, background: token(MEMBER_SERIES_COLORS[i % MEMBER_SERIES_COLORS.length]!) }}
                   />
                 ) : null,
               )}

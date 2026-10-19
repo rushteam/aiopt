@@ -443,6 +443,14 @@
       "recentEmpty": "No routing-group requests yet.",
       "sticky": "pinned session",
       "unreachable": "unreachable"
+    },
+    "routingFlow": {
+      "title": "Routing flow",
+      "idle": "No traffic in the last hour",
+      "empty": "When requests pass through a routing group, their flow shows here.",
+      "more": "+{{count}} more",
+      "noAgents": "No Agent bound",
+      "pinnedShort": "{{count}} pinned"
     }
   },
   "usage": {

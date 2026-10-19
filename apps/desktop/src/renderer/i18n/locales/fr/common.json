@@ -443,6 +443,14 @@
       "recentEmpty": "Aucune requête de groupe de routage pour l'instant.",
       "sticky": "session épinglée",
       "unreachable": "injoignable"
+    },
+    "routingFlow": {
+      "title": "Flux de routage",
+      "idle": "Aucun trafic la dernière heure",
+      "empty": "Quand des requêtes passent par un groupe de routage, leur flux s'affiche ici.",
+      "more": "+{{count}} autres",
+      "noAgents": "Aucun Agent lié",
+      "pinnedShort": "{{count}} épinglées"
     }
   },
   "usage": {
