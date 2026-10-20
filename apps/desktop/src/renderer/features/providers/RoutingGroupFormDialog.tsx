@@ -230,7 +230,7 @@ export function RoutingGroupFormDialog({
               {...hoverBackground(token('surface'), token('surfaceHover'))}
               style={{
                 ...ghostBtnStyle,
-                border: `1px solid ${token('border')}`,
+                border: `1px solid ${token('borderStrong')}`,
                 opacity: busy || !pickProviderId || !pickModelId ? disabledOpacity : 1,
               }}
             >

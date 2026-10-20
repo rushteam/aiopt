@@ -121,8 +121,10 @@ describe('contrast (WCAG)', () => {
   it('the status dot clears 3:1 on every background a row can take', () => {
     for (const mode of ['light', 'dark'] as const) {
       for (const ground of ['bg', 'surface', 'surfaceHover'] as const) {
-        const ratio = contrast(TOKENS.success[mode], TOKENS[ground][mode]);
-        expect(ratio, `success on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+        for (const dot of ['success', 'warning'] as const) {
+          const ratio = contrast(TOKENS[dot][mode], TOKENS[ground][mode]);
+          expect(ratio, `${dot} on ${ground} (${mode}) = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+        }
       }
     }
   });

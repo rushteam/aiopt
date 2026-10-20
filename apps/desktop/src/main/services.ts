@@ -242,16 +242,23 @@ function getSessionAffinityStore(): SessionAffinityStore {
   return sessionAffinityStore;
 }
 
-function getRoutingRuntime(): RoutingRuntime {
+export function getRoutingRuntime(): RoutingRuntime {
   if (!routingRuntime) {
     routingRuntime = createRoutingRuntime({
       getGroup: (id) => getRoutingGroupStore().get(id),
+      listGroups: () => getRoutingGroupStore().list(),
       lookups: {
         getProvider: (id) => getProviderStore().getProvider(id),
         getAgentDef: (id) => getAgentDef(id) ?? null,
       },
       affinity: getSessionAffinityStore(),
     });
+    // Live routing status for the Providers page: a throttled push of the in-memory
+    // snapshot (ids / status codes / times only).
+    const runtime = routingRuntime;
+    runtime.onStatusChange?.(
+      throttle(() => broadcastToRenderers(IPC_EVENTS.routingStatusChanged, runtime.status?.()), 1000),
+    );
   }
   return routingRuntime;
 }

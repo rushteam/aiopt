@@ -51,8 +51,13 @@ import {
   responseGeminiToOpenai,
 } from './translate/gemini';
 import type { UsageEventInput } from '../../shared/usageStats';
-import { shouldFailoverStatus, type RoutingCandidate } from '../../shared/routingGroups';
+import {
+  shouldFailoverStatus,
+  type RoutingCandidate,
+  type RoutingStrategy,
+} from '../../shared/routingGroups';
 import type { RoutingRuntime } from './routing/runtime';
+import { splitSeat, type RoutingAttempt } from '../../shared/routingStatus';
 import {
   createOpenaiToAnthropicStream,
   requestOpenaiToAnthropic,
@@ -371,6 +376,11 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
 
     const inbound = spec.inboundFormat;
     const noTokens = zeroUsage();
+    const requestStart = Date.now();
+    // Routing status trail: one entry per upstream attempt (ids / status / ms only).
+    const trail: RoutingAttempt[] = [];
+    let attemptStart = requestStart;
+    let decision: { groupId: string; strategy: RoutingStrategy; sticky: boolean } | null = null;
 
     /** Record one upstream attempt against the seat that actually answered (or failed). */
     const recordFor = (
@@ -380,6 +390,9 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       status: number,
       counts: UsageCounts,
     ): void => {
+      if (decision) {
+        trail.push({ ...splitSeat(candidate.seat), status, ok, ms: Date.now() - attemptStart });
+      }
       if (!deps.recordUsage) return;
       try {
         deps.recordUsage({
@@ -430,6 +443,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
         }
         candidates = planned.candidates;
         conversationKey = planned.conversationKey;
+        decision = { groupId, strategy: planned.group.strategy, sticky: planned.sticky === true };
       } else {
         candidates = [
           {
@@ -451,6 +465,7 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       for (let i = 0; i < candidates.length; i++) {
         const candidate = candidates[i]!;
         const more = i < candidates.length - 1;
+        attemptStart = Date.now();
         const liveSpec: RouteSpec = {
           ...spec,
           providerId: candidate.providerId,
@@ -660,6 +675,22 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
       logger.warn('proxy.error', { path: rest, code });
       if (!res.headersSent) sendJson(res, statusForCode(code), errorEnvelope(inbound, message));
       else res.end();
+    } finally {
+      if (decision && trail.length > 0) {
+        try {
+          deps.routing?.recordDecision?.({
+            groupId: decision.groupId,
+            agentId: spec.agentId,
+            strategy: decision.strategy,
+            sticky: decision.sticky,
+            attempts: trail,
+            ok: trail[trail.length - 1]!.ok,
+            ms: Date.now() - requestStart,
+          });
+        } catch {
+          // status is best-effort; it can't fail a real request
+        }
+      }
     }
   }
 

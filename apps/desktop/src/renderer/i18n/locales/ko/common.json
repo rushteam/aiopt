@@ -401,7 +401,7 @@
       "editTitle": "라우팅 그룹 편집",
       "empty": "라우팅 그룹이 없습니다. 그룹은 장애 조치용 공급자+모델 풀이며 한 항목처럼 바인딩합니다.",
       "help": "Agent를 그룹에 바인딩하면 로컬 프록시를 통해 멤버를 시도하고 응답 바이트 전에 장애 조치합니다. 세션 어피니티는 대화를 마지막 성공 멤버에 유지합니다.",
-      "helpTooltip": "장애 조치 풀: 전략 순으로 시도하고, 좌석 실패 시 응답 바이트 전에 전환합니다.",
+      "helpTooltip": "장애 조치 풀: 전략 순으로 멤버를 시도하고, 멤버가 실패하면 응답 바이트 전에 전환합니다.",
       "viaProxy": "프록시 경유(장애 조치)",
       "name": "이름",
       "strategy": "전략",
@@ -409,7 +409,7 @@
       "members": "멤버",
       "memberProvider": "공급자",
       "memberModel": "모델",
-      "addMember": "멤버 추가",
+      "addMember": "추가",
       "removeMember": "제거",
       "cardMeta": "멤버 {{count}}개 · {{strategy}} · {{affinity}}",
       "strategies": {
@@ -421,6 +421,36 @@
         "off": "끔",
         "session": "세션 고정"
       }
+    },
+    "routingStatus": {
+      "next": "다음",
+      "cooling": "쿨다운 {{s}}s",
+      "retryNow": "지금 복구",
+      "retryNowHint": "이 멤버의 쿨다운을 끝내 다음 요청이 먼저 시도할 수 있게 합니다. 다른 것은 바꾸지 않습니다.",
+      "okCount": "성공 {{count}}회",
+      "ready": "사용 가능",
+      "summary": "최근 1시간: 요청 {{count}}건 · 페일오버 {{failovers}}건",
+      "hitShare": "최근 1시간 멤버별 응답 비율",
+      "noTraffic": "이번 실행에서는 아직 요청이 없습니다.",
+      "pinned": "세션 {{count}}개 고정됨",
+      "recent": "최근 라우팅",
+      "recentShort": "최근",
+      "recentTitle": "최근 라우팅",
+      "recentHelp": "이번 실행의 최근 라우팅 그룹 요청 100건으로, 메모리에만 보관됩니다. 멤버, 상태 코드, 소요 시간만 표시하며 요청이나 응답 내용은 포함하지 않습니다.",
+      "allGroups": "모든 라우팅 그룹",
+      "allAgents": "모든 Agent",
+      "agent": "Agent",
+      "recentEmpty": "아직 라우팅 그룹 요청이 없습니다.",
+      "sticky": "고정된 세션",
+      "unreachable": "연결 불가"
+    },
+    "routingFlow": {
+      "title": "라우팅 흐름",
+      "idle": "최근 1시간 동안 트래픽 없음",
+      "empty": "요청이 라우팅 그룹을 거치면 여기에 흐름이 표시됩니다.",
+      "more": "외 {{count}}개",
+      "noAgents": "바인딩된 Agent 없음",
+      "pinnedShort": "{{count}}개 고정"
     }
   },
   "usage": {

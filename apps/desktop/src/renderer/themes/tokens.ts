@@ -59,6 +59,9 @@ export const TOKENS = {
   // #2ea043 was 2.83:1 on it — passing at rest, failing under the cursor. Slightly
   // brighter in dark mode so the small dot reads against the darker surface.
   success: { light: '#2b953f', dark: '#3fb950' },
+  // Waiting / degraded state — a routing-group member cooling down after a failure. A
+  // status dot like `success`, so the same 3:1 on bg/surface/surfaceHover applies.
+  warning: { light: '#b0610f', dark: '#e9a04b' },
   // Data-visualization series (Usage chart, token-mix bar, sparklines). Input tokens reuse
   // `accent`; these are the OTHER series, picked to sit apart from accent and from each
   // other. They are graphical objects needed to read the chart, so WCAG 1.4.11's 3:1
@@ -161,6 +164,21 @@ export const controlPaddingX = {
  * `cursor: 'default'` — never let opacity be the only thing saying "you can't".
  */
 export const disabledOpacity = 0.5;
+
+/**
+ * Motion durations (ms) and easings. Mode-invariant, so plain values. Every caller still
+ * owns honoring `prefers-reduced-motion` — a token is the speed, not the permission.
+ */
+export const motion = {
+  /** One hop of a routing-flow pulse (Agent → routing group, routing group → member). */
+  flowHop: 600,
+  /** A success / failure mark lingering at a node before it fades. */
+  flowMark: 700,
+  /** Reduced-motion stand-in for a pulse: how long the last path stays highlighted. */
+  flowHighlight: 1000,
+  /** Standard ease for a pulse: quick off the node, settling into the next. */
+  flowEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+} as const;
 
 // ─── Elevation (drop shadows) ─────────────────────────────────────────────────
 // The app's depth language. UNLIKE the scales above, a shadow is mode-aware — one

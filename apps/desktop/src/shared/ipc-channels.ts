@@ -19,6 +19,7 @@ import type {
   RoutingGroupSummary,
   RoutingStrategy,
 } from './routingGroups';
+import type { RoutingStatusSnapshot } from './routingStatus';
 import type { UsageSnapshot } from './usageStats';
 import type {
   LocalUsageSnapshot,
@@ -169,6 +170,13 @@ export const IPC_CHANNELS = {
   providersRoutingGroupUpdate: 'providers:routing-group-update',
   /** Delete a routing group and clear bindings that pointed at it. */
   providersRoutingGroupRemove: 'providers:routing-group-remove',
+  /**
+   * Read the live routing status (member cooldown / counts, recent decisions). Read-only;
+   * ids, status codes and times only — never content, keys or conversation keys.
+   */
+  providersRoutingStatus: 'providers:routing-status',
+  /** End one routing-group member's cooldown now (in-memory only; no files, no secrets). */
+  providersRoutingRetryNow: 'providers:routing-retry-now',
 
   // Usage statistics. Read the aggregated snapshot of proxied traffic, or clear the
   // history. The recorded events carry only counts + identifiers (never content, keys,
@@ -347,6 +355,12 @@ export const IPC_EVENTS = {
    * recorded or cleared so an open statistics view stays live.
    */
   usageChanged: 'usage:changed',
+  /**
+   * The live routing status changed; payload is `RoutingStatusSnapshot` (ids, status
+   * codes, times — never content, keys or conversation keys). Pushed (throttled) after a
+   * routing-group request finishes or a member's cooldown changes.
+   */
+  routingStatusChanged: 'providers:routing-status-changed',
   /**
    * The skills sync matrix changed; payload is `SkillsSnapshot` (skill names, sizes,
    * and sync states — no file contents). Pushed (throttled) after any pull/push/
@@ -786,6 +800,12 @@ export interface ProviderRoutingGroupUpdateRequest extends ProviderRoutingGroupU
   id: string;
 }
 
+export interface ProviderRoutingRetryNowRequest {
+  groupId: string;
+  providerId: string;
+  modelId: string;
+}
+
 export interface ProviderRoutingGroupRemoveRequest {
   id: string;
 }
@@ -1144,6 +1164,11 @@ export interface IpcContract {
   [IPC_CHANNELS.providersRoutingGroupRemove]: {
     request: ProviderRoutingGroupRemoveRequest;
     result: ProvidersSnapshot;
+  };
+  [IPC_CHANNELS.providersRoutingStatus]: { request: void; result: RoutingStatusSnapshot };
+  [IPC_CHANNELS.providersRoutingRetryNow]: {
+    request: ProviderRoutingRetryNowRequest;
+    result: RoutingStatusSnapshot;
   };
   [IPC_CHANNELS.usageGet]: { request: void; result: UsageSnapshot };
   [IPC_CHANNELS.usageClear]: { request: void; result: UsageSnapshot };

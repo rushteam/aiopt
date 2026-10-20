@@ -401,7 +401,7 @@
       "editTitle": "Edit routing group",
       "empty": "No routing groups yet. A group is a failover pool of providers+models you can bind like one entry.",
       "help": "Bind an agent to the group to route through the local proxy with failover. Affinity keeps a conversation on the last successful member.",
-      "helpTooltip": "Failover pool: the proxy tries members in strategy order and switches before any reply bytes when a seat fails.",
+      "helpTooltip": "Failover pool: the proxy tries members in strategy order and switches before any reply bytes when a member fails.",
       "viaProxy": "via proxy (failover)",
       "name": "Name",
       "strategy": "Strategy",
@@ -409,7 +409,7 @@
       "members": "Members",
       "memberProvider": "Provider",
       "memberModel": "Model",
-      "addMember": "Add member",
+      "addMember": "Add",
       "removeMember": "Remove",
       "cardMeta": "{{count}} members · {{strategy}} · {{affinity}}",
       "strategies": {
@@ -421,6 +421,36 @@
         "off": "Off",
         "session": "Stick to session"
       }
+    },
+    "routingStatus": {
+      "next": "Next",
+      "cooling": "Cooling {{s}}s",
+      "retryNow": "Retry now",
+      "retryNowHint": "End this member's cooldown so the next request may try it first. Changes nothing else.",
+      "okCount": "{{count}} ok",
+      "ready": "Ready",
+      "summary": "Last hour: {{count}} requests · {{failovers}} failed over",
+      "hitShare": "Answers by member, last hour",
+      "noTraffic": "No requests yet this run.",
+      "pinned": "{{count}} sessions pinned",
+      "recent": "Recent routing",
+      "recentShort": "Recent",
+      "recentTitle": "Recent routing",
+      "recentHelp": "The last 100 routing-group requests in this run, kept in memory only. Shows members, status codes and times — never request or reply content.",
+      "allGroups": "All routing groups",
+      "allAgents": "All Agents",
+      "agent": "Agent",
+      "recentEmpty": "No routing-group requests yet.",
+      "sticky": "pinned session",
+      "unreachable": "unreachable"
+    },
+    "routingFlow": {
+      "title": "Routing flow",
+      "idle": "No traffic in the last hour",
+      "empty": "When requests pass through a routing group, their flow shows here.",
+      "more": "+{{count}} more",
+      "noAgents": "No Agent bound",
+      "pinnedShort": "{{count}} pinned"
     }
   },
   "usage": {
