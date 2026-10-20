@@ -57,6 +57,7 @@ import {
   type WorkbenchModel,
   type WorkbenchSettings,
   type WorkbenchNotifyPreview,
+  type WorkbenchChatPage,
   type WorkbenchSnapshot,
   type WorkbenchStatus,
   isValidHerdrSshTarget,
@@ -209,6 +210,8 @@ export interface WorkbenchManager {
   runPlan(conversationId: string): void;
   /** Reopen a past conversation, named by the id `getSnapshot().conversations` listed. */
   openConversation(conversationId: string): Promise<void>;
+  /** Older transcript items before `beforeId` (an id a snapshot or earlier page carried). */
+  chatPage(beforeId: string): WorkbenchChatPage;
   deleteConversation(conversationId: string): void;
   updateSettings(patch: Partial<WorkbenchSettings>): void;
   /** Re-check PATH / managed copy (and remote version when configured). */
@@ -939,6 +942,16 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     return { id: c.id, title: c.title, updatedAt: c.updatedAt, current: path.basename(c.file) === currentSession };
   }
 
+  function chatWindow(): Pick<WorkbenchSnapshot, 'chat' | 'chatHasMore' | 'chatEpoch'> {
+    const w = transcript.window(WORKBENCH_LIMITS.chatWindow);
+    return { chat: w.items, chatHasMore: w.hasMore, chatEpoch: transcript.epoch() };
+  }
+
+  function chatPage(beforeId: string): WorkbenchChatPage {
+    const page = transcript.page(beforeId, WORKBENCH_LIMITS.chatPage);
+    return { ...page, epoch: transcript.epoch() };
+  }
+
   function getSnapshot(): WorkbenchSnapshot {
     return {
       status,
@@ -946,7 +959,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       model,
       lastNotify,
       streaming: transcript.streaming(),
-      chat: transcript.items(),
+      ...chatWindow(),
       tasks: [...tasks.values()].map(taskView),
       folders: folders.map(folderView),
       herdrSession: WORKBENCH_HERDR_SESSION,
@@ -1927,6 +1940,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     approveTasks,
     runPlan,
     openConversation,
+    chatPage,
     deleteConversation,
     updateSettings,
     refreshHerdrProbe,

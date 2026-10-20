@@ -895,6 +895,8 @@
       }
     },
     "chat": {
+      "jumpToLatest": "Jump to latest",
+      "loadingOlder": "Loading earlier messages…",
       "title": "Coordinator",
       "reset": "New conversation",
       "empty": "Describe what you want done. The coordinator proposes tasks on the board. Run starts each one as its own agent that can change files in its folder, so nothing runs until you press Run (or turn on auto-run).",

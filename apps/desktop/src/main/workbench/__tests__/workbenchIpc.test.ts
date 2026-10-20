@@ -37,6 +37,7 @@ function setup(picked: string | null = '/work/app') {
     approveTasks: vi.fn(),
     runPlan: vi.fn(),
     openConversation: vi.fn(async () => {}),
+    chatPage: vi.fn(() => ({ items: [], hasMore: false, epoch: 0 })),
     deleteConversation: vi.fn(),
     updateSettings: vi.fn(),
     refreshHerdrProbe: vi.fn(async () => {}),
@@ -62,7 +63,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder } = setup();
-    expect(CHANNELS).toHaveLength(24);
+    expect(CHANNELS).toHaveLength(25);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
@@ -103,6 +104,22 @@ describe('workbench ipc', () => {
     expect(manager.launchTask).not.toHaveBeenCalled();
     expect(manager.chatSend).not.toHaveBeenCalled();
     expect(manager.createTask).not.toHaveBeenCalled();
+  });
+
+  it('pages chat history by a bounded item id', async () => {
+    const { reg, manager } = setup();
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId: 7 }, trusted))).toBe('INVALID_PARAMS');
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId: '' }, trusted))).toBe('INVALID_PARAMS');
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId: 'x'.repeat(129) }, trusted))).toBe(
+      'INVALID_PARAMS',
+    );
+    expect(manager.chatPage).not.toHaveBeenCalled();
+    expect(await reg.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId: 'c12' }, trusted)).toEqual({
+      items: [],
+      hasMore: false,
+      epoch: 0,
+    });
+    expect(manager.chatPage).toHaveBeenCalledWith('c12');
   });
 
   it('passes validated payloads through and returns the snapshot', async () => {

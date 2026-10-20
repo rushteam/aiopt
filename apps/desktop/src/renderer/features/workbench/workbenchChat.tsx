@@ -1,10 +1,12 @@
 // Shared Workbench chat shell — coordinator and task workers use the same composer + bubbles.
 
-import { useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { useMentionPicker, type MentionSource } from './mentionPicker';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
+import { VirtualChatList } from '../../components/ui/VirtualChatList';
+import { estimateTextHeight } from '../../lib/virtualList';
 
 export type WorkbenchChatLineRole = 'user' | 'assistant' | 'notice';
 
@@ -199,33 +201,25 @@ export function WorkbenchChatThread({
   t: TranslateFn;
   footer?: ReactNode;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pinned = useRef(true);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [lines, footer]);
-
+  const renderLine = useCallback((line: WorkbenchChatLine) => <WorkbenchChatBubble line={line} t={t} />, [t]);
   return (
-    <div
-      ref={scrollRef}
-      onScroll={(e) => {
-        const el = e.currentTarget;
-        pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-      }}
-      aria-live="polite"
-      style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.lg }}
-    >
-      {lines.length === 0 && !footer && (
-        <p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>{empty}</p>
-      )}
-      {lines.map((line) => (
-        <WorkbenchChatBubble key={line.id} line={line} t={t} />
-      ))}
-      {footer}
-    </div>
+    <VirtualChatList
+      items={lines}
+      getKey={lineKey}
+      renderItem={renderLine}
+      estimateHeight={estimateLineHeight}
+      footer={footer}
+      jumpLabel={t('workbench.chat.jumpToLatest')}
+      loadingLabel={t('workbench.chat.loadingOlder')}
+      empty={<p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>{empty}</p>}
+    />
   );
+}
+
+const lineKey = (line: WorkbenchChatLine): string => line.id;
+
+function estimateLineHeight(line: WorkbenchChatLine, width: number): number {
+  return estimateTextHeight(line.text, Math.max(20, Math.floor(width / 9)));
 }
 
 const smallGhostStyle: CSSProperties = {

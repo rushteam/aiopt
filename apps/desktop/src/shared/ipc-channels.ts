@@ -54,7 +54,7 @@ import type {
   SkillsLibraryLocation,
   SkillsSnapshot,
 } from './skills';
-import type { TaskOutput, WorkbenchSnapshot } from './workbench';
+import type { TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from './workbench';
 
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
@@ -261,6 +261,7 @@ export const IPC_CHANNELS = {
   workbenchTaskApprove: 'workbench:task-approve',
   workbenchPlanRun: 'workbench:plan-run',
   workbenchConversationOpen: 'workbench:conversation-open',
+  workbenchChatPage: 'workbench:chat-page',
   workbenchConversationDelete: 'workbench:conversation-delete',
   workbenchSettingsUpdate: 'workbench:settings-update',
   workbenchHerdrProbe: 'workbench:herdr-probe',
@@ -935,6 +936,11 @@ export interface ProviderRevealConfigRequest {
 // Ids only (validated by `isValidWorkbenchId`); every text field is length-capped and
 // stripped of control characters in main before it reaches an agent.
 
+/** Older coordinator chat items, before an item id a snapshot or an earlier page carried. */
+export interface WorkbenchChatPageRequest {
+  beforeId: string;
+}
+
 export interface WorkbenchChatSendRequest {
   text: string;
 }
@@ -1225,6 +1231,7 @@ export interface IpcContract {
   /** Approve every proposed task of one conversation's plan (the DAG runs to completion). */
   [IPC_CHANNELS.workbenchPlanRun]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchChatPage]: { request: WorkbenchChatPageRequest; result: WorkbenchChatPage };
   [IPC_CHANNELS.workbenchConversationDelete]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchHerdrProbe]: { request: void; result: WorkbenchSnapshot };

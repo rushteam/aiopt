@@ -10,7 +10,7 @@
 // The renderer holds no capability here: every action is a named IPC call carrying an opaque
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
@@ -18,6 +18,7 @@ import { useWorkbench } from '../../hooks/useWorkbench';
 import {
   abortChat,
   deleteConversation,
+  loadOlderChat,
   openConversation,
   resetChat,
   sendChat,
@@ -35,7 +36,7 @@ import {
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { PlanPanel } from './PlanPanel';
-import { ProposalCard } from './ProposalCard';
+import { ProposalCard, type ProposalBoard } from './ProposalCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchChatComposer } from './workbenchChat';
@@ -44,6 +45,8 @@ import { useMentionSource } from './mentionPicker';
 import type { TaskSeed } from './taskSeed';
 import { WorkbenchSplitPane } from './WorkbenchSplitPane';
 import { WorkspaceTabScreen } from '../../components/TabScreenShell';
+import { VirtualChatList } from '../../components/ui/VirtualChatList';
+import { estimateTextHeight } from '../../lib/virtualList';
 
 export function WorkbenchHome({
   taskSeed = null,
@@ -175,25 +178,42 @@ function ChatPane({
 }) {
   const [draft, setDraft] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pinned = useRef(true);
+  const [sent, setSent] = useState(0);
   const ready = wb.status === 'ready';
   const sessionOn = wb.status === 'ready' || wb.status === 'starting';
   const toggleDisabled = busy || wb.status === 'starting';
   // Switching conversations mid-reply would orphan the reply, so main refuses it; so does the UI.
   const canSwitch = ready && !wb.streaming;
 
-  // Follow the reply as it streams, unless the user has scrolled up to read.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [wb.chat]);
-
   const send = async (): Promise<void> => {
     const text = draft.trim();
     if (!text || !ready) return;
-    if (await run(() => sendChat(text))) setDraft('');
+    if (await run(() => sendChat(text))) {
+      setDraft('');
+      setSent((n) => n + 1);
+    }
   };
+
+  // Rows are memoized on (item, renderItem): keep renderItem stable across the 150ms stream
+  // pushes, changing only when what a row reads (the board, the session state) really changed.
+  const runRef = useRef(run);
+  runRef.current = run;
+  const stableRun = useCallback<Runner>((action) => runRef.current(action), []);
+  const board = useStableValue<ProposalBoard>({
+    status: wb.status,
+    herdrAvailable: wb.herdrAvailable,
+    tasks: wb.tasks,
+    folders: wb.folders,
+  });
+  const renderItem = useCallback(
+    (item: ChatItem) =>
+      item.kind === 'proposal' ? (
+        <ProposalCard taskIds={item.taskIds} wb={board} t={t} run={stableRun} onSelectTask={onSelectTask} />
+      ) : (
+        <ChatEntry item={item} tasks={board.tasks} t={t} />
+      ),
+    [board, t, stableRun, onSelectTask],
+  );
 
   const addTaskMention = (taskId: string): void => {
     setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
@@ -271,33 +291,27 @@ function ChatPane({
           onClose={() => setShowHistory(false)}
         />
       )}
-      <div
-        ref={scrollRef}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-        }}
+      <VirtualChatList
+        items={wb.chat}
+        getKey={chatItemKey}
+        renderItem={renderItem}
+        estimateHeight={estimateChatItemHeight}
+        hasMore={wb.chatHasMore}
+        onLoadMore={loadOlderChat}
+        followSignal={`${wb.chatEpoch}:${sent}`}
+        jumpLabel={t('workbench.chat.jumpToLatest')}
+        loadingLabel={t('workbench.chat.loadingOlder')}
         onDragOver={acceptTaskMentionDrag}
         onDrop={(e) => {
           const payload = readTaskMentionDrop(e);
           if (payload) addTaskMention(payload.id);
         }}
-        aria-live="polite"
-        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.lg }}
-      >
-        {wb.chat.length === 0 && (
+        empty={
           <p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>
             {ready ? t('workbench.chat.empty') : t('workbench.chat.notRunning')}
           </p>
-        )}
-        {wb.chat.map((item) =>
-          item.kind === 'proposal' ? (
-            <ProposalCard key={item.id} taskIds={item.taskIds} wb={wb} t={t} run={run} onSelectTask={onSelectTask} />
-          ) : (
-            <ChatEntry key={item.id} item={item} tasks={wb.tasks} t={t} />
-          ),
-        )}
-      </div>
+        }
+      />
       <div style={{ flexShrink: 0 }}>
         <WorkbenchChatComposer
           draft={draft}
@@ -318,6 +332,36 @@ function ChatPane({
       </div>
     </section>
   );
+}
+
+const chatItemKey = (item: ChatItem): string => item.id;
+
+/** A first-render height guess (px); real heights replace it once a row has rendered. */
+function estimateChatItemHeight(item: ChatItem, width: number): number {
+  const perLine = Math.max(20, Math.floor(width / 9));
+  switch (item.kind) {
+    case 'user':
+      return estimateTextHeight(item.text, Math.floor(perLine * 0.85));
+    case 'assistant':
+      return estimateTextHeight(item.text, perLine, 21, item.thinking ? 28 : 4);
+    case 'proposal':
+      return 64 + 56 * item.taskIds.length;
+    case 'taskUpdate':
+      return 32 + 24 * item.tasks.length;
+    default:
+      return 22;
+  }
+}
+
+/**
+ * The previous value while `next` is structurally equal (JSON), so a memo keyed on it survives
+ * the snapshot pushes that rebuild every array. Bounded: the board is capped in shared/workbench.
+ */
+function useStableValue<T>(next: T): T {
+  const ref = useRef<{ value: T; json: string } | null>(null);
+  const json = JSON.stringify(next);
+  if (!ref.current || ref.current.json !== json) ref.current = { value: next, json };
+  return ref.current.value;
 }
 
 function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskView[]; t: TranslateFn }) {

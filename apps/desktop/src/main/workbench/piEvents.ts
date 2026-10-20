@@ -69,8 +69,35 @@ export interface Transcript {
   /** Replace the transcript with a saved session's messages (pi `get_messages`). */
   load(messages: readonly unknown[]): void;
   items(): ChatItem[];
+  /**
+   * The newest page for the live snapshot: the last `size` items, widened back to the
+   * earliest item still changing (a streaming reply, a running tool), so everything older
+   * than the window is final and a renderer may keep its copy as is.
+   */
+  window(size: number): { items: ChatItem[]; hasMore: boolean };
+  /**
+   * Up to `limit` items just before the item `beforeId`, oldest first. An unknown id (dropped
+   * off the cap, or a transcript that was replaced since) yields an empty last page.
+   */
+  page(beforeId: string, limit: number): { items: ChatItem[]; hasMore: boolean };
+  /** Bumps whenever the transcript is replaced (load / clear), so stale pages can be dropped. */
+  epoch(): number;
   streaming(): boolean;
   clear(): void;
+}
+
+// A structural copy, so a caller holding the array can't mutate the live transcript.
+function copyItem(item: ChatItem): ChatItem {
+  if (item.kind === 'proposal') return { ...item, taskIds: [...item.taskIds] };
+  if (item.kind === 'taskUpdate') return { ...item, tasks: item.tasks.map((t) => ({ ...t })) };
+  return { ...item };
+}
+
+/** Whether an item can still change (see `Transcript.window`). */
+function isFinal(item: ChatItem): boolean {
+  if (item.kind === 'assistant') return !item.streaming;
+  if (item.kind === 'tool') return item.done;
+  return true;
 }
 
 function cap(text: string, max: number = WORKBENCH_LIMITS.itemText): string {
@@ -176,6 +203,7 @@ export function createTranscript(): Transcript {
   let items: ChatItem[] = [];
   let isStreaming = false;
   let seq = 0;
+  let epoch = 0;
   const nextId = () => `c${(seq += 1)}`;
   /**
    * Approval cards proposed during the current turn. They join the transcript when the turn
@@ -388,16 +416,33 @@ export function createTranscript(): Transcript {
       else push({ kind: 'proposal', id: nextId(), taskIds: ids });
     },
     load(messages) {
+      epoch += 1;
       items = [];
       isStreaming = false;
       heldProposals = [];
       for (const message of messages) loadMessage(message);
     },
-    // A structural copy, so a caller holding the array can't mutate the live transcript.
-    items: () =>
-      items.map((item) => (item.kind === 'proposal' ? { ...item, taskIds: [...item.taskIds] } : { ...item })),
+    items: () => items.map(copyItem),
+    window(size) {
+      let start = Math.max(0, items.length - Math.max(1, size));
+      for (let i = 0; i < start; i += 1) {
+        if (!isFinal(items[i]!)) {
+          start = i;
+          break;
+        }
+      }
+      return { items: items.slice(start).map(copyItem), hasMore: start > 0 };
+    },
+    page(beforeId, limit) {
+      const end = items.findIndex((item) => item.id === beforeId);
+      if (end <= 0) return { items: [], hasMore: false };
+      const start = Math.max(0, end - Math.max(1, limit));
+      return { items: items.slice(start, end).map(copyItem), hasMore: start > 0 };
+    },
+    epoch: () => epoch,
     streaming: () => isStreaming,
     clear() {
+      epoch += 1;
       items = [];
       isStreaming = false;
       heldProposals = [];

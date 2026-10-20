@@ -15,6 +15,9 @@ import type { TranslateFn } from '../../i18n';
 import { approveTasks, runPlan, updateTask } from '../../lib/workbenchStore';
 import { Select } from '../../components/ui/Select';
 import { pendingDependencies, taskAllows, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
+
+/** The part of the snapshot a card reads (kept small so the chat can memoize cards). */
+export type ProposalBoard = Pick<WorkbenchSnapshot, 'status' | 'herdrAvailable' | 'tasks' | 'folders'>;
 import { StatusLabel } from './TaskStatusLabel';
 import { proposalBlocker } from './proposalBlocker';
 
@@ -28,7 +31,7 @@ export function ProposalCard({
   onSelectTask,
 }: {
   taskIds: readonly string[];
-  wb: WorkbenchSnapshot;
+  wb: ProposalBoard;
   t: TranslateFn;
   run: Runner;
   onSelectTask: (id: string) => void;
@@ -84,7 +87,7 @@ function ProposalRow({
   onSelectTask,
 }: {
   task: TaskView;
-  wb: WorkbenchSnapshot;
+  wb: ProposalBoard;
   t: TranslateFn;
   run: Runner;
   onSelectTask: (id: string) => void;

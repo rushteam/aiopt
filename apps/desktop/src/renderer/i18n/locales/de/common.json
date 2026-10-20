@@ -895,6 +895,8 @@
       }
     },
     "chat": {
+      "jumpToLatest": "Zum Neuesten",
+      "loadingOlder": "Ältere Nachrichten werden geladen…",
       "title": "Koordinator",
       "reset": "Neue Unterhaltung",
       "empty": "Beschreiben Sie, was erledigt werden soll. Der Koordinator schlägt Aufgaben auf dem Board vor. „Ausführen“ startet jede als eigenen Agenten, der Dateien in seinem Ordner ändern kann – deshalb läuft nichts, bevor Sie auf „Ausführen“ klicken (oder die automatische Ausführung einschalten).",

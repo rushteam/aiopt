@@ -389,6 +389,8 @@ const workbenchSnapshot: WorkbenchSnapshot = {
   issue: null,
   model: { providerName: 'Anthropic', modelId: 'claude-sonnet-4-5', proxied: true },
   streaming: false,
+  chatHasMore: false,
+  chatEpoch: 1,
   chat: [
     { kind: 'user', id: 'c1', text: 'Add a dark-mode toggle to the docs site, and write a changelog entry for it.' },
     {
@@ -625,6 +627,7 @@ const bridge: AiOptBridge = {
     approveTasks: refused,
     runPlan: refused,
     openConversation: refused,
+    chatPage: async () => ({ items: [], hasMore: false, epoch: 1 }),
     deleteConversation: refused,
     updateSettings: refused,
     refreshHerdrProbe: async () => workbenchSnapshot,

@@ -7,8 +7,13 @@
 // snapshot, which is applied at once; the broadcast echo re-applies it (idempotent).
 //
 // The renderer names folders and tasks by the opaque ids main minted — never a path.
+//
+// The coordinator chat is the exception to "apply as is": a snapshot carries only the newest
+// window of it, so the store folds each window into the history it holds (chatHistory.ts) and
+// pages older items in on request. `snapshot.chat` is that merged view.
 
 import { DEFAULT_WORKBENCH_SETTINGS, type WorkbenchSnapshot } from '../../shared/workbench';
+import { EMPTY_CHAT_HISTORY, mergeChatWindow, prependChatPage, type ChatHistory } from './chatHistory';
 import type {
   WorkbenchSettingsUpdateRequest,
   WorkbenchTaskCreateRequest,
@@ -24,6 +29,8 @@ const EMPTY: WorkbenchSnapshot = {
   lastNotify: null,
   streaming: false,
   chat: [],
+  chatHasMore: false,
+  chatEpoch: 0,
   tasks: [],
   folders: [],
   herdrSession: 'aiopt',
@@ -42,14 +49,46 @@ const EMPTY: WorkbenchSnapshot = {
 };
 
 let snapshot: WorkbenchSnapshot = EMPTY;
+let chat: ChatHistory = EMPTY_CHAT_HISTORY;
 let version = 0;
 let initialized = false;
+let olderInFlight: Promise<void> | null = null;
 const listeners = new Set<Listener>();
 
-function applySnapshot(next: WorkbenchSnapshot): void {
-  snapshot = next;
+function publish(): void {
+  snapshot = { ...snapshot, chat: chat.items, chatHasMore: chat.hasMore, chatEpoch: chat.epoch };
   version += 1;
   listeners.forEach((listener) => listener());
+}
+
+function applySnapshot(next: WorkbenchSnapshot): void {
+  chat = mergeChatWindow(chat, next.chat, next.chatHasMore, next.chatEpoch);
+  snapshot = next;
+  publish();
+}
+
+/**
+ * Page in the items before the oldest one held (the chat pane calls this near its top).
+ * One request at a time; a page that went stale in flight (conversation switched) is dropped.
+ */
+export function loadOlderChat(): Promise<void> {
+  ensureInitialized();
+  if (olderInFlight) return olderInFlight;
+  const first = chat.items[0];
+  if (!first || !chat.hasMore) return Promise.resolve();
+  olderInFlight = wb()
+    .chatPage(first.id)
+    .then((page) => {
+      const next = prependChatPage(chat, first.id, page);
+      if (next !== chat) {
+        chat = next;
+        publish();
+      }
+    })
+    .finally(() => {
+      olderInFlight = null;
+    });
+  return olderInFlight;
 }
 
 function ensureInitialized(): void {

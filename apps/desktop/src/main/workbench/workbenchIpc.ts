@@ -28,6 +28,12 @@ function requireConversationId(raw: unknown): string {
   return raw;
 }
 
+/** A transcript item id: `c<n>` minted by the reducer, or a tool-call id pi reported. */
+function requireChatItemId(raw: unknown): string {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 128) throwIpcError('INVALID_PARAMS', 'invalid beforeId');
+  return raw;
+}
+
 function requireText(raw: unknown, name: string, max: number): string {
   const text = requireString(raw, name);
   if (text.length > max) throwIpcError('INVALID_PARAMS', `${name} is too long`);
@@ -231,6 +237,12 @@ export function registerWorkbenchIpc(
     meta.assertTrustedSender();
     await manager.openConversation(requireConversationId(requireObject(payload).conversationId));
     return snapshot();
+  });
+
+  // Read-only: a slice of the in-memory transcript. The id is only looked up, never used as a path.
+  registry.register(IPC_CHANNELS.workbenchChatPage, (payload, meta) => {
+    meta.assertTrustedSender();
+    return manager.chatPage(requireChatItemId(requireObject(payload).beforeId));
   });
 
   registry.register(IPC_CHANNELS.workbenchConversationDelete, (payload, meta) => {
