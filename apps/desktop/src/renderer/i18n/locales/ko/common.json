@@ -401,7 +401,7 @@
       "editTitle": "라우팅 그룹 편집",
       "empty": "라우팅 그룹이 없습니다. 그룹은 장애 조치용 공급자+모델 풀이며 한 항목처럼 바인딩합니다.",
       "help": "Agent를 그룹에 바인딩하면 로컬 프록시를 통해 멤버를 시도하고 응답 바이트 전에 장애 조치합니다. 세션 어피니티는 대화를 마지막 성공 멤버에 유지합니다.",
-      "helpTooltip": "장애 조치 풀: 전략 순으로 시도하고, 좌석 실패 시 응답 바이트 전에 전환합니다.",
+      "helpTooltip": "장애 조치 풀: 전략 순으로 멤버를 시도하고, 멤버가 실패하면 응답 바이트 전에 전환합니다.",
       "viaProxy": "프록시 경유(장애 조치)",
       "name": "이름",
       "strategy": "전략",
@@ -409,7 +409,7 @@
       "members": "멤버",
       "memberProvider": "공급자",
       "memberModel": "모델",
-      "addMember": "멤버 추가",
+      "addMember": "추가",
       "removeMember": "제거",
       "cardMeta": "멤버 {{count}}개 · {{strategy}} · {{affinity}}",
       "strategies": {
