@@ -12,6 +12,7 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import { disabledOpacity, elevation, token, fontSize, radius, space } from '../themes/tokens';
 import { hoverBackground } from '../lib/hover';
+import { noDragRegion } from './ui/modal';
 
 export function ConfirmDialog({
   title,
@@ -92,6 +93,7 @@ export function ConfirmDialog({
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',

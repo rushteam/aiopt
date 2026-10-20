@@ -171,6 +171,10 @@
     },
     "import": {
       "heading": "インストール済み Agent からインポート",
+      "summary": "インポート可能 {{ready}} 件 · {{total}} 件の Agent をスキャン",
+      "sectionReady": "インポート可能",
+      "sectionAdded": "追加済み",
+      "sectionUnavailable": "利用できません",
       "scanAction": "Agent をスキャン",
       "empty": "インポートできる Agent セッションがありません。",
       "scanning": "スキャン中…",

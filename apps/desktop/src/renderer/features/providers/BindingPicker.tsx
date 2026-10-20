@@ -35,6 +35,7 @@ import { isRoutingGroupProviderId } from '../../../shared/routingGroups';
 import { setAgentBinding, restoreAgentDefault } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 import { HelpHint } from '../../components/ui/HelpHint';
+import { noDragRegion } from '../../components/ui/modal';
 
 const SEARCH_THRESHOLD = 8; // show the model filter only once a provider has many
 
@@ -515,6 +516,7 @@ export function BindingPicker({
 
 const overlayStyle = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',

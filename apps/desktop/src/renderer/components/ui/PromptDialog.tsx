@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type CSSProperties } from 'react';
 import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import { controlInputStyle } from './controlStyles';
+import { noDragRegion } from './modal';
 
 /** In-app replacement for `window.prompt()` — same shell as {@link ConfirmDialog}. */
 export function PromptDialog({
@@ -114,6 +115,7 @@ export function PromptDialog({
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',

@@ -45,6 +45,7 @@ import {
   type McpWriteResult,
 } from '../../../shared/mcp';
 import type { McpGatewaySnapshot } from '../../../shared/mcpGateway';
+import { noDragRegion } from '../../components/ui/modal';
 
 const mono = 'ui-monospace, monospace';
 
@@ -1138,6 +1139,7 @@ const warnStyle: CSSProperties = { margin: `0 0 ${space.md}px`, fontSize: fontSi
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',
