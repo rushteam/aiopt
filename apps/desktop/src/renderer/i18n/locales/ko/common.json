@@ -171,6 +171,10 @@
     },
     "import": {
       "heading": "설치된 Agent에서 가져오기",
+      "summary": "가져오기 가능 {{ready}}개 · Agent {{total}}개 검색",
+      "sectionReady": "가져오기 가능",
+      "sectionAdded": "추가됨",
+      "sectionUnavailable": "사용할 수 없음",
       "scanAction": "Agent 스캔",
       "empty": "가져올 수 있는 Agent 세션이 없습니다.",
       "scanning": "스캔 중…",

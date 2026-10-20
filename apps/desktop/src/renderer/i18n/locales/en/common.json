@@ -178,6 +178,10 @@
     },
     "import": {
       "heading": "Import from installed agents",
+      "summary": "{{ready}} ready to import · {{total}} agents scanned",
+      "sectionReady": "Ready to import",
+      "sectionAdded": "Already added",
+      "sectionUnavailable": "Not available",
       "scanAction": "Scan agents",
       "empty": "No importable agent sessions found.",
       "scanning": "Scanning…",

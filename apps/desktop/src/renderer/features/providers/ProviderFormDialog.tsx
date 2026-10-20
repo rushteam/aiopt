@@ -43,6 +43,7 @@ import {
 import { EyeIcon } from '../../components/ui/EyeIcon';
 import { providerErrorMessage } from './errors';
 import { PROVIDER_PRESETS } from './presets';
+import { noDragRegion } from '../../components/ui/modal';
 
 // A single editable model row. Fields stay as strings (empty allowed while typing);
 // blanks are dropped on submit.
@@ -887,6 +888,7 @@ export function ProviderFormDialog({
 
 const overlayStyle = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',

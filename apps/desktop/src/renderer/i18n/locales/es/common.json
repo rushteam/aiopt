@@ -171,6 +171,10 @@
     },
     "import": {
       "heading": "Importar desde agents instalados",
+      "summary": "{{ready}} listos para importar · {{total}} agents analizados",
+      "sectionReady": "Listos para importar",
+      "sectionAdded": "Ya añadidos",
+      "sectionUnavailable": "No disponibles",
       "scanAction": "Escanear agents",
       "empty": "No se encontraron sesiones de agent importables.",
       "scanning": "Escaneando…",

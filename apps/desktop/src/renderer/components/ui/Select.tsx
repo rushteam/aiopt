@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -67,7 +68,11 @@ export function Select({
   const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: LIST_MAX_HEIGHT });
+  // Only keyboard moves scroll the list to the highlighted row. Pointer hover must never
+  // scroll it: the row under the cursor is already visible, and scrolling on hover is what
+  // made a wheel-scrolled list jump back.
+  const scrollToHighlight = useRef(false);
 
   const entries = flattenEntries(options, groups);
   const selectable = entries.filter((e) => !e.option.disabled);
@@ -84,20 +89,42 @@ export function Select({
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setOpen(false);
     };
+    // The list is fixed-positioned against the trigger's rect at open time. If anything
+    // behind it scrolls (the dialog body) or the window resizes, that rect is stale and
+    // the list would float detached, so close it. Scrolling the list itself is fine.
+    const onScroll = (e: Event): void => {
+      if (listRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onResize = (): void => setOpen(false);
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
     };
   }, [open]);
 
-  useEffect(() => {
+  // On open only (not on every render — `selectable` is a fresh array each time, and
+  // re-running this on hover reset the highlight and scrolled the list back to the
+  // selected row): highlight the current value and bring it into view once.
+  useLayoutEffect(() => {
     if (!open) return;
     const idx = selectable.findIndex((e) => e.option.value === value);
     setHighlight(idx >= 0 ? idx : 0);
+    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-time snapshot by design
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !scrollToHighlight.current) return;
+    scrollToHighlight.current = false;
     listRef.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
-  }, [open, selectable, value]);
+  }, [open, highlight]);
 
   function openList(): void {
     if (disabled) return;
@@ -110,12 +137,13 @@ export function Select({
       left = window.innerWidth - listWidth - margin;
     }
     left = Math.max(margin, left);
-    let top = rect.bottom + 4;
-    const maxHeight = 280;
-    if (top + maxHeight > window.innerHeight - margin) {
-      top = Math.max(margin, rect.top - 4 - Math.min(maxHeight, 240));
-    }
-    setPos({ top, left, width: listWidth });
+    // Open below when it fits, otherwise on the side with more room, sized to that room.
+    const below = window.innerHeight - margin - (rect.bottom + 4);
+    const above = rect.top - 4 - margin;
+    const flipUp = below < LIST_MAX_HEIGHT && above > below;
+    const maxHeight = Math.max(120, Math.min(LIST_MAX_HEIGHT, flipUp ? above : below));
+    const top = flipUp ? Math.max(margin, rect.top - 4 - maxHeight) : rect.bottom + 4;
+    setPos({ top, left, width: listWidth, maxHeight });
     setOpen(true);
   }
 
@@ -127,15 +155,19 @@ export function Select({
 
   function onTriggerKeyDown(e: ReactKeyboardEvent<HTMLButtonElement>): void {
     if (disabled) return;
-    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      if (!open) openList();
-      else if (e.key === 'Enter' && highlight >= 0) pick(selectable[highlight]!.option.value);
+      openList();
+    } else if (open && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      if (highlight >= 0 && selectable[highlight]) pick(selectable[highlight].option.value);
     } else if (e.key === 'ArrowUp' && open) {
       e.preventDefault();
+      scrollToHighlight.current = true;
       setHighlight((h) => (h <= 0 ? selectable.length - 1 : h - 1));
     } else if (e.key === 'ArrowDown' && open) {
       e.preventDefault();
+      scrollToHighlight.current = true;
       setHighlight((h) => (h + 1) % selectable.length);
     }
   }
@@ -184,6 +216,7 @@ export function Select({
               ...listStyle,
               top: pos.top,
               left: pos.left,
+              maxHeight: pos.maxHeight,
               width: Math.max(pos.width, 160),
             }}
           >
@@ -251,11 +284,14 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
+const LIST_MAX_HEIGHT = 320;
+
 const listStyle: CSSProperties = {
   position: 'fixed',
   zIndex: 40,
-  maxHeight: 280,
-  overflow: 'auto',
+  overflowY: 'auto',
+  // Reaching either end of the list must not scroll the dialog behind it.
+  overscrollBehavior: 'contain',
   padding: space.xs,
   borderRadius: radius.md,
   border: `1px solid ${token('border')}`,

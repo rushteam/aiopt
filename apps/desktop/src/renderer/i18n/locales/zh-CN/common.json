@@ -178,6 +178,10 @@
     },
     "import": {
       "heading": "从已安装 Agent 导入",
+      "summary": "可导入 {{ready}} 个 · 共扫描 {{total}} 个 Agent",
+      "sectionReady": "可导入",
+      "sectionAdded": "已添加",
+      "sectionUnavailable": "暂不可用",
       "scanAction": "扫描 Agent",
       "empty": "未发现可导入的 Agent 登录。",
       "scanning": "扫描中…",

@@ -14,6 +14,7 @@ import type { RoutingDecision, RoutingGroupStatus, RoutingMemberStatus } from '.
 import { AGENT_SPECS } from '../../../shared/aiProviders';
 import { formatModelRef } from '../../../shared/modelRef';
 import { retryRoutingMemberNow } from '../../lib/routingStatusStore';
+import { noDragRegion } from '../../components/ui/modal';
 
 /** Series colors per member, in member order (cycled): hit-share bar + routing flow. */
 export const MEMBER_SERIES_COLORS: TokenName[] = ['accent', 'chartOutput', 'chartCache', 'chartTrend'];
@@ -335,6 +336,7 @@ const hitBarStyle = {
 
 const overlayStyle = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'flex',

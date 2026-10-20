@@ -18,6 +18,7 @@ import { hoverBackground } from '../../lib/hover';
 import { useT } from '../../i18n';
 import { revealAgentConfig } from '../../lib/providerStore';
 import type { AgentConfigFile, AgentSummary } from '../../../shared/ipc-channels';
+import { noDragRegion } from '../../components/ui/modal';
 
 export function AgentConfigDialog({
   agent,
@@ -150,6 +151,7 @@ function ConfigFileRow({ agentId, file }: { agentId: AgentSummary['id']; file: A
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',

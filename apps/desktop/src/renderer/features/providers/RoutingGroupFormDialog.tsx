@@ -14,6 +14,7 @@ import { ROUTING_AFFINITIES, ROUTING_STRATEGIES } from '../../../shared/routingG
 import { addRoutingGroup, updateRoutingGroup } from '../../lib/providerStore';
 import { providerErrorMessage } from './errors';
 import { formatModelRef } from '../../../shared/modelRef';
+import { noDragRegion } from '../../components/ui/modal';
 
 export function RoutingGroupFormDialog({
   providers,
@@ -278,6 +279,7 @@ export function RoutingGroupFormDialog({
 
 const overlayStyle = {
   position: 'fixed',
+  ...noDragRegion,
   inset: 0,
   background: token('overlay'),
   display: 'grid',
