@@ -895,6 +895,8 @@
       }
     },
     "chat": {
+      "jumpToLatest": "Ir a lo más reciente",
+      "loadingOlder": "Cargando mensajes anteriores…",
       "title": "Coordinador",
       "reset": "Nueva conversación",
       "empty": "Describe lo que quieres hacer. El coordinador propone tareas en el tablero. Ejecutar inicia cada una como un agente propio que puede cambiar archivos en su carpeta, así que nada se ejecuta hasta que pulses Ejecutar (o actives la ejecución automática).",

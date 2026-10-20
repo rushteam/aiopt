@@ -143,6 +143,48 @@ describe('transcript reducer', () => {
     expect(items.at(-1)).toMatchObject({ message: `e${WORKBENCH_LIMITS.chatItems + 4}` });
   });
 
+  it('windows the newest items and pages older ones by id', () => {
+    const tr = createTranscript();
+    for (let i = 0; i < 100; i += 1) tr.pushError(`e${i}`);
+    const w = tr.window(40);
+    expect(w.items).toHaveLength(40);
+    expect(w.hasMore).toBe(true);
+    expect(w.items[0]).toMatchObject({ message: 'e60' });
+
+    const p1 = tr.page(w.items[0]!.id, 40);
+    expect(p1.items.map((i) => (i as { message: string }).message)).toEqual(
+      Array.from({ length: 40 }, (_, i) => `e${20 + i}`),
+    );
+    expect(p1.hasMore).toBe(true);
+    const p2 = tr.page(p1.items[0]!.id, 40);
+    expect(p2.items).toHaveLength(20);
+    expect(p2.hasMore).toBe(false);
+    expect(tr.page(p2.items[0]!.id, 40)).toEqual({ items: [], hasMore: false });
+    expect(tr.page('nope', 40)).toEqual({ items: [], hasMore: false });
+  });
+
+  it('widens the window back to a reply that is still streaming', () => {
+    const tr = createTranscript();
+    tr.apply({ type: 'agent_start' });
+    tr.apply({ type: 'message_start', message: { role: 'assistant' } });
+    for (let i = 0; i < 10; i += 1) tr.pushError(`e${i}`);
+    const w = tr.window(3);
+    expect(w.items).toHaveLength(11);
+    expect(w.items[0]).toMatchObject({ kind: 'assistant', streaming: true });
+    expect(w.hasMore).toBe(false);
+  });
+
+  it('bumps the epoch when the transcript is replaced', () => {
+    const tr = createTranscript();
+    const e0 = tr.epoch();
+    tr.pushError('x');
+    expect(tr.epoch()).toBe(e0);
+    tr.clear();
+    expect(tr.epoch()).toBe(e0 + 1);
+    tr.load([]);
+    expect(tr.epoch()).toBe(e0 + 2);
+  });
+
   it('returns copies, so callers cannot mutate the live transcript', () => {
     const tr = createTranscript();
     tr.pushError('x');

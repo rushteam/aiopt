@@ -29,8 +29,12 @@ export const WORKBENCH_LIMITS = {
   /** Workers running at once (each is a pi process with its own model traffic). */
   liveTasks: 6,
   folders: 20,
-  /** Transcript items kept in memory; the oldest drop first. */
-  chatItems: 200,
+  /** Transcript items kept in memory (main) and in view (renderer); the oldest drop first. */
+  chatItems: 1000,
+  /** Newest transcript items each snapshot carries; older ones are paged in on demand. */
+  chatWindow: 40,
+  /** Items one older-history page returns. */
+  chatPage: 40,
   /** Characters kept per transcript text (assistant text, tool args/result). */
   itemText: 32_000,
   /** Lines of a worker's terminal shown in the task panel. */
@@ -366,7 +370,15 @@ export interface WorkbenchSnapshot {
   lastNotify: WorkbenchNotifyPreview | null;
   /** Whether the orchestrator is currently producing a reply. */
   streaming: boolean;
+  /**
+   * Main sends only the newest `chatWindow` items; the renderer store keeps what it has seen
+   * and pages older items in (`chatPage`), so in the renderer this is the whole loaded view.
+   */
   chat: ChatItem[];
+  /** Whether older items exist before `chat[0]` (load them with `chatPage`). */
+  chatHasMore: boolean;
+  /** Bumps whenever the transcript is replaced; a page fetched under another epoch is stale. */
+  chatEpoch: number;
   tasks: TaskView[];
   folders: FolderView[];
   /** The herdr session name, for the "attach from a terminal" hint. */
@@ -380,6 +392,13 @@ export interface WorkbenchSnapshot {
   /** The conversation the coordinator is in now, whose plan the task pane shows. */
   currentConversationId: string | null;
   settings: WorkbenchSettings;
+}
+
+/** One page of older transcript items (oldest first), ending just before the item asked for. */
+export interface WorkbenchChatPage {
+  items: ChatItem[];
+  hasMore: boolean;
+  epoch: number;
 }
 
 /** The tail of a worker's terminal. */

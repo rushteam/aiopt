@@ -61,7 +61,7 @@ import type {
   McpRevealValueResult,
   McpWriteResult,
 } from '../shared/mcp';
-import type { TaskOutput, WorkbenchSnapshot } from '../shared/workbench';
+import type { TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
@@ -480,6 +480,9 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.workbenchPlanRun, { conversationId }),
     openConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationOpen, { conversationId }),
+    /** Older coordinator chat items before `beforeId` (oldest first). Read-only. */
+    chatPage: (beforeId: string): Promise<WorkbenchChatPage> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId }),
     deleteConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationDelete, { conversationId }),
     updateSettings: (request: WorkbenchSettingsUpdateRequest): Promise<WorkbenchSnapshot> =>
