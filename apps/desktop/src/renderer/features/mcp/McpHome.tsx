@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { disabledOpacity, elevation, fontSize, radius, space, token } from '../../themes/tokens';
+import { DetailDialog } from '../../components/ui/DetailDialog';
 import { hoverBackground } from '../../lib/hover';
 import { useT, type TranslateFn } from '../../i18n';
 import { ScrollTabScreen } from '../../components/TabScreenShell';
@@ -209,9 +210,11 @@ export function McpHome() {
             }
           />
 
-          {selectedRow && (
+          {/* Hidden while the edit form is open: one modal at a time. */}
+          {selectedRow && !editing && (
             <DetailPanel
               row={selectedRow}
+              onClose={() => (confirm ? setConfirm(null) : setSelected(null))}
               agents={columns}
               busy={busy}
               confirm={confirm}
@@ -460,6 +463,7 @@ function CellChip({ info, cell, t }: { info: McpAgentInfo; cell: McpMatrixRow['a
 
 function DetailPanel({
   row,
+  onClose,
   agents,
   busy,
   confirm,
@@ -478,6 +482,7 @@ function DetailPanel({
   onGateway,
 }: {
   row: McpMatrixRow;
+  onClose: () => void;
   agents: McpAgentInfo[];
   busy: boolean;
   confirm: Confirm | null;
@@ -503,11 +508,17 @@ function DetailPanel({
   const copyCount = (lib ? 1 : 0) + agents.filter((a) => row.agents[a.agentId]?.entry).length;
 
   return (
-    <section style={detailStyle}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: fontSize.xl }}>{row.name}</h2>
-        {lib && <span style={badgeStyle}>{t(`mcp.transport.${lib.transport}`)}</span>}
-      </div>
+    <DetailDialog
+      labelId="mcp-detail-title"
+      closeLabel={t('mcp.diff.close')}
+      onClose={onClose}
+      title={
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' }}>
+          <h2 id="mcp-detail-title" style={{ margin: 0, fontSize: fontSize.xl, overflowWrap: 'anywhere' }}>{row.name}</h2>
+          {lib && <span style={badgeStyle}>{t(`mcp.transport.${lib.transport}`)}</span>}
+        </div>
+      }
+    >
       {lib ? (
         <>
           <div style={summaryStyle} title={mcpSummary(lib)}>{mcpSummary(lib)}</div>
@@ -644,7 +655,7 @@ function DetailPanel({
                   onClick={() =>
                     setConfirm({
                       text: copyCount <= 1 ? t('mcp.confirm.deleteAgentLast') : t('mcp.confirm.deleteAgent'),
-                      confirmLabel: t('mcp.actions.delete'),
+                      confirmLabel: t('mcp.actions.deleteAgent'),
                       run: () => onDeleteAgent(a.agentId),
                     })
                   }
@@ -667,7 +678,7 @@ function DetailPanel({
           }
         />
       )}
-    </section>
+    </DetailDialog>
   );
 }
 
@@ -1279,6 +1290,12 @@ const confirmBarStyle: CSSProperties = {
   padding: '10px 14px',
   marginBottom: space.lg,
   borderRadius: radius.md,
+  // Pinned to the top of the dialog body so it stays in view when it was opened from a
+  // row further down.
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  background: token('bg'),
   border: `1px solid ${token('danger')}`,
 };
 

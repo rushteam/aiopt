@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { disabledOpacity, fontSize, radius, space, token } from '../../themes/tokens';
+import { DetailDialog } from '../../components/ui/DetailDialog';
 import { hoverBackground } from '../../lib/hover';
 import { useI18n, type Locale, type TranslateFn } from '../../i18n';
 import { useSkills } from '../../hooks/useSkills';
@@ -252,6 +253,7 @@ export function SkillsHome() {
         {selectedRow && (
           <DetailPanel
             row={selectedRow}
+            onClose={() => (confirm ? setConfirm(null) : setSelected(null))}
             agents={availableAgents}
             agentName={agentName}
             busy={busy}
@@ -399,6 +401,7 @@ function Matrix({
 
 function DetailPanel({
   row,
+  onClose,
   agents,
   agentName,
   busy,
@@ -418,6 +421,7 @@ function DetailPanel({
   locale,
 }: {
   row: SkillMatrixRow;
+  onClose: () => void;
   agents: { id: AgentId; name: string }[];
   agentName: (id: AgentId) => string;
   busy: boolean;
@@ -446,16 +450,22 @@ function DetailPanel({
     (hasCentral ? 1 : 0) + agents.filter((a) => row.agents[a.id]?.entry != null).length;
 
   return (
-    <section style={detailStyle}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: fontSize.xl }}>{row.name}</h2>
-        {hasCentral && row.central && (
-          <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
-            {numberFormat.format(row.central.fileCount)} {t('skills.meta.files')} ·{' '}
-            {formatBytes(row.central.totalBytes)}
-          </span>
-        )}
-      </div>
+    <DetailDialog
+      labelId="skill-detail-title"
+      closeLabel={t('skills.close')}
+      onClose={onClose}
+      title={
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' }}>
+          <h2 id="skill-detail-title" style={{ margin: 0, fontSize: fontSize.xl, overflowWrap: 'anywhere' }}>{row.name}</h2>
+          {hasCentral && row.central && (
+            <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>
+              {numberFormat.format(row.central.fileCount)} {t('skills.meta.files')} ·{' '}
+              {formatBytes(row.central.totalBytes)}
+            </span>
+          )}
+        </div>
+      }
+    >
       <p style={{ margin: '4px 0 16px', color: token('textMuted'), fontSize: fontSize.base }}>
         {description || t('skills.detail.noDescription')}
       </p>
@@ -616,7 +626,7 @@ function DetailPanel({
                         copyCount <= 1
                           ? t('skills.confirm.deleteAgentLast')
                           : t('skills.confirm.deleteAgent'),
-                      confirmLabel: t('skills.actions.delete'),
+                      confirmLabel: t('skills.actions.deleteAgent'),
                       run: async () => onDeleteAgent(a.id),
                     })
                   }
@@ -644,7 +654,7 @@ function DetailPanel({
           t={t}
         />
       )}
-    </section>
+    </DetailDialog>
   );
 }
 
@@ -1117,14 +1127,6 @@ const bodyCellStyle = {
   whiteSpace: 'nowrap',
 } as const;
 
-const detailStyle = {
-  marginTop: 24,
-  padding: space['2xl'],
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.lg,
-  background: token('surface'),
-} as const;
-
 const confirmBarStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -1132,6 +1134,12 @@ const confirmBarStyle = {
   padding: '10px 14px',
   marginBottom: 16,
   borderRadius: radius.md,
+  // Pinned to the top of the dialog body so it stays in view when it was opened from a
+  // row further down.
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  background: token('bg'),
   border: `1px solid ${token('danger')}`,
 } as const;
 
