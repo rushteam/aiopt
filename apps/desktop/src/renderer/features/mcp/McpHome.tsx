@@ -644,7 +644,7 @@ function DetailPanel({
                   onClick={() =>
                     setConfirm({
                       text: copyCount <= 1 ? t('mcp.confirm.deleteAgentLast') : t('mcp.confirm.deleteAgent'),
-                      confirmLabel: t('mcp.actions.delete'),
+                      confirmLabel: t('mcp.actions.deleteAgent'),
                       run: () => onDeleteAgent(a.agentId),
                     })
                   }

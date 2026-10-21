@@ -616,7 +616,7 @@ function DetailPanel({
                         copyCount <= 1
                           ? t('skills.confirm.deleteAgentLast')
                           : t('skills.confirm.deleteAgent'),
-                      confirmLabel: t('skills.actions.delete'),
+                      confirmLabel: t('skills.actions.deleteAgent'),
                       run: async () => onDeleteAgent(a.id),
                     })
                   }
