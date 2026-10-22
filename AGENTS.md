@@ -45,6 +45,9 @@
   read `docs/dev-rules/add-bindable-agent.md`.
 - Before changing agent binding apply/re-sync, adapter writeback, or binding drift UI:
   read `docs/dev-rules/agent-binding-drift.md`.
+- Before adding a browser task, attaching a `WebContentsView`, or giving an agent any
+  page-reading/page-driving tool: read `docs/dev-rules/browser-tasks.md`. **Remote web content
+  in the app is a gated change** requiring the gatekeeper's explicit sign-off.
 - Before changing MCP server management (library, agent MCP config writes, the write confirmation):
   read `docs/dev-rules/mcp-servers.md`.
 - Before changing the opt-in MCP gateway (AiOpt running MCP servers, the `aiopt` agent entry):
