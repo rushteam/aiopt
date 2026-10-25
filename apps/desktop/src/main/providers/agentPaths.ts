@@ -12,6 +12,7 @@
 //      declared below may be written; fsutil refuses anything else.
 
 import os from 'node:os';
+import fs from 'node:fs';
 import path from 'node:path';
 import {
   AGENT_SPECS,
@@ -45,6 +46,50 @@ export const CODEARTS_SETTINGS_RELATIVES = [
 export function agentHome(): string {
   const override = process.env.AIOPT_AGENT_HOME;
   return override && override.trim() !== '' ? override : os.homedir();
+}
+
+/**
+ * Resolve the DSH Home used by both DeepSeek Harness and DSH Desktop.
+ *
+ * DSH Desktop keeps its selected Home in a small locator beside the default Home.  The
+ * locator is deliberately read-only from AiOpt: Desktop owns profile/data-directory changes;
+ * AiOpt only follows the currently selected directory when binding.  A sandbox always wins so
+ * tests and development can never read the real user's Desktop locator.
+ */
+export function dshHome(): string {
+  const explicit = process.env.DSH_HOME?.trim();
+  if (explicit && !process.env.AIOPT_AGENT_HOME) return explicit;
+
+  const fallback = path.join(agentHome(), '.dsh');
+  // Stable DSH Desktop stores this locator in its own Electron appData, rather than in the
+  // DSH Home. Keep the platform candidates explicit: this module is also used without Electron.
+  const appData = process.platform === 'darwin'
+    ? path.join(agentHome(), 'Library', 'Application Support')
+    : process.platform === 'win32'
+      ? path.join(agentHome(), 'AppData', 'Roaming')
+      : path.join(agentHome(), '.config');
+  const locators = [
+    path.join(appData, 'DSH Desktop', 'home', 'data-directory', 'state.json'),
+    // Older/Next builds persisted their locator beside the default Home.
+    path.join(fallback, 'desktop-next-location.json'),
+  ];
+  for (const locator of locators) {
+    try {
+      const stat = fs.lstatSync(locator);
+      if (!stat.isFile() || stat.isSymbolicLink()) continue;
+      const value: unknown = JSON.parse(fs.readFileSync(locator, 'utf8').replace(/^\uFEFF/, ''));
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+      const record = value as { activeHome?: unknown; home?: unknown };
+      const candidate = record.activeHome ?? record.home;
+      if (typeof candidate !== 'string' || !path.isAbsolute(candidate) || candidate.includes('\\0')) continue;
+      const resolved = path.resolve(candidate);
+      const homeStat = fs.lstatSync(resolved);
+      if (homeStat.isDirectory() && !homeStat.isSymbolicLink()) return resolved;
+    } catch {
+      // A malformed or unavailable Desktop locator must never prevent normal DSH use.
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -98,6 +143,11 @@ const AGENT_INSTALL_DIRS: Partial<Record<AgentId, string>> = Object.fromEntries(
 
 /** Resolve one relative config file (from AGENT_FILES) to an absolute path under home. */
 export function resolveAgentFile(relativePath: string): string {
+  // DSH Desktop can move the active DSH Home outside ~/.dsh. Keep the public relative
+  // roles stable while resolving only DSH's declared files through that selected Home.
+  if (relativePath === '.dsh/settings.yaml' || relativePath === '.dsh/.credentials.yaml') {
+    return path.join(dshHome(), path.basename(relativePath));
+  }
   return path.join(agentHome(), relativePath);
 }
 
@@ -121,6 +171,7 @@ export function agentConfigPaths(id: AgentId): string[] {
 
 /** The directory an agent stores its config in (used for install detection). */
 export function agentConfigDir(id: AgentId): string {
+  if (id === 'dsh') return dshHome();
   return path.join(agentHome(), AGENT_INSTALL_DIRS[id] ?? `.${id}`);
 }
 
@@ -146,7 +197,9 @@ function allAllowedConfigPaths(): string[] {
     ...Object.values(AGENT_FILES).flatMap((files) => Object.values(files)),
     ...Object.values(MCP_CONFIG_FILES),
     ...CODEARTS_SETTINGS_RELATIVES,
-  ].map((rel) => path.join(home, rel));
+  ].map((rel) => (rel === AGENT_FILES.dsh.settings || rel === AGENT_FILES.dsh.credentials
+    ? path.join(dshHome(), path.basename(rel))
+    : path.join(home, rel)));
 }
 
 /**

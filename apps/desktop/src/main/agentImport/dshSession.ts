@@ -20,21 +20,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseDocument } from 'yaml';
-import { agentHome } from '../providers/agentPaths';
+import { dshHome } from '../providers/agentPaths';
 
 export const DSH_DEEPSEEK_REF = 'DEEPSEEK_API_KEY';
 
 export interface DshSessionSnapshot {
   available: boolean;
   accountLabel: string | null;
-}
-
-function dshHome(): string {
-  // `$DSH_HOME` is dsh's own override; a dev/test sandbox (`AIOPT_AGENT_HOME`) still wins so a
-  // run never reads the developer's real key.
-  const override = process.env.DSH_HOME?.trim();
-  if (override && !process.env.AIOPT_AGENT_HOME) return override;
-  return path.join(agentHome(), '.dsh');
 }
 
 function credentialsPath(): string {

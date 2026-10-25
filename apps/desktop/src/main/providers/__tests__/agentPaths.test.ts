@@ -87,6 +87,35 @@ describe('agentConfigDir (install detection, derived from AGENT_SPECS)', () => {
     expect(agentConfigDir('pi')).toBe(path.join(home, '.pi'));
     expect(agentConfigDir('dsh')).toBe(path.join(home, '.dsh'));
   });
+
+  it('follows a valid DSH Desktop data-directory locator', async () => {
+    const custom = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-dsh-home-'));
+    const appData = process.platform === 'darwin'
+      ? path.join(home, 'Library', 'Application Support')
+      : process.platform === 'win32'
+        ? path.join(home, 'AppData', 'Roaming')
+        : path.join(home, '.config');
+    const locator = path.join(appData, 'DSH Desktop', 'home', 'data-directory', 'state.json');
+    fs.mkdirSync(path.dirname(locator), { recursive: true });
+    fs.writeFileSync(locator, JSON.stringify({ version: 1, activeHome: custom }));
+    expect(agentConfigDir('dsh')).toBe(custom);
+    expect(resolveAgentFile(AGENT_FILES.dsh.settings)).toBe(path.join(custom, 'settings.yaml'));
+    fs.rmSync(custom, { recursive: true, force: true });
+  });
+
+  it('ignores malformed, symlinked, or unavailable DSH Desktop locators', () => {
+    const appData = process.platform === 'darwin'
+      ? path.join(home, 'Library', 'Application Support')
+      : process.platform === 'win32'
+        ? path.join(home, 'AppData', 'Roaming')
+        : path.join(home, '.config');
+    const locator = path.join(appData, 'DSH Desktop', 'home', 'data-directory', 'state.json');
+    fs.mkdirSync(path.dirname(locator), { recursive: true });
+    fs.writeFileSync(locator, '{bad');
+    expect(agentConfigDir('dsh')).toBe(path.join(home, '.dsh'));
+    fs.writeFileSync(locator, JSON.stringify({ home: path.join(home, 'missing') }));
+    expect(agentConfigDir('dsh')).toBe(path.join(home, '.dsh'));
+  });
 });
 
 describe('agentConfigFiles / agentConfigPaths (role-keyed view of the allowlist)', () => {
