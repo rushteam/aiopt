@@ -118,3 +118,39 @@ body {
     opacity: 0.85;
   }
 }
+
+/* Chat "working" indicator (features/workbench/workbenchChat.tsx ChatLoadingIndicator): a 3×3
+ * pixel grid whose cells light up in a sweep. Decoration only — the label beside it carries the
+ * status — so reduced motion gets a still grid. */
+@keyframes aiopt-pixel-on {
+  0%, 100% { opacity: 0.15; }
+  40% { opacity: 0.9; }
+}
+
+.aiopt-pixel-loader {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 1.5px;
+  flex-shrink: 0;
+}
+
+.aiopt-pixel-loader > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--color-text);
+  opacity: 0.15;
+  animation: aiopt-pixel-on 650ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiopt-pixel-loader > span {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* The chat composer's field sits borderless inside its card; the card's border shows focus. */
+.aiopt-chat-input::placeholder {
+  color: var(--color-text-muted);
+}

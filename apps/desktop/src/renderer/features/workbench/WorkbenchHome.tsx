@@ -39,7 +39,14 @@ import { PlanPanel } from './PlanPanel';
 import { ProposalCard, type ProposalBoard } from './ProposalCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { StatusLabel } from './TaskStatusLabel';
-import { WorkbenchChatComposer } from './workbenchChat';
+import {
+  ChatColumn,
+  ChatEmptyState,
+  ChatLoadingIndicator,
+  UserBubble,
+  WorkbenchChatComposer,
+  assistantTextStyle,
+} from './workbenchChat';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
 import { useMentionSource } from './mentionPicker';
 import type { TaskSeed } from './taskSeed';
@@ -206,14 +213,20 @@ function ChatPane({
     folders: wb.folders,
   });
   const renderItem = useCallback(
-    (item: ChatItem) =>
-      item.kind === 'proposal' ? (
-        <ProposalCard taskIds={item.taskIds} wb={board} t={t} run={stableRun} onSelectTask={onSelectTask} />
-      ) : (
-        <ChatEntry item={item} tasks={board.tasks} t={t} />
-      ),
+    (item: ChatItem) => (
+      <ChatColumn>
+        {item.kind === 'proposal' ? (
+          <ProposalCard taskIds={item.taskIds} wb={board} t={t} run={stableRun} onSelectTask={onSelectTask} />
+        ) : (
+          <ChatEntry item={item} tasks={board.tasks} t={t} />
+        )}
+      </ChatColumn>
+    ),
     [board, t, stableRun, onSelectTask],
   );
+  // The coordinator is busy but has not streamed a word yet: show it is working.
+  const last = wb.chat[wb.chat.length - 1];
+  const waiting = wb.streaming && !(last?.kind === 'assistant' && last.streaming && last.text !== '');
 
   const addTaskMention = (taskId: string): void => {
     setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
@@ -306,10 +319,20 @@ function ChatPane({
           const payload = readTaskMentionDrop(e);
           if (payload) addTaskMention(payload.id);
         }}
+        gap={space.xl}
+        padding={space.xl}
+        footer={
+          waiting ? (
+            <ChatColumn>
+              <ChatLoadingIndicator label={t('workbench.chat.working')} />
+            </ChatColumn>
+          ) : undefined
+        }
         empty={
-          <p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>
-            {ready ? t('workbench.chat.empty') : t('workbench.chat.notRunning')}
-          </p>
+          <ChatEmptyState
+            title={t('workbench.chat.emptyTitle')}
+            body={ready ? t('workbench.chat.empty') : t('workbench.chat.notRunning')}
+          />
         }
       />
       <div style={{ flexShrink: 0 }}>
@@ -367,48 +390,39 @@ function useStableValue<T>(next: T): T {
 function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskView[]; t: TranslateFn }) {
   switch (item.kind) {
     case 'user':
-      return (
-        <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
-          <span className="sr-only">{t('workbench.chat.you')}</span>
-          <div
-            style={{
-              padding: '8px 12px',
-              borderRadius: radius.lg,
-              background: token('surfaceHover'),
-              fontSize: fontSize.md,
-              whiteSpace: 'pre-wrap',
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {renderTextWithTaskMentions(item.text, tasks)}
-          </div>
-        </div>
-      );
+      return <UserBubble t={t}>{renderTextWithTaskMentions(item.text, tasks)}</UserBubble>;
     case 'assistant':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs, maxWidth: '100%' }}>
           {item.thinking && (
             <details>
-              <summary style={{ cursor: 'pointer', fontSize: fontSize.sm, color: token('textMuted') }}>
-                {t('workbench.chat.thinking')}
-              </summary>
-              <div style={{ ...preStyle, marginTop: space.xs }}>{item.thinking}</div>
+              <summary style={disclosureSummaryStyle}>{t('workbench.chat.thinking')}</summary>
+              <div style={thinkingStyle}>{item.thinking}</div>
             </details>
           )}
-          {item.text && (
-            <div style={{ fontSize: fontSize.md, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.text}</div>
-          )}
-          {item.streaming && (
-            <span style={{ fontSize: fontSize.sm, color: token('textMuted') }}>{t('workbench.chat.replying')}</span>
-          )}
+          {item.text && <div style={assistantTextStyle}>{item.text}</div>}
+          {item.streaming && item.text === '' && <ChatLoadingIndicator label={t('workbench.chat.replying')} />}
         </div>
       );
     case 'tool': {
       const state = !item.done ? 'running' : item.isError ? 'failed' : 'done';
       return (
         <details style={{ fontSize: fontSize.sm }}>
-          <summary style={{ cursor: 'pointer', color: token('textMuted') }}>
-            <code style={codeStyle}>{item.name}</code> · {t(`workbench.chat.tool.${state}`)}
+          <summary style={disclosureSummaryStyle}>
+            <span
+              aria-hidden
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 6,
+                marginRight: space.sm,
+                borderRadius: radius.pill,
+                verticalAlign: 'middle',
+                background: state === 'failed' ? token('danger') : state === 'done' ? token('success') : token('accent'),
+              }}
+            />
+            <code style={codeStyle}>{item.name}</code>
+            <span style={{ marginLeft: space.sm }}>{t(`workbench.chat.tool.${state}`)}</span>
           </summary>
           <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs, marginTop: space.xs }}>
             {item.args && (
@@ -624,6 +638,26 @@ const paneHeaderStyle: CSSProperties = {
 };
 
 const paneTitleStyle: CSSProperties = { margin: 0, fontSize: fontSize.lg, fontWeight: 600 };
+
+const disclosureSummaryStyle: CSSProperties = {
+  cursor: 'pointer',
+  fontSize: fontSize.sm,
+  color: token('textMuted'),
+  userSelect: 'none',
+};
+
+// Reasoning reads as an aside: a quiet indented column, not a boxed block.
+const thinkingStyle: CSSProperties = {
+  marginTop: space.xs,
+  padding: `${space.xs}px 0 ${space.xs}px ${space.lg}px`,
+  borderLeft: `2px solid ${token('border')}`,
+  fontSize: fontSize.sm,
+  lineHeight: 1.6,
+  color: token('textMuted'),
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+  userSelect: 'text',
+};
 
 const codeStyle: CSSProperties = {
   fontFamily: 'ui-monospace, monospace',

@@ -1,7 +1,7 @@
 // Shared Workbench chat shell — coordinator and task workers use the same composer + bubbles.
 
 import { useCallback, useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { useMentionPicker, type MentionSource } from './mentionPicker';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
@@ -16,6 +16,88 @@ export interface WorkbenchChatLine {
   text: string;
 }
 
+/** Widest a transcript / composer column grows: long lines past ~75 characters read poorly. */
+export const CHAT_COLUMN_MAX_WIDTH = 760;
+
+/** Centers chat content in a readable column, however wide the pane is. */
+export function ChatColumn({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        maxWidth: CHAT_COLUMN_MAX_WIDTH,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The user's turn: a soft right-aligned bubble that fits its text. */
+export function UserBubble({ children, t }: { children: ReactNode; t: TranslateFn }) {
+  return (
+    <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
+      <span className="sr-only">{t('workbench.chat.you')}</span>
+      <div style={userBubbleStyle}>{children}</div>
+    </div>
+  );
+}
+
+/** An agent's reply text: no bubble, roomy line-height, selectable. */
+export const assistantTextStyle: CSSProperties = {
+  fontSize: fontSize.md,
+  lineHeight: 1.65,
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+  maxWidth: '100%',
+  userSelect: 'text',
+};
+
+/**
+ * "Working" indicator: a 3×3 pixel grid that ripples, the label, and the seconds since it
+ * appeared. The ripple is decoration (global.css stops it under reduced motion); the label is
+ * the status a screen reader hears.
+ */
+export function ChatLoadingIndicator({ label }: { label: string }) {
+  const elapsed = useElapsedLabel();
+  return (
+    <div role="status" aria-label={label} style={{ display: 'flex', alignItems: 'center', gap: space.md, minHeight: 20 }}>
+      <span aria-hidden className="aiopt-pixel-loader">
+        {PIXEL_DELAYS.map((delay, i) => (
+          <span key={i} style={{ animationDelay: `${delay}ms` }} />
+        ))}
+      </span>
+      <span style={{ fontSize: fontSize.base, fontWeight: 500, color: token('textMuted') }}>{label}</span>
+      <span aria-hidden style={{ fontSize: fontSize.sm, color: token('textMuted'), fontVariantNumeric: 'tabular-nums' }}>
+        {elapsed}
+      </span>
+    </div>
+  );
+}
+
+// A chevron sweep across the grid: each cell's delay grows with its column and its distance
+// from the middle row.
+const PIXEL_DELAYS = Array.from({ length: 9 }, (_, i) => ((i % 3) + Math.abs(Math.floor(i / 3) - 1)) * 90);
+
+function useElapsedLabel(): string {
+  const [startedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(startedAt);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, []);
+  const seconds = (now - startedAt) / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+}
+
 export function WorkbenchChatBubble({ line, t }: { line: WorkbenchChatLine; t: TranslateFn }) {
   if (line.role === 'notice') {
     return (
@@ -24,29 +106,41 @@ export function WorkbenchChatBubble({ line, t }: { line: WorkbenchChatLine; t: T
       </p>
     );
   }
-  if (line.role === 'user') {
-    return (
-      <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
-        <span className="sr-only">{t('workbench.chat.you')}</span>
-        <div style={userBubbleStyle}>{line.text}</div>
-      </div>
-    );
-  }
-  return (
-    <div style={{ fontSize: fontSize.md, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '100%' }}>
-      {line.text}
-    </div>
-  );
+  if (line.role === 'user') return <UserBubble t={t}>{line.text}</UserBubble>;
+  return <div style={assistantTextStyle}>{line.text}</div>;
 }
 
 const userBubbleStyle: CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: radius.lg,
+  padding: '8px 14px',
+  borderRadius: radius['2xl'],
   background: token('surfaceHover'),
   fontSize: fontSize.md,
+  lineHeight: 1.55,
   whiteSpace: 'pre-wrap',
   overflowWrap: 'anywhere',
+  userSelect: 'text',
 };
+
+/** Centered empty-state copy for a transcript. */
+export function ChatEmptyState({ title, body }: { title?: string; body: string }) {
+  return (
+    <div
+      style={{
+        margin: 'auto',
+        maxWidth: 420,
+        padding: space.xl,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: space.sm,
+        textAlign: 'center',
+      }}
+    >
+      {title && <p style={{ margin: 0, fontSize: fontSize.xl, fontWeight: 600, color: token('text') }}>{title}</p>}
+      <p style={{ margin: 0, fontSize: fontSize.base, lineHeight: 1.6, color: token('textMuted') }}>{body}</p>
+    </div>
+  );
+}
 
 export function WorkbenchChatComposer({
   draft,
@@ -115,78 +209,115 @@ export function WorkbenchChatComposer({
     }
   };
 
+  const canSend = !disabled && draft.trim() !== '';
+  const [focused, setFocused] = useState(false);
+
   return (
-    <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      style={{
-        borderTop: `1px solid ${token('border')}`,
-        padding: space.lg,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: space.sm,
-        outline: dropActive ? `2px solid ${token('accent')}` : 'none',
-        outlineOffset: -2,
-        borderRadius: dropActive ? radius.md : 0,
-        position: 'relative',
-      }}
-    >
-      {picker.menu}
-      <textarea
-        ref={textRef}
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          picker.sync(e.target);
-        }}
-        {...picker.textareaProps}
-        onKeyDown={onKeyDown}
-        disabled={disabled}
-        maxLength={maxLength}
-        rows={rows}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: '8px 10px',
-          borderRadius: radius.md,
-          border: `1px solid ${token('borderStrong')}`,
-          background: token('surface'),
-          color: token('text'),
-          resize: 'none',
-          fontFamily: 'inherit',
-          fontSize: fontSize.base,
-          opacity: disabled ? disabledOpacity : 1,
-        }}
-      />
-      <div style={{ display: 'flex', alignItems: 'center', gap: space.md }}>
-        <span style={{ fontSize: fontSize.xs, color: token('textMuted') }}>
-          {dropActive && dropHint ? dropHint : sendHint}
-        </span>
-        <span style={{ flex: 1 }} />
-        {streaming && onAbort && abortLabel && (
-          <button
-            type="button"
-            onClick={onAbort}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={smallGhostStyle}
-          >
-            {abortLabel}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onSend}
-          disabled={disabled || draft.trim() === ''}
-          {...hoverBackground(token('accent'), token('accentHover'))}
-          style={{ ...smallAccentStyle, opacity: disabled || draft.trim() === '' ? disabledOpacity : 1 }}
+    <div style={{ padding: `${space.xs}px ${space.lg}px ${space.lg}px` }}>
+      <ChatColumn>
+        <div
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={(e) => {
+            // Clicking the card's padding focuses the field, like one big input.
+            if (e.target === e.currentTarget) textRef.current?.focus();
+          }}
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: space.xs,
+            padding: `${space.md}px ${space.md}px ${space.sm}px ${space.lg}px`,
+            borderRadius: radius['2xl'],
+            border: `1px solid ${dropActive || focused ? token('accent') : token('borderStrong')}`,
+            background: token('surface'),
+            boxShadow: elevation('composer'),
+            opacity: disabled ? disabledOpacity : 1,
+          }}
         >
-          {sendLabel}
-        </button>
-      </div>
+          {picker.menu}
+          <textarea
+            ref={textRef}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              picker.sync(e.target);
+            }}
+            {...picker.textareaProps}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              picker.textareaProps.onBlur?.();
+            }}
+            onKeyDown={onKeyDown}
+            disabled={disabled}
+            maxLength={maxLength}
+            rows={rows}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            className="aiopt-chat-input"
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: `${space.xs}px 0`,
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              color: token('text'),
+              resize: 'none',
+              fontFamily: 'inherit',
+              fontSize: fontSize.md,
+              lineHeight: 1.5,
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: space.md, minHeight: 28 }}>
+            <span style={{ fontSize: fontSize.xs, color: token('textMuted'), minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {dropActive && dropHint ? dropHint : sendHint}
+            </span>
+            <span style={{ flex: 1 }} />
+            {streaming && onAbort && abortLabel ? (
+              <button
+                type="button"
+                onClick={onAbort}
+                aria-label={abortLabel}
+                title={abortLabel}
+                {...hoverBackground(token('text'), token('textMuted'))}
+                style={{ ...roundButtonStyle, background: token('text'), color: token('bg') }}
+              >
+                <span aria-hidden style={{ width: 10, height: 10, borderRadius: 2, background: 'currentColor' }} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onSend}
+                disabled={!canSend}
+                aria-label={sendLabel}
+                title={sendLabel}
+                {...hoverBackground(token('accent'), token('accentHover'))}
+                style={{
+                  ...roundButtonStyle,
+                  background: token('accent'),
+                  color: token('accentText'),
+                  cursor: canSend ? 'pointer' : 'default',
+                  opacity: canSend ? 1 : disabledOpacity,
+                }}
+              >
+                <SendArrow />
+              </button>
+            )}
+          </div>
+        </div>
+      </ChatColumn>
     </div>
+  );
+}
+
+function SendArrow() {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -201,17 +332,26 @@ export function WorkbenchChatThread({
   t: TranslateFn;
   footer?: ReactNode;
 }) {
-  const renderLine = useCallback((line: WorkbenchChatLine) => <WorkbenchChatBubble line={line} t={t} />, [t]);
+  const renderLine = useCallback(
+    (line: WorkbenchChatLine) => (
+      <ChatColumn>
+        <WorkbenchChatBubble line={line} t={t} />
+      </ChatColumn>
+    ),
+    [t],
+  );
   return (
     <VirtualChatList
       items={lines}
       getKey={lineKey}
       renderItem={renderLine}
       estimateHeight={estimateLineHeight}
-      footer={footer}
+      footer={footer ? <ChatColumn>{footer}</ChatColumn> : undefined}
+      gap={space.xl}
+      padding={space.xl}
       jumpLabel={t('workbench.chat.jumpToLatest')}
       loadingLabel={t('workbench.chat.loadingOlder')}
-      empty={<p style={{ margin: 'auto 0', textAlign: 'center', fontSize: fontSize.base, color: token('textMuted') }}>{empty}</p>}
+      empty={<ChatEmptyState body={empty} />}
     />
   );
 }
@@ -222,22 +362,14 @@ function estimateLineHeight(line: WorkbenchChatLine, width: number): number {
   return estimateTextHeight(line.text, Math.max(20, Math.floor(width / 9)));
 }
 
-const smallGhostStyle: CSSProperties = {
-  all: 'unset',
+const roundButtonStyle: CSSProperties = {
+  display: 'inline-grid',
+  placeItems: 'center',
+  width: 28,
+  height: 28,
+  padding: 0,
+  borderRadius: radius.pill,
+  border: 'none',
   cursor: 'pointer',
-  fontSize: fontSize.sm,
-  padding: '4px 8px',
-  borderRadius: radius.sm,
-  color: token('text'),
-};
-
-const smallAccentStyle: CSSProperties = {
-  all: 'unset',
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
-  fontWeight: 600,
-  padding: '6px 12px',
-  borderRadius: radius.sm,
-  background: token('accent'),
-  color: token('accentText'),
+  flexShrink: 0,
 };

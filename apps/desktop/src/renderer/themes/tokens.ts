@@ -115,6 +115,7 @@ export const radius = {
   md: 8, // buttons, list rows
   lg: 10, // cards
   xl: 12, // modal panels
+  '2xl': 18, // chat bubbles and the floating chat composer
   pill: 999,
 } as const;
 
@@ -191,6 +192,12 @@ export const ELEVATION = {
   menu: {
     light: '0 8px 24px rgba(0, 0, 0, 0.18)',
     dark: '0 8px 24px rgba(0, 0, 0, 0.5)',
+  },
+  // A floating chat composer: a soft, close cast that lifts it off the transcript without
+  // reading as a popover.
+  composer: {
+    light: '0 0 12px rgba(0, 0, 0, 0.05), 0 4px 14px -6px rgba(0, 0, 0, 0.09)',
+    dark: '0 0 14px rgba(0, 0, 0, 0.35), 0 4px 16px -6px rgba(0, 0, 0, 0.5)',
   },
   modal: {
     light: '0 16px 48px rgba(0, 0, 0, 0.24)',

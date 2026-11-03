@@ -899,6 +899,7 @@
       "loadingOlder": "Ältere Nachrichten werden geladen…",
       "title": "Koordinator",
       "reset": "Neue Unterhaltung",
+      "emptyTitle": "Was soll erledigt werden?",
       "empty": "Beschreiben Sie, was erledigt werden soll. Der Koordinator schlägt Aufgaben auf dem Board vor. „Ausführen“ startet jede als eigenen Agenten, der Dateien in seinem Ordner ändern kann – deshalb läuft nichts, bevor Sie auf „Ausführen“ klicken (oder die automatische Ausführung einschalten).",
       "notRunning": "Klicken Sie oben auf „Start“, um mit dem Koordinator zu chatten.",
       "placeholder": "Nachricht an den Koordinator · @ für eine Aufgabe oder Sitzung",
@@ -909,6 +910,7 @@
       "you": "Sie:",
       "thinking": "Überlegung",
       "replying": "Antwortet…",
+      "working": "Arbeitet",
       "error": "Fehler:",
       "tool": {
         "running": "läuft",

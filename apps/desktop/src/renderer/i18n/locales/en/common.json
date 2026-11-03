@@ -899,6 +899,7 @@
       "loadingOlder": "Loading earlier messages…",
       "title": "Coordinator",
       "reset": "New conversation",
+      "emptyTitle": "What should we get done?",
       "empty": "Describe what you want done. The coordinator proposes tasks on the board. Run starts each one as its own agent that can change files in its folder, so nothing runs until you press Run (or turn on auto-run).",
       "notRunning": "Press Start above to chat with the coordinator.",
       "placeholder": "Message the coordinator · type @ to mention a task or session",
@@ -909,6 +910,7 @@
       "you": "You:",
       "thinking": "Reasoning",
       "replying": "Replying…",
+      "working": "Working",
       "error": "Error:",
       "tool": {
         "running": "running",

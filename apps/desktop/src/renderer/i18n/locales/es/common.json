@@ -899,6 +899,7 @@
       "loadingOlder": "Cargando mensajes anteriores…",
       "title": "Coordinador",
       "reset": "Nueva conversación",
+      "emptyTitle": "¿Qué quieres hacer?",
       "empty": "Describe lo que quieres hacer. El coordinador propone tareas en el tablero. Ejecutar inicia cada una como un agente propio que puede cambiar archivos en su carpeta, así que nada se ejecuta hasta que pulses Ejecutar (o actives la ejecución automática).",
       "notRunning": "Pulsa Iniciar arriba para conversar con el coordinador.",
       "placeholder": "Escribe al coordinador · escribe @ para mencionar una tarea o sesión",
@@ -909,6 +910,7 @@
       "you": "Tú:",
       "thinking": "Razonamiento",
       "replying": "Respondiendo…",
+      "working": "Trabajando",
       "error": "Error:",
       "tool": {
         "running": "en curso",
