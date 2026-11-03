@@ -12,7 +12,7 @@
 // window of it, so the store folds each window into the history it holds (chatHistory.ts) and
 // pages older items in on request. `snapshot.chat` is that merged view.
 
-import { DEFAULT_WORKBENCH_SETTINGS, type WorkbenchSnapshot } from '../../shared/workbench';
+import { DEFAULT_WORKBENCH_SETTINGS, type FilePreview, type FolderListing, type WorkbenchSnapshot } from '../../shared/workbench';
 import { EMPTY_CHAT_HISTORY, mergeChatWindow, prependChatPage, type ChatHistory } from './chatHistory';
 import type {
   WorkbenchSettingsUpdateRequest,
@@ -153,6 +153,21 @@ export const updateWorkbenchSettings = (request: WorkbenchSettingsUpdateRequest)
   apply(wb().updateSettings(request));
 export const refreshHerdrProbe = (): Promise<void> => apply(wb().refreshHerdrProbe());
 export const installHerdr = (): Promise<void> => apply(wb().installHerdr());
+
+/** Read-only listing of one directory inside a granted folder (the file tree). */
+export function listFolder(folderId: string, relPath: string): Promise<FolderListing> {
+  return wb().listFolder(folderId, relPath);
+}
+
+/** Read-only text preview of one file inside a granted folder. */
+export function readFolderFile(folderId: string, relPath: string): Promise<FilePreview> {
+  return wb().readFolderFile(folderId, relPath);
+}
+
+/** Show an entry of a granted folder in the OS file manager. */
+export function revealFolderEntry(folderId: string, relPath: string): Promise<void> {
+  return wb().revealFolderEntry(folderId, relPath);
+}
 
 /** The worker's recent terminal text (already stripped of control characters by main). */
 export async function readTaskOutput(taskId: string): Promise<string> {

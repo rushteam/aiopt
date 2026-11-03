@@ -54,7 +54,7 @@ import type {
   SkillsLibraryLocation,
   SkillsSnapshot,
 } from './skills';
-import type { TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from './workbench';
+import type { FilePreview, FolderListing, TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from './workbench';
 
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
@@ -249,6 +249,9 @@ export const IPC_CHANNELS = {
   workbenchChatReset: 'workbench:chat-reset',
   workbenchFolderAdd: 'workbench:folder-add',
   workbenchFolderRemove: 'workbench:folder-remove',
+  workbenchFolderList: 'workbench:folder-list',
+  workbenchFolderRead: 'workbench:folder-read',
+  workbenchFolderReveal: 'workbench:folder-reveal',
   workbenchTaskCreate: 'workbench:task-create',
   workbenchTaskUpdate: 'workbench:task-update',
   workbenchTaskLaunch: 'workbench:task-launch',
@@ -949,6 +952,12 @@ export interface WorkbenchFolderRef {
   folderId: string;
 }
 
+/** An entry of a granted folder: the folder's opaque id plus a `/`-separated relative path. */
+export interface WorkbenchFolderListRequest {
+  folderId: string;
+  relPath: string;
+}
+
 export interface WorkbenchTaskRef {
   taskId: string;
 }
@@ -1218,6 +1227,12 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchChatReset]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchFolderAdd]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchFolderRemove]: { request: WorkbenchFolderRef; result: WorkbenchSnapshot };
+  /** Read-only listing of a directory inside a granted folder (the file tree). */
+  [IPC_CHANNELS.workbenchFolderList]: { request: WorkbenchFolderListRequest; result: FolderListing };
+  /** Read-only text preview of one file inside a granted folder. */
+  [IPC_CHANNELS.workbenchFolderRead]: { request: WorkbenchFolderListRequest; result: FilePreview };
+  /** Show a file/directory inside a granted folder in the OS file manager. */
+  [IPC_CHANNELS.workbenchFolderReveal]: { request: WorkbenchFolderListRequest; result: void };
   [IPC_CHANNELS.workbenchTaskCreate]: { request: WorkbenchTaskCreateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskUpdate]: { request: WorkbenchTaskUpdateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskLaunch]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };

@@ -838,7 +838,6 @@
     "title": "Werkbank",
     "subtitle": "Chatten Sie mit einem Koordinator, der Arbeit in Aufgaben aufteilt, und führen Sie jede freigegebene Aufgabe als eigenen pi-Agenten in einer herdr-Sitzung aus. Verwendet den Anbieter und das Modell von pi aus „Anbieter“.",
     "start": "Starten",
-    "splitResizeHandle": "Breite von Koordinator und Aufgabenbereich ändern",
     "stop": "Stoppen",
     "cancel": "Abbrechen",
     "model": "Modell:",
@@ -933,6 +932,32 @@
         "task": "Aufgabe",
         "session": "Sitzung"
       }
+    },
+    "sidebar": {
+      "label": "Workbench-Navigation",
+      "collapse": "Seitenleiste einklappen",
+      "expand": "Seitenleiste ausklappen",
+      "resize": "Seitenleistenbreite ändern"
+    },
+    "explorer": {
+      "title": "Explorer",
+      "collapse": "Explorer einklappen",
+      "expand": "Explorer öffnen",
+      "resize": "Explorerbreite ändern",
+      "refresh": "Aktualisieren",
+      "loading": "Wird geladen…",
+      "error": "Dieser Ordner konnte nicht gelesen werden.",
+      "emptyDir": "Leerer Ordner",
+      "truncated": "Es werden die ersten {{count}} Einträge angezeigt.",
+      "hint": "Klicke auf eine Datei, um sie anzuzeigen.",
+      "removeConfirm": "Diesen Ordner aus der Workbench entfernen? Dateien auf der Festplatte bleiben unverändert.",
+      "preview": "Vorschau",
+      "insert": "Im Chat referenzieren",
+      "reveal": "Im Dateimanager zeigen",
+      "closePreview": "Vorschau schließen",
+      "previewError": "Diese Datei konnte nicht gelesen werden.",
+      "binary": "Binärdatei – keine Vorschau.",
+      "previewTruncated": "Es werden die ersten {{size}} angezeigt."
     },
     "notice": {
       "board_full": "Einige vorgeschlagene Aufgaben wurden verworfen: Das Aufgaben-Board ist voll.",

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { CheckboxField } from '../../components/ui/Checkbox';
-import { WORKBENCH_LIMITS, type FolderView, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
-import { addFolder, installHerdr, removeFolder, updateWorkbenchSettings } from '../../lib/workbenchStore';
+import { type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
+import { installHerdr, updateWorkbenchSettings } from '../../lib/workbenchStore';
 import { formatModelRef } from '../../../shared/modelRef';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
@@ -106,9 +106,9 @@ export function WorkbenchTopBar({
   };
 
   const taskFolder = selectedTask ? (wb.folders.find((f) => f.id === selectedTask.folderId) ?? null) : null;
-  // Folder chips already show each workspace name — only add a "active workspace" line when it
-  // carries extra context (no folders yet, an isolated worktree path, or which folder a task uses
-  // when several are registered).
+  // The explorer already lists each folder — only add an "active workspace" line when it carries
+  // extra context (no folders yet, an isolated worktree path, or which folder a task uses when
+  // several are registered).
   const workspaceDetail: string | null =
     wb.folders.length === 0
       ? t('workbench.tasks.noFolder')
@@ -301,11 +301,6 @@ export function WorkbenchTopBar({
             <span style={{ color: token('text') }}>{workspaceDetail}</span>
           </span>
         )}
-        <FolderChips folders={wb.folders} t={t} run={run} />
-        <span aria-hidden style={{ color: token('borderStrong'), flexShrink: 0 }}>
-          ·
-        </span>
-        <AddFolderButton folders={wb.folders} t={t} run={run} />
         <span style={{ flex: 1, minWidth: 4 }} />
         <button
           ref={envButtonRef}
@@ -363,104 +358,4 @@ function linkBtnStyle(emphasize: boolean) {
     borderRadius: radius.sm,
     flexShrink: 0,
   };
-}
-
-function FolderChips({ folders, t, run }: { folders: readonly FolderView[]; t: TranslateFn; run: Runner }) {
-  if (folders.length === 0) return null;
-  return (
-    <div
-      aria-label={t('workbench.folders.label')}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        overflowX: 'auto',
-        flexShrink: 1,
-        minWidth: 0,
-        maxWidth: '28%',
-        scrollbarGutter: 'stable',
-      }}
-    >
-      {folders.map((f) => (
-        <span
-          key={f.id}
-          title={f.displayPath}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 1,
-            maxWidth: 88,
-            padding: '0 2px 0 5px',
-            borderRadius: radius.sm,
-            background: token('surface'),
-            fontSize: fontSize.xs,
-            color: token('text'),
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-          <button
-            type="button"
-            aria-label={`${t('workbench.folders.remove')}: ${f.name}`}
-            onClick={() => void run(() => removeFolder(f.id))}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              width: 16,
-              height: 16,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: token('textMuted'),
-            }}
-          >
-            ×
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function AddFolderButton({
-  folders,
-  t,
-  run,
-}: {
-  folders: readonly FolderView[];
-  t: TranslateFn;
-  run: Runner;
-}) {
-  const full = folders.length >= WORKBENCH_LIMITS.folders;
-  const hint = full ? t('workbench.folders.label') : t('workbench.folders.add');
-  return (
-    <button
-      type="button"
-      aria-label={hint}
-      title={t('workbench.folders.hint')}
-      disabled={full}
-      onClick={() => void run(addFolder)}
-      {...hoverBackground(token('surface'), token('surfaceHover'))}
-      style={{
-        all: 'unset',
-        boxSizing: 'border-box',
-        cursor: full ? 'default' : 'pointer',
-        width: 20,
-        height: 20,
-        flexShrink: 0,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: radius.sm,
-        border: `1px solid ${token('borderStrong')}`,
-        fontSize: fontSize.sm,
-        lineHeight: 1,
-        color: token('textMuted'),
-        opacity: full ? disabledOpacity : 1,
-      }}
-    >
-      +
-    </button>
-  );
 }

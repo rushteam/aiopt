@@ -46,6 +46,14 @@ export const WORKBENCH_LIMITS = {
   conversationTitle: 80,
   /** Characters of a worker's terminal kept with a task for the coordinator. */
   taskOutputTail: 2000,
+  /** Entries one folder-tree listing returns (directories first); the rest are cut off. */
+  folderEntries: 500,
+  /** Characters of a folder-relative path the file tree may name. */
+  folderRelPath: 1024,
+  /** Segments of a folder-relative path the file tree may name. */
+  folderRelDepth: 32,
+  /** Bytes of a file the explorer's read-only preview shows; the rest is cut off. */
+  filePreviewBytes: 256 * 1024,
 } as const;
 
 /** Whether the orchestrator + herdr session are running. */
@@ -404,6 +412,54 @@ export interface WorkbenchChatPage {
 /** The tail of a worker's terminal. */
 export interface TaskOutput {
   text: string;
+}
+
+/** One entry of a granted folder, as the file tree lists it. Symlinks are never listed. */
+export interface FolderEntry {
+  name: string;
+  kind: 'dir' | 'file';
+}
+
+/** A read-only listing of one directory inside a granted folder. */
+export interface FolderListing {
+  entries: FolderEntry[];
+  /** More entries exist than `WORKBENCH_LIMITS.folderEntries`. */
+  truncated: boolean;
+}
+
+/** A read-only text preview of one file inside a granted folder. */
+export interface FilePreview {
+  /** UTF-8 text, at most `WORKBENCH_LIMITS.filePreviewBytes`; '' when `binary`. */
+  text: string;
+  /** The file is larger than the preview. */
+  truncated: boolean;
+  /** The head looks binary (a NUL byte), so no text is shown. */
+  binary: boolean;
+  /** File size in bytes. */
+  size: number;
+}
+
+/**
+ * One path segment the file tree may name: no separators, no `.`/`..`, no drive or stream
+ * colon, no control characters. Entries whose name fails this are not listed, so every listed
+ * name round-trips.
+ */
+export function isValidFolderSegment(value: string): boolean {
+  if (value === '' || value === '.' || value === '..' || value.length > 255) return false;
+  // eslint-disable-next-line no-control-regex
+  return !/[/\\:\u0000-\u001f\u007f]/.test(value);
+}
+
+/**
+ * A path RELATIVE to a granted folder, `/`-separated (`''` is the folder itself). Shape only:
+ * main still resolves it and confines it to the folder (symlinks included).
+ */
+export function isValidFolderRelPath(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  if (value === '') return true;
+  if (value.length > WORKBENCH_LIMITS.folderRelPath) return false;
+  const segments = value.split('/');
+  return segments.length <= WORKBENCH_LIMITS.folderRelDepth && segments.every(isValidFolderSegment);
 }
 
 /** Opaque ids minted by main for tasks and folders. */

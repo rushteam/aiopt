@@ -1,6 +1,6 @@
 // The plan of the conversation the coordinator is in: its tasks as a DAG, progress, "run the
-// whole plan", and the selected node's detail. Each conversation owns its own plan; tasks from
-// other conversations (or from before plans existed) are listed below so they stay reachable.
+// whole plan", and the new-task form. Each conversation owns its own plan. Clicking a node
+// opens that task (its own sidebar tab); tasks of other conversations live in the sidebar.
 //
 // "Run plan" approves every waiting task of this plan in one call; main then starts each one as
 // its dependencies finish. The coordinator drives it from there (review → done) and gives the
@@ -15,8 +15,6 @@ import { WORKBENCH_LIMITS, planProgress, planTasksOf, type WorkbenchSnapshot } f
 import { TaskForm } from './TaskForm';
 import type { TaskSeed } from './taskSeed';
 import { TaskDagView } from './TaskDagView';
-import { TaskNodeDetail } from './TaskNodeDetail';
-import { StatusLabel } from './TaskStatusLabel';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
@@ -33,20 +31,14 @@ export function PlanPanel({
   t: TranslateFn;
   run: Runner;
   selectedId: string | null;
-  onSelectTask: (id: string | null) => void;
+  onSelectTask: (id: string) => void;
   /** A draft handed over from Sessions: opens the new-task form with it. */
   seed?: TaskSeed | null;
   onSeedUsed?: () => void;
 }) {
   const conversationId = wb.currentConversationId;
   const plan = useMemo(() => planTasksOf(wb.tasks, conversationId), [wb.tasks, conversationId]);
-  const others = useMemo(
-    () => wb.tasks.filter((x) => x.conversationId !== conversationId || conversationId === null),
-    [wb.tasks, conversationId],
-  );
   const progress = planProgress(plan);
-  const selected = wb.tasks.find((x) => x.id === selectedId) ?? null;
-  const [showOthers, setShowOthers] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draftSeed, setDraftSeed] = useState<TaskSeed | null>(null);
   const [seedCount, setSeedCount] = useState(0);
@@ -63,18 +55,12 @@ export function PlanPanel({
   };
   const boardFull = wb.tasks.length >= WORKBENCH_LIMITS.tasks;
 
-  // Keep a node selected while the plan has any; drop a selection that left the board.
-  useEffect(() => {
-    if (selectedId !== null && !wb.tasks.some((x) => x.id === selectedId)) onSelectTask(null);
-    else if (selectedId === null && plan.length > 0) onSelectTask(plan[0]!.id);
-  }, [selectedId, wb.tasks, plan, onSelectTask]);
-
   const canRunPlan = conversationId !== null && progress.awaitingApproval > 0 && wb.status === 'ready';
 
   return (
     <section
       aria-label={t('workbench.plan.title')}
-      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       <div style={toolbarStyle}>
         <h2 style={{ margin: 0, fontSize: fontSize.lg, fontWeight: 600 }}>{t('workbench.plan.title')}</h2>
@@ -141,72 +127,13 @@ export function PlanPanel({
           {t('workbench.plan.empty')}
         </p>
       ) : (
-        <div style={{ flexShrink: 0, borderBottom: `1px solid ${token('border')}`, maxHeight: '40%', display: 'flex' }}>
-          <TaskDagView
-            tasks={plan}
-            selectedId={selectedId}
-            onSelect={onSelectTask}
-            t={t}
-            maxHeight={null}
-          />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+          <TaskDagView tasks={plan} selectedId={selectedId} onSelect={onSelectTask} t={t} maxHeight={null} />
+          <p style={{ margin: 0, padding: `0 ${space.lg}px ${space.lg}px`, fontSize: fontSize.sm, color: token('textMuted') }}>
+            {t('workbench.plan.pickNode')}
+          </p>
         </div>
       )}
-
-      {others.length > 0 && (
-        <div style={{ flexShrink: 0, borderBottom: `1px solid ${token('border')}` }}>
-          <button
-            type="button"
-            aria-expanded={showOthers}
-            onClick={() => setShowOthers((v) => !v)}
-            {...hoverBackground('transparent', token('surfaceHover'))}
-            style={othersToggleStyle}
-          >
-            {showOthers ? '▾' : '▸'} {t('workbench.plan.others')}
-            <span style={{ marginLeft: space.xs, color: token('textMuted'), fontVariantNumeric: 'tabular-nums' }}>
-              {others.length}
-            </span>
-          </button>
-          {showOthers && (
-            <ul style={othersListStyle}>
-              {others.map((task) => (
-                <li key={task.id}>
-                  <button
-                    type="button"
-                    aria-pressed={task.id === selectedId}
-                    onClick={() => onSelectTask(task.id)}
-                    {...hoverBackground(task.id === selectedId ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
-                    style={{ ...otherRowStyle, background: task.id === selectedId ? token('surfaceHover') : 'transparent' }}
-                  >
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {task.title}
-                    </span>
-                    <StatusLabel status={task.status} approved={task.approved} t={t} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {selected ? (
-          <TaskNodeDetail
-            key={selected.id}
-            task={selected}
-            planTasks={selected.conversationId === conversationId ? plan : others}
-            wb={wb}
-            t={t}
-            run={run}
-          />
-        ) : (
-          plan.length > 0 && (
-            <p style={{ margin: 0, padding: space.lg, fontSize: fontSize.base, color: token('textMuted') }}>
-              {t('workbench.plan.pickNode')}
-            </p>
-          )
-        )}
-      </div>
     </section>
   );
 }
@@ -224,12 +151,6 @@ function stateChipStyle(state: string): CSSProperties {
     whiteSpace: 'nowrap',
   };
 }
-
-const panelStyle: CSSProperties = {
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.lg,
-  background: token('bg'),
-};
 
 const toolbarStyle: CSSProperties = {
   display: 'flex',
@@ -262,40 +183,4 @@ const ghostButtonStyle: CSSProperties = {
   cursor: 'pointer',
   fontSize: fontSize.sm,
   whiteSpace: 'nowrap',
-};
-
-const othersToggleStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  width: '100%',
-  padding: '6px 12px',
-  border: 'none',
-  background: 'transparent',
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
-  textAlign: 'left',
-};
-
-const othersListStyle: CSSProperties = {
-  listStyle: 'none',
-  margin: 0,
-  padding: `0 ${space.sm}px ${space.sm}px`,
-  maxHeight: 160,
-  overflowY: 'auto',
-};
-
-const otherRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: space.md,
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '4px 8px',
-  border: 'none',
-  borderRadius: radius.sm,
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.base,
-  textAlign: 'left',
 };

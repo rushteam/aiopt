@@ -838,7 +838,6 @@
     "title": "Atelier",
     "subtitle": "Discutez avec un coordinateur qui découpe le travail en tâches, puis lancez chaque tâche approuvée comme agent pi distinct dans une session herdr. Utilise le fournisseur et le modèle de pi définis dans Fournisseurs.",
     "start": "Démarrer",
-    "splitResizeHandle": "Redimensionner le coordinateur et les tâches",
     "stop": "Arrêter",
     "cancel": "Annuler",
     "model": "Modèle :",
@@ -933,6 +932,32 @@
         "task": "Tâche",
         "session": "Session"
       }
+    },
+    "sidebar": {
+      "label": "Navigation du workbench",
+      "collapse": "Réduire la barre latérale",
+      "expand": "Développer la barre latérale",
+      "resize": "Redimensionner la barre latérale"
+    },
+    "explorer": {
+      "title": "Explorateur",
+      "collapse": "Réduire l’explorateur",
+      "expand": "Ouvrir l’explorateur",
+      "resize": "Redimensionner l’explorateur",
+      "refresh": "Actualiser",
+      "loading": "Chargement…",
+      "error": "Impossible de lire ce dossier.",
+      "emptyDir": "Dossier vide",
+      "truncated": "Affichage des {{count}} premières entrées.",
+      "hint": "Cliquez sur un fichier pour l’afficher.",
+      "removeConfirm": "Retirer ce dossier du workbench ? Les fichiers sur le disque ne sont pas modifiés.",
+      "preview": "Aperçu",
+      "insert": "Citer dans le chat",
+      "reveal": "Afficher dans le gestionnaire de fichiers",
+      "closePreview": "Fermer l’aperçu",
+      "previewError": "Impossible de lire ce fichier.",
+      "binary": "Fichier binaire : pas d’aperçu.",
+      "previewTruncated": "Affichage des {{size}} premiers."
     },
     "notice": {
       "board_full": "Certaines tâches proposées ont été ignorées : le tableau est plein.",

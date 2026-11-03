@@ -189,6 +189,8 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
   // Session files get an mtime from the date in their name, so "newest" is predictable.
   const mtimes = new Map<string, number>();
   const dirs = new Set<string>(['/work/app', '/work/notes', '/u/.herdr/worktrees/wb-a']);
+  // A symlink: its path resolves to the target (realpath), and a listing reports it as 'other'.
+  const links = new Map<string, string>();
   const pis: FakePi[] = [];
   const spawnPi = vi.fn((_file: string, _args: readonly string[], _env: Record<string, string>) => {
     const pi = new FakePi(disk);
@@ -215,8 +217,13 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
       writeFile: (file, contents) => void disk.set(file, contents),
       readFile: (file) => disk.get(file) ?? null,
       isDirectory: (p) => dirs.has(p),
-      realpath: (p) => (dirs.has(p) ? p : null),
+      realpath: (p) => links.get(p) ?? (dirs.has(p) || disk.has(p) ? p : null),
       listDir: (dir) => [...disk.keys()].filter((f) => path.dirname(f) === dir).map((f) => path.basename(f)),
+      listDirEntries: (dir) => [
+        ...[...dirs].filter((d) => path.dirname(d) === dir && !links.has(d)).map((d) => ({ name: path.basename(d), kind: 'dir' as const })),
+        ...[...disk.keys()].filter((f) => path.dirname(f) === dir).map((f) => ({ name: path.basename(f), kind: 'file' as const })),
+        ...[...links.keys()].filter((l) => path.dirname(l) === dir).map((l) => ({ name: path.basename(l), kind: 'other' as const })),
+      ],
       statFile: (file) => {
         const contents = disk.get(file);
         if (contents === undefined) return null;
@@ -224,6 +231,10 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
         return { size: contents.length, mtimeMs: mtimes.get(file) ?? (day ? Number(day[1]) * 1000 : 0) };
       },
       readFileHead: (file, maxBytes) => disk.get(file)?.slice(0, maxBytes) ?? null,
+      readRegularFileHead: (file, maxBytes) => {
+        const contents = disk.get(file);
+        return contents === undefined ? null : { head: contents.slice(0, maxBytes), size: contents.length };
+      },
       removeFile: (file) => {
         if (!disk.delete(file)) throw new Error('ENOENT');
       },
@@ -256,6 +267,7 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
     disk,
     mtimes,
     dirs,
+    links,
     pis,
     herdr,
     spawnPi,
@@ -1205,5 +1217,82 @@ describe('workbench settings', () => {
       autoLaunchDependents: false,
       herdrSshTarget: null,
     });
+  });
+});
+
+describe('workbench folder listing', () => {
+  it('lists a granted folder read-only: directories first, sorted, symlinks left out', async () => {
+    const s = setup({}, { '/work/app/b.ts': 'x', '/work/app/a.ts': 'x', '/work/app/src/main.ts': 'x', '/work/app/.DS_Store': 'x' });
+    s.dirs.add('/work/app/src');
+    s.dirs.add('/work/app/.git');
+    s.dirs.add('/work/app/node_modules');
+    s.dirs.add('/etc');
+    s.links.set('/work/app/out', '/etc');
+    await s.wb.addFolder('/work/app');
+    const id = s.wb.getSnapshot().folders[0]!.id;
+    expect(s.wb.listFolder(id, '')).toEqual({
+      entries: [
+        { name: 'src', kind: 'dir' },
+        { name: 'a.ts', kind: 'file' },
+        { name: 'b.ts', kind: 'file' },
+      ],
+      truncated: false,
+    });
+    expect(s.wb.listFolder(id, 'src').entries).toEqual([{ name: 'main.ts', kind: 'file' }]);
+  });
+
+  it('refuses a path that leaves the folder, through .. or a symlink, and an unknown folder', async () => {
+    const s = setup();
+    s.dirs.add('/etc');
+    s.links.set('/work/app/out', '/etc');
+    await s.wb.addFolder('/work/app');
+    const id = s.wb.getSnapshot().folders[0]!.id;
+    expect(codeOf(() => s.wb.listFolder(id, '..'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.listFolder(id, 'src/../..'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.listFolder(id, '/etc'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.listFolder(id, 'out'))).toBe('NOT_FOUND');
+    expect(codeOf(() => s.wb.listFolder(id, 'missing'))).toBe('NOT_FOUND');
+    expect(codeOf(() => s.wb.listFolder('nope', ''))).toBe('NOT_FOUND');
+  });
+
+  it('previews a file inside the folder, refusing escapes, hidden entries and directories', async () => {
+    const s = setup({}, { '/work/app/src/a.ts': 'const a = 1;\n', '/etc/passwd': 'root', '/work/app/.git/config': 'x' });
+    s.dirs.add('/work/app/src');
+    s.dirs.add('/work/app/.git');
+    s.links.set('/work/app/pw', '/etc/passwd');
+    await s.wb.addFolder('/work/app');
+    const id = s.wb.getSnapshot().folders[0]!.id;
+    expect(s.wb.readFolderFile(id, 'src/a.ts')).toEqual({ text: 'const a = 1;\n', truncated: false, binary: false, size: 13 });
+    expect(codeOf(() => s.wb.readFolderFile(id, 'pw'))).toBe('NOT_FOUND');
+    expect(codeOf(() => s.wb.readFolderFile(id, '.git/config'))).toBe('NOT_FOUND');
+    expect(codeOf(() => s.wb.readFolderFile(id, 'src'))).toBe('NOT_FOUND');
+    expect(codeOf(() => s.wb.readFolderFile(id, ''))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.readFolderFile(id, '../../etc/passwd'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.readFolderFile('nope', 'src/a.ts'))).toBe('NOT_FOUND');
+    // Reveal resolves through the same confinement.
+    expect(s.wb.resolveFolderEntry(id, 'src/a.ts')).toBe('/work/app/src/a.ts');
+    expect(s.wb.resolveFolderEntry(id, '')).toBe('/work/app');
+    expect(codeOf(() => s.wb.resolveFolderEntry(id, 'pw'))).toBe('NOT_FOUND');
+  });
+
+  it('caps a preview and reports binary content without its bytes', async () => {
+    const big = 'x'.repeat(WORKBENCH_LIMITS.filePreviewBytes + 10);
+    const s = setup({}, { '/work/app/big.txt': big, '/work/app/img.png': 'PNG\u0000\u0001data' });
+    await s.wb.addFolder('/work/app');
+    const id = s.wb.getSnapshot().folders[0]!.id;
+    const preview = s.wb.readFolderFile(id, 'big.txt');
+    expect(preview.text).toHaveLength(WORKBENCH_LIMITS.filePreviewBytes);
+    expect(preview.truncated).toBe(true);
+    expect(s.wb.readFolderFile(id, 'img.png')).toEqual({ text: '', truncated: false, binary: true, size: 9 });
+  });
+
+  it('caps a listing and says it was cut off', async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < WORKBENCH_LIMITS.folderEntries + 5; i += 1) files[`/work/app/f${String(i).padStart(4, '0')}`] = 'x';
+    const s = setup({}, files);
+    await s.wb.addFolder('/work/app');
+    const listing = s.wb.listFolder(s.wb.getSnapshot().folders[0]!.id, '');
+    expect(listing.entries).toHaveLength(WORKBENCH_LIMITS.folderEntries);
+    expect(listing.truncated).toBe(true);
   });
 });

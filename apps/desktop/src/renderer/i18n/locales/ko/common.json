@@ -838,7 +838,6 @@
     "title": "워크벤치",
     "subtitle": "작업을 태스크로 나누는 코디네이터와 대화하고, 승인한 각 태스크를 herdr 세션 안의 독립된 pi 에이전트로 실행합니다. 공급자 탭에서 pi에 연결한 공급자와 모델을 사용합니다.",
     "start": "시작",
-    "splitResizeHandle": "코디네이터와 태스크 영역 너비 조절",
     "stop": "중지",
     "cancel": "취소",
     "model": "모델:",
@@ -933,6 +932,32 @@
         "task": "태스크",
         "session": "세션"
       }
+    },
+    "sidebar": {
+      "label": "워크벤치 탐색",
+      "collapse": "사이드바 접기",
+      "expand": "사이드바 펼치기",
+      "resize": "사이드바 너비 조정"
+    },
+    "explorer": {
+      "title": "탐색기",
+      "collapse": "탐색기 접기",
+      "expand": "탐색기 열기",
+      "resize": "탐색기 너비 조정",
+      "refresh": "새로 고침",
+      "loading": "불러오는 중…",
+      "error": "이 폴더를 읽을 수 없습니다.",
+      "emptyDir": "빈 폴더",
+      "truncated": "처음 {{count}}개 항목만 표시합니다.",
+      "hint": "파일을 클릭하면 미리 볼 수 있습니다.",
+      "removeConfirm": "이 폴더를 워크벤치에서 제거할까요? 디스크의 파일은 변경되지 않습니다.",
+      "preview": "미리 보기",
+      "insert": "채팅에서 참조",
+      "reveal": "파일 관리자에서 보기",
+      "closePreview": "미리 보기 닫기",
+      "previewError": "이 파일을 읽을 수 없습니다.",
+      "binary": "바이너리 파일이라 미리 볼 수 없습니다.",
+      "previewTruncated": "처음 {{size}}만 표시합니다."
     },
     "notice": {
       "board_full": "태스크 보드가 가득 차서 제안된 태스크 일부가 버려졌습니다.",

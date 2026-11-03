@@ -61,7 +61,7 @@ import type {
   McpRevealValueResult,
   McpWriteResult,
 } from '../shared/mcp';
-import type { TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from '../shared/workbench';
+import type { FilePreview, FolderListing, TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
@@ -454,6 +454,15 @@ const api = {
     addFolder: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderAdd),
     removeFolder: (folderId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderRemove, { folderId }),
+    /** Read-only listing of a directory inside a granted folder (`relPath` relative, `/`-separated). */
+    listFolder: (folderId: string, relPath: string): Promise<FolderListing> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderList, { folderId, relPath }),
+    /** Read-only text preview of one file inside a granted folder. */
+    readFolderFile: (folderId: string, relPath: string): Promise<FilePreview> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderRead, { folderId, relPath }),
+    /** Show an entry of a granted folder in the OS file manager (never opens it). */
+    revealFolderEntry: (folderId: string, relPath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderReveal, { folderId, relPath }),
     createTask: (request: WorkbenchTaskCreateRequest): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskCreate, request),
     updateTask: (request: WorkbenchTaskUpdateRequest): Promise<WorkbenchSnapshot> =>

@@ -43,10 +43,15 @@ import {
   isLiveTaskStatus,
   isTaskStatus,
   isValidConversationId,
+  isValidFolderRelPath,
+  isValidFolderSegment,
   isValidWorkbenchBranch,
   isValidWorkbenchId,
   sanitizeWorkbenchText,
   type ConversationView,
+  type FolderEntry,
+  type FilePreview,
+  type FolderListing,
   type FolderView,
   type TaskFailure,
   type TaskOrigin,
@@ -128,10 +133,17 @@ export interface WorkbenchFs {
   realpath(p: string): string | null;
   /** Entry names in a directory ([] when missing). */
   listDir(dir: string): string[];
+  /** Entries of a directory with their kind, not following symlinks ('other'); [] when missing. */
+  listDirEntries(dir: string): { name: string; kind: 'dir' | 'file' | 'other' }[];
   /** Size and mtime of a regular file (not following a symlink), or null. */
   statFile(file: string): { size: number; mtimeMs: number } | null;
   /** Up to `maxBytes` from the start of a file, or null when unreadable. */
   readFileHead(file: string, maxBytes: number): string | null;
+  /**
+   * Up to `maxBytes` of a REGULAR file plus its size, checked on the open descriptor (no
+   * symlink followed, never blocking on a FIFO/device); null when it is anything else.
+   */
+  readRegularFileHead(file: string, maxBytes: number): { head: string; size: number } | null;
   removeFile(file: string): void;
 }
 
@@ -182,6 +194,9 @@ export interface TaskDraft {
   dependsOn?: string[] | null;
 }
 
+/** Bulky or internal entries the file tree never lists. */
+const FOLDER_TREE_HIDDEN = new Set(['.git', 'node_modules', '.DS_Store']);
+
 export interface WorkbenchManager {
   getSnapshot(): WorkbenchSnapshot;
   start(): Promise<void>;
@@ -194,6 +209,18 @@ export interface WorkbenchManager {
   /** `dir` comes from the main-side folder picker, never from the renderer. */
   addFolder(dir: string): Promise<void>;
   removeFolder(folderId: string): void;
+  /**
+   * Read-only listing of one directory inside a granted folder. `relPath` is `/`-separated
+   * and relative to the folder; anything resolving outside it (`..`, a symlink) is refused.
+   */
+  listFolder(folderId: string, relPath: string): FolderListing;
+  /** Read-only text preview of one regular file inside a granted folder (same confinement). */
+  readFolderFile(folderId: string, relPath: string): FilePreview;
+  /**
+   * The absolute path of a file or directory inside a granted folder, for "reveal in file
+   * manager" only. Resolved and confined here; the renderer never supplies or sees it.
+   */
+  resolveFolderEntry(folderId: string, relPath: string): string;
   createTask(draft: TaskDraft): string;
   updateTask(taskId: string, patch: Partial<TaskDraft>): void;
   launchTask(taskId: string): void;
@@ -1453,6 +1480,56 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     changed();
   }
 
+  /**
+   * `relPath` inside the granted folder, resolved through symlinks and then confined to it:
+   * `..`, a link out of the folder, and the hidden entries the tree never lists all refuse.
+   */
+  function resolveInFolder(folderId: string, relPath: string): string {
+    const folder = folderById(folderId);
+    if (!folder) throwIpcError('NOT_FOUND', 'folder not found');
+    if (!isValidFolderRelPath(relPath)) throwIpcError('INVALID_PARAMS', 'invalid relPath');
+    if (relPath !== '' && relPath.split('/').some((seg) => FOLDER_TREE_HIDDEN.has(seg))) {
+      throwIpcError('NOT_FOUND', 'entry not found');
+    }
+    const root = deps.fs.realpath(folder.path);
+    if (!root) throwIpcError('NOT_FOUND', 'folder not found');
+    const target = relPath === '' ? root : deps.fs.realpath(path.join(root, ...relPath.split('/')));
+    const rel = target === null ? null : path.relative(root, target);
+    const outside = rel === null || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
+    if (target === null || outside) throwIpcError('NOT_FOUND', 'entry not found');
+    return target;
+  }
+
+  function listFolder(folderId: string, relPath: string): FolderListing {
+    const target = resolveInFolder(folderId, relPath);
+    if (!deps.fs.isDirectory(target)) throwIpcError('NOT_FOUND', 'directory not found');
+    const all = deps.fs
+      .listDirEntries(target)
+      .filter((e): e is FolderEntry => e.kind !== 'other' && !FOLDER_TREE_HIDDEN.has(e.name) && isValidFolderSegment(e.name))
+      .map((e) => ({ name: e.name, kind: e.kind }));
+    all.sort((a, b) => (a.kind === b.kind ? (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) : a.kind === 'dir' ? -1 : 1));
+    const max = WORKBENCH_LIMITS.folderEntries;
+    return { entries: all.slice(0, max), truncated: all.length > max };
+  }
+
+  function readFolderFile(folderId: string, relPath: string): FilePreview {
+    if (relPath === '') throwIpcError('INVALID_PARAMS', 'invalid relPath');
+    const target = resolveInFolder(folderId, relPath);
+    // Only a regular file is read (no directory, device, FIFO or socket), checked on the fd.
+    const max = WORKBENCH_LIMITS.filePreviewBytes;
+    const read = deps.fs.readRegularFileHead(target, max);
+    if (!read) throwIpcError('NOT_FOUND', 'file not found');
+    const truncated = read.size > max;
+    if (read.head.includes('\u0000')) return { text: '', truncated, binary: true, size: read.size };
+    // A cut can split a multi-byte character; drop the replacement char it decodes to.
+    const text = truncated ? read.head.replace(/\uFFFD$/, '') : read.head;
+    return { text, truncated, binary: false, size: read.size };
+  }
+
+  function resolveFolderEntry(folderId: string, relPath: string): string {
+    return resolveInFolder(folderId, relPath);
+  }
+
   // --- tasks ----------------------------------------------------------------------------
 
   function requireTask(taskId: string, action: TaskAction): TaskRecord {
@@ -1928,6 +2005,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     chatReset,
     addFolder,
     removeFolder,
+    listFolder,
+    readFolderFile,
+    resolveFolderEntry,
     createTask,
     updateTask,
     launchTask,

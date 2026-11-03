@@ -838,7 +838,6 @@
     "title": "工作台",
     "subtitle": "与协调者对话，由它把工作拆成任务；每个经你批准的任务都作为独立的 pi Agent 在 herdr 会话中运行。使用「供应商」页里 pi 绑定的供应商与模型。",
     "start": "启动",
-    "splitResizeHandle": "拖动以调整协调者与任务区域宽度",
     "stop": "停止",
     "cancel": "取消",
     "model": "模型：",
@@ -933,6 +932,32 @@
         "task": "任务",
         "session": "会话"
       }
+    },
+    "sidebar": {
+      "label": "工作台导航",
+      "collapse": "收起侧栏",
+      "expand": "展开侧栏",
+      "resize": "调整侧栏宽度"
+    },
+    "explorer": {
+      "title": "资源管理器",
+      "collapse": "收起资源管理器",
+      "expand": "打开资源管理器",
+      "resize": "调整资源管理器宽度",
+      "refresh": "刷新",
+      "loading": "加载中…",
+      "error": "无法读取此文件夹。",
+      "emptyDir": "空文件夹",
+      "truncated": "仅显示前 {{count}} 项。",
+      "hint": "点击文件即可预览。",
+      "removeConfirm": "要从工作台移除此文件夹吗？磁盘上的文件不受影响。",
+      "preview": "预览",
+      "insert": "在对话中引用",
+      "reveal": "在文件管理器中显示",
+      "closePreview": "关闭预览",
+      "previewError": "无法读取此文件。",
+      "binary": "二进制文件，无法预览。",
+      "previewTruncated": "仅显示前 {{size}}。"
     },
     "notice": {
       "board_full": "任务板已满，部分提议的任务被丢弃。",

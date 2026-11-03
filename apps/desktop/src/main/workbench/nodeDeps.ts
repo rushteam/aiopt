@@ -52,6 +52,17 @@ export const nodeWorkbenchFs: WorkbenchFs = {
       return [];
     }
   },
+  listDirEntries: (dir) => {
+    try {
+      // Dirent kinds come from lstat semantics: a symlink is 'other' and is never followed.
+      return fs.readdirSync(dir, { withFileTypes: true }).map((d) => ({
+        name: d.name,
+        kind: d.isDirectory() ? ('dir' as const) : d.isFile() ? ('file' as const) : ('other' as const),
+      }));
+    } catch {
+      return [];
+    }
+  },
   statFile: (file) => {
     try {
       // lstat: a symlink is not a regular file, so a planted link is never followed.
@@ -68,6 +79,24 @@ export const nodeWorkbenchFs: WorkbenchFs = {
       const buf = Buffer.alloc(maxBytes);
       const n = fs.readSync(fd, buf, 0, maxBytes, 0);
       return buf.subarray(0, n).toString('utf8');
+    } catch {
+      return null;
+    } finally {
+      if (fd !== null) fs.closeSync(fd);
+    }
+  },
+  readRegularFileHead: (file, maxBytes) => {
+    let fd: number | null = null;
+    try {
+      // O_NOFOLLOW: a symlink swapped in after the caller resolved the path fails to open.
+      // O_NONBLOCK: a FIFO swapped in does not hang main; fstat then rejects it.
+      const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
+      fd = fs.openSync(file, flags);
+      const st = fs.fstatSync(fd);
+      if (!st.isFile()) return null;
+      const buf = Buffer.alloc(Math.min(maxBytes, st.size));
+      const n = buf.length > 0 ? fs.readSync(fd, buf, 0, buf.length, 0) : 0;
+      return { head: buf.subarray(0, n).toString('utf8'), size: st.size };
     } catch {
       return null;
     } finally {

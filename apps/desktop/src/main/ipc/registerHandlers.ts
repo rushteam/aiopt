@@ -125,6 +125,8 @@ export function registerHandlers(): void {
       if (result.canceled || result.filePaths.length === 0) return null;
       return result.filePaths[0] ?? null;
     },
+    // Only a path the workbench manager confined to a granted folder; reveal, never open.
+    revealItem: (absolutePath: string) => shell.showItemInFolder(absolutePath),
   });
   const appShortcutStore = getAppShortcutStore();
   registerAppShortcutIpc(registry, appShortcutStore);

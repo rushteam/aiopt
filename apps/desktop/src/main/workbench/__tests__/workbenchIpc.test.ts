@@ -25,6 +25,9 @@ function setup(picked: string | null = '/work/app') {
     chatReset: vi.fn(async () => {}),
     addFolder: vi.fn(async () => {}),
     removeFolder: vi.fn(),
+    listFolder: vi.fn(() => ({ entries: [{ name: 'src', kind: 'dir' as const }], truncated: false })),
+    readFolderFile: vi.fn(() => ({ text: 'hi', truncated: false, binary: false, size: 2 })),
+    resolveFolderEntry: vi.fn(() => '/work/app/src/a.ts'),
     createTask: vi.fn(() => 'id1'),
     updateTask: vi.fn(),
     launchTask: vi.fn(),
@@ -44,9 +47,10 @@ function setup(picked: string | null = '/work/app') {
     installHerdr: vi.fn(async () => {}),
   } satisfies WorkbenchManager;
   const pickFolder = vi.fn(async () => picked);
+  const revealItem = vi.fn();
   const reg = createInMemoryRegistry();
-  registerWorkbenchIpc(reg, manager, { pickFolder });
-  return { reg, manager, pickFolder };
+  registerWorkbenchIpc(reg, manager, { pickFolder, revealItem });
+  return { reg, manager, pickFolder, revealItem };
 }
 
 async function codeOf(p: Promise<unknown>): Promise<string> {
@@ -62,14 +66,15 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
-    const { reg, manager, pickFolder } = setup();
-    expect(CHANNELS).toHaveLength(25);
+    const { reg, manager, pickFolder, revealItem } = setup();
+    expect(CHANNELS).toHaveLength(28);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
       );
     }
     expect(pickFolder).not.toHaveBeenCalled();
+    expect(revealItem).not.toHaveBeenCalled();
     for (const fn of Object.values(manager)) expect(fn).not.toHaveBeenCalled();
   });
 
@@ -81,6 +86,47 @@ describe('workbench ipc', () => {
     const cancelled = setup(null);
     await cancelled.reg.invoke(IPC_CHANNELS.workbenchFolderAdd, undefined, trusted);
     expect(cancelled.manager.addFolder).not.toHaveBeenCalled();
+  });
+
+  it('lists a folder by id plus a relative path, refusing a path that escapes before the manager runs', async () => {
+    const { reg, manager } = setup();
+    expect(await reg.invoke(IPC_CHANNELS.workbenchFolderList, { folderId: 'f1', relPath: 'src/lib' }, trusted)).toEqual({
+      entries: [{ name: 'src', kind: 'dir' }],
+      truncated: false,
+    });
+    expect(manager.listFolder).toHaveBeenCalledWith('f1', 'src/lib');
+    for (const relPath of ['..', 'a/../..', '/etc', 'C:\\x', 'a//b', 'a\\..', 7, undefined]) {
+      expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchFolderList, { folderId: 'f1', relPath }, trusted))).toBe(
+        'INVALID_PARAMS',
+      );
+    }
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchFolderList, { folderId: '../x', relPath: '' }, trusted))).toBe(
+      'INVALID_PARAMS',
+    );
+    expect(manager.listFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it('previews and reveals a folder entry by id plus a relative path, never a renderer path', async () => {
+    const { reg, manager, revealItem } = setup();
+    expect(await reg.invoke(IPC_CHANNELS.workbenchFolderRead, { folderId: 'f1', relPath: 'src/a.ts' }, trusted)).toEqual({
+      text: 'hi',
+      truncated: false,
+      binary: false,
+      size: 2,
+    });
+    expect(manager.readFolderFile).toHaveBeenCalledWith('f1', 'src/a.ts');
+    await reg.invoke(IPC_CHANNELS.workbenchFolderReveal, { folderId: 'f1', relPath: 'src/a.ts' }, trusted);
+    expect(manager.resolveFolderEntry).toHaveBeenCalledWith('f1', 'src/a.ts');
+    // Main reveals the path the MANAGER resolved; the payload carries none.
+    expect(revealItem).toHaveBeenCalledWith('/work/app/src/a.ts');
+    for (const channel of [IPC_CHANNELS.workbenchFolderRead, IPC_CHANNELS.workbenchFolderReveal]) {
+      for (const relPath of ['..', '/etc/passwd', 'a/../../b', 'a\\b', 7]) {
+        expect(await codeOf(reg.invoke(channel, { folderId: 'f1', relPath }, trusted))).toBe('INVALID_PARAMS');
+      }
+      expect(await codeOf(reg.invoke(channel, { folderId: '../x', relPath: 'a' }, trusted))).toBe('INVALID_PARAMS');
+    }
+    expect(manager.readFolderFile).toHaveBeenCalledTimes(1);
+    expect(revealItem).toHaveBeenCalledTimes(1);
   });
 
   it('rejects malformed ids and oversized text before the manager runs', async () => {

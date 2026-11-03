@@ -838,7 +838,6 @@
     "title": "Workbench",
     "subtitle": "Chat with a coordinator that breaks work into tasks, then run each approved task as its own pi agent in a herdr session. Uses pi's provider and model from Providers.",
     "start": "Start",
-    "splitResizeHandle": "Resize coordinator and task panes",
     "stop": "Stop",
     "cancel": "Cancel",
     "model": "Model:",
@@ -933,6 +932,32 @@
         "task": "Task",
         "session": "Session"
       }
+    },
+    "sidebar": {
+      "label": "Workbench navigation",
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar",
+      "resize": "Resize sidebar"
+    },
+    "explorer": {
+      "title": "Explorer",
+      "collapse": "Collapse explorer",
+      "expand": "Open explorer",
+      "resize": "Resize explorer",
+      "refresh": "Refresh",
+      "loading": "Loading…",
+      "error": "Could not read this folder.",
+      "emptyDir": "Empty folder",
+      "truncated": "Showing the first {{count}} entries.",
+      "hint": "Click a file to preview it.",
+      "removeConfirm": "Remove this folder from the workbench? Files on disk are not touched.",
+      "preview": "Preview",
+      "insert": "Reference in chat",
+      "reveal": "Reveal in file manager",
+      "closePreview": "Close preview",
+      "previewError": "Could not read this file.",
+      "binary": "Binary file — no preview.",
+      "previewTruncated": "Showing the first {{size}}."
     },
     "notice": {
       "board_full": "Some proposed tasks were dropped: the task board is full.",

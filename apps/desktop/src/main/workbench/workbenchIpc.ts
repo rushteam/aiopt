@@ -10,12 +10,30 @@
 import type { IpcHandlerRegistry } from '../ipc/registry';
 import { requireObject, requireString, throwIpcError } from '../ipc/validate';
 import { IPC_CHANNELS } from '../../shared/ipc-channels';
-import { WORKBENCH_LIMITS, isValidConversationId, isValidWorkbenchId } from '../../shared/workbench';
+import {
+  WORKBENCH_LIMITS,
+  isValidConversationId,
+  isValidFolderRelPath,
+  isValidWorkbenchId,
+} from '../../shared/workbench';
 import type { WorkbenchManager } from './workbenchManager';
 
 export interface WorkbenchIpcDeps {
   /** Open a main-side folder picker; resolves to the chosen absolute path, or null if cancelled. */
   pickFolder: () => Promise<string | null>;
+  /**
+   * Show an absolute path in the OS file manager (`shell.showItemInFolder`). Only ever a path
+   * the MANAGER resolved and confined to a granted folder — never one the renderer supplied.
+   */
+  revealItem: (absolutePath: string) => void;
+}
+
+/** `{folderId, relPath}` of a folder entry, shape-checked (the manager confines it). */
+function requireFolderEntry(payload: unknown): { folderId: string; relPath: string } {
+  const obj = requireObject(payload);
+  const folderId = requireId(obj.folderId, 'folderId');
+  if (!isValidFolderRelPath(obj.relPath)) throwIpcError('INVALID_PARAMS', 'invalid relPath');
+  return { folderId, relPath: obj.relPath };
 }
 
 function requireId(raw: unknown, name: string): string {
@@ -150,6 +168,26 @@ export function registerWorkbenchIpc(
     meta.assertTrustedSender();
     manager.removeFolder(requireId(requireObject(payload).folderId, 'folderId'));
     return snapshot();
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderList, (payload, meta) => {
+    meta.assertTrustedSender();
+    // Shape only; the manager resolves it and confines it to the granted folder.
+    const { folderId, relPath } = requireFolderEntry(payload);
+    return manager.listFolder(folderId, relPath);
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderRead, (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    return manager.readFolderFile(folderId, relPath);
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderReveal, (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    // Reveal only: the file manager selects the entry, it never opens or runs it.
+    deps.revealItem(manager.resolveFolderEntry(folderId, relPath));
   });
 
   registry.register(IPC_CHANNELS.workbenchTaskCreate, (payload, meta) => {

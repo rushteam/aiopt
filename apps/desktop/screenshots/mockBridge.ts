@@ -22,7 +22,7 @@ import type { UsageBucket, UsageDailyPoint, UsageSnapshot, UsageTotals } from '.
 import type { LocalUsageSnapshot, SessionsSnapshot } from '../src/shared/agentSessions';
 import type { McpSnapshot } from '../src/shared/mcp';
 import type { SkillEntry, SkillMatrixRow, SkillsSnapshot } from '../src/shared/skills';
-import type { WorkbenchSnapshot } from '../src/shared/workbench';
+import type { FolderEntry, WorkbenchSnapshot } from '../src/shared/workbench';
 import { AGENT_SPECS, type AgentId, type AgentSpec } from '../src/shared/aiProviders';
 import { MENU_COMMANDS, type MenuCommand } from '../src/shared/menuCommands';
 import { shiftDayKey } from '../src/shared/usageStats';
@@ -383,6 +383,51 @@ const prefs: PreferencesShape = {
 };
 
 // The workbench is shown mid-session. It is fixed data: the harness never runs an agent.
+// The explorer's demo file tree, keyed `${folderId}:${relPath}` (dirs first, like main).
+const DEMO_TREE: Record<string, FolderEntry[]> = {
+  'f1:': [
+    { name: 'public', kind: 'dir' },
+    { name: 'src', kind: 'dir' },
+    { name: 'CHANGELOG.md', kind: 'file' },
+    { name: 'package.json', kind: 'file' },
+    { name: 'README.md', kind: 'file' },
+  ],
+  'f1:src': [
+    { name: 'components', kind: 'dir' },
+    { name: 'theme.css', kind: 'file' },
+    { name: 'main.ts', kind: 'file' },
+  ],
+  'f1:src/components': [
+    { name: 'Header.tsx', kind: 'file' },
+    { name: 'ThemeToggle.tsx', kind: 'file' },
+  ],
+  'f1:public': [{ name: 'favicon.svg', kind: 'file' }],
+  'f2:': [{ name: 'support-tickets.md', kind: 'file' }],
+};
+
+const DEMO_FILES: Record<string, string> = {
+  'src/components/ThemeToggle.tsx': [
+    "import { useEffect, useState } from 'react';",
+    '',
+    "type Theme = 'light' | 'dark';",
+    '',
+    'export function ThemeToggle() {',
+    "  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) ?? 'light');",
+    '  useEffect(() => {',
+    '    document.documentElement.dataset.theme = theme;',
+    "    localStorage.setItem('theme', theme);",
+    '  }, [theme]);',
+    '  return (',
+    "    <button type=\"button\" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>",
+    "      {theme === 'light' ? 'Dark mode' : 'Light mode'}",
+    '    </button>',
+    '  );',
+    '}',
+    '',
+  ].join('\n'),
+  'CHANGELOG.md': '# Changelog\n\n## Unreleased\n\n- Dark-mode toggle in the header.\n',
+};
+
 const workbenchSnapshot: WorkbenchSnapshot = {
   lastNotify: null,
   status: 'ready',
@@ -615,6 +660,15 @@ const bridge: AiOptBridge = {
     reset: refused,
     addFolder: refused,
     removeFolder: refused,
+    listFolder: async (folderId: string, relPath: string) => ({
+      entries: DEMO_TREE[`${folderId}:${relPath}`] ?? [],
+      truncated: false,
+    }),
+    readFolderFile: async (_folderId: string, relPath: string) => {
+      const text = DEMO_FILES[relPath] ?? `// ${relPath}\n`;
+      return { text, truncated: false, binary: false, size: text.length };
+    },
+    revealFolderEntry: async () => {},
     createTask: refused,
     updateTask: refused,
     launchTask: refused,

@@ -1,44 +1,58 @@
 // Workbench — a multi-agent work assistant built from pi + herdr (see shared/workbench.ts).
 //
-// Two panes under one status bar: on the left, the chat with the COORDINATOR (a headless pi
-// that breaks work down and proposes tasks), which leads; on the right, the PLAN of the
-// conversation it is in — its tasks as a DAG, with the selected node's detail. Nothing runs
-// until the user approves a task or the whole plan; approved tasks then start as their
-// dependencies finish, each as its own pi WORKER in a herdr pane (which the user can also
-// watch or take over from a terminal), and the coordinator reviews each one to done.
+// Three columns under one status bar, VS Code / Codex style:
+//   - the left SIDEBAR is a vertical tab list: the chat with the COORDINATOR (a headless pi
+//     that breaks work down and proposes tasks), the PLAN of the conversation it is in (its
+//     tasks as a DAG), and each task of that plan as its own tab (detail + worker chat);
+//   - the CONTENT shows whichever tab is selected;
+//   - the right EXPLORER lists the granted folders as a read-only file tree; clicking a file
+//     opens a read-only preview in the content area, from which it can be referenced in the
+//     coordinator's composer or revealed in the OS file manager.
+// Both sides collapse to an icon rail and are resizable; the layout persists locally. Nothing
+// runs until the user approves a task or the whole plan; approved tasks then start as their
+// dependencies finish, each as its own pi WORKER in a herdr pane, and the coordinator reviews
+// each one to done.
 //
 // The renderer holds no capability here: every action is a named IPC call carrying an opaque
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
-import { useCallback, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
-import { useI18n, useT, type Locale, type TranslateFn } from '../../i18n';
+import { useT, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
-import {
-  abortChat,
-  deleteConversation,
-  loadOlderChat,
-  openConversation,
-  resetChat,
-  sendChat,
-  startWorkbench,
-  stopWorkbench,
-} from '../../lib/workbenchStore';
+import { abortChat, loadOlderChat, sendChat, startWorkbench, stopWorkbench } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { workbenchErrorMessage } from './errors';
 import {
   WORKBENCH_LIMITS,
   isLiveTaskStatus,
+  planTasksOf,
   type ChatItem,
-  type ConversationView,
+  type FolderView,
   type TaskView,
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { PlanPanel } from './PlanPanel';
 import { ProposalCard, type ProposalBoard } from './ProposalCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
+import { TaskNodeDetail } from './TaskNodeDetail';
 import { StatusLabel } from './TaskStatusLabel';
+import { WorkbenchSidebar } from './WorkbenchSidebar';
+import { WorkbenchExplorer } from './WorkbenchExplorer';
+import { FilePreviewPane } from './FilePreviewPane';
+import { PaneResizeHandle } from './workbenchPanes';
+import {
+  EXPLORER_WIDTH,
+  NARROW_WINDOW,
+  RAIL_WIDTH,
+  SIDEBAR_WIDTH,
+  clampWidth,
+  readWorkbenchLayout,
+  writeWorkbenchLayout,
+  type WorkbenchLayout,
+} from './workbenchLayout';
+import { appendMention, folderMentionText, type WorkbenchView } from './workbenchNav';
 import {
   ChatColumn,
   ChatEmptyState,
@@ -50,10 +64,23 @@ import {
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
 import { useMentionSource } from './mentionPicker';
 import type { TaskSeed } from './taskSeed';
-import { WorkbenchSplitPane } from './WorkbenchSplitPane';
 import { WorkspaceTabScreen } from '../../components/TabScreenShell';
 import { VirtualChatList } from '../../components/ui/VirtualChatList';
 import { estimateTextHeight } from '../../lib/virtualList';
+
+/** Whether the window is narrower than NARROW_WINDOW (tracks resizes). */
+function useNarrowWindow(): boolean {
+  const query = `(max-width: ${NARROW_WINDOW - 1}px)`;
+  const [narrow, setNarrow] = useState(() => window.matchMedia?.(query).matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const onChange = (): void => setNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return narrow;
+}
 
 export function WorkbenchHome({
   taskSeed = null,
@@ -84,8 +111,53 @@ export function WorkbenchHome({
 
   const liveCount = wb.tasks.filter((task) => isLiveTaskStatus(task.status)).length;
   const running = wb.status === 'ready';
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const selectedTask = wb.tasks.find((task) => task.id === selectedTaskId) ?? null;
+
+  // ── What the content area shows ──
+  const [view, setView] = useState<WorkbenchView>({ kind: 'chat' });
+  const selectedTask = view.kind === 'task' ? (wb.tasks.find((task) => task.id === view.id) ?? null) : null;
+  const previewFolder = view.kind === 'file' ? (wb.folders.find((f) => f.id === view.folderId) ?? null) : null;
+  // A task that left the board falls back to the plan it belonged to; a file whose folder was
+  // removed falls back to the chat.
+  useEffect(() => {
+    if (view.kind === 'task' && !wb.tasks.some((task) => task.id === view.id)) setView({ kind: 'plan' });
+    if (view.kind === 'file' && !wb.folders.some((f) => f.id === view.folderId)) setView({ kind: 'chat' });
+  }, [view, wb.tasks, wb.folders]);
+  const selectTask = useCallback((id: string) => setView({ kind: 'task', id }), []);
+  // A draft handed over from Sessions opens the plan's new-task form.
+  useEffect(() => {
+    if (taskSeed) setView({ kind: 'plan' });
+  }, [taskSeed]);
+
+  // The coordinator's draft lives here so the explorer can add file references to it.
+  const [draft, setDraft] = useState('');
+  const insertFile = (folder: FolderView, relPath: string): void => {
+    setDraft((d) => appendMention(d, folderMentionText(folder.name, relPath), WORKBENCH_LIMITS.chatText));
+    setView({ kind: 'chat' });
+  };
+  // The tab the preview was opened from, so closing it goes back there.
+  const [beforeFile, setBeforeFile] = useState<WorkbenchView>({ kind: 'chat' });
+  const openFile = (folder: FolderView, relPath: string): void => {
+    if (view.kind !== 'file') setBeforeFile(view);
+    setView({ kind: 'file', folderId: folder.id, relPath });
+  };
+
+  // ── Layout: persisted widths + collapsed state; a narrow window folds the sidebar ──
+  const [layout, setLayout] = useState<WorkbenchLayout>(readWorkbenchLayout);
+  const narrow = useNarrowWindow();
+  const [narrowOpen, setNarrowOpen] = useState(false);
+  useEffect(() => setNarrowOpen(false), [narrow]);
+  const sidebarCollapsed = narrow ? !narrowOpen : layout.sidebarCollapsed;
+  const updateLayout = (patch: Partial<WorkbenchLayout>): void => {
+    setLayout((prev) => {
+      const next = { ...prev, ...patch };
+      writeWorkbenchLayout(next);
+      return next;
+    });
+  };
+  const toggleSidebar = (): void => {
+    if (narrow) setNarrowOpen((v) => !v);
+    else updateLayout({ sidebarCollapsed: !layout.sidebarCollapsed });
+  };
 
   const toggle = async (): Promise<void> => {
     if (running || wb.status === 'starting') {
@@ -103,6 +175,43 @@ export function WorkbenchHome({
     setBusy(false);
   };
 
+  const content =
+    view.kind === 'file' && previewFolder ? (
+      // Keyed so switching files resets the preview state.
+      <FilePreviewPane
+        key={`${previewFolder.id}\u0000${view.relPath}`}
+        folder={previewFolder}
+        relPath={view.relPath}
+        t={t}
+        run={run}
+        onInsert={() => insertFile(previewFolder, view.relPath)}
+        onClose={() => setView(beforeFile)}
+      />
+    ) : view.kind === 'task' && selectedTask ? (
+      <TaskPane task={selectedTask} wb={wb} t={t} run={run} />
+    ) : view.kind === 'plan' || view.kind === 'task' ? (
+      <PlanPanel
+        wb={wb}
+        t={t}
+        run={run}
+        selectedId={null}
+        onSelectTask={selectTask}
+        seed={taskSeed}
+        onSeedUsed={onTaskSeedUsed}
+      />
+    ) : (
+      <ChatPane
+        wb={wb}
+        t={t}
+        run={run}
+        busy={busy}
+        draft={draft}
+        setDraft={setDraft}
+        onToggle={() => void toggle()}
+        onSelectTask={selectTask}
+      />
+    );
+
   return (
     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
@@ -116,31 +225,64 @@ export function WorkbenchHome({
             </p>
           )}
         </div>
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <WorkbenchSplitPane
-            resizeLabel={t('workbench.splitResizeHandle')}
-            left={
-              <ChatPane
-                wb={wb}
-                t={t}
-                run={run}
-                busy={busy}
-                onToggle={() => void toggle()}
-                onSelectTask={setSelectedTaskId}
-              />
-            }
-            right={
-              <PlanPanel
-                wb={wb}
-                t={t}
-                run={run}
-                selectedId={selectedTaskId}
-                onSelectTask={setSelectedTaskId}
-                seed={taskSeed}
-                onSeedUsed={onTaskSeedUsed}
-              />
-            }
-          />
+        <div style={shellStyle}>
+          <div
+            style={{
+              ...sideColumnStyle,
+              width: sidebarCollapsed ? RAIL_WIDTH : layout.sidebarWidth,
+              background: token('surface'),
+              borderRight: sidebarCollapsed ? 'none' : `1px solid ${token('border')}`,
+            }}
+          >
+            <WorkbenchSidebar
+              wb={wb}
+              t={t}
+              run={run}
+              view={view}
+              onSelectView={setView}
+              collapsed={sidebarCollapsed}
+              onToggleCollapsed={toggleSidebar}
+            />
+          </div>
+          {!sidebarCollapsed && (
+            <PaneResizeHandle
+              side="left"
+              width={layout.sidebarWidth}
+              min={SIDEBAR_WIDTH.min}
+              max={SIDEBAR_WIDTH.max}
+              label={t('workbench.sidebar.resize')}
+              onResize={(w) => updateLayout({ sidebarWidth: clampWidth(w, SIDEBAR_WIDTH) })}
+            />
+          )}
+          <main style={contentStyle}>{content}</main>
+          {!layout.explorerCollapsed && (
+            <PaneResizeHandle
+              side="right"
+              width={layout.explorerWidth}
+              min={EXPLORER_WIDTH.min}
+              max={EXPLORER_WIDTH.max}
+              label={t('workbench.explorer.resize')}
+              onResize={(w) => updateLayout({ explorerWidth: clampWidth(w, EXPLORER_WIDTH) })}
+            />
+          )}
+          <div
+            style={{
+              ...sideColumnStyle,
+              width: layout.explorerCollapsed ? RAIL_WIDTH : layout.explorerWidth,
+              background: token('surface'),
+              borderLeft: layout.explorerCollapsed ? 'none' : `1px solid ${token('border')}`,
+            }}
+          >
+            <WorkbenchExplorer
+              folders={wb.folders}
+              t={t}
+              run={run}
+              collapsed={layout.explorerCollapsed}
+              onToggleCollapsed={() => updateLayout({ explorerCollapsed: !layout.explorerCollapsed })}
+              onOpenFile={openFile}
+              selectedFile={view.kind === 'file' ? { folderId: view.folderId, relPath: view.relPath } : null}
+            />
+          </div>
         </div>
       </WorkspaceTabScreen>
       {confirmStop && (
@@ -166,6 +308,24 @@ export function WorkbenchHome({
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
+// ─── Task ────────────────────────────────────────────────────────────────────
+
+function TaskPane({ task, wb, t, run }: { task: TaskView; wb: WorkbenchSnapshot; t: TranslateFn; run: Runner }) {
+  const planTasks = useMemo(
+    () => (task.conversationId ? planTasksOf(wb.tasks, task.conversationId) : [task]),
+    [wb.tasks, task],
+  );
+  return (
+    <section
+      aria-label={task.title}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
+      {/* Keyed so switching tasks resets the worker chat's draft and live output. */}
+      <TaskNodeDetail key={task.id} task={task} planTasks={planTasks} wb={wb} t={t} run={run} />
+    </section>
+  );
+}
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 function ChatPane({
@@ -173,6 +333,8 @@ function ChatPane({
   t,
   run,
   busy,
+  draft,
+  setDraft,
   onToggle,
   onSelectTask,
 }: {
@@ -180,17 +342,15 @@ function ChatPane({
   t: TranslateFn;
   run: Runner;
   busy: boolean;
+  draft: string;
+  setDraft: (next: string | ((prev: string) => string)) => void;
   onToggle: () => void;
   onSelectTask: (id: string) => void;
 }) {
-  const [draft, setDraft] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
   const [sent, setSent] = useState(0);
   const ready = wb.status === 'ready';
   const sessionOn = wb.status === 'ready' || wb.status === 'starting';
   const toggleDisabled = busy || wb.status === 'starting';
-  // Switching conversations mid-reply would orphan the reply, so main refuses it; so does the UI.
-  const canSwitch = ready && !wb.streaming;
 
   const send = async (): Promise<void> => {
     const text = draft.trim();
@@ -237,10 +397,11 @@ function ChatPane({
   return (
     <section
       aria-label={t('workbench.chat.title')}
-      style={{ ...panelStyle, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       <div style={paneHeaderStyle}>
         <h2 style={paneTitleStyle}>{t('workbench.chat.title')}</h2>
+        <span style={{ flex: 1 }} />
         <button
           type="button"
           onClick={onToggle}
@@ -261,49 +422,11 @@ function ChatPane({
             color: sessionOn ? token('text') : token('accentText'),
             opacity: toggleDisabled ? disabledOpacity : 1,
             flexShrink: 0,
-            marginLeft: space.sm,
           }}
         >
           {wb.status === 'starting' ? t('workbench.status.starting') : sessionOn ? t('workbench.stop') : t('workbench.start')}
         </button>
-        <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          aria-expanded={showHistory}
-          onClick={() => setShowHistory((v) => !v)}
-          {...hoverBackground(showHistory ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
-          style={actionButtonStyle}
-        >
-          {t('workbench.chat.history')}
-          {wb.conversations.length > 0 && (
-            <span style={{ marginLeft: space.xs, color: token('textMuted'), fontVariantNumeric: 'tabular-nums' }}>
-              {wb.conversations.length}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            void run(resetChat).then((ok) => {
-              if (ok) setShowHistory(false);
-            })
-          }
-          disabled={!canSwitch}
-          {...hoverBackground('transparent', token('surfaceHover'))}
-          style={{ ...actionButtonStyle, opacity: canSwitch ? 1 : disabledOpacity }}
-        >
-          {t('workbench.chat.reset')}
-        </button>
       </div>
-      {showHistory && (
-        <HistoryPanel
-          conversations={wb.conversations}
-          canSwitch={canSwitch}
-          t={t}
-          run={run}
-          onClose={() => setShowHistory(false)}
-        />
-      )}
       <VirtualChatList
         items={wb.chat}
         getKey={chatItemKey}
@@ -472,154 +595,7 @@ function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskVie
   }
 }
 
-/**
- * A localized relative time ("2 hours ago", "刚刚") from `Intl.RelativeTimeFormat`, so the wording
- * needs no i18n entry (see SkillsHome). Null when the time is unknown.
- */
-function formatRelative(ms: number, locale: Locale): string | null {
-  if (!ms) return null;
-  const diff = ms - Date.now();
-  const abs = Math.abs(diff);
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (abs < minute) return rtf.format(Math.round(diff / 1000), 'second');
-  if (abs < hour) return rtf.format(Math.round(diff / minute), 'minute');
-  if (abs < day) return rtf.format(Math.round(diff / hour), 'hour');
-  return rtf.format(Math.round(diff / day), 'day');
-}
-
-/** Saved conversations: open one to continue it, or delete one (never the current one). */
-function HistoryPanel({
-  conversations,
-  canSwitch,
-  t,
-  run,
-  onClose,
-}: {
-  conversations: readonly ConversationView[];
-  canSwitch: boolean;
-  t: TranslateFn;
-  run: Runner;
-  onClose: () => void;
-}) {
-  const { locale } = useI18n();
-  const [confirmDelete, setConfirmDelete] = useState<ConversationView | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  return (
-    <div
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && !confirmDelete) onClose();
-      }}
-      style={{
-        borderBottom: `1px solid ${token('border')}`,
-        background: token('surface'),
-        flexShrink: 0,
-        maxHeight: 260,
-        overflowY: 'auto',
-      }}
-    >
-      {conversations.length === 0 ? (
-        <p style={{ margin: 0, padding: space.lg, fontSize: fontSize.sm, color: token('textMuted') }}>{t('workbench.chat.historyEmpty')}</p>
-      ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: space.xs }}>
-          {conversations.map((c) => {
-            const when = formatRelative(c.updatedAt, locale);
-            return (
-              <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: space.xs }}>
-                <button
-                  type="button"
-                  aria-current={c.current || undefined}
-                  disabled={!canSwitch && !c.current}
-                  onClick={() => {
-                    if (c.current) {
-                      onClose();
-                      return;
-                    }
-                    void run(() => openConversation(c.id)).then((ok) => {
-                      if (ok) onClose();
-                    });
-                  }}
-                  {...hoverBackground('transparent', token('surfaceHover'))}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: space.md,
-                    padding: '6px 8px',
-                    borderRadius: radius.sm,
-                    border: 'none',
-                    background: 'transparent',
-                    color: token('text'),
-                    textAlign: 'left',
-                    cursor: canSwitch || c.current ? 'pointer' : 'default',
-                    opacity: canSwitch || c.current ? 1 : disabledOpacity,
-                    fontSize: fontSize.base,
-                  }}
-                >
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: c.current ? 600 : 400 }}>
-                    {c.title || t('workbench.chat.untitled')}
-                  </span>
-                  {c.current && (
-                    <span style={{ flexShrink: 0, fontSize: fontSize.xs, color: token('accent') }}>{t('workbench.chat.current')}</span>
-                  )}
-                  {when && <span style={{ flexShrink: 0, fontSize: fontSize.xs, color: token('textMuted') }}>{when}</span>}
-                </button>
-                {!c.current && (
-                  <button
-                    type="button"
-                    aria-label={`${t('workbench.chat.delete')}: ${c.title || t('workbench.chat.untitled')}`}
-                    title={t('workbench.chat.delete')}
-                    onClick={() => setConfirmDelete(c)}
-                    {...hoverBackground('transparent', token('surfaceHover'))}
-                    style={chipCloseStyle}
-                  >
-                    ×
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {confirmDelete && (
-        <ConfirmDialog
-          title={t('workbench.chat.deleteConfirm')}
-          message={confirmDelete.title || t('workbench.chat.untitled')}
-          confirmLabel={t('workbench.chat.delete')}
-          cancelLabel={t('workbench.cancel')}
-          danger
-          busy={deleting}
-          onConfirm={() => {
-            setDeleting(true);
-            void run(() => deleteConversation(confirmDelete.id)).then(() => {
-              setDeleting(false);
-              setConfirmDelete(null);
-            });
-          }}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Task board ──────────────────────────────────────────────────────────────
-
-// Live work first, then what's waiting for a decision, then what's finished.
-
-
 // ─── Styles ──────────────────────────────────────────────────────────────────
-
-// Opaque panels over the ambient background lines (the screen root stays transparent).
-const panelStyle: CSSProperties = {
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.lg,
-  background: token('bg'),
-};
 
 const cardStyle: CSSProperties = {
   border: `1px solid ${token('border')}`,
@@ -680,34 +656,31 @@ const preStyle: CSSProperties = {
   userSelect: 'text',
 };
 
-
-
-
-
-
-const actionButtonStyle: CSSProperties = {
-  padding: '4px 10px',
-  borderRadius: radius.sm,
-  border: `1px solid ${token('borderStrong')}`,
-  background: 'transparent',
-  color: token('text'),
-  cursor: 'pointer',
-  fontSize: fontSize.sm,
-  whiteSpace: 'nowrap',
+// One opaque frame over the ambient background lines (the screen root stays transparent):
+// sidebar | content | explorer, separated by 1px dividers.
+const shellStyle: CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  display: 'flex',
+  overflow: 'hidden',
+  border: `1px solid ${token('border')}`,
+  borderRadius: radius.lg,
+  background: token('bg'),
 };
 
+const sideColumnStyle: CSSProperties = {
+  flexShrink: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+};
 
-const chipCloseStyle: CSSProperties = {
-  display: 'inline-grid',
-  placeItems: 'center',
-  width: 20,
-  height: 20,
-  padding: 0,
-  borderRadius: radius.pill,
-  border: 'none',
-  background: 'transparent',
-  color: token('textMuted'),
-  cursor: 'pointer',
-  fontSize: fontSize.md,
-  lineHeight: 1,
+const contentStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
 };

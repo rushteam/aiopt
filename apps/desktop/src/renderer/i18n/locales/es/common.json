@@ -838,7 +838,6 @@
     "title": "Banco de trabajo",
     "subtitle": "Conversa con un coordinador que divide el trabajo en tareas y ejecuta cada tarea aprobada como su propio agente pi en una sesión de herdr. Usa el proveedor y el modelo de pi definidos en Proveedores.",
     "start": "Iniciar",
-    "splitResizeHandle": "Cambiar el ancho del coordinador y las tareas",
     "stop": "Detener",
     "cancel": "Cancelar",
     "model": "Modelo:",
@@ -933,6 +932,32 @@
         "task": "Tarea",
         "session": "Sesión"
       }
+    },
+    "sidebar": {
+      "label": "Navegación del workbench",
+      "collapse": "Contraer barra lateral",
+      "expand": "Expandir barra lateral",
+      "resize": "Cambiar ancho de la barra lateral"
+    },
+    "explorer": {
+      "title": "Explorador",
+      "collapse": "Contraer explorador",
+      "expand": "Abrir explorador",
+      "resize": "Cambiar ancho del explorador",
+      "refresh": "Actualizar",
+      "loading": "Cargando…",
+      "error": "No se pudo leer esta carpeta.",
+      "emptyDir": "Carpeta vacía",
+      "truncated": "Se muestran las primeras {{count}} entradas.",
+      "hint": "Haz clic en un archivo para previsualizarlo.",
+      "removeConfirm": "¿Quitar esta carpeta del workbench? Los archivos del disco no se modifican.",
+      "preview": "Vista previa",
+      "insert": "Referenciar en el chat",
+      "reveal": "Mostrar en el gestor de archivos",
+      "closePreview": "Cerrar vista previa",
+      "previewError": "No se pudo leer este archivo.",
+      "binary": "Archivo binario: sin vista previa.",
+      "previewTruncated": "Se muestran los primeros {{size}}."
     },
     "notice": {
       "board_full": "Se descartaron algunas tareas propuestas: el tablero está lleno.",
