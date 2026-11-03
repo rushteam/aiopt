@@ -217,7 +217,12 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
       writeFile: (file, contents) => void disk.set(file, contents),
       readFile: (file) => disk.get(file) ?? null,
       isDirectory: (p) => dirs.has(p),
-      realpath: (p) => links.get(p) ?? (dirs.has(p) || disk.has(p) ? p : null),
+      // The manager joins with the native `path`; on Windows that yields `\`, while this fake
+      // keys everything POSIX-style, so normalize before the lookup (real realpath is native).
+      realpath: (raw) => {
+        const p = raw.replace(/\\/g, '/');
+        return links.get(p) ?? (dirs.has(p) || disk.has(p) ? p : null);
+      },
       listDir: (dir) => [...disk.keys()].filter((f) => path.dirname(f) === dir).map((f) => path.basename(f)),
       listDirEntries: (dir) => [
         ...[...dirs].filter((d) => path.dirname(d) === dir && !links.has(d)).map((d) => ({ name: path.basename(d), kind: 'dir' as const })),
