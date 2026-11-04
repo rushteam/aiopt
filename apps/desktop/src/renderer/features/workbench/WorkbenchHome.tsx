@@ -225,10 +225,13 @@ export function WorkbenchHome({
       {/* Visually hidden — the tab already names the screen. See ProvidersHome. */}
       <h1 className="sr-only">{t('workbench.title')}</h1>
       <WorkspaceTabScreen>
-        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: space.sm }}>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
           {error && (
-            <p role="alert" style={{ margin: 0, color: token('danger'), fontSize: fontSize.base }}>
+            <p
+              role="alert"
+              style={{ margin: 0, padding: `${space.xs}px ${space.md}px`, color: token('danger'), fontSize: fontSize.base }}
+            >
               {error}
             </p>
           )}
@@ -668,13 +671,12 @@ const preStyle: CSSProperties = {
 
 // One opaque frame over the ambient background lines (the screen root stays transparent):
 // sidebar | content | explorer, separated by 1px dividers.
+// Edge to edge, like an IDE: no outer border or rounding, the panes meet the window.
 const shellStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,
   display: 'flex',
   overflow: 'hidden',
-  border: `1px solid ${token('border')}`,
-  borderRadius: radius.lg,
   background: token('bg'),
 };
 

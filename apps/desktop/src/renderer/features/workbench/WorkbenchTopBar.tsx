@@ -247,6 +247,8 @@ export function WorkbenchTopBar({
     <section
       style={{
         flexShrink: 0,
+        padding: `0 ${space.sm}px`,
+        background: token('surface'),
         borderBottom: `1px solid ${token('border')}`,
       }}
     >

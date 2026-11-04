@@ -2,9 +2,10 @@
 //
 // Two modes:
 //   · scroll — centered column, page scrolls (admin / browse surfaces)
-//   · workspace — fills the viewport, internal panes scroll (Workbench)
+//   · workspace — fills the viewport edge to edge, internal panes scroll (Workbench). Like an
+//     IDE, it has no outer inset: the panes meet the window edges so chat and content get the room.
 //
-// Keeps horizontal inset and top rhythm aligned so switching tabs does not jump.
+// Scroll screens share the horizontal inset and top rhythm so switching between them does not jump.
 
 import type { CSSProperties, ReactNode } from 'react';
 import { space } from '../themes/tokens';
@@ -14,9 +15,6 @@ export const TAB_SCREEN_INSET = space['2xl'];
 
 /** Bottom inset on scroll screens — extra room when content extends past the viewport. */
 export const TAB_SCREEN_SCROLL_BOTTOM = space['2xl'] * 2;
-
-/** Bottom inset on workspace screens — matches side inset. */
-export const TAB_SCREEN_WORKSPACE_BOTTOM = space['2xl'];
 
 /** Max content width for all scroll tab screens (Providers / Skills / Usage). */
 export const TAB_SCREEN_MAX_WIDTH = 980;
@@ -51,8 +49,6 @@ const workspaceRootStyle: CSSProperties = {
   overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column',
-  gap: space.lg,
-  padding: `${TAB_SCREEN_INSET}px ${TAB_SCREEN_INSET}px ${TAB_SCREEN_WORKSPACE_BOTTOM}px`,
   boxSizing: 'border-box',
 };
 
