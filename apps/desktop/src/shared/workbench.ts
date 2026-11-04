@@ -66,6 +66,12 @@ export const WORKBENCH_LIMITS = {
   importPaths: 50,
   /** Characters of one dropped absolute path. */
   importPathChars: 4096,
+  /** Task timeline events kept (the oldest drop first). */
+  timelineEvents: 500,
+  /** Images one coordinator message may carry (pasted or dropped into the composer). */
+  chatImages: 4,
+  /** Base64 characters of one such image (≈ 7.5 MB decoded); the renderer scales larger ones down. */
+  chatImageBase64: 10 * 1024 * 1024,
 } as const;
 
 /** Whether the orchestrator + herdr session are running. */
@@ -85,7 +91,8 @@ export type WorkbenchIssue =
 
 /** One transcript entry of the orchestrator chat. */
 export type ChatItem =
-  | { kind: 'user'; id: string; text: string }
+  /** `images`: how many images the message carried (their data stays out of the snapshot). */
+  | { kind: 'user'; id: string; text: string; images?: number }
   | { kind: 'assistant'; id: string; text: string; thinking: string; streaming: boolean }
   | {
       kind: 'tool';
@@ -395,6 +402,51 @@ export function planProgress(tasks: readonly Pick<TaskView, 'status' | 'approved
   return { total, done, live, awaitingApproval, queued, attention, state };
 }
 
+/**
+ * One step in the task timeline: a task moved from `from` (null: it was just created) to
+ * `status` at `at`. Display data only — no prompt, no worker output.
+ */
+export interface TaskTimelineEvent {
+  kind: 'task';
+  /** Increasing; unique within the timeline. */
+  seq: number;
+  at: number;
+  taskId: string;
+  /** The task's title when it happened (the task may be gone since). */
+  title: string;
+  conversationId: string | null;
+  from: TaskStatus | null;
+  status: TaskStatus;
+  /** How long the run had taken when this happened (since it started); null outside a run. */
+  runMs: number | null;
+}
+
+/** What set a coordinator turn off: the user's message, or AiOpt reporting task updates. */
+export type TurnTrigger = 'user' | 'taskUpdate';
+
+/**
+ * How a coordinator turn ended: it replied, the model errored, the user aborted it, or it was
+ * cut off (the coordinator exited or the Workbench stopped mid-turn).
+ */
+export type TurnOutcome = 'done' | 'error' | 'aborted' | 'interrupted';
+
+/**
+ * One coordinator turn in the timeline, recorded when it ends: it began at `at - durationMs`.
+ * Display data only — no message text; the renderer looks the title up by `conversationId`.
+ */
+export interface TurnTimelineEvent {
+  kind: 'turn';
+  seq: number;
+  /** When the turn ended. */
+  at: number;
+  conversationId: string | null;
+  trigger: TurnTrigger;
+  outcome: TurnOutcome;
+  durationMs: number;
+}
+
+export type TimelineEvent = TaskTimelineEvent | TurnTimelineEvent;
+
 /** Last batch of tasks reported to the coordinator (tray / status hints). */
 export interface WorkbenchNotifyPreview {
   titles: string[];
@@ -428,6 +480,8 @@ export interface WorkbenchSnapshot {
   herdrProbe: HerdrProbeView;
   /** Saved conversations, newest first. The current one is absent until it has a message. */
   conversations: ConversationView[];
+  /** Bumps whenever a task timeline event is added (fetch the events with `timeline`). */
+  timelineRevision: number;
   /** The conversation the coordinator is in now, whose plan the task pane shows. */
   currentConversationId: string | null;
   settings: WorkbenchSettings;
@@ -536,6 +590,23 @@ const BRANCH_RE = /^wb\/[a-z0-9][a-z0-9-]{0,40}$/;
 
 export function isValidWorkbenchBranch(value: unknown): value is string {
   return typeof value === 'string' && BRANCH_RE.test(value);
+}
+
+/** Image types a coordinator message may carry: the ones every model vendor accepts. */
+export const CHAT_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
+export type ChatImageType = (typeof CHAT_IMAGE_TYPES)[number];
+
+/** An image attached to a coordinator message: raw base64 (no `data:` prefix). */
+export interface ChatImage {
+  mimeType: ChatImageType;
+  data: string;
+}
+
+/** The words sent with a message that is only images (pi needs text; the chat view hides it). */
+export const IMAGE_ONLY_MESSAGE = '(See the attached image.)';
+
+export function isChatImageType(value: unknown): value is ChatImageType {
+  return typeof value === 'string' && (CHAT_IMAGE_TYPES as readonly string[]).includes(value);
 }
 
 /**

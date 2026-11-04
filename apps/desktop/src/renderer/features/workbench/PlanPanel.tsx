@@ -88,7 +88,7 @@ export function PlanPanel({
           type="button"
           disabled={!canRunPlan}
           onClick={() => conversationId && void run(() => runPlan(conversationId))}
-          title={t('workbench.plan.runHint')}
+          title={wb.status === 'ready' ? t('workbench.plan.runHint') : t('workbench.notRunningHint')}
           {...(canRunPlan ? hoverBackground(token('accent'), token('accentHover')) : {})}
           style={{ ...accentButtonStyle, opacity: canRunPlan ? 1 : disabledOpacity }}
         >

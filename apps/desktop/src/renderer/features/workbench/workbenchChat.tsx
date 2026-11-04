@@ -1,12 +1,24 @@
 // Shared Workbench chat shell — coordinator and task workers use the same composer + bubbles.
 
-import { useCallback, useState, useEffect, useRef, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  type ClipboardEvent,
+  type CSSProperties,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { useMentionPicker, type MentionSource } from './mentionPicker';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { VirtualChatList } from '../../components/ui/VirtualChatList';
 import { estimateTextHeight } from '../../lib/virtualList';
+import { CHAT_IMAGE_TYPES } from '../../../shared/workbench';
+import { imageFiles, imagePreviewUrl, type DraftImage } from './chatImageAttach';
 
 export type WorkbenchChatLineRole = 'user' | 'assistant' | 'notice';
 
@@ -158,6 +170,7 @@ export function WorkbenchChatComposer({
   onTaskMentionDrop,
   dropHint,
   mentions,
+  attachments,
 }: {
   draft: string;
   setDraft: (v: string) => void;
@@ -176,21 +189,37 @@ export function WorkbenchChatComposer({
   dropHint?: string;
   /** When set, typing `@` opens a picker over these options (tasks and sessions). */
   mentions?: MentionSource;
+  /** When set, images can be pasted, dropped or picked and are shown above the field. */
+  attachments?: ComposerAttachments;
 }) {
-  const [dropActive, setDropActive] = useState(false);
+  const [dropActive, setDropActive] = useState<false | 'task' | 'image'>(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const picker = useMentionPicker({ mentions, draft, setDraft, maxLength, disabled, textRef });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const takesImages = attachments !== undefined && !disabled;
   const onDragOver = (e: DragEvent): void => {
+    if (takesImages && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDropActive('image');
+      return;
+    }
     if (!onTaskMentionDrop) return;
     if (e.dataTransfer.types.includes('application/x-aiopt-workbench-task')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
-      setDropActive(true);
+      setDropActive('task');
     }
   };
   const onDragLeave = (): void => setDropActive(false);
   const onDrop = (e: DragEvent): void => {
     setDropActive(false);
+    if (takesImages && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      const files = imageFiles(e.dataTransfer.files);
+      if (files.length > 0) attachments.onAdd(files);
+      return;
+    }
     if (!onTaskMentionDrop) return;
     e.preventDefault();
     try {
@@ -209,7 +238,17 @@ export function WorkbenchChatComposer({
     }
   };
 
-  const canSend = !disabled && draft.trim() !== '';
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
+    if (!takesImages) return;
+    const files = imageFiles(e.clipboardData.files);
+    if (files.length === 0) return;
+    // A copied file can come with its name as text too: take the image only.
+    e.preventDefault();
+    attachments.onAdd(files);
+  };
+
+  const hasImages = (attachments?.images.length ?? 0) > 0;
+  const canSend = !disabled && (draft.trim() !== '' || hasImages) && !attachments?.reading;
   const [focused, setFocused] = useState(false);
 
   return (
@@ -237,6 +276,9 @@ export function WorkbenchChatComposer({
           }}
         >
           {picker.menu}
+          {attachments && (hasImages || attachments.error) && (
+            <AttachmentStrip attachments={attachments} disabled={disabled} />
+          )}
           <textarea
             ref={textRef}
             value={draft}
@@ -251,6 +293,7 @@ export function WorkbenchChatComposer({
               picker.textareaProps.onBlur?.();
             }}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
             disabled={disabled}
             maxLength={maxLength}
             rows={rows}
@@ -273,9 +316,41 @@ export function WorkbenchChatComposer({
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: space.md, minHeight: 28 }}>
             <span style={{ fontSize: fontSize.xs, color: token('textMuted'), minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {dropActive && dropHint ? dropHint : sendHint}
+              {dropActive === 'image' && attachments ? attachments.dropHint : dropActive && dropHint ? dropHint : sendHint}
             </span>
             <span style={{ flex: 1 }} />
+            {attachments && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={CHAT_IMAGE_TYPES.join(',')}
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    const files = imageFiles(e.target.files);
+                    e.target.value = '';
+                    if (files.length > 0) attachments.onAdd(files);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!takesImages}
+                  aria-label={attachments.attachLabel}
+                  title={attachments.attachLabel}
+                  {...hoverBackground('transparent', token('surfaceHover'))}
+                  style={{
+                    ...roundButtonStyle,
+                    background: 'transparent',
+                    color: token('textMuted'),
+                    cursor: takesImages ? 'pointer' : 'default',
+                  }}
+                >
+                  <ImageGlyph />
+                </button>
+              </>
+            )}
             {streaming && onAbort && abortLabel ? (
               <button
                 type="button"
@@ -312,6 +387,93 @@ export function WorkbenchChatComposer({
     </div>
   );
 }
+
+export interface ComposerAttachments {
+  images: readonly DraftImage[];
+  /** Images still being read (sending waits for them). */
+  reading: boolean;
+  /** A message about the last images that could not be attached, if any. */
+  error: string | null;
+  onAdd: (files: File[]) => void;
+  onRemove: (id: string) => void;
+  attachLabel: string;
+  removeLabel: string;
+  imageLabel: string;
+  dropHint: string;
+}
+
+function AttachmentStrip({ attachments, disabled }: { attachments: ComposerAttachments; disabled: boolean }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs, paddingTop: space.xs }}>
+      {attachments.images.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: space.sm }}>
+          {attachments.images.map((image, index) => (
+            <li key={image.id} style={{ position: 'relative' }}>
+              <img
+                src={imagePreviewUrl(image)}
+                alt={attachments.imageLabel.replace('{{n}}', String(index + 1))}
+                style={thumbStyle}
+              />
+              <button
+                type="button"
+                onClick={() => attachments.onRemove(image.id)}
+                disabled={disabled}
+                aria-label={attachments.removeLabel}
+                title={attachments.removeLabel}
+                style={thumbRemoveStyle}
+              >
+                <svg aria-hidden width="8" height="8" viewBox="0 0 8 8">
+                  <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {attachments.error && (
+        <span role="alert" style={{ fontSize: fontSize.xs, color: token('danger') }}>
+          {attachments.error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ImageGlyph() {
+  return (
+    <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="6" cy="6.5" r="1.2" fill="currentColor" />
+      <path d="M2.5 11.5l3.2-3 2.3 2.1 2-1.8 3.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const thumbStyle: CSSProperties = {
+  display: 'block',
+  width: 56,
+  height: 56,
+  objectFit: 'cover',
+  borderRadius: radius.md,
+  border: `1px solid ${token('border')}`,
+  background: token('bg'),
+};
+
+const thumbRemoveStyle: CSSProperties = {
+  position: 'absolute',
+  top: -6,
+  right: -6,
+  display: 'inline-grid',
+  placeItems: 'center',
+  width: 18,
+  height: 18,
+  padding: 0,
+  borderRadius: radius.pill,
+  border: `1px solid ${token('borderStrong')}`,
+  background: token('surface'),
+  color: token('text'),
+  cursor: 'pointer',
+};
 
 function SendArrow() {
   return (

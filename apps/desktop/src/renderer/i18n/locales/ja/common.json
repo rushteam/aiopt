@@ -851,6 +851,9 @@
     "subtitle": "作業をタスクに分割するコーディネーターと対話し、承認した各タスクを herdr セッション内の独立した pi エージェントとして実行します。「プロバイダー」タブで pi に設定したプロバイダーとモデルを使います。",
     "start": "開始",
     "stop": "停止",
+    "startHint": "ワークベンチを開始します：コーディネーターと、タスクを実行する herdr セッション。",
+    "stopHint": "ワークベンチを停止します：コーディネーターと実行中のすべてのタスクが停止します。",
+    "notRunningHint": "ワークベンチは起動していません。右上の「開始」を押してください。",
     "cancel": "キャンセル",
     "model": "モデル:",
     "proxied": "ローカルプロキシ経由",
@@ -912,10 +915,18 @@
       "reset": "新しい会話",
       "emptyTitle": "何を進めますか？",
       "empty": "やりたいことを説明してください。コーディネーターがボードにタスクを提案します。「実行」を押すと、タスクごとに独立したエージェントが起動し、そのフォルダー内のファイルを変更できます。そのため「実行」を押す（または自動実行をオンにする）まで何も実行されません。",
-      "notRunning": "上の「開始」を押すと、コーディネーターと対話できます。",
+      "notRunning": "右上の「開始」を押すと、コーディネーターと対話できます。",
       "placeholder": "コーディネーターにメッセージ · @ でタスクやセッションを参照",
       "sendHint": "Enter で送信 · Shift+Enter で改行",
       "taskMentionDrop": "ドロップしてタスクを参照（@task）",
+      "attachImage": "画像を添付",
+      "removeImage": "画像を削除",
+      "imageAlt": "添付画像 {{n}}",
+      "imageDrop": "ドロップして画像を添付",
+      "imageTooMany": "1 メッセージに添付できる画像は {{max}} 枚までです。",
+      "imageUnreadable": "画像を読み込めませんでした。",
+      "imageTooLarge": "画像が大きすぎて添付できません。",
+      "imagesAttached": "画像 {{count}} 枚を添付",
       "send": "送信",
       "abort": "応答を停止",
       "you": "あなた:",
@@ -1002,6 +1013,47 @@
       "board_full": "タスクボードがいっぱいのため、提案されたタスクの一部を破棄しました。",
       "session_reset": "新しい会話を開始しました。",
       "session_opened": "会話を復元しました。"
+    },
+    "timeline": {
+      "title": "タイムライン",
+      "filterLabel": "表示",
+      "filter": {
+        "key": "主な出来事",
+        "all": "すべて",
+        "tasks": "タスク",
+        "turns": "コーディネーター"
+      },
+      "empty": "まだ動きはありません。タスクの開始・完了・停止とコーディネーターの返信がここに表示されます。",
+      "loadFailed": "タイムラインを読み込めませんでした。",
+      "openTask": "タスクを開く",
+      "removed": "このタスクは削除されました",
+      "openConversation": "この会話を開く",
+      "conversationGone": "会話は一覧にありません",
+      "ranFor": "所要時間 {{duration}}",
+      "runningFor": "実行中 {{duration}}",
+      "tookFor": "所要 {{duration}}",
+      "event": {
+        "created": "作成",
+        "started": "開始",
+        "running": "実行中",
+        "resumed": "再開",
+        "blocked": "入力待ち",
+        "review": "レビュー待ち",
+        "done": "完了",
+        "stopped": "停止",
+        "failed": "失敗",
+        "requeued": "承認待ちに戻る"
+      },
+      "turn": {
+        "done": "コーディネーターが返信",
+        "error": "コーディネーターの返信に失敗",
+        "aborted": "コーディネーターの返信を停止",
+        "interrupted": "コーディネーターの返信が中断"
+      },
+      "trigger": {
+        "user": "あなたの質問",
+        "taskUpdate": "タスクの更新"
+      }
     },
     "plan": {
       "title": "タスク計画",

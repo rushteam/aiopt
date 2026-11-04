@@ -27,7 +27,7 @@ import {
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { HistoryPanel } from './HistoryPanel';
-import { ChatIcon, ChevronIcon, CloseIcon, PanelIcon, PlanIcon, PlusIcon, SearchIcon } from './workbenchIcons';
+import { ChatIcon, ChevronIcon, CloseIcon, PanelIcon, PlanIcon, PlusIcon, SearchIcon, TimelineIcon } from './workbenchIcons';
 import { IconButton } from './workbenchPanes';
 import { searchConversations, searchTasks, sidebarTaskOrder, viewKey, type WorkbenchView } from './workbenchNav';
 
@@ -252,6 +252,7 @@ export function WorkbenchSidebar({
         >
           {tab({ kind: 'chat' }, t('workbench.chat.title'), <ChatIcon />)}
           {tab({ kind: 'plan' }, t('workbench.plan.title'), <PlanIcon />)}
+          {tab({ kind: 'timeline' }, t('workbench.timeline.title'), <TimelineIcon />)}
           {ordered.length > 0 && <span aria-hidden style={railDividerStyle} />}
           {ordered.map(({ task }) => taskTab(task, 0))}
         </div>
@@ -430,6 +431,14 @@ export function WorkbenchSidebar({
                 {progress.done}/{progress.total}
               </span>
             )}
+          </>,
+        )}
+        {tab(
+          { kind: 'timeline' },
+          t('workbench.timeline.title'),
+          <>
+            <TimelineIcon />
+            <span style={ellipsisStyle}>{t('workbench.timeline.title')}</span>
           </>,
         )}
         {ordered.map(({ task, depth }) => taskTab(task, depth + 1))}

@@ -17,8 +17,7 @@
 // task/folder id or bounded text, and folders are granted through main's own picker dialog.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { disabledOpacity, token, fontSize, radius, space } from '../../themes/tokens';
-import { hoverBackground } from '../../lib/hover';
+import { token, fontSize, radius, space } from '../../themes/tokens';
 import { useT, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
 import { abortChat, loadOlderChat, sendChat, startWorkbench, stopWorkbench } from '../../lib/workbenchStore';
@@ -34,6 +33,7 @@ import {
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { PlanPanel } from './PlanPanel';
+import { TimelinePanel } from './TimelinePanel';
 import { ProposalCard, type ProposalBoard } from './ProposalCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { TaskNodeDetail } from './TaskNodeDetail';
@@ -60,7 +60,9 @@ import {
   UserBubble,
   WorkbenchChatComposer,
   assistantTextStyle,
+  type ComposerAttachments,
 } from './workbenchChat';
+import { readImageFile, type DraftImage, type ImageAttachError } from './chatImageAttach';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
 import { useMentionSource } from './mentionPicker';
 import type { TaskSeed } from './taskSeed';
@@ -195,6 +197,8 @@ export function WorkbenchHome({
         onInsert={() => insertFile(previewFolder, view.relPath)}
         onClose={() => setView(beforeFile)}
       />
+    ) : view.kind === 'timeline' ? (
+      <TimelinePanel wb={wb} t={t} run={run} onSelectTask={selectTask} onOpenChat={() => setView({ kind: 'chat' })} />
     ) : view.kind === 'task' && selectedTask ? (
       <TaskPane task={selectedTask} wb={wb} t={t} run={run} />
     ) : view.kind === 'plan' || view.kind === 'task' ? (
@@ -212,10 +216,8 @@ export function WorkbenchHome({
         wb={wb}
         t={t}
         run={run}
-        busy={busy}
         draft={draft}
         setDraft={setDraft}
-        onToggle={() => void toggle()}
         onSelectTask={selectTask}
       />
     );
@@ -226,7 +228,14 @@ export function WorkbenchHome({
       <h1 className="sr-only">{t('workbench.title')}</h1>
       <WorkspaceTabScreen>
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-          <WorkbenchTopBar wb={wb} t={t} run={run} selectedTask={selectedTask} />
+          <WorkbenchTopBar
+            wb={wb}
+            t={t}
+            run={run}
+            selectedTask={selectedTask}
+            busy={busy}
+            onToggle={() => void toggle()}
+          />
           {error && (
             <p
               role="alert"
@@ -345,31 +354,29 @@ function ChatPane({
   wb,
   t,
   run,
-  busy,
   draft,
   setDraft,
-  onToggle,
   onSelectTask,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
-  busy: boolean;
   draft: string;
   setDraft: (next: string | ((prev: string) => string)) => void;
-  onToggle: () => void;
   onSelectTask: (id: string) => void;
 }) {
   const [sent, setSent] = useState(0);
   const ready = wb.status === 'ready';
-  const sessionOn = wb.status === 'ready' || wb.status === 'starting';
-  const toggleDisabled = busy || wb.status === 'starting';
+
+  const attachments = useDraftImages(t);
 
   const send = async (): Promise<void> => {
     const text = draft.trim();
-    if (!text || !ready) return;
-    if (await run(() => sendChat(text))) {
+    const images = attachments.images;
+    if ((!text && images.length === 0) || !ready || attachments.reading) return;
+    if (await run(() => sendChat(text, images.map(({ mimeType, data }) => ({ mimeType, data }))))) {
       setDraft('');
+      attachments.clear();
       setSent((n) => n + 1);
     }
   };
@@ -414,31 +421,6 @@ function ChatPane({
     >
       <div style={paneHeaderStyle}>
         <h2 style={paneTitleStyle}>{t('workbench.chat.title')}</h2>
-        <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={toggleDisabled}
-          title={sessionOn ? t('workbench.stop') : t('workbench.start')}
-          {...(sessionOn
-            ? hoverBackground('transparent', token('surfaceHover'))
-            : hoverBackground(token('accent'), token('accentHover')))}
-          style={{
-            all: 'unset',
-            cursor: toggleDisabled ? 'default' : 'pointer',
-            fontSize: fontSize.xs,
-            fontWeight: 600,
-            padding: '3px 10px',
-            borderRadius: radius.sm,
-            border: sessionOn ? `1px solid ${token('borderStrong')}` : 'none',
-            background: sessionOn ? 'transparent' : token('accent'),
-            color: sessionOn ? token('text') : token('accentText'),
-            opacity: toggleDisabled ? disabledOpacity : 1,
-            flexShrink: 0,
-          }}
-        >
-          {wb.status === 'starting' ? t('workbench.status.starting') : sessionOn ? t('workbench.stop') : t('workbench.start')}
-        </button>
       </div>
       <VirtualChatList
         items={wb.chat}
@@ -487,6 +469,7 @@ function ChatPane({
           onTaskMentionDrop={ready ? addTaskMention : undefined}
           dropHint={t('workbench.chat.taskMentionDrop')}
           mentions={mentions}
+          attachments={attachments}
         />
       </div>
     </section>
@@ -516,6 +499,55 @@ function estimateChatItemHeight(item: ChatItem, width: number): number {
  * The previous value while `next` is structurally equal (JSON), so a memo keyed on it survives
  * the snapshot pushes that rebuild every array. Bounded: the board is capped in shared/workbench.
  */
+/** The images attached to the coordinator draft (pasted, dropped or picked). */
+function useDraftImages(t: TranslateFn): ComposerAttachments & { clear: () => void } {
+  const [images, setImages] = useState<DraftImage[]>([]);
+  const [pending, setPending] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const countRef = useRef(0);
+  countRef.current = images.length + pending;
+
+  const onAdd = useCallback(
+    (files: File[]) => {
+      const room = WORKBENCH_LIMITS.chatImages - countRef.current;
+      const take = files.slice(0, Math.max(0, room));
+      setError(files.length > take.length ? t('workbench.chat.imageTooMany').replace('{{max}}', String(WORKBENCH_LIMITS.chatImages)) : null);
+      if (take.length === 0) return;
+      countRef.current += take.length;
+      setPending((n) => n + take.length);
+      void Promise.all(take.map(readImageFile)).then((results) => {
+        setPending((n) => n - take.length);
+        const ok = results.filter((r): r is DraftImage => typeof r !== 'string');
+        const failed = results.find((r): r is ImageAttachError => typeof r === 'string');
+        if (failed) setError(t(failed === 'tooLarge' ? 'workbench.chat.imageTooLarge' : 'workbench.chat.imageUnreadable'));
+        if (ok.length > 0) setImages((prev) => [...prev, ...ok].slice(0, WORKBENCH_LIMITS.chatImages));
+      });
+    },
+    [t],
+  );
+  const onRemove = useCallback((id: string) => {
+    setImages((prev) => prev.filter((image) => image.id !== id));
+    setError(null);
+  }, []);
+  const clear = useCallback(() => {
+    setImages([]);
+    setError(null);
+  }, []);
+
+  return {
+    images,
+    reading: pending > 0,
+    error,
+    onAdd,
+    onRemove,
+    clear,
+    attachLabel: t('workbench.chat.attachImage'),
+    removeLabel: t('workbench.chat.removeImage'),
+    imageLabel: t('workbench.chat.imageAlt'),
+    dropHint: t('workbench.chat.imageDrop'),
+  };
+}
+
 function useStableValue<T>(next: T): T {
   const ref = useRef<{ value: T; json: string } | null>(null);
   const json = JSON.stringify(next);
@@ -526,7 +558,16 @@ function useStableValue<T>(next: T): T {
 function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskView[]; t: TranslateFn }) {
   switch (item.kind) {
     case 'user':
-      return <UserBubble t={t}>{renderTextWithTaskMentions(item.text, tasks)}</UserBubble>;
+      return (
+        <UserBubble t={t}>
+          {item.images ? (
+            <span style={{ display: 'block', color: token('textMuted'), fontSize: fontSize.sm }}>
+              {t('workbench.chat.imagesAttached').replace('{{count}}', String(item.images))}
+            </span>
+          ) : null}
+          {renderTextWithTaskMentions(item.text, tasks)}
+        </UserBubble>
+      );
     case 'assistant':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: space.xs, maxWidth: '100%' }}>

@@ -227,3 +227,15 @@ The tab where the user chats with the coordinator and runs tasks, each as its ow
 - **fr**: Atelier
 - **de**: Werkbank
 - **es**: Banco de trabajo
+
+### Timeline (`workbench-timeline`)
+
+The Workbench view listing every task status change, newest first: when it happened, which task, what happened (started, done, stopped, failed) and how long its run took. Only task events, not coordinator chat turns. Not 'log', 'history', or 'activity feed' in UI copy (history already names saved conversations). Term still under discussion.
+
+- **zh-CN**: 时间线
+  - forbidden: `时间轴`
+- **ja**: タイムライン
+- **ko**: 타임라인
+- **fr**: Chronologie
+- **de**: Zeitleiste
+- **es**: Cronología

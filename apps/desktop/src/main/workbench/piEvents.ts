@@ -21,6 +21,7 @@ import {
   type ChatItem,
   type TaskStatus,
   type WorkbenchNotice,
+  IMAGE_ONLY_MESSAGE,
 } from '../../shared/workbench';
 import { stripSessionContext } from '../../shared/sessionMention';
 
@@ -122,6 +123,12 @@ function contentText(content: unknown, type: 'text' | 'thinking' = 'text'): stri
     })
     .filter((s) => s !== '')
     .join('\n');
+}
+
+/** How many image blocks a message carries (their data never enters the transcript). */
+function imageCount(content: unknown): number {
+  if (!Array.isArray(content)) return 0;
+  return content.filter((block) => asRecord(block)?.type === 'image').length;
 }
 
 function stringifyArgs(args: unknown): string {
@@ -241,8 +248,10 @@ export function createTranscript(): Transcript {
 
   function pushUser(message: Record<string, unknown>): void {
     // Session context main attached to the prompt is for the model, not the chat view.
-    const text = cap(stripSessionContext(contentText(message.content)).trimEnd());
-    if (text !== '') push({ kind: 'user', id: nextId(), text });
+    const images = imageCount(message.content);
+    let text = cap(stripSessionContext(contentText(message.content)).trimEnd());
+    if (images > 0 && text === IMAGE_ONLY_MESSAGE) text = '';
+    if (text !== '' || images > 0) push(images > 0 ? { kind: 'user', id: nextId(), text, images } : { kind: 'user', id: nextId(), text });
   }
 
   function pushCustom(message: Record<string, unknown>): void {

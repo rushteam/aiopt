@@ -42,6 +42,18 @@ describe('pi rpc client', () => {
     await expect(done).resolves.toBeUndefined();
   });
 
+  it('sends pasted images in pi image blocks, queued while streaming', () => {
+    const { child, rpc } = setup();
+    void rpc.prompt('look', true, [{ mimeType: 'image/png', data: 'iVBORw0K' }]);
+    expect(child.written[0]).toEqual({
+      type: 'prompt',
+      message: 'look',
+      images: [{ type: 'image', data: 'iVBORw0K', mimeType: 'image/png' }],
+      streamingBehavior: 'followUp',
+      id: 'r1',
+    });
+  });
+
   it('sends an extension command as a plain prompt, never queued', () => {
     const { child, rpc } = setup();
     void rpc.command('/aiopt-task-update abc');

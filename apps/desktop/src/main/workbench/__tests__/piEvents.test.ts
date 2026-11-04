@@ -8,7 +8,7 @@ import {
   PROPOSE_TASKS_TOOL,
   TASK_UPDATE_MESSAGE,
 } from '../piEvents';
-import { WORKBENCH_LIMITS } from '../../../shared/workbench';
+import { IMAGE_ONLY_MESSAGE, WORKBENCH_LIMITS } from '../../../shared/workbench';
 import { attachSessionContext } from '../../../shared/sessionMention';
 
 /** The event sequence pi emitted for one propose_tasks round-trip (captured from a live run). */
@@ -68,6 +68,21 @@ describe('transcript reducer', () => {
     expect(items[2]).toMatchObject({ kind: 'tool', name: PROPOSE_TASKS_TOOL, result: 'ok 1', done: true });
     expect(items[3]).toMatchObject({ kind: 'assistant', text: 'Proposed.' });
     expect(tr.streaming()).toBe(false);
+  });
+
+  it('counts a user message\'s images and hides the image-only filler text', () => {
+    const tr = createTranscript();
+    const img = { type: 'image', data: 'iVBORw0K', mimeType: 'image/png' };
+    tr.load([
+      { role: 'user', content: [{ type: 'text', text: 'what is this' }, img, img] },
+      { role: 'user', content: [{ type: 'text', text: IMAGE_ONLY_MESSAGE }, img] },
+    ]);
+    expect(tr.items()).toEqual([
+      expect.objectContaining({ kind: 'user', text: 'what is this', images: 2 }),
+      expect.objectContaining({ kind: 'user', text: '', images: 1 }),
+    ]);
+    // The image data never enters the transcript.
+    expect(JSON.stringify(tr.items())).not.toContain('iVBORw0K');
   });
 
   it('shows only what the user typed, not the session context main attached', () => {

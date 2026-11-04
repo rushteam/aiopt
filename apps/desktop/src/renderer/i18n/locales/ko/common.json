@@ -851,6 +851,9 @@
     "subtitle": "작업을 태스크로 나누는 코디네이터와 대화하고, 승인한 각 태스크를 herdr 세션 안의 독립된 pi 에이전트로 실행합니다. 공급자 탭에서 pi에 연결한 공급자와 모델을 사용합니다.",
     "start": "시작",
     "stop": "중지",
+    "startHint": "워크벤치를 시작합니다: 코디네이터와 태스크를 실행하는 herdr 세션.",
+    "stopHint": "워크벤치를 중지합니다: 코디네이터와 실행 중인 모든 태스크가 중지됩니다.",
+    "notRunningHint": "워크벤치가 실행 중이 아닙니다. 오른쪽 위의 시작을 누르세요.",
     "cancel": "취소",
     "model": "모델:",
     "proxied": "로컬 프록시 경유",
@@ -912,10 +915,18 @@
       "reset": "새 대화",
       "emptyTitle": "무엇을 해 볼까요?",
       "empty": "원하는 작업을 설명하세요. 코디네이터가 보드에 태스크를 제안합니다. 실행을 누르면 태스크마다 별도의 에이전트가 시작되어 해당 폴더의 파일을 변경할 수 있으므로, 실행을 누르거나 자동 실행을 켜기 전에는 아무것도 실행되지 않습니다.",
-      "notRunning": "위의 시작을 눌러 코디네이터와 대화하세요.",
+      "notRunning": "오른쪽 위의 시작을 눌러 코디네이터와 대화하세요.",
       "placeholder": "코디네이터에게 메시지 보내기 · @로 태스크나 세션 참조",
       "sendHint": "Enter로 전송 · Shift+Enter로 줄바꿈",
       "taskMentionDrop": "놓으면 태스크를 참조합니다 (@task)",
+      "attachImage": "이미지 첨부",
+      "removeImage": "이미지 제거",
+      "imageAlt": "첨부 이미지 {{n}}",
+      "imageDrop": "놓으면 이미지를 첨부합니다",
+      "imageTooMany": "메시지당 이미지는 최대 {{max}}장입니다.",
+      "imageUnreadable": "이미지를 읽을 수 없습니다.",
+      "imageTooLarge": "이미지가 너무 커서 첨부할 수 없습니다.",
+      "imagesAttached": "이미지 {{count}}장 첨부됨",
       "send": "전송",
       "abort": "응답 중지",
       "you": "나:",
@@ -1002,6 +1013,47 @@
       "board_full": "태스크 보드가 가득 차서 제안된 태스크 일부가 버려졌습니다.",
       "session_reset": "새 대화를 시작했습니다.",
       "session_opened": "대화를 복원했습니다."
+    },
+    "timeline": {
+      "title": "타임라인",
+      "filterLabel": "표시",
+      "filter": {
+        "key": "주요 순간",
+        "all": "전체",
+        "tasks": "작업",
+        "turns": "코디네이터"
+      },
+      "empty": "아직 활동이 없습니다. 작업 시작·완료·중지와 코디네이터의 답변이 여기에 표시됩니다.",
+      "loadFailed": "타임라인을 불러오지 못했습니다.",
+      "openTask": "작업 열기",
+      "removed": "삭제된 작업입니다",
+      "openConversation": "이 대화 열기",
+      "conversationGone": "목록에 없는 대화",
+      "ranFor": "소요 {{duration}}",
+      "runningFor": "{{duration}}째 실행 중",
+      "tookFor": "소요 {{duration}}",
+      "event": {
+        "created": "생성됨",
+        "started": "시작됨",
+        "running": "실행 중",
+        "resumed": "재개됨",
+        "blocked": "입력 필요",
+        "review": "검토 대기",
+        "done": "완료",
+        "stopped": "중지됨",
+        "failed": "실패",
+        "requeued": "대기로 돌아감"
+      },
+      "turn": {
+        "done": "코디네이터가 답변함",
+        "error": "코디네이터 답변 실패",
+        "aborted": "코디네이터 답변 중지됨",
+        "interrupted": "코디네이터 답변 중단됨"
+      },
+      "trigger": {
+        "user": "내 질문",
+        "taskUpdate": "작업 업데이트"
+      }
     },
     "plan": {
       "title": "태스크 계획",

@@ -62,6 +62,8 @@ import {
   type TaskFailure,
   type TaskOrigin,
   type TaskStatus,
+  type TimelineEvent,
+  type TurnOutcome,
   type TaskView,
   type HerdrProbeView,
   type WorkbenchIssue,
@@ -72,6 +74,8 @@ import {
   type WorkbenchSnapshot,
   type WorkbenchStatus,
   isValidHerdrSshTarget,
+  IMAGE_ONLY_MESSAGE,
+  type ChatImage,
 } from '../../shared/workbench';
 import { expandTaskMentions } from '../../shared/taskMention';
 import {
@@ -110,6 +114,7 @@ import {
   TASK_UPDATE_COMMAND,
 } from './orchestratorExtension';
 import { installManagedHerdr } from './herdrInstall';
+import { createTimeline, parseTimeline } from './timeline';
 import {
   herdrExecForTarget,
   herdrSpawnArgv,
@@ -208,7 +213,7 @@ export interface WorkbenchManager {
   stop(): Promise<void>;
   /** Best-effort, non-blocking teardown for app quit. */
   shutdown(): void;
-  chatSend(text: string): Promise<void>;
+  chatSend(text: string, images?: readonly ChatImage[]): Promise<void>;
   chatAbort(): Promise<void>;
   chatReset(): Promise<void>;
   /** `dir` comes from the main-side folder picker, never from the renderer. */
@@ -254,6 +259,8 @@ export interface WorkbenchManager {
   searchConversations(query: string): ConversationSearchResult;
   /** Give a listed conversation a title of the user's own; '' goes back to its first message. */
   renameConversation(conversationId: string, title: string): void;
+  /** Task status changes, oldest first (capped; display data only). */
+  timeline(): TimelineEvent[];
   /** Older transcript items before `beforeId` (an id a snapshot or earlier page carried). */
   chatPage(beforeId: string): WorkbenchChatPage;
   deleteConversation(conversationId: string): void;
@@ -439,6 +446,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   const settingsFile = path.join(deps.dataDir, 'settings.json');
   /** Titles the user gave conversations, by session uuid (main-owned; pi never reads it). */
   const conversationsFile = path.join(deps.dataDir, 'conversations.json');
+  /** Task status changes and coordinator turns for the timeline view (display data only). */
+  const timelineFile = path.join(deps.dataDir, 'timeline.json');
   const sessionsDir = path.join(deps.dataDir, 'sessions');
 
   let status: WorkbenchStatus = 'stopped';
@@ -462,6 +471,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let folders: FolderRecord[] = loadFolders();
   const tasks = new Map<string, TaskRecord>(loadTasks().map((t) => [t.id, t]));
   let tasksSignature = signatureOf();
+  const timeline = createTimeline(parseTimeline(deps.fs.readFile(timelineFile)), tasks.values(), deps.now);
   let settingsDoc: Record<string, unknown> = readJson(settingsFile);
   let settings: WorkbenchSettings = settingsFrom(settingsDoc);
   const customTitles: Map<string, string> = loadCustomTitles();
@@ -472,6 +482,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let currentSession: string | null = null;
   /** Whether the coordinator's current turn answers the user (auto-run applies only then). */
   let userTurn = false;
+  /** How the coordinator's open turn is ending, from its last reply (null: it replied). */
+  let turnOutcome: 'error' | 'aborted' | null = null;
   const pendingNotify = new Set<string>();
   let notifyScheduled = false;
   let lastNotify: WorkbenchNotifyPreview | null = null;
@@ -570,8 +582,19 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     if (next !== tasksSignature) {
       tasksSignature = next;
       saveTasks();
+      if (timeline.observe(tasks.values())) saveTimeline();
     }
     deps.onChange();
+  }
+
+  function saveTimeline(): void {
+    try {
+      deps.fs.mkdirp(deps.dataDir);
+      deps.fs.writeFile(timelineFile, timeline.toJson());
+    } catch (err) {
+      // The timeline keeps the events in memory; the next one tries again.
+      log.error('workbench.timeline_write_failed', { code: errorCode(err) });
+    }
   }
 
   // --- folders --------------------------------------------------------------------------
@@ -1137,6 +1160,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       herdrAvailable: herdr !== null,
       herdrProbe: buildHerdrProbeView(),
       conversations: conversations.map(conversationView),
+      timelineRevision: timeline.revision(),
       currentConversationId,
       settings: { ...settings },
     };
@@ -1181,7 +1205,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           api: resolved.api,
           // An env reference, resolved by pi at request time: the credential is not on disk.
           apiKey: `$${WORKBENCH_KEY_ENV}`,
-          models: [{ id: resolved.modelId }],
+          // Image input is declared so a pasted screenshot reaches the model (pi would drop it
+          // for a text-only model); a model that cannot see images answers with an error.
+          models: [{ id: resolved.modelId, input: ['text', 'image'] }],
         },
       },
     };
@@ -1401,17 +1427,29 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     rpc = null;
     log.warn('workbench.orchestrator_exited', { code: code ?? undefined });
     stopPolling();
+    endTurn('interrupted');
     transcript.apply({ type: 'agent_settled' });
     setStatus('error', 'orchestrator_exited');
   }
 
   function onOrchestratorEvent(event: Record<string, unknown>): void {
+    if (event.type === 'agent_start' && !timeline.inTurn()) {
+      turnOutcome = null;
+      timeline.turnStarted(userTurn ? 'user' : 'taskUpdate');
+    }
     if (event.type === 'message_start') {
       // A turn started by a user message may auto-run; one started by a task update may not
       // (its input includes worker output, which is untrusted).
       const role = (event.message as { role?: unknown } | null)?.role;
       if (role === 'user') userTurn = true;
       else if (role === 'custom') userTurn = false;
+      if (role === 'user' || role === 'custom') timeline.turnTrigger(role === 'user' ? 'user' : 'taskUpdate');
+    }
+    if (event.type === 'message_end') {
+      const message = event.message as { role?: unknown; stopReason?: unknown } | null;
+      if (message?.role === 'assistant') {
+        turnOutcome = message.stopReason === 'error' || message.stopReason === 'aborted' ? message.stopReason : null;
+      }
     }
     const effects = transcript.apply(event);
     if (effects.proposed.length > 0) addProposals(effects.proposed);
@@ -1419,7 +1457,16 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     if (effects.completeTaskIds.length > 0) applyCompleteRequests(effects.completeTaskIds);
     // pi saves the session as the turn ends: that is when a new conversation appears.
     if (event.type === 'agent_end') refreshConversations();
+    // The same end the transcript uses: not one pi is about to retry.
+    if ((event.type === 'agent_end' && event.willRetry !== true) || event.type === 'agent_settled') {
+      endTurn(turnOutcome ?? 'done');
+    }
     changed();
+  }
+
+  /** Record the coordinator's open turn on the timeline (no-op when none is open). */
+  function endTurn(outcome: TurnOutcome): void {
+    if (timeline.turnEnded(outcome, currentConversationId)) saveTimeline();
   }
 
   function addProposals(proposed: readonly ProposedTask[]): void {
@@ -1465,6 +1512,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     startSeq += 1;
     stopPolling();
     disposeOrchestrator();
+    endTurn('interrupted');
     transcript.apply({ type: 'agent_settled' });
     const client = herdr;
     herdr = null;
@@ -1481,6 +1529,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   function shutdown(): void {
     stopPolling();
     disposeOrchestrator();
+    endTurn('interrupted');
     if (herdrBinary && (herdr || ownsServer)) {
       // Detached so the stop completes even as AiOpt exits; it ends every worker.
       try {
@@ -1500,17 +1549,22 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     return rpc;
   }
 
-  async function chatSend(text: string): Promise<void> {
+  async function chatSend(text: string, images: readonly ChatImage[] = []): Promise<void> {
     const client = requireOrchestrator();
-    const message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.chatText);
-    if (message === '') throwIpcError('INVALID_PARAMS', 'message is empty');
+    let message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.chatText);
+    if (message === '' && images.length === 0) throwIpcError('INVALID_PARAMS', 'message is empty');
+    if (images.length > WORKBENCH_LIMITS.chatImages) throwIpcError('INVALID_PARAMS', 'too many images');
+    // An image-only message still needs words for the model (and a conversation title).
+    if (message === '') message = IMAGE_ONLY_MESSAGE;
     let promptText = expandTaskMentions(
       message,
       [...tasks.values()].map((t) => ({ id: t.id, title: t.title, status: t.status })),
     );
     promptText = await withSessionContext(promptText);
     try {
-      await client.prompt(promptText, transcript.streaming());
+      await client.prompt(promptText, transcript.streaming(), images);
+      // Counts only: image data is never logged.
+      if (images.length > 0) log.info('workbench.chat_images', { count: images.length });
     } catch (err) {
       transcript.pushError(err instanceof Error ? err.message : 'prompt failed');
       changed();
@@ -2192,6 +2246,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     openConversation,
     searchConversations,
     renameConversation,
+    timeline: () => timeline.events(),
     chatPage,
     deleteConversation,
     updateSettings,

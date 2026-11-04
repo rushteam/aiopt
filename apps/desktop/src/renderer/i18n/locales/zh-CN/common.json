@@ -851,6 +851,9 @@
     "subtitle": "与协调者对话，由它把工作拆成任务；每个经你批准的任务都作为独立的 pi Agent 在 herdr 会话中运行。使用「供应商」页里 pi 绑定的供应商与模型。",
     "start": "启动",
     "stop": "停止",
+    "startHint": "启动工作台：协调者，以及运行任务的 herdr 会话。",
+    "stopHint": "停止工作台：协调者和所有正在运行的任务都会停止。",
+    "notRunningHint": "工作台未启动，请点击右上角「启动」。",
     "cancel": "取消",
     "model": "模型：",
     "proxied": "经本地代理",
@@ -912,10 +915,18 @@
       "reset": "新对话",
       "emptyTitle": "想完成什么？",
       "empty": "描述你想完成的工作。协调者会在任务板上提出任务。「运行」会为每个任务启动一个独立的 Agent，它能修改所在文件夹里的文件，所以在你点「运行」（或开启自动运行）之前，什么都不会执行。",
-      "notRunning": "点击上方「启动」即可与协调者对话。",
+      "notRunning": "点击右上角「启动」即可与协调者对话。",
       "placeholder": "给协调者发消息 · 输入 @ 引用任务或会话",
       "sendHint": "Enter 发送 · Shift+Enter 换行",
       "taskMentionDrop": "松开以引用该任务（@task）",
+      "attachImage": "添加图片",
+      "removeImage": "移除图片",
+      "imageAlt": "附加的图片 {{n}}",
+      "imageDrop": "松开以添加图片",
+      "imageTooMany": "每条消息最多 {{max}} 张图片。",
+      "imageUnreadable": "无法读取该图片。",
+      "imageTooLarge": "图片太大，无法添加。",
+      "imagesAttached": "已附 {{count}} 张图片",
       "send": "发送",
       "abort": "停止回复",
       "you": "你：",
@@ -1002,6 +1013,47 @@
       "board_full": "任务板已满，部分提议的任务被丢弃。",
       "session_reset": "已开始新对话。",
       "session_opened": "已恢复对话。"
+    },
+    "timeline": {
+      "title": "时间线",
+      "filterLabel": "显示",
+      "filter": {
+        "key": "关键节点",
+        "all": "全部",
+        "tasks": "任务",
+        "turns": "协调者"
+      },
+      "empty": "还没有动态。任务开始、完成或停止，以及协调者的回复会出现在这里。",
+      "loadFailed": "无法加载时间线。",
+      "openTask": "打开该任务",
+      "removed": "该任务已删除",
+      "openConversation": "打开这段对话",
+      "conversationGone": "对话已不在列表中",
+      "ranFor": "耗时 {{duration}}",
+      "runningFor": "已运行 {{duration}}",
+      "tookFor": "用时 {{duration}}",
+      "event": {
+        "created": "已创建",
+        "started": "已开始",
+        "running": "运行中",
+        "resumed": "继续工作",
+        "blocked": "需要输入",
+        "review": "待审阅",
+        "done": "已完成",
+        "stopped": "已停止",
+        "failed": "失败",
+        "requeued": "回到待批准"
+      },
+      "turn": {
+        "done": "协调者已回复",
+        "error": "协调者回复失败",
+        "aborted": "协调者回复已停止",
+        "interrupted": "协调者回复被中断"
+      },
+      "trigger": {
+        "user": "你的提问",
+        "taskUpdate": "任务更新"
+      }
     },
     "plan": {
       "title": "任务规划",

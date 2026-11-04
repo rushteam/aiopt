@@ -4,12 +4,13 @@ import { layoutTaskDag } from '../../../shared/taskDagLayout';
 import { foldSearchText, searchExcerpt, searchQueryTerms, type TaskView } from '../../../shared/workbench';
 
 /**
- * What the content area shows: the coordinator chat, the plan graph, one task (all sidebar
- * tabs), or a read-only preview of a file picked in the explorer.
+ * What the content area shows: the coordinator chat, the plan graph, the task timeline, one
+ * task (all sidebar tabs), or a read-only preview of a file picked in the explorer.
  */
 export type WorkbenchView =
   | { kind: 'chat' }
   | { kind: 'plan' }
+  | { kind: 'timeline' }
   | { kind: 'task'; id: string }
   | { kind: 'file'; folderId: string; relPath: string };
 

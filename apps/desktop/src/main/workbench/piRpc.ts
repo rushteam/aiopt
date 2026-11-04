@@ -9,6 +9,7 @@
 // once rather than left to hang the chat.
 
 import { createJsonlDecoder, encodeJsonl } from './jsonl';
+import type { ChatImage } from '../../shared/workbench';
 
 /** The part of a ChildProcess this client uses. */
 export interface PiChild {
@@ -35,8 +36,8 @@ export interface PiSessionState {
 }
 
 export interface PiRpcClient {
-  /** Send a user message. While pi is streaming it is queued as a follow-up. */
-  prompt(message: string, streaming: boolean): Promise<void>;
+  /** Send a user message (with any images). While pi is streaming it is queued as a follow-up. */
+  prompt(message: string, streaming: boolean, images?: readonly ChatImage[]): Promise<void>;
   /**
    * Run an extension command (`/name args`). pi runs it at once, even mid-stream, so it takes
    * no streaming behavior; the `steer` / `follow_up` commands refuse extension commands.
@@ -135,8 +136,13 @@ export function createPiRpcClient(child: PiChild, opts: PiRpcOptions): PiRpcClie
   }
 
   return {
-    prompt(message, streaming) {
-      return send(streaming ? { type: 'prompt', message, streamingBehavior: 'followUp' } : { type: 'prompt', message });
+    prompt(message, streaming, images = []) {
+      const command: Record<string, unknown> = { type: 'prompt', message };
+      if (images.length > 0) {
+        command.images = images.map((image) => ({ type: 'image', data: image.data, mimeType: image.mimeType }));
+      }
+      if (streaming) command.streamingBehavior = 'followUp';
+      return send(command);
     },
     command: (text) => send({ type: 'prompt', message: text }),
     abort: () => send({ type: 'abort' }),

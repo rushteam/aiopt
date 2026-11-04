@@ -42,6 +42,16 @@ export function PlanIcon({ size }: { size?: number }) {
   );
 }
 
+/** A clock: the task timeline. */
+export function TimelineIcon({ size }: { size?: number }) {
+  return (
+    <Glyph size={size}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Glyph>
+  );
+}
+
 /** A window with one side panel; `side` picks which (sidebar = left, explorer = right). */
 export function PanelIcon({ side, size }: { side: 'left' | 'right'; size?: number }) {
   return (

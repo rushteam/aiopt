@@ -14,7 +14,9 @@
 
 import {
   DEFAULT_WORKBENCH_SETTINGS,
+  type ChatImage,
   type ConversationSearchResult,
+  type TimelineEvent,
   type FilePreview,
   type FolderListing,
   type WorkbenchSnapshot,
@@ -50,6 +52,7 @@ const EMPTY: WorkbenchSnapshot = {
     remote: false,
   },
   conversations: [],
+  timelineRevision: 0,
   currentConversationId: null,
   settings: { ...DEFAULT_WORKBENCH_SETTINGS },
 };
@@ -131,7 +134,7 @@ const wb = () => window.aiopt.workbench;
 
 export const startWorkbench = (): Promise<void> => apply(wb().start());
 export const stopWorkbench = (): Promise<void> => apply(wb().stop());
-export const sendChat = (text: string): Promise<void> => apply(wb().send(text));
+export const sendChat = (text: string, images?: ChatImage[]): Promise<void> => apply(wb().send(text, images));
 export const abortChat = (): Promise<void> => apply(wb().abort());
 export const resetChat = (): Promise<void> => apply(wb().reset());
 /** Opens the main-side folder picker; a cancelled pick leaves the list unchanged. */
@@ -160,6 +163,8 @@ export const searchConversationsFullText = (query: string): Promise<Conversation
   wb().searchConversations(query);
 export const renameConversation = (conversationId: string, title: string): Promise<void> =>
   apply(wb().renameConversation(conversationId, title));
+/** Read-only; refetch when `timelineRevision` in the snapshot changes. */
+export const fetchTimeline = (): Promise<TimelineEvent[]> => wb().timeline();
 export const updateWorkbenchSettings = (request: WorkbenchSettingsUpdateRequest): Promise<void> =>
   apply(wb().updateSettings(request));
 export const refreshHerdrProbe = (): Promise<void> => apply(wb().refreshHerdrProbe());

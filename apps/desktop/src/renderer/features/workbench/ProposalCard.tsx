@@ -60,7 +60,7 @@ export function ProposalCard({
           <button
             type="button"
             disabled={!canRunPlan}
-            title={t('workbench.plan.runHint')}
+            title={canApprove ? t('workbench.plan.runHint') : wb.status !== 'ready' ? t('workbench.notRunningHint') : undefined}
             onClick={() => void run(() => runPlan(conversationId))}
             {...(canRunPlan ? hoverBackground(token('accent'), token('accentHover')) : {})}
             style={{ ...accentButtonStyle, opacity: canRunPlan ? 1 : disabledOpacity }}

@@ -430,6 +430,7 @@ const DEMO_FILES: Record<string, string> = {
 
 const workbenchSnapshot: WorkbenchSnapshot = {
   lastNotify: null,
+  timelineRevision: 0,
   status: 'ready',
   issue: null,
   model: { providerName: 'Anthropic', modelId: 'claude-sonnet-4-5', proxied: true },
@@ -691,6 +692,7 @@ const bridge: AiOptBridge = {
     deleteConversation: refused,
     searchConversations: async (query: string) => ({ query, hits: [] }),
     renameConversation: refused,
+    timeline: async () => [],
     updateSettings: refused,
     refreshHerdrProbe: async () => workbenchSnapshot,
     installHerdr: refused,

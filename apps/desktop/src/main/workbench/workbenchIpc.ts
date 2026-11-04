@@ -10,6 +10,7 @@
 import type { IpcHandlerRegistry } from '../ipc/registry';
 import { requireObject, requireString, throwIpcError } from '../ipc/validate';
 import { IPC_CHANNELS } from '../../shared/ipc-channels';
+import { requireChatImages } from './chatImages';
 import {
   WORKBENCH_LIMITS,
   isValidConversationId,
@@ -163,8 +164,9 @@ export function registerWorkbenchIpc(
 
   registry.register(IPC_CHANNELS.workbenchChatSend, async (payload, meta) => {
     meta.assertTrustedSender();
-    const text = requireText(requireObject(payload).text, 'text', WORKBENCH_LIMITS.chatText);
-    await manager.chatSend(text);
+    const body = requireObject(payload);
+    const text = requireText(body.text, 'text', WORKBENCH_LIMITS.chatText);
+    await manager.chatSend(text, requireChatImages(body.images));
     return snapshot();
   });
 
@@ -368,6 +370,12 @@ export function registerWorkbenchIpc(
     if (typeof query !== 'string') throwIpcError('INVALID_PARAMS', 'query is required');
     if (query.length > WORKBENCH_LIMITS.searchQuery) throwIpcError('INVALID_PARAMS', 'query is too long');
     return manager.searchConversations(query);
+  });
+
+  // Read-only display data (ids, titles, statuses, times); takes no payload.
+  registry.register(IPC_CHANNELS.workbenchTimeline, (_payload, meta) => {
+    meta.assertTrustedSender();
+    return manager.timeline();
   });
 
   registry.register(IPC_CHANNELS.workbenchConversationRename, (payload, meta) => {

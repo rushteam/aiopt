@@ -55,7 +55,9 @@ import type {
   SkillsSnapshot,
 } from './skills';
 import type {
+  ChatImage,
   ConversationSearchResult,
+  TimelineEvent,
   FilePreview,
   FolderEntryResult,
   FolderImportResult,
@@ -283,6 +285,7 @@ export const IPC_CHANNELS = {
   workbenchConversationDelete: 'workbench:conversation-delete',
   workbenchConversationSearch: 'workbench:conversation-search',
   workbenchConversationRename: 'workbench:conversation-rename',
+  workbenchTimeline: 'workbench:timeline',
   workbenchSettingsUpdate: 'workbench:settings-update',
   workbenchHerdrProbe: 'workbench:herdr-probe',
   workbenchHerdrInstall: 'workbench:herdr-install',
@@ -963,6 +966,8 @@ export interface WorkbenchChatPageRequest {
 
 export interface WorkbenchChatSendRequest {
   text: string;
+  /** Pasted or dropped images; main re-checks type, encoding, size and file signature. */
+  images?: ChatImage[];
 }
 
 export interface WorkbenchFolderRef {
@@ -1318,6 +1323,8 @@ export interface IpcContract {
     result: ConversationSearchResult;
   };
   [IPC_CHANNELS.workbenchConversationRename]: { request: WorkbenchConversationRenameRequest; result: WorkbenchSnapshot };
+  /** The Workbench timeline (task changes and coordinator turns), oldest first (read-only). */
+  [IPC_CHANNELS.workbenchTimeline]: { request: void; result: TimelineEvent[] };
   [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchHerdrProbe]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchHerdrInstall]: { request: void; result: WorkbenchSnapshot };

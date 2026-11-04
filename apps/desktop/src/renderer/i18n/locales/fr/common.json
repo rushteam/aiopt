@@ -851,6 +851,9 @@
     "subtitle": "Discutez avec un coordinateur qui découpe le travail en tâches, puis lancez chaque tâche approuvée comme agent pi distinct dans une session herdr. Utilise le fournisseur et le modèle de pi définis dans Fournisseurs.",
     "start": "Démarrer",
     "stop": "Arrêter",
+    "startHint": "Démarrer l'atelier : le coordinateur et la session herdr qui exécute les tâches.",
+    "stopHint": "Arrêter l'atelier : le coordinateur et toutes les tâches en cours.",
+    "notRunningHint": "L'atelier n'est pas démarré. Appuyez sur Démarrer en haut à droite.",
     "cancel": "Annuler",
     "model": "Modèle :",
     "proxied": "via le proxy local",
@@ -912,10 +915,18 @@
       "reset": "Nouvelle conversation",
       "emptyTitle": "Que voulez-vous accomplir ?",
       "empty": "Décrivez ce que vous voulez faire. Le coordinateur propose des tâches sur le tableau. Lancer démarre chacune comme un agent distinct qui peut modifier les fichiers de son dossier : rien ne s'exécute tant que vous n'appuyez pas sur Lancer (ou n'activez pas le lancement automatique).",
-      "notRunning": "Appuyez sur Démarrer ci-dessus pour discuter avec le coordinateur.",
+      "notRunning": "Appuyez sur Démarrer en haut à droite pour discuter avec le coordinateur.",
       "placeholder": "Écrire au coordinateur · tapez @ pour mentionner une tâche ou une session",
       "sendHint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
       "taskMentionDrop": "Relâchez pour référencer la tâche (@task)",
+      "attachImage": "Joindre une image",
+      "removeImage": "Retirer l'image",
+      "imageAlt": "Image jointe {{n}}",
+      "imageDrop": "Relâchez pour joindre les images",
+      "imageTooMany": "{{max}} images au maximum par message.",
+      "imageUnreadable": "Impossible de lire cette image.",
+      "imageTooLarge": "Cette image est trop grande pour être jointe.",
+      "imagesAttached": "{{count}} image(s) jointe(s)",
       "send": "Envoyer",
       "abort": "Arrêter la réponse",
       "you": "Vous :",
@@ -1002,6 +1013,47 @@
       "board_full": "Certaines tâches proposées ont été ignorées : le tableau est plein.",
       "session_reset": "Nouvelle conversation commencée.",
       "session_opened": "Conversation restaurée."
+    },
+    "timeline": {
+      "title": "Chronologie",
+      "filterLabel": "Afficher",
+      "filter": {
+        "key": "Moments clés",
+        "all": "Tout",
+        "tasks": "Tâches",
+        "turns": "Coordinateur"
+      },
+      "empty": "Aucune activité pour l'instant. Le démarrage, la fin ou l'arrêt des tâches et les réponses du coordinateur s'affichent ici.",
+      "loadFailed": "Impossible de charger la chronologie.",
+      "openTask": "Ouvrir la tâche",
+      "removed": "Cette tâche a été supprimée",
+      "openConversation": "Ouvrir cette conversation",
+      "conversationGone": "Conversation plus listée",
+      "ranFor": "Durée : {{duration}}",
+      "runningFor": "En cours depuis {{duration}}",
+      "tookFor": "Durée {{duration}}",
+      "event": {
+        "created": "Créée",
+        "started": "Démarrée",
+        "running": "En cours",
+        "resumed": "Reprise",
+        "blocked": "Saisie requise",
+        "review": "Prête pour relecture",
+        "done": "Terminée",
+        "stopped": "Arrêtée",
+        "failed": "Échec",
+        "requeued": "De nouveau en attente"
+      },
+      "turn": {
+        "done": "Le coordinateur a répondu",
+        "error": "Échec de la réponse du coordinateur",
+        "aborted": "Réponse du coordinateur arrêtée",
+        "interrupted": "Réponse du coordinateur interrompue"
+      },
+      "trigger": {
+        "user": "Votre question",
+        "taskUpdate": "Mise à jour de tâche"
+      }
     },
     "plan": {
       "title": "Plan des tâches",

@@ -851,6 +851,9 @@
     "subtitle": "Conversa con un coordinador que divide el trabajo en tareas y ejecuta cada tarea aprobada como su propio agente pi en una sesión de herdr. Usa el proveedor y el modelo de pi definidos en Proveedores.",
     "start": "Iniciar",
     "stop": "Detener",
+    "startHint": "Iniciar el banco de trabajo: el coordinador y la sesión de herdr que ejecuta las tareas.",
+    "stopHint": "Detener el banco de trabajo: el coordinador y todas las tareas en curso.",
+    "notRunningHint": "El banco de trabajo no está en marcha. Pulsa Iniciar arriba a la derecha.",
     "cancel": "Cancelar",
     "model": "Modelo:",
     "proxied": "a través del proxy local",
@@ -912,10 +915,18 @@
       "reset": "Nueva conversación",
       "emptyTitle": "¿Qué quieres hacer?",
       "empty": "Describe lo que quieres hacer. El coordinador propone tareas en el tablero. Ejecutar inicia cada una como un agente propio que puede cambiar archivos en su carpeta, así que nada se ejecuta hasta que pulses Ejecutar (o actives la ejecución automática).",
-      "notRunning": "Pulsa Iniciar arriba para conversar con el coordinador.",
+      "notRunning": "Pulsa Iniciar arriba a la derecha para conversar con el coordinador.",
       "placeholder": "Escribe al coordinador · escribe @ para mencionar una tarea o sesión",
       "sendHint": "Intro para enviar · Mayús+Intro para nueva línea",
       "taskMentionDrop": "Suelta para referenciar la tarea (@task)",
+      "attachImage": "Adjuntar imagen",
+      "removeImage": "Quitar imagen",
+      "imageAlt": "Imagen adjunta {{n}}",
+      "imageDrop": "Suelta para adjuntar imágenes",
+      "imageTooMany": "Hasta {{max}} imágenes por mensaje.",
+      "imageUnreadable": "No se pudo leer la imagen.",
+      "imageTooLarge": "La imagen es demasiado grande para adjuntarla.",
+      "imagesAttached": "{{count}} imagen(es) adjunta(s)",
       "send": "Enviar",
       "abort": "Detener respuesta",
       "you": "Tú:",
@@ -1002,6 +1013,47 @@
       "board_full": "Se descartaron algunas tareas propuestas: el tablero está lleno.",
       "session_reset": "Se inició una nueva conversación.",
       "session_opened": "Conversación restaurada."
+    },
+    "timeline": {
+      "title": "Cronología",
+      "filterLabel": "Mostrar",
+      "filter": {
+        "key": "Momentos clave",
+        "all": "Todo",
+        "tasks": "Tareas",
+        "turns": "Coordinador"
+      },
+      "empty": "Aún no hay actividad. Aquí aparecen las tareas que se inician, terminan o detienen, y las respuestas del coordinador.",
+      "loadFailed": "No se pudo cargar la cronología.",
+      "openTask": "Abrir la tarea",
+      "removed": "Esta tarea se eliminó",
+      "openConversation": "Abrir esta conversación",
+      "conversationGone": "La conversación ya no aparece",
+      "ranFor": "Duró {{duration}}",
+      "runningFor": "En curso desde hace {{duration}}",
+      "tookFor": "Duró {{duration}}",
+      "event": {
+        "created": "Creada",
+        "started": "Iniciada",
+        "running": "En curso",
+        "resumed": "Reanudada",
+        "blocked": "Requiere entrada",
+        "review": "Lista para revisar",
+        "done": "Terminada",
+        "stopped": "Detenida",
+        "failed": "Falló",
+        "requeued": "De nuevo en espera"
+      },
+      "turn": {
+        "done": "El coordinador respondió",
+        "error": "Falló la respuesta del coordinador",
+        "aborted": "Respuesta del coordinador detenida",
+        "interrupted": "Respuesta del coordinador interrumpida"
+      },
+      "trigger": {
+        "user": "Tu pregunta",
+        "taskUpdate": "Actualización de tarea"
+      }
     },
     "plan": {
       "title": "Plan de tareas",

@@ -148,6 +148,14 @@
       "forbidden": { "zh-CN": ["主管", "主 Agent", "调度器"] }
     },
     {
+      "id": "workbench-timeline",
+      "en": "Timeline",
+      "status": "proposed",
+      "note": "The Workbench view listing every task status change, newest first: when it happened, which task, what happened (started, done, stopped, failed) and how long its run took. Only task events, not coordinator chat turns. Not 'log', 'history', or 'activity feed' in UI copy (history already names saved conversations). Term still under discussion.",
+      "translations": { "zh-CN": "时间线", "ja": "タイムライン", "ko": "타임라인", "fr": "Chronologie", "de": "Zeitleiste", "es": "Cronología" },
+      "forbidden": { "zh-CN": ["时间轴"] }
+    },
+    {
       "id": "agent-session",
       "en": "Session",
       "status": "proposed",

@@ -851,6 +851,9 @@
     "subtitle": "Chat with a coordinator that breaks work into tasks, then run each approved task as its own pi agent in a herdr session. Uses pi's provider and model from Providers.",
     "start": "Start",
     "stop": "Stop",
+    "startHint": "Start the workbench: the coordinator and the herdr session that runs tasks.",
+    "stopHint": "Stop the workbench: the coordinator and every running task.",
+    "notRunningHint": "The workbench isn't running. Press Start at the top right.",
     "cancel": "Cancel",
     "model": "Model:",
     "proxied": "through the local proxy",
@@ -912,10 +915,18 @@
       "reset": "New conversation",
       "emptyTitle": "What should we get done?",
       "empty": "Describe what you want done. The coordinator proposes tasks on the board. Run starts each one as its own agent that can change files in its folder, so nothing runs until you press Run (or turn on auto-run).",
-      "notRunning": "Press Start above to chat with the coordinator.",
+      "notRunning": "Press Start at the top right to chat with the coordinator.",
       "placeholder": "Message the coordinator · type @ to mention a task or session",
       "sendHint": "Enter to send · Shift+Enter for a new line",
       "taskMentionDrop": "Drop a task tab to reference it (@task)",
+      "attachImage": "Attach image",
+      "removeImage": "Remove image",
+      "imageAlt": "Attached image {{n}}",
+      "imageDrop": "Drop images to attach",
+      "imageTooMany": "Up to {{max}} images per message.",
+      "imageUnreadable": "Couldn't read that image.",
+      "imageTooLarge": "That image is too large to attach.",
+      "imagesAttached": "{{count}} image(s) attached",
       "send": "Send",
       "abort": "Stop reply",
       "you": "You:",
@@ -1002,6 +1013,47 @@
       "board_full": "Some proposed tasks were dropped: the task board is full.",
       "session_reset": "New conversation started.",
       "session_opened": "Conversation restored."
+    },
+    "timeline": {
+      "title": "Timeline",
+      "filterLabel": "Show",
+      "filter": {
+        "key": "Key moments",
+        "all": "Everything",
+        "tasks": "Tasks",
+        "turns": "Coordinator"
+      },
+      "empty": "No activity yet. Tasks starting, finishing or stopping, and the coordinator's replies, show up here.",
+      "loadFailed": "Couldn't load the timeline.",
+      "openTask": "Open the task",
+      "removed": "This task was removed",
+      "openConversation": "Open this conversation",
+      "conversationGone": "Conversation no longer listed",
+      "ranFor": "Took {{duration}}",
+      "runningFor": "Running for {{duration}}",
+      "tookFor": "Took {{duration}}",
+      "event": {
+        "created": "Created",
+        "started": "Started",
+        "running": "Running",
+        "resumed": "Resumed",
+        "blocked": "Needs input",
+        "review": "Ready for review",
+        "done": "Done",
+        "stopped": "Stopped",
+        "failed": "Failed",
+        "requeued": "Back to waiting"
+      },
+      "turn": {
+        "done": "Coordinator replied",
+        "error": "Coordinator reply failed",
+        "aborted": "Coordinator reply stopped",
+        "interrupted": "Coordinator reply cut off"
+      },
+      "trigger": {
+        "user": "You asked",
+        "taskUpdate": "Task update"
+      }
     },
     "plan": {
       "title": "Task plan",

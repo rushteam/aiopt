@@ -64,6 +64,8 @@ import type {
 } from '../shared/mcp';
 import type {
   ConversationSearchResult,
+  TimelineEvent,
+  ChatImage,
   FilePreview,
   FolderEntryResult,
   FolderImportResult,
@@ -457,8 +459,8 @@ const api = {
     get: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchGet),
     start: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchStart),
     stop: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchStop),
-    send: (text: string): Promise<WorkbenchSnapshot> =>
-      ipcRenderer.invoke(IPC_CHANNELS.workbenchChatSend, { text }),
+    send: (text: string, images?: ChatImage[]): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchChatSend, images && images.length > 0 ? { text, images } : { text }),
     abort: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchChatAbort),
     reset: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchChatReset),
     addFolder: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderAdd),
@@ -533,6 +535,8 @@ const api = {
     /** '' restores the title derived from the first message. */
     renameConversation: (conversationId: string, title: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationRename, { conversationId, title }),
+    /** The Workbench timeline (task changes and coordinator turns), oldest first (read-only). */
+    timeline: (): Promise<TimelineEvent[]> => ipcRenderer.invoke(IPC_CHANNELS.workbenchTimeline),
     updateSettings: (request: WorkbenchSettingsUpdateRequest): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchSettingsUpdate, request),
     refreshHerdrProbe: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchHerdrProbe),

@@ -851,6 +851,9 @@
     "subtitle": "Chatten Sie mit einem Koordinator, der Arbeit in Aufgaben aufteilt, und führen Sie jede freigegebene Aufgabe als eigenen pi-Agenten in einer herdr-Sitzung aus. Verwendet den Anbieter und das Modell von pi aus „Anbieter“.",
     "start": "Starten",
     "stop": "Stoppen",
+    "startHint": "Werkbank starten: den Koordinator und die herdr-Sitzung, in der Aufgaben laufen.",
+    "stopHint": "Werkbank stoppen: den Koordinator und alle laufenden Aufgaben.",
+    "notRunningHint": "Die Werkbank läuft nicht. Klicken Sie oben rechts auf „Start“.",
     "cancel": "Abbrechen",
     "model": "Modell:",
     "proxied": "über den lokalen Proxy",
@@ -912,10 +915,18 @@
       "reset": "Neue Unterhaltung",
       "emptyTitle": "Was soll erledigt werden?",
       "empty": "Beschreiben Sie, was erledigt werden soll. Der Koordinator schlägt Aufgaben auf dem Board vor. „Ausführen“ startet jede als eigenen Agenten, der Dateien in seinem Ordner ändern kann – deshalb läuft nichts, bevor Sie auf „Ausführen“ klicken (oder die automatische Ausführung einschalten).",
-      "notRunning": "Klicken Sie oben auf „Start“, um mit dem Koordinator zu chatten.",
+      "notRunning": "Klicken Sie oben rechts auf „Start“, um mit dem Koordinator zu chatten.",
       "placeholder": "Nachricht an den Koordinator · @ für eine Aufgabe oder Sitzung",
       "sendHint": "Eingabe zum Senden · Umschalt+Eingabe für neue Zeile",
       "taskMentionDrop": "Tab loslassen, um die Aufgabe zu referenzieren (@task)",
+      "attachImage": "Bild anhängen",
+      "removeImage": "Bild entfernen",
+      "imageAlt": "Angehängtes Bild {{n}}",
+      "imageDrop": "Loslassen, um Bilder anzuhängen",
+      "imageTooMany": "Höchstens {{max}} Bilder pro Nachricht.",
+      "imageUnreadable": "Das Bild konnte nicht gelesen werden.",
+      "imageTooLarge": "Das Bild ist zu groß zum Anhängen.",
+      "imagesAttached": "{{count}} Bild(er) angehängt",
       "send": "Senden",
       "abort": "Antwort stoppen",
       "you": "Sie:",
@@ -1002,6 +1013,47 @@
       "board_full": "Einige vorgeschlagene Aufgaben wurden verworfen: Das Aufgaben-Board ist voll.",
       "session_reset": "Neue Unterhaltung begonnen.",
       "session_opened": "Unterhaltung wiederhergestellt."
+    },
+    "timeline": {
+      "title": "Zeitleiste",
+      "filterLabel": "Anzeigen",
+      "filter": {
+        "key": "Wichtige Momente",
+        "all": "Alles",
+        "tasks": "Aufgaben",
+        "turns": "Koordinator"
+      },
+      "empty": "Noch keine Aktivität. Starten, Abschließen oder Stoppen von Aufgaben und die Antworten des Koordinators erscheinen hier.",
+      "loadFailed": "Die Zeitleiste konnte nicht geladen werden.",
+      "openTask": "Aufgabe öffnen",
+      "removed": "Diese Aufgabe wurde entfernt",
+      "openConversation": "Diese Unterhaltung öffnen",
+      "conversationGone": "Unterhaltung nicht mehr aufgeführt",
+      "ranFor": "Dauer: {{duration}}",
+      "runningFor": "Läuft seit {{duration}}",
+      "tookFor": "Dauer {{duration}}",
+      "event": {
+        "created": "Erstellt",
+        "started": "Gestartet",
+        "running": "Läuft",
+        "resumed": "Fortgesetzt",
+        "blocked": "Eingabe nötig",
+        "review": "Bereit zur Prüfung",
+        "done": "Erledigt",
+        "stopped": "Gestoppt",
+        "failed": "Fehlgeschlagen",
+        "requeued": "Wieder wartend"
+      },
+      "turn": {
+        "done": "Koordinator hat geantwortet",
+        "error": "Antwort des Koordinators fehlgeschlagen",
+        "aborted": "Antwort des Koordinators gestoppt",
+        "interrupted": "Antwort des Koordinators abgebrochen"
+      },
+      "trigger": {
+        "user": "Deine Frage",
+        "taskUpdate": "Aufgaben-Update"
+      }
     },
     "plan": {
       "title": "Aufgabenplan",

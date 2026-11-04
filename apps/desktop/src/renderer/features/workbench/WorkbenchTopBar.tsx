@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
+import { disabledOpacity, elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { CheckboxField } from '../../components/ui/Checkbox';
@@ -15,17 +15,25 @@ export function WorkbenchTopBar({
   t,
   run,
   selectedTask,
+  busy,
+  onToggle,
 }: {
   wb: WorkbenchSnapshot;
   t: TranslateFn;
   run: Runner;
   selectedTask: TaskView | null;
+  /** A start / stop is in flight. */
+  busy: boolean;
+  /** Start or stop the whole workbench: the coordinator, herdr and every running task. */
+  onToggle: () => void;
 }) {
   const probe = wb.herdrProbe;
   const showInstall = !probe.remote && !probe.installed && wb.status !== 'error';
   const tasksBlocked =
     (wb.status === 'ready' && !wb.herdrAvailable) || (!probe.installed && wb.status === 'stopped');
   const on = wb.status === 'ready' || wb.status === 'starting';
+  const toggleDisabled = busy || wb.status === 'starting';
+  const toggleLabel = on ? t('workbench.stop') : t('workbench.start');
   const dot =
     wb.status === 'ready' ? token('success') : wb.status === 'error' ? token('danger') : token('borderStrong');
   const statusLabel = t(`workbench.status.${wb.status}`);
@@ -318,6 +326,31 @@ export function WorkbenchTopBar({
           <span aria-hidden style={{ opacity: 0.7 }}>
             {envOpen ? ' ▴' : ' ▾'}
           </span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={toggleDisabled}
+          title={on ? t('workbench.stopHint') : t('workbench.startHint')}
+          {...(on
+            ? hoverBackground('transparent', token('surfaceHover'))
+            : hoverBackground(token('accent'), token('accentHover')))}
+          style={{
+            all: 'unset',
+            cursor: toggleDisabled ? 'default' : 'pointer',
+            fontSize: fontSize.xs,
+            fontWeight: 600,
+            lineHeight: '16px',
+            padding: on ? '1px 9px' : '2px 10px',
+            borderRadius: radius.sm,
+            border: on ? `1px solid ${token('borderStrong')}` : 'none',
+            background: on ? 'transparent' : token('accent'),
+            color: on ? token('text') : token('accentText'),
+            opacity: toggleDisabled ? disabledOpacity : 1,
+            flexShrink: 0,
+          }}
+        >
+          {wb.status === 'starting' ? t('workbench.status.starting') : toggleLabel}
         </button>
       </div>
       {envPanel}

@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { decodeIpcError } from '../../../shared/ipc-errors';
-import { WORKBENCH_LIMITS } from '../../../shared/workbench';
+import { IMAGE_ONLY_MESSAGE, WORKBENCH_LIMITS } from '../../../shared/workbench';
 import type { Logger } from '../../logger';
 import { HerdrError, type HerdrAgentRow, type HerdrClient, type HerdrWorkspaceRow } from '../herdrCli';
 import type { PiChild } from '../piRpc';
@@ -426,6 +426,20 @@ describe('workbench chat', () => {
     expect(await codeOfAsync(s.wb.chatSend(' \u0000 '))).toBe('INVALID_PARAMS');
   });
 
+  it('passes images through to pi, filling in text for an image-only message', async () => {
+    const s = await started();
+    const image = { mimeType: 'image/png' as const, data: 'iVBORw0KGgo=' };
+    await s.wb.chatSend('', [image]);
+    expect(s.pis[0]!.commands.find((c) => c.type === 'prompt')).toMatchObject({
+      message: IMAGE_ONLY_MESSAGE,
+      images: [{ type: 'image', ...image }],
+    });
+    const models = JSON.parse(s.disk.get(path.join(DATA, 'pi-agent', 'models.json'))!);
+    expect(models.providers['aiopt-wb'].models[0]).toMatchObject({ input: ['text', 'image'] });
+    // The image never lands in AiOpt's own files.
+    for (const [, contents] of s.disk) expect(contents).not.toContain(image.data);
+  });
+
   it('attaches mentioned session excerpts main-side, reporting unreadable ones as missing', async () => {
     const SID = '6f1c2a90-1d2e-4c55-9a51-0f7d3e2b8a11';
     const GONE = 'deadbeef-0000-4000-8000-000000000000';
@@ -693,6 +707,28 @@ describe('workbench tasks', () => {
     expect(s.herdr.client.workspaceClose).toHaveBeenCalled();
   });
 
+  it('records task status changes on the timeline, persisted without the prompt', async () => {
+    const s = await withFolder();
+    const rev0 = s.wb.getSnapshot().timelineRevision;
+    const id = s.wb.createTask({ title: 'Fix', prompt: 'secret prompt words', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    s.advance(42_000);
+    await s.wb.completeTask(id);
+    const steps = s.wb.timeline().flatMap((e) => (e.kind === 'task' && e.taskId === id ? [e] : []));
+    expect(steps.map((e) => [e.from, e.status])).toEqual([
+      [null, 'proposed'],
+      ['proposed', 'starting'],
+      ['starting', 'working'],
+      ['working', 'done'],
+    ]);
+    expect(steps.at(-1)!.runMs).toBeGreaterThanOrEqual(42_000);
+    expect(s.wb.getSnapshot().timelineRevision).toBeGreaterThan(rev0);
+    const file = s.disk.get(path.join(DATA, 'timeline.json'))!;
+    expect(JSON.parse(file).events.length).toBeGreaterThanOrEqual(4);
+    expect(file).not.toContain('secret prompt words');
+  });
+
   it('needs a folder, a git repo for isolation, and a free slot', async () => {
     const s = await withFolder();
     const loose = s.wb.createTask({ title: 'L', prompt: 'p' });
@@ -812,6 +848,42 @@ describe('workbench conversations', () => {
     const switches = pi.commands.filter((c) => c.type === 'switch_session').length;
     await s.wb.openConversation(UUID_A);
     expect(pi.commands.filter((c) => c.type === 'switch_session')).toHaveLength(switches);
+  });
+
+  it('records coordinator turns on the timeline: trigger, outcome and length, no text', async () => {
+    const s = await started(history());
+    const pi = s.pis[0]!;
+    const user = { role: 'user', content: [{ type: 'text', text: 'private question words' }] };
+    pi.emitLine({ type: 'agent_start' });
+    pi.emitLine({ type: 'message_start', message: user });
+    s.advance(5_000);
+    pi.emitLine({ type: 'message_end', message: { role: 'assistant', content: [], stopReason: 'stop' } });
+    // A retry keeps the turn open.
+    pi.emitLine({ type: 'agent_end', willRetry: true });
+    pi.emitLine({ type: 'agent_start' });
+    s.advance(1_000);
+    pi.emitLine({ type: 'agent_end' });
+    pi.emitLine({ type: 'agent_settled' });
+
+    pi.emitLine({ type: 'agent_start' });
+    pi.emitLine({ type: 'message_start', message: { role: 'custom', customType: 'aiopt-task-update', content: 'x' } });
+    s.advance(2_000);
+    pi.emitLine({ type: 'message_end', message: { role: 'assistant', content: [], stopReason: 'aborted' } });
+    pi.emitLine({ type: 'agent_end' });
+
+    pi.emitLine({ type: 'agent_start' });
+    s.advance(3_000);
+    await s.wb.stop();
+
+    const turns = s.wb.timeline().filter((e) => e.kind === 'turn');
+    expect(turns.map((e) => (e.kind === 'turn' ? [e.trigger, e.outcome, e.durationMs, e.conversationId] : null))).toEqual([
+      ['user', 'done', 6_000, UUID_B],
+      ['taskUpdate', 'aborted', 2_000, UUID_B],
+      ['taskUpdate', 'interrupted', 3_000, UUID_B],
+    ]);
+    const file = s.disk.get(path.join(DATA, 'timeline.json'))!;
+    expect(JSON.parse(file).events.filter((e: { kind: string }) => e.kind === 'turn')).toHaveLength(3);
+    expect(file).not.toContain('private question words');
   });
 
   it('refuses to switch or reset mid-reply', async () => {
