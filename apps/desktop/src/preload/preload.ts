@@ -6,7 +6,7 @@
 // maps to one allowlisted channel, and every event subscription drops the raw
 // IpcRendererEvent before anything reaches the renderer.
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
   IPC_CHANNELS,
   IPC_EVENTS,
@@ -33,6 +33,7 @@ import {
   type ThemePreference,
   type WorkbenchSettingsUpdateRequest,
   type WorkbenchTaskCreateRequest,
+  type WorkbenchFolderTransferRequest,
   type WorkbenchTaskUpdateRequest,
   type UpdateStatus,
 } from '../shared/ipc-channels';
@@ -61,7 +62,15 @@ import type {
   McpRevealValueResult,
   McpWriteResult,
 } from '../shared/mcp';
-import type { FilePreview, FolderListing, TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from '../shared/workbench';
+import type {
+  FilePreview,
+  FolderEntryResult,
+  FolderImportResult,
+  FolderListing,
+  TaskOutput,
+  WorkbenchChatPage,
+  WorkbenchSnapshot,
+} from '../shared/workbench';
 import type { AppShortcutCombo, AppShortcutId } from '../shared/appShortcuts';
 import type { AgentId } from '../shared/aiProviders';
 import { isMenuCommand, type MenuCommand } from '../shared/menuCommands';
@@ -463,6 +472,29 @@ const api = {
     /** Show an entry of a granted folder in the OS file manager (never opens it). */
     revealFolderEntry: (folderId: string, relPath: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderReveal, { folderId, relPath }),
+    /** New empty file or directory `name` inside the directory `relPath`. Never overwrites. */
+    createFolderEntry: (folderId: string, relPath: string, name: string, kind: 'file' | 'dir'): Promise<FolderEntryResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderCreate, { folderId, relPath, name, kind }),
+    renameFolderEntry: (folderId: string, relPath: string, name: string): Promise<FolderEntryResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderRename, { folderId, relPath, name }),
+    /** Move an entry to the OS trash (there is no permanent delete). */
+    trashFolderEntry: (folderId: string, relPath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderTrash, { folderId, relPath }),
+    /** Copy or move an entry into a directory of any granted folder; a taken name gets ` copy`. */
+    transferFolderEntry: (request: WorkbenchFolderTransferRequest): Promise<FolderEntryResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderTransfer, request),
+    /**
+     * Copy files dropped from the OS file manager into a directory, after main's native
+     * confirmation. The dropped `File`s are turned into paths HERE (webUtils), so the renderer
+     * never reads or builds an absolute path.
+     */
+    importDroppedFiles: (folderId: string, relPath: string, files: readonly File[]): Promise<FolderImportResult> => {
+      const paths = Array.from(files, (f) => webUtils.getPathForFile(f)).filter((p) => p.length > 0);
+      return ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderImport, { folderId, relPath, paths });
+    },
+    /** Put an entry's absolute (or folder-relative) path on the clipboard, main-side. */
+    copyFolderEntryPath: (folderId: string, relPath: string, relative: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchFolderCopyPath, { folderId, relPath, relative }),
     createTask: (request: WorkbenchTaskCreateRequest): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskCreate, request),
     updateTask: (request: WorkbenchTaskUpdateRequest): Promise<WorkbenchSnapshot> =>

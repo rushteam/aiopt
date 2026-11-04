@@ -5,6 +5,7 @@ import { decodeIpcError } from '../../../shared/ipc-errors';
 import { IPC_CHANNELS } from '../../../shared/ipc-channels';
 import { WORKBENCH_LIMITS, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { registerWorkbenchIpc } from '../workbenchIpc';
+import type { FolderOps } from '../folderOps';
 import type { WorkbenchManager } from '../workbenchManager';
 
 const trusted: IpcInvokeMeta = { assertTrustedSender: () => {} };
@@ -28,6 +29,7 @@ function setup(picked: string | null = '/work/app') {
     listFolder: vi.fn(() => ({ entries: [{ name: 'src', kind: 'dir' as const }], truncated: false })),
     readFolderFile: vi.fn(() => ({ text: 'hi', truncated: false, binary: false, size: 2 })),
     resolveFolderEntry: vi.fn(() => '/work/app/src/a.ts'),
+    folderRoot: vi.fn(() => ({ root: '/work/app', name: 'app' })),
     createTask: vi.fn(() => 'id1'),
     updateTask: vi.fn(),
     launchTask: vi.fn(),
@@ -48,9 +50,17 @@ function setup(picked: string | null = '/work/app') {
   } satisfies WorkbenchManager;
   const pickFolder = vi.fn(async () => picked);
   const revealItem = vi.fn();
+  const folderOps = {
+    create: vi.fn(() => 'src/new.ts'),
+    rename: vi.fn(() => 'src/b.ts'),
+    trash: vi.fn(async () => {}),
+    transfer: vi.fn(() => 'lib/a.ts'),
+    importPaths: vi.fn(async () => ['in.txt']),
+    copyPath: vi.fn(),
+  } satisfies FolderOps;
   const reg = createInMemoryRegistry();
-  registerWorkbenchIpc(reg, manager, { pickFolder, revealItem });
-  return { reg, manager, pickFolder, revealItem };
+  registerWorkbenchIpc(reg, manager, { pickFolder, revealItem, folderOps });
+  return { reg, manager, pickFolder, revealItem, folderOps };
 }
 
 async function codeOf(p: Promise<unknown>): Promise<string> {
@@ -66,8 +76,8 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
-    const { reg, manager, pickFolder, revealItem } = setup();
-    expect(CHANNELS).toHaveLength(28);
+    const { reg, manager, pickFolder, revealItem, folderOps } = setup();
+    expect(CHANNELS).toHaveLength(34);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
@@ -76,6 +86,55 @@ describe('workbench ipc', () => {
     expect(pickFolder).not.toHaveBeenCalled();
     expect(revealItem).not.toHaveBeenCalled();
     for (const fn of Object.values(manager)) expect(fn).not.toHaveBeenCalled();
+    for (const fn of Object.values(folderOps)) expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('routes explorer file operations by id plus relative paths, validating before folderOps runs', async () => {
+    const { reg, folderOps } = setup();
+    expect(
+      await reg.invoke(IPC_CHANNELS.workbenchFolderCreate, { folderId: 'f1', relPath: 'src', name: 'new.ts', kind: 'file' }, trusted),
+    ).toEqual({ relPath: 'src/new.ts' });
+    expect(folderOps.create).toHaveBeenCalledWith('f1', 'src', 'new.ts', 'file');
+    expect(await reg.invoke(IPC_CHANNELS.workbenchFolderRename, { folderId: 'f1', relPath: 'src/a.ts', name: 'b.ts' }, trusted)).toEqual({
+      relPath: 'src/b.ts',
+    });
+    await reg.invoke(IPC_CHANNELS.workbenchFolderTrash, { folderId: 'f1', relPath: 'src/a.ts' }, trusted);
+    expect(folderOps.trash).toHaveBeenCalledWith('f1', 'src/a.ts');
+    const transfer = { op: 'move', from: { folderId: 'f1', relPath: 'src/a.ts' }, to: { folderId: 'f2', relPath: 'lib' } };
+    expect(await reg.invoke(IPC_CHANNELS.workbenchFolderTransfer, transfer, trusted)).toEqual({ relPath: 'lib/a.ts' });
+    expect(folderOps.transfer).toHaveBeenCalledWith('move', transfer.from, transfer.to);
+    expect(await reg.invoke(IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: ['/tmp/in.txt'] }, trusted)).toEqual({
+      relPaths: ['in.txt'],
+    });
+    await reg.invoke(IPC_CHANNELS.workbenchFolderCopyPath, { folderId: 'f1', relPath: 'src', relative: true }, trusted);
+    expect(folderOps.copyPath).toHaveBeenCalledWith('f1', 'src', true);
+
+    const bad: [string, unknown][] = [
+      [IPC_CHANNELS.workbenchFolderCreate, { folderId: 'f1', relPath: '', name: '../x', kind: 'file' }],
+      [IPC_CHANNELS.workbenchFolderCreate, { folderId: 'f1', relPath: '', name: 'a/b', kind: 'file' }],
+      [IPC_CHANNELS.workbenchFolderCreate, { folderId: 'f1', relPath: '', name: 'x', kind: 'link' }],
+      [IPC_CHANNELS.workbenchFolderRename, { folderId: 'f1', relPath: '../a', name: 'b' }],
+      [IPC_CHANNELS.workbenchFolderRename, { folderId: 'f1', relPath: 'a', name: '..' }],
+      [IPC_CHANNELS.workbenchFolderTrash, { folderId: 'f1', relPath: '/etc/passwd' }],
+      [IPC_CHANNELS.workbenchFolderTransfer, { op: 'link', from: transfer.from, to: transfer.to }],
+      [IPC_CHANNELS.workbenchFolderTransfer, { op: 'copy', from: { folderId: 'f1', relPath: '../../x' }, to: transfer.to }],
+      [IPC_CHANNELS.workbenchFolderTransfer, { op: 'copy', from: transfer.from, to: { folderId: 'A B', relPath: '' } }],
+      [IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: [] }],
+      [IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: 'x' }],
+      [IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: [7] }],
+      [IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: ['/a\u0000b'] }],
+      [IPC_CHANNELS.workbenchFolderImport, { folderId: 'f1', relPath: '', paths: Array.from({ length: 51 }, (_, i) => `/p${i}`) }],
+      [IPC_CHANNELS.workbenchFolderCopyPath, { folderId: 'f1', relPath: '', relative: 'yes' }],
+    ];
+    for (const [channel, payload] of bad) {
+      expect(await codeOf(reg.invoke(channel, payload, trusted))).toBe('INVALID_PARAMS');
+    }
+    expect(folderOps.create).toHaveBeenCalledTimes(1);
+    expect(folderOps.rename).toHaveBeenCalledTimes(1);
+    expect(folderOps.trash).toHaveBeenCalledTimes(1);
+    expect(folderOps.transfer).toHaveBeenCalledTimes(1);
+    expect(folderOps.importPaths).toHaveBeenCalledTimes(1);
+    expect(folderOps.copyPath).toHaveBeenCalledTimes(1);
   });
 
   it('adds only the folder picked in main, ignoring any path in the payload', async () => {

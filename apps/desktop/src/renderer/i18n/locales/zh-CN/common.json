@@ -949,7 +949,7 @@
       "error": "无法读取此文件夹。",
       "emptyDir": "空文件夹",
       "truncated": "仅显示前 {{count}} 项。",
-      "hint": "点击文件即可预览。",
+      "hint": "点击文件即可预览。右键查看更多操作，也可以把文件拖到这里。",
       "removeConfirm": "要从工作台移除此文件夹吗？磁盘上的文件不受影响。",
       "preview": "预览",
       "insert": "在对话中引用",
@@ -957,7 +957,22 @@
       "closePreview": "关闭预览",
       "previewError": "无法读取此文件。",
       "binary": "二进制文件，无法预览。",
-      "previewTruncated": "仅显示前 {{size}}。"
+      "previewTruncated": "仅显示前 {{size}}。",
+      "menu": "资源管理器操作",
+      "open": "打开预览",
+      "newFile": "新建文件",
+      "newFolder": "新建文件夹",
+      "cut": "剪切",
+      "copy": "复制",
+      "paste": "粘贴",
+      "copyPath": "复制路径",
+      "copyRelativePath": "复制相对路径",
+      "rename": "重命名",
+      "trash": "移到废纸篓",
+      "trashConfirm": "要把「{{name}}」移到废纸篓吗？",
+      "trashHint": "可以从废纸篓中恢复。",
+      "fileName": "文件名",
+      "folderName": "文件夹名"
     },
     "notice": {
       "board_full": "任务板已满，部分提议的任务被丢弃。",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "当前无法执行该操作。可能工作台已停止、运行中的任务过多，或工作树有未提交的更改。",
       "UPSTREAM_ERROR": "pi 或 herdr 没有响应，请重试。",
       "PERMISSION_DENIED": "该操作不被允许。",
-      "INTERNAL": "出了点问题，请重试。"
+      "INTERNAL": "出了点问题，请重试。",
+      "ALREADY_EXISTS": "已存在同名项目。"
     }
   }
 }

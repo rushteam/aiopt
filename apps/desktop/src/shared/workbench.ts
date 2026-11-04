@@ -54,6 +54,14 @@ export const WORKBENCH_LIMITS = {
   folderRelDepth: 32,
   /** Bytes of a file the explorer's read-only preview shows; the rest is cut off. */
   filePreviewBytes: 256 * 1024,
+  /** Entries one copy (a folder copied recursively, or a Finder drop) may create. */
+  copyEntries: 5000,
+  /** Bytes one copy may write. */
+  copyBytes: 2 * 1024 * 1024 * 1024,
+  /** Paths one Finder drop may name. */
+  importPaths: 50,
+  /** Characters of one dropped absolute path. */
+  importPathChars: 4096,
 } as const;
 
 /** Whether the orchestrator + herdr session are running. */
@@ -437,6 +445,16 @@ export interface FilePreview {
   binary: boolean;
   /** File size in bytes. */
   size: number;
+}
+
+/** What a copy / move / create / rename produced: the new entry, relative to its folder. */
+export interface FolderEntryResult {
+  relPath: string;
+}
+
+/** What a Finder drop produced (empty when the user declined the confirmation). */
+export interface FolderImportResult {
+  relPaths: string[];
 }
 
 /**

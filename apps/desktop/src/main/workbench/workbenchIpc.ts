@@ -14,9 +14,11 @@ import {
   WORKBENCH_LIMITS,
   isValidConversationId,
   isValidFolderRelPath,
+  isValidFolderSegment,
   isValidWorkbenchId,
 } from '../../shared/workbench';
 import type { WorkbenchManager } from './workbenchManager';
+import type { FolderOps } from './folderOps';
 
 export interface WorkbenchIpcDeps {
   /** Open a main-side folder picker; resolves to the chosen absolute path, or null if cancelled. */
@@ -26,6 +28,8 @@ export interface WorkbenchIpcDeps {
    * the MANAGER resolved and confined to a granted folder — never one the renderer supplied.
    */
   revealItem: (absolutePath: string) => void;
+  /** The explorer's file operations (folderOps.ts): confined to granted folders, never overwrite. */
+  folderOps: FolderOps;
 }
 
 /** `{folderId, relPath}` of a folder entry, shape-checked (the manager confines it). */
@@ -34,6 +38,26 @@ function requireFolderEntry(payload: unknown): { folderId: string; relPath: stri
   const folderId = requireId(obj.folderId, 'folderId');
   if (!isValidFolderRelPath(obj.relPath)) throwIpcError('INVALID_PARAMS', 'invalid relPath');
   return { folderId, relPath: obj.relPath };
+}
+
+/** A new entry's name: one path segment (folderOps re-checks hidden / platform rules). */
+function requireSegment(raw: unknown): string {
+  if (typeof raw !== 'string' || !isValidFolderSegment(raw)) throwIpcError('INVALID_PARAMS', 'invalid name');
+  return raw;
+}
+
+/** Absolute paths dropped from the OS file manager: a bounded list of bounded strings. */
+function requireDropPaths(raw: unknown): string[] {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > WORKBENCH_LIMITS.importPaths) {
+    throwIpcError('INVALID_PARAMS', 'invalid paths');
+  }
+  return raw.map((p) => {
+    // eslint-disable-next-line no-control-regex
+    if (typeof p !== 'string' || p.length === 0 || p.length > WORKBENCH_LIMITS.importPathChars || /[\u0000-\u001f]/.test(p)) {
+      throwIpcError('INVALID_PARAMS', 'invalid path');
+    }
+    return p;
+  });
 }
 
 function requireId(raw: unknown, name: string): string {
@@ -188,6 +212,54 @@ export function registerWorkbenchIpc(
     const { folderId, relPath } = requireFolderEntry(payload);
     // Reveal only: the file manager selects the entry, it never opens or runs it.
     deps.revealItem(manager.resolveFolderEntry(folderId, relPath));
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderCreate, (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    const obj = requireObject(payload);
+    const name = requireSegment(obj.name);
+    if (obj.kind !== 'file' && obj.kind !== 'dir') throwIpcError('INVALID_PARAMS', 'invalid kind');
+    return { relPath: deps.folderOps.create(folderId, relPath, name, obj.kind) };
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderRename, (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    const name = requireSegment(requireObject(payload).name);
+    return { relPath: deps.folderOps.rename(folderId, relPath, name) };
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderTrash, async (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    // Move to the OS trash only; there is no permanent delete.
+    await deps.folderOps.trash(folderId, relPath);
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderTransfer, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    if (obj.op !== 'copy' && obj.op !== 'move') throwIpcError('INVALID_PARAMS', 'invalid op');
+    const from = requireFolderEntry(obj.from);
+    const to = requireFolderEntry(obj.to);
+    return { relPath: deps.folderOps.transfer(obj.op, from, to) };
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderImport, async (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    const paths = requireDropPaths(requireObject(payload).paths);
+    // folderOps shows a native confirmation before anything is copied.
+    return { relPaths: await deps.folderOps.importPaths(folderId, relPath, paths) };
+  });
+
+  registry.register(IPC_CHANNELS.workbenchFolderCopyPath, (payload, meta) => {
+    meta.assertTrustedSender();
+    const { folderId, relPath } = requireFolderEntry(payload);
+    const relative = requireObject(payload).relative;
+    if (typeof relative !== 'boolean') throwIpcError('INVALID_PARAMS', 'invalid relative');
+    deps.folderOps.copyPath(folderId, relPath, relative);
   });
 
   registry.register(IPC_CHANNELS.workbenchTaskCreate, (payload, meta) => {

@@ -54,7 +54,15 @@ import type {
   SkillsLibraryLocation,
   SkillsSnapshot,
 } from './skills';
-import type { FilePreview, FolderListing, TaskOutput, WorkbenchChatPage, WorkbenchSnapshot } from './workbench';
+import type {
+  FilePreview,
+  FolderEntryResult,
+  FolderImportResult,
+  FolderListing,
+  TaskOutput,
+  WorkbenchChatPage,
+  WorkbenchSnapshot,
+} from './workbench';
 
 /** The exhaustive set of invoke channels the app exposes (renderer → main). */
 export const IPC_CHANNELS = {
@@ -252,6 +260,12 @@ export const IPC_CHANNELS = {
   workbenchFolderList: 'workbench:folder-list',
   workbenchFolderRead: 'workbench:folder-read',
   workbenchFolderReveal: 'workbench:folder-reveal',
+  workbenchFolderCreate: 'workbench:folder-create',
+  workbenchFolderRename: 'workbench:folder-rename',
+  workbenchFolderTrash: 'workbench:folder-trash',
+  workbenchFolderTransfer: 'workbench:folder-transfer',
+  workbenchFolderImport: 'workbench:folder-import',
+  workbenchFolderCopyPath: 'workbench:folder-copy-path',
   workbenchTaskCreate: 'workbench:task-create',
   workbenchTaskUpdate: 'workbench:task-update',
   workbenchTaskLaunch: 'workbench:task-launch',
@@ -958,6 +972,37 @@ export interface WorkbenchFolderListRequest {
   relPath: string;
 }
 
+/** A new empty file or directory named `name` inside the directory `relPath`. */
+export interface WorkbenchFolderCreateRequest extends WorkbenchFolderListRequest {
+  name: string;
+  kind: 'file' | 'dir';
+}
+
+/** Rename the entry `relPath` to `name` in the same directory. */
+export interface WorkbenchFolderRenameRequest extends WorkbenchFolderListRequest {
+  name: string;
+}
+
+/** Copy or move an entry into the directory `to` (folders may differ). Never overwrites. */
+export interface WorkbenchFolderTransferRequest {
+  op: 'copy' | 'move';
+  from: WorkbenchFolderListRequest;
+  to: WorkbenchFolderListRequest;
+}
+
+/**
+ * Copy files dropped from the OS file manager into the directory `relPath`. The paths are
+ * the only renderer-supplied absolute paths main accepts, and only behind a native confirm.
+ */
+export interface WorkbenchFolderImportRequest extends WorkbenchFolderListRequest {
+  paths: string[];
+}
+
+/** Put an entry's absolute path (or its folder-relative path) on the system clipboard. */
+export interface WorkbenchFolderCopyPathRequest extends WorkbenchFolderListRequest {
+  relative: boolean;
+}
+
 export interface WorkbenchTaskRef {
   taskId: string;
 }
@@ -1233,6 +1278,12 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchFolderRead]: { request: WorkbenchFolderListRequest; result: FilePreview };
   /** Show a file/directory inside a granted folder in the OS file manager. */
   [IPC_CHANNELS.workbenchFolderReveal]: { request: WorkbenchFolderListRequest; result: void };
+  [IPC_CHANNELS.workbenchFolderCreate]: { request: WorkbenchFolderCreateRequest; result: FolderEntryResult };
+  [IPC_CHANNELS.workbenchFolderRename]: { request: WorkbenchFolderRenameRequest; result: FolderEntryResult };
+  [IPC_CHANNELS.workbenchFolderTrash]: { request: WorkbenchFolderListRequest; result: void };
+  [IPC_CHANNELS.workbenchFolderTransfer]: { request: WorkbenchFolderTransferRequest; result: FolderEntryResult };
+  [IPC_CHANNELS.workbenchFolderImport]: { request: WorkbenchFolderImportRequest; result: FolderImportResult };
+  [IPC_CHANNELS.workbenchFolderCopyPath]: { request: WorkbenchFolderCopyPathRequest; result: void };
   [IPC_CHANNELS.workbenchTaskCreate]: { request: WorkbenchTaskCreateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskUpdate]: { request: WorkbenchTaskUpdateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskLaunch]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };

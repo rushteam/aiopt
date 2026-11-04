@@ -169,6 +169,38 @@ export function revealFolderEntry(folderId: string, relPath: string): Promise<vo
   return wb().revealFolderEntry(folderId, relPath);
 }
 
+/** New empty file / directory inside a granted folder's directory; resolves to its relPath. */
+export async function createFolderEntry(folderId: string, relPath: string, name: string, kind: 'file' | 'dir'): Promise<string> {
+  return (await wb().createFolderEntry(folderId, relPath, name, kind)).relPath;
+}
+
+export async function renameFolderEntry(folderId: string, relPath: string, name: string): Promise<string> {
+  return (await wb().renameFolderEntry(folderId, relPath, name)).relPath;
+}
+
+/** Move an entry to the OS trash. */
+export function trashFolderEntry(folderId: string, relPath: string): Promise<void> {
+  return wb().trashFolderEntry(folderId, relPath);
+}
+
+/** Copy or move an entry into a directory (any granted folder); resolves to the new relPath. */
+export async function transferFolderEntry(
+  op: 'copy' | 'move',
+  from: { folderId: string; relPath: string },
+  to: { folderId: string; relPath: string },
+): Promise<string> {
+  return (await wb().transferFolderEntry({ op, from, to })).relPath;
+}
+
+/** Copy files dropped from the OS file manager (main confirms natively first). */
+export async function importDroppedFiles(folderId: string, relPath: string, files: readonly File[]): Promise<string[]> {
+  return (await wb().importDroppedFiles(folderId, relPath, files)).relPaths;
+}
+
+export function copyFolderEntryPath(folderId: string, relPath: string, relative: boolean): Promise<void> {
+  return wb().copyFolderEntryPath(folderId, relPath, relative);
+}
+
 /** The worker's recent terminal text (already stripped of control characters by main). */
 export async function readTaskOutput(taskId: string): Promise<string> {
   return (await wb().taskOutput(taskId)).text;

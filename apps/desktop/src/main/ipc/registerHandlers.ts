@@ -47,6 +47,7 @@ import {
   getMcpGateway,
   shutdownMcpGateway,
   getWorkbenchManager,
+  getWorkbenchFolderOps,
 } from '../services';
 
 export function registerHandlers(): void {
@@ -127,6 +128,7 @@ export function registerHandlers(): void {
     },
     // Only a path the workbench manager confined to a granted folder; reveal, never open.
     revealItem: (absolutePath: string) => shell.showItemInFolder(absolutePath),
+    folderOps: getWorkbenchFolderOps(),
   });
   const appShortcutStore = getAppShortcutStore();
   registerAppShortcutIpc(registry, appShortcutStore);

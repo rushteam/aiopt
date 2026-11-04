@@ -949,7 +949,7 @@
       "error": "Dieser Ordner konnte nicht gelesen werden.",
       "emptyDir": "Leerer Ordner",
       "truncated": "Es werden die ersten {{count}} Einträge angezeigt.",
-      "hint": "Klicke auf eine Datei, um sie anzuzeigen.",
+      "hint": "Klicke auf eine Datei für die Vorschau. Rechtsklick für weitere Aktionen, oder ziehe Dateien hierher.",
       "removeConfirm": "Diesen Ordner aus der Workbench entfernen? Dateien auf der Festplatte bleiben unverändert.",
       "preview": "Vorschau",
       "insert": "Im Chat referenzieren",
@@ -957,7 +957,22 @@
       "closePreview": "Vorschau schließen",
       "previewError": "Diese Datei konnte nicht gelesen werden.",
       "binary": "Binärdatei – keine Vorschau.",
-      "previewTruncated": "Es werden die ersten {{size}} angezeigt."
+      "previewTruncated": "Es werden die ersten {{size}} angezeigt.",
+      "menu": "Explorer-Aktionen",
+      "open": "Vorschau öffnen",
+      "newFile": "Neue Datei",
+      "newFolder": "Neuer Ordner",
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einfügen",
+      "copyPath": "Pfad kopieren",
+      "copyRelativePath": "Relativen Pfad kopieren",
+      "rename": "Umbenennen",
+      "trash": "In den Papierkorb",
+      "trashConfirm": "„{{name}}“ in den Papierkorb verschieben?",
+      "trashHint": "Du kannst es aus dem Papierkorb wiederherstellen.",
+      "fileName": "Dateiname",
+      "folderName": "Ordnername"
     },
     "notice": {
       "board_full": "Einige vorgeschlagene Aufgaben wurden verworfen: Das Aufgaben-Board ist voll.",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "Das ist gerade nicht möglich. Die Werkbank ist vielleicht gestoppt, es laufen zu viele Aufgaben, oder ein Worktree hat nicht committete Änderungen.",
       "UPSTREAM_ERROR": "pi oder herdr hat nicht geantwortet. Versuchen Sie es erneut.",
       "PERMISSION_DENIED": "Diese Aktion ist nicht erlaubt.",
-      "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+      "INTERNAL": "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
+      "ALREADY_EXISTS": "Ein Element mit diesem Namen existiert bereits."
     }
   }
 }

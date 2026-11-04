@@ -141,6 +141,14 @@ export function WorkbenchHome({
     setView({ kind: 'file', folderId: folder.id, relPath });
   };
 
+  // A previewed file that was renamed / moved follows its new path; trashed, the preview closes.
+  const followPath = (folderId: string, from: string, to: { folderId: string; relPath: string } | null): void => {
+    if (view.kind !== 'file' || view.folderId !== folderId) return;
+    if (view.relPath !== from && !view.relPath.startsWith(`${from}/`)) return;
+    if (!to) setView(beforeFile);
+    else setView({ kind: 'file', folderId: to.folderId, relPath: to.relPath + view.relPath.slice(from.length) });
+  };
+
   // ── Layout: persisted widths + collapsed state; a narrow window folds the sidebar ──
   const [layout, setLayout] = useState<WorkbenchLayout>(readWorkbenchLayout);
   const narrow = useNarrowWindow();
@@ -280,6 +288,8 @@ export function WorkbenchHome({
               collapsed={layout.explorerCollapsed}
               onToggleCollapsed={() => updateLayout({ explorerCollapsed: !layout.explorerCollapsed })}
               onOpenFile={openFile}
+              onInsertFile={insertFile}
+              onPathChanged={followPath}
               selectedFile={view.kind === 'file' ? { folderId: view.folderId, relPath: view.relPath } : null}
             />
           </div>

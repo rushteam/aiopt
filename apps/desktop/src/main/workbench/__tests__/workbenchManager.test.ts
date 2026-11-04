@@ -1278,6 +1278,9 @@ describe('workbench folder listing', () => {
     expect(s.wb.resolveFolderEntry(id, 'src/a.ts')).toBe('/work/app/src/a.ts');
     expect(s.wb.resolveFolderEntry(id, '')).toBe('/work/app');
     expect(codeOf(() => s.wb.resolveFolderEntry(id, 'pw'))).toBe('NOT_FOUND');
+    // File operations start from the folder's real root, by id only.
+    expect(s.wb.folderRoot(id)).toEqual({ root: '/work/app', name: 'app' });
+    expect(codeOf(() => s.wb.folderRoot('nope'))).toBe('NOT_FOUND');
   });
 
   it('caps a preview and reports binary content without its bytes', async () => {

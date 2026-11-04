@@ -669,6 +669,12 @@ const bridge: AiOptBridge = {
       return { text, truncated: false, binary: false, size: text.length };
     },
     revealFolderEntry: async () => {},
+    createFolderEntry: refused,
+    renameFolderEntry: refused,
+    trashFolderEntry: refused,
+    transferFolderEntry: refused,
+    importDroppedFiles: refused,
+    copyFolderEntryPath: async () => {},
     createTask: refused,
     updateTask: refused,
     launchTask: refused,

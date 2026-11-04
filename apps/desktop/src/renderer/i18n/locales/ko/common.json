@@ -949,7 +949,7 @@
       "error": "이 폴더를 읽을 수 없습니다.",
       "emptyDir": "빈 폴더",
       "truncated": "처음 {{count}}개 항목만 표시합니다.",
-      "hint": "파일을 클릭하면 미리 볼 수 있습니다.",
+      "hint": "파일을 클릭하면 미리 봅니다. 오른쪽 클릭으로 더 많은 작업을 하거나 파일을 여기로 끌어 놓으세요.",
       "removeConfirm": "이 폴더를 워크벤치에서 제거할까요? 디스크의 파일은 변경되지 않습니다.",
       "preview": "미리 보기",
       "insert": "채팅에서 참조",
@@ -957,7 +957,22 @@
       "closePreview": "미리 보기 닫기",
       "previewError": "이 파일을 읽을 수 없습니다.",
       "binary": "바이너리 파일이라 미리 볼 수 없습니다.",
-      "previewTruncated": "처음 {{size}}만 표시합니다."
+      "previewTruncated": "처음 {{size}}만 표시합니다.",
+      "menu": "탐색기 작업",
+      "open": "미리보기 열기",
+      "newFile": "새 파일",
+      "newFolder": "새 폴더",
+      "cut": "잘라내기",
+      "copy": "복사",
+      "paste": "붙여넣기",
+      "copyPath": "경로 복사",
+      "copyRelativePath": "상대 경로 복사",
+      "rename": "이름 바꾸기",
+      "trash": "휴지통으로 이동",
+      "trashConfirm": "“{{name}}”을(를) 휴지통으로 이동할까요?",
+      "trashHint": "휴지통에서 복원할 수 있습니다.",
+      "fileName": "파일 이름",
+      "folderName": "폴더 이름"
     },
     "notice": {
       "board_full": "태스크 보드가 가득 차서 제안된 태스크 일부가 버려졌습니다.",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "지금은 그 작업을 할 수 없습니다. 워크벤치가 중지되었거나, 실행 중인 태스크가 너무 많거나, 워크트리에 커밋되지 않은 변경이 있을 수 있습니다.",
       "UPSTREAM_ERROR": "pi 또는 herdr가 응답하지 않았습니다. 다시 시도하세요.",
       "PERMISSION_DENIED": "허용되지 않는 작업입니다.",
-      "INTERNAL": "문제가 발생했습니다. 다시 시도하세요."
+      "INTERNAL": "문제가 발생했습니다. 다시 시도하세요.",
+      "ALREADY_EXISTS": "같은 이름의 항목이 이미 있습니다."
     }
   }
 }

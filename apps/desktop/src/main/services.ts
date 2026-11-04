@@ -6,7 +6,7 @@
 // Electron-free and unit-tested with injected adapters.
 
 import fs from 'node:fs';
-import { BrowserWindow, app, clipboard, dialog, net, safeStorage, session } from 'electron';
+import { BrowserWindow, app, clipboard, dialog, net, safeStorage, session, shell } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -62,6 +62,8 @@ import { getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js
 import { randomBytes } from 'node:crypto';
 import { candidateBinDirs } from './workbench/herdrCli';
 import { resolveMenuLocaleForPreference } from './menu/menuLabels';
+import { createFolderOps, type FolderOps } from './workbench/folderOps';
+import { buildFolderImportConfirm } from './workbench/folderImportConfirm';
 import { homeShortenedPath } from './providers/agentConfigView';
 import { agentConfigDir, agentHome } from './providers/agentPaths';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
@@ -121,6 +123,7 @@ let mcpGateway: McpGateway | null = null;
 let gatewayToken: string | null = null;
 let skillsStore: SkillsStore | null = null;
 let workbenchManager: WorkbenchManager | null = null;
+let workbenchFolderOps: FolderOps | null = null;
 let upstreamRegistry: UpstreamRegistry | null = null;
 
 /**
@@ -684,6 +687,29 @@ export function getWorkbenchManager(): WorkbenchManager {
     syncWorkbenchTrayHint(manager.getSnapshot());
   }
   return workbenchManager;
+}
+
+/**
+ * The Workbench explorer's file operations, confined to the folders the manager granted.
+ * Delete is `shell.trashItem` only; a drop from the OS file manager is copied only after a
+ * native confirmation shown here in main.
+ */
+export function getWorkbenchFolderOps(): FolderOps {
+  if (!workbenchFolderOps) {
+    const manager = getWorkbenchManager();
+    workbenchFolderOps = createFolderOps({
+      platform: process.platform,
+      folder: (folderId) => manager.folderRoot(folderId),
+      trash: (abs) => shell.trashItem(abs),
+      confirmImport: (req) => {
+        const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
+        return showNativeConfirm(buildFolderImportConfirm(locale, req));
+      },
+      writeClipboard: (text) => clipboard.writeText(text),
+      logger: logger.child('workbench'),
+    });
+  }
+  return workbenchFolderOps;
 }
 
 /** Tear the workbench down on quit, only if it was ever built. */

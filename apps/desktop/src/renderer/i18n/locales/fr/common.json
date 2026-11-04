@@ -949,7 +949,7 @@
       "error": "Impossible de lire ce dossier.",
       "emptyDir": "Dossier vide",
       "truncated": "Affichage des {{count}} premières entrées.",
-      "hint": "Cliquez sur un fichier pour l’afficher.",
+      "hint": "Cliquez sur un fichier pour l’afficher. Clic droit pour plus d’actions, ou glissez des fichiers ici.",
       "removeConfirm": "Retirer ce dossier du workbench ? Les fichiers sur le disque ne sont pas modifiés.",
       "preview": "Aperçu",
       "insert": "Citer dans le chat",
@@ -957,7 +957,22 @@
       "closePreview": "Fermer l’aperçu",
       "previewError": "Impossible de lire ce fichier.",
       "binary": "Fichier binaire : pas d’aperçu.",
-      "previewTruncated": "Affichage des {{size}} premiers."
+      "previewTruncated": "Affichage des {{size}} premiers.",
+      "menu": "Actions de l’explorateur",
+      "open": "Ouvrir l’aperçu",
+      "newFile": "Nouveau fichier",
+      "newFolder": "Nouveau dossier",
+      "cut": "Couper",
+      "copy": "Copier",
+      "paste": "Coller",
+      "copyPath": "Copier le chemin",
+      "copyRelativePath": "Copier le chemin relatif",
+      "rename": "Renommer",
+      "trash": "Mettre à la corbeille",
+      "trashConfirm": "Mettre « {{name}} » à la corbeille ?",
+      "trashHint": "Vous pourrez le restaurer depuis la corbeille.",
+      "fileName": "Nom du fichier",
+      "folderName": "Nom du dossier"
     },
     "notice": {
       "board_full": "Certaines tâches proposées ont été ignorées : le tableau est plein.",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "Impossible pour l'instant. L'atelier est peut-être arrêté, trop de tâches sont en cours, ou un worktree contient des modifications non validées.",
       "UPSTREAM_ERROR": "pi ou herdr n'a pas répondu. Réessayez.",
       "PERMISSION_DENIED": "Cette action n'est pas autorisée.",
-      "INTERNAL": "Un problème est survenu. Réessayez."
+      "INTERNAL": "Un problème est survenu. Réessayez.",
+      "ALREADY_EXISTS": "Un élément portant ce nom existe déjà."
     }
   }
 }

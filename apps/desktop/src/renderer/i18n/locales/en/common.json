@@ -949,7 +949,7 @@
       "error": "Could not read this folder.",
       "emptyDir": "Empty folder",
       "truncated": "Showing the first {{count}} entries.",
-      "hint": "Click a file to preview it.",
+      "hint": "Click a file to preview it. Right-click for more, or drag files here.",
       "removeConfirm": "Remove this folder from the workbench? Files on disk are not touched.",
       "preview": "Preview",
       "insert": "Reference in chat",
@@ -957,7 +957,22 @@
       "closePreview": "Close preview",
       "previewError": "Could not read this file.",
       "binary": "Binary file — no preview.",
-      "previewTruncated": "Showing the first {{size}}."
+      "previewTruncated": "Showing the first {{size}}.",
+      "menu": "Explorer actions",
+      "open": "Open preview",
+      "newFile": "New file",
+      "newFolder": "New folder",
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "copyPath": "Copy path",
+      "copyRelativePath": "Copy relative path",
+      "rename": "Rename",
+      "trash": "Move to trash",
+      "trashConfirm": "Move “{{name}}” to the trash?",
+      "trashHint": "You can restore it from the trash.",
+      "fileName": "File name",
+      "folderName": "Folder name"
     },
     "notice": {
       "board_full": "Some proposed tasks were dropped: the task board is full.",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "That can't be done right now. The workbench may be stopped, too many tasks may be running, or a worktree has uncommitted changes.",
       "UPSTREAM_ERROR": "pi or herdr didn't respond. Try again.",
       "PERMISSION_DENIED": "That action isn't permitted.",
-      "INTERNAL": "Something went wrong. Try again."
+      "INTERNAL": "Something went wrong. Try again.",
+      "ALREADY_EXISTS": "An item with that name already exists."
     }
   }
 }

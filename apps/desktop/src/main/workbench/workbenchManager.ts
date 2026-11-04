@@ -77,6 +77,7 @@ import {
 import type { SessionRef, SessionTranscript } from '../../shared/agentSessions';
 import { throwIpcError } from '../ipc/validate';
 import type { Logger } from '../logger';
+import { FOLDER_TREE_HIDDEN } from './folderOps';
 import { homeRelativeDisplayPath } from '../displayPath';
 import {
   candidateBinDirs,
@@ -194,8 +195,6 @@ export interface TaskDraft {
   dependsOn?: string[] | null;
 }
 
-/** Bulky or internal entries the file tree never lists. */
-const FOLDER_TREE_HIDDEN = new Set(['.git', 'node_modules', '.DS_Store']);
 
 export interface WorkbenchManager {
   getSnapshot(): WorkbenchSnapshot;
@@ -221,6 +220,11 @@ export interface WorkbenchManager {
    * manager" only. Resolved and confined here; the renderer never supplies or sees it.
    */
   resolveFolderEntry(folderId: string, relPath: string): string;
+  /**
+   * A granted folder's canonical root and display name, for the explorer's file operations
+   * (folderOps.ts confines every path to it). NOT_FOUND for an unknown or missing folder.
+   */
+  folderRoot(folderId: string): { root: string; name: string };
   createTask(draft: TaskDraft): string;
   updateTask(taskId: string, patch: Partial<TaskDraft>): void;
   launchTask(taskId: string): void;
@@ -1530,6 +1534,14 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     return resolveInFolder(folderId, relPath);
   }
 
+  function folderRoot(folderId: string): { root: string; name: string } {
+    const folder = folderById(folderId);
+    if (!folder) throwIpcError('NOT_FOUND', 'folder not found');
+    const root = deps.fs.realpath(folder.path);
+    if (!root || !deps.fs.isDirectory(root)) throwIpcError('NOT_FOUND', 'folder not found');
+    return { root, name: folder.name };
+  }
+
   // --- tasks ----------------------------------------------------------------------------
 
   function requireTask(taskId: string, action: TaskAction): TaskRecord {
@@ -2008,6 +2020,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     listFolder,
     readFolderFile,
     resolveFolderEntry,
+    folderRoot,
     createTask,
     updateTask,
     launchTask,

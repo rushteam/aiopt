@@ -949,7 +949,7 @@
       "error": "No se pudo leer esta carpeta.",
       "emptyDir": "Carpeta vacía",
       "truncated": "Se muestran las primeras {{count}} entradas.",
-      "hint": "Haz clic en un archivo para previsualizarlo.",
+      "hint": "Haz clic en un archivo para verlo. Clic derecho para más acciones, o arrastra archivos aquí.",
       "removeConfirm": "¿Quitar esta carpeta del workbench? Los archivos del disco no se modifican.",
       "preview": "Vista previa",
       "insert": "Referenciar en el chat",
@@ -957,7 +957,22 @@
       "closePreview": "Cerrar vista previa",
       "previewError": "No se pudo leer este archivo.",
       "binary": "Archivo binario: sin vista previa.",
-      "previewTruncated": "Se muestran los primeros {{size}}."
+      "previewTruncated": "Se muestran los primeros {{size}}.",
+      "menu": "Acciones del explorador",
+      "open": "Abrir vista previa",
+      "newFile": "Archivo nuevo",
+      "newFolder": "Carpeta nueva",
+      "cut": "Cortar",
+      "copy": "Copiar",
+      "paste": "Pegar",
+      "copyPath": "Copiar ruta",
+      "copyRelativePath": "Copiar ruta relativa",
+      "rename": "Cambiar nombre",
+      "trash": "Mover a la papelera",
+      "trashConfirm": "¿Mover «{{name}}» a la papelera?",
+      "trashHint": "Puedes restaurarlo desde la papelera.",
+      "fileName": "Nombre del archivo",
+      "folderName": "Nombre de la carpeta"
     },
     "notice": {
       "board_full": "Se descartaron algunas tareas propuestas: el tablero está lleno.",
@@ -1070,7 +1085,8 @@
       "PRECONDITION_FAILED": "No se puede hacer ahora. Puede que el banco de trabajo esté detenido, haya demasiadas tareas en curso o un worktree tenga cambios sin confirmar.",
       "UPSTREAM_ERROR": "pi o herdr no respondió. Inténtalo de nuevo.",
       "PERMISSION_DENIED": "Esa acción no está permitida.",
-      "INTERNAL": "Algo salió mal. Inténtalo de nuevo."
+      "INTERNAL": "Algo salió mal. Inténtalo de nuevo.",
+      "ALREADY_EXISTS": "Ya existe un elemento con ese nombre."
     }
   }
 }
