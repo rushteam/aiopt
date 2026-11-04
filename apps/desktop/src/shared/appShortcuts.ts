@@ -36,7 +36,14 @@ export interface AppShortcutCombo {
  */
 export type AppShortcutScope = 'app' | 'editor';
 
-export const APP_SHORTCUT_IDS = ['open-settings', 'check-for-updates', 'toggle-theme'] as const;
+export const APP_SHORTCUT_IDS = [
+  'open-settings',
+  'check-for-updates',
+  'toggle-theme',
+  'workbench-search',
+  'workbench-older-conversation',
+  'workbench-newer-conversation',
+] as const;
 
 export type AppShortcutId = (typeof APP_SHORTCUT_IDS)[number];
 
@@ -116,6 +123,31 @@ export const APP_SHORTCUT_DEFINITIONS: ReadonlyArray<AppShortcutDefinition> = [
     descriptionKey: 'shortcuts.items.toggle-theme.description',
     rebindable: true,
     getDefaultCombos: (platform) => [modCombo('KeyL', platform, { shift: true })],
+  },
+  // Workbench-only (useAppShortcut in WorkbenchSidebar): live only while the Workbench is shown.
+  {
+    id: 'workbench-search',
+    scope: 'app',
+    labelKey: 'shortcuts.items.workbench-search.label',
+    descriptionKey: 'shortcuts.items.workbench-search.description',
+    rebindable: true,
+    getDefaultCombos: (platform) => [modCombo('KeyK', platform)],
+  },
+  {
+    id: 'workbench-older-conversation',
+    scope: 'app',
+    labelKey: 'shortcuts.items.workbench-older-conversation.label',
+    descriptionKey: 'shortcuts.items.workbench-older-conversation.description',
+    rebindable: true,
+    getDefaultCombos: (platform) => [modCombo('BracketLeft', platform)],
+  },
+  {
+    id: 'workbench-newer-conversation',
+    scope: 'app',
+    labelKey: 'shortcuts.items.workbench-newer-conversation.label',
+    descriptionKey: 'shortcuts.items.workbench-newer-conversation.description',
+    rebindable: true,
+    getDefaultCombos: (platform) => [modCombo('BracketRight', platform)],
   },
 ];
 

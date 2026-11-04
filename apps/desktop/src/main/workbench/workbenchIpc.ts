@@ -361,6 +361,27 @@ export function registerWorkbenchIpc(
     return snapshot();
   });
 
+  // Read-only: main searches the conversations it listed itself; the renderer sends only text.
+  registry.register(IPC_CHANNELS.workbenchConversationSearch, (payload, meta) => {
+    meta.assertTrustedSender();
+    const query = requireObject(payload).query;
+    if (typeof query !== 'string') throwIpcError('INVALID_PARAMS', 'query is required');
+    if (query.length > WORKBENCH_LIMITS.searchQuery) throwIpcError('INVALID_PARAMS', 'query is too long');
+    return manager.searchConversations(query);
+  });
+
+  registry.register(IPC_CHANNELS.workbenchConversationRename, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    const conversationId = requireConversationId(obj.conversationId);
+    // '' is allowed: it drops the user's title and goes back to the first message.
+    if (typeof obj.title !== 'string') throwIpcError('INVALID_PARAMS', 'title is required');
+    // A paste can run a little long; anything past a few titles' worth is not a title.
+    if (obj.title.length > WORKBENCH_LIMITS.conversationTitle * 4) throwIpcError('INVALID_PARAMS', 'title is too long');
+    manager.renameConversation(conversationId, obj.title);
+    return snapshot();
+  });
+
   registry.register(IPC_CHANNELS.workbenchSettingsUpdate, (payload, meta) => {
     meta.assertTrustedSender();
     const obj = requireObject(payload);

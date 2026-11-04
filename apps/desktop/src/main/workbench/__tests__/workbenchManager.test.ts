@@ -840,6 +840,56 @@ describe('workbench conversations', () => {
     expect(codeOf(() => s.wb.deleteConversation(UUID_A))).toBe('NOT_FOUND');
     expect(codeOf(() => s.wb.deleteConversation('not-a-uuid'))).toBe('INVALID_PARAMS');
   });
+
+  it('searches titles first, then user and assistant words, folded with NFKC', async () => {
+    const withTool = [
+      sessionJsonl('deploy the ＡＰＩ server', 'Release checklist: tag, build, upload'),
+      JSON.stringify({ type: 'message', message: { role: 'toolResult', content: [{ type: 'text', text: 'hidden secret' }] } }),
+      JSON.stringify({
+        type: 'message',
+        message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { cmd: 'secret' } }] },
+      }),
+    ].join('\n');
+    const s = await started({ ...history(), [FILE_A]: withTool });
+    const search = (q: string) => s.wb.searchConversations(q).hits.map((h) => [h.id, h.match, h.snippet]);
+
+    expect(s.wb.searchConversations('  ')).toEqual({ query: '  ', hits: [] });
+    // Full-width "ＡＰＩ" in the file, half-width in the query.
+    expect(search('api')).toEqual([[UUID_A, 'title', '']]);
+    expect(search('RELEASE upload')).toEqual([[UUID_A, 'assistant', 'Release checklist: tag, build, upload']]);
+    // Terms may be split across the title and the body.
+    expect(search('deploy checklist').map(([id]) => id)).toEqual([UUID_A]);
+    // Tool calls and tool output are not searched.
+    expect(search('secret')).toEqual([]);
+    // Title hits rank above body hits, even an older one.
+    expect(search('answer').map(([id, match]) => [id, match])).toEqual([[UUID_B, 'assistant']]);
+    expect(search('second').map(([, match]) => match)).toEqual(['title']);
+  });
+
+  it('renames a conversation into conversations.json and restores the derived title on empty', async () => {
+    const s = await started(history());
+    s.wb.renameConversation(UUID_A, '  Release\u0007   notes  ');
+    expect(s.wb.getSnapshot().conversations.find((c) => c.id === UUID_A)!.title).toBe('Release notes');
+    const saved = JSON.parse(s.disk.get(path.join(DATA, 'conversations.json'))!);
+    expect(saved).toEqual({ version: 1, titles: { [UUID_A]: 'Release notes' } });
+    // The session file pi owns is never touched.
+    expect(s.disk.get(FILE_A)).toBe(history()[FILE_A]);
+    expect(s.wb.searchConversations('notes').hits.map((h) => [h.id, h.match])).toEqual([[UUID_A, 'title']]);
+
+    // The title survives a restart; a planted entry for a path-like key is dropped.
+    const doc = { version: 1, titles: { [UUID_A]: 'Release notes', '../x': 'evil' } };
+    const again = await started({ ...history(), [path.join(DATA, 'conversations.json')]: JSON.stringify(doc) });
+    expect(again.wb.getSnapshot().conversations.map((c) => c.title)).toEqual(['second question', 'Release notes']);
+
+    s.wb.renameConversation(UUID_A, '');
+    expect(s.wb.getSnapshot().conversations.find((c) => c.id === UUID_A)!.title).toBe('first question about the app');
+    expect(codeOf(() => s.wb.renameConversation('../x', 'a'))).toBe('INVALID_PARAMS');
+    expect(codeOf(() => s.wb.renameConversation('cccccccc-0000-4000-8000-000000000003', 'a'))).toBe('NOT_FOUND');
+
+    s.wb.renameConversation(UUID_A, 'gone soon');
+    s.wb.deleteConversation(UUID_A);
+    expect(JSON.parse(s.disk.get(path.join(DATA, 'conversations.json'))!).titles).toEqual({});
+  });
 });
 
 describe('workbench task persistence', () => {

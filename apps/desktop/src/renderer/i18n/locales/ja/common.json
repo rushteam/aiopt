@@ -93,6 +93,18 @@
       "toggle-theme": {
         "label": "ライト / ダークを切り替え",
         "description": "ライトとダークの外観を切り替えます。"
+      },
+      "workbench-search": {
+        "label": "ワークベンチを検索",
+        "description": "ワークベンチのサイドバー検索にフォーカスします。"
+      },
+      "workbench-older-conversation": {
+        "label": "前の会話",
+        "description": "ワークベンチで一つ前（古い）の保存済み会話を開きます。"
+      },
+      "workbench-newer-conversation": {
+        "label": "次の会話",
+        "description": "ワークベンチで一つ後（新しい）の保存済み会話を開きます。"
       }
     },
     "errors": {
@@ -924,6 +936,9 @@
       "current": "現在",
       "delete": "削除",
       "deleteConfirm": "この会話を削除しますか？",
+      "rename": "名前を変更",
+      "renameLabel": "会話の名前",
+      "renamePlaceholder": "空欄にすると最初のメッセージを使います",
       "taskUpdate": "タスクの更新（アプリから送信）",
       "mention": {
         "label": "タスクまたはセッションを参照",
@@ -937,7 +952,16 @@
       "label": "ワークベンチのナビゲーション",
       "collapse": "サイドバーを折りたたむ",
       "expand": "サイドバーを展開",
-      "resize": "サイドバーの幅を変更"
+      "resize": "サイドバーの幅を変更",
+      "search": "タスクと会話を検索",
+      "searchPlaceholder": "タスク・プロンプト・会話を検索…",
+      "searchClear": "検索をクリア",
+      "searchResults": "検索結果",
+      "searchEmpty": "一致するものはありません。",
+      "searchTasks": "タスク",
+      "searchConversations": "会話",
+      "searchMatchUser": "あなた",
+      "searchMatchAssistant": "コーディネーター"
     },
     "explorer": {
       "title": "エクスプローラー",

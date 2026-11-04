@@ -689,6 +689,8 @@ const bridge: AiOptBridge = {
     openConversation: refused,
     chatPage: async () => ({ items: [], hasMore: false, epoch: 1 }),
     deleteConversation: refused,
+    searchConversations: async (query: string) => ({ query, hits: [] }),
+    renameConversation: refused,
     updateSettings: refused,
     refreshHerdrProbe: async () => workbenchSnapshot,
     installHerdr: refused,

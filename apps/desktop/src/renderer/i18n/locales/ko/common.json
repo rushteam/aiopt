@@ -93,6 +93,18 @@
       "toggle-theme": {
         "label": "라이트 / 다크 전환",
         "description": "라이트와 다크 화면을 전환합니다."
+      },
+      "workbench-search": {
+        "label": "워크벤치 검색",
+        "description": "워크벤치 사이드바 검색 상자로 이동합니다."
+      },
+      "workbench-older-conversation": {
+        "label": "이전 대화",
+        "description": "워크벤치에서 바로 이전(더 오래된) 저장된 대화를 엽니다."
+      },
+      "workbench-newer-conversation": {
+        "label": "다음 대화",
+        "description": "워크벤치에서 바로 다음(더 최근) 저장된 대화를 엽니다."
       }
     },
     "errors": {
@@ -924,6 +936,9 @@
       "current": "현재",
       "delete": "삭제",
       "deleteConfirm": "이 대화를 삭제할까요?",
+      "rename": "이름 바꾸기",
+      "renameLabel": "대화 이름",
+      "renamePlaceholder": "비워 두면 첫 메시지를 사용합니다",
       "taskUpdate": "태스크 업데이트(앱에서 보냄)",
       "mention": {
         "label": "태스크 또는 세션 참조",
@@ -937,7 +952,16 @@
       "label": "워크벤치 탐색",
       "collapse": "사이드바 접기",
       "expand": "사이드바 펼치기",
-      "resize": "사이드바 너비 조정"
+      "resize": "사이드바 너비 조정",
+      "search": "작업 및 대화 검색",
+      "searchPlaceholder": "작업, 프롬프트, 대화 검색…",
+      "searchClear": "검색 지우기",
+      "searchResults": "검색 결과",
+      "searchEmpty": "일치하는 항목이 없습니다.",
+      "searchTasks": "작업",
+      "searchConversations": "대화",
+      "searchMatchUser": "나",
+      "searchMatchAssistant": "코디네이터"
     },
     "explorer": {
       "title": "탐색기",

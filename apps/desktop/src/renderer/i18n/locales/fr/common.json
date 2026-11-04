@@ -93,6 +93,18 @@
       "toggle-theme": {
         "label": "Basculer clair / sombre",
         "description": "Bascule entre l’apparence claire et sombre."
+      },
+      "workbench-search": {
+        "label": "Rechercher dans l’Atelier",
+        "description": "Place le curseur dans la recherche de la barre latérale de l’Atelier."
+      },
+      "workbench-older-conversation": {
+        "label": "Conversation précédente",
+        "description": "Ouvre dans l’Atelier la conversation enregistrée plus ancienne suivante."
+      },
+      "workbench-newer-conversation": {
+        "label": "Conversation suivante",
+        "description": "Ouvre dans l’Atelier la conversation enregistrée plus récente suivante."
       }
     },
     "errors": {
@@ -924,6 +936,9 @@
       "current": "Actuelle",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer cette conversation ?",
+      "rename": "Renommer",
+      "renameLabel": "Nom de la conversation",
+      "renamePlaceholder": "Laisser vide pour utiliser le premier message",
       "taskUpdate": "Mise à jour des tâches (envoyée par l'application)",
       "mention": {
         "label": "Mentionner une tâche ou une session",
@@ -937,7 +952,16 @@
       "label": "Navigation du workbench",
       "collapse": "Réduire la barre latérale",
       "expand": "Développer la barre latérale",
-      "resize": "Redimensionner la barre latérale"
+      "resize": "Redimensionner la barre latérale",
+      "search": "Rechercher des tâches et des conversations",
+      "searchPlaceholder": "Rechercher tâches, prompts, conversations…",
+      "searchClear": "Effacer la recherche",
+      "searchResults": "Résultats de recherche",
+      "searchEmpty": "Aucun résultat.",
+      "searchTasks": "Tâches",
+      "searchConversations": "Conversations",
+      "searchMatchUser": "Vous",
+      "searchMatchAssistant": "Coordinateur"
     },
     "explorer": {
       "title": "Explorateur",

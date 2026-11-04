@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_NAV_DEPTH, appendMention, folderMentionText, formatBytes, lineNumbers, sidebarTaskOrder, viewKey } from '../workbenchNav';
+import {
+  MAX_NAV_DEPTH,
+  appendMention,
+  folderMentionText,
+  formatBytes,
+  lineNumbers,
+  searchConversations,
+  searchTasks,
+  sidebarTaskOrder,
+  viewKey,
+} from '../workbenchNav';
 import type { TaskView } from '../../../../shared/workbench';
 
 function task(id: string, dependsOn: string[] = []): TaskView {
@@ -46,5 +56,42 @@ describe('workbenchNav', () => {
   it('keys views stably', () => {
     expect(viewKey({ kind: 'chat' })).toBe('chat');
     expect(viewKey({ kind: 'task', id: 'abc' })).toBe('task:abc');
+  });
+
+  it('finds tasks by every term across title, prompt, follow-ups and branch, newest first', () => {
+    const mk = (id: string, over: Partial<TaskView>): TaskView =>
+      ({ id, title: id, prompt: '', thread: [], branch: null, updatedAt: 0, dependsOn: [], ...over }) as TaskView;
+    const tasks = [
+      mk('a', { title: 'Fix login bug', updatedAt: 1 }),
+      mk('b', { title: 'Refactor', prompt: 'Move the   login form\ninto its own component', updatedAt: 3 }),
+      mk('c', { title: 'Docs', thread: [{ text: 'also update the LOGIN page', at: 1 }], updatedAt: 2 }),
+      mk('d', { title: 'Infra', branch: 'aiopt/login-ci', updatedAt: 0 }),
+    ];
+    expect(searchTasks(tasks, '')).toEqual([]);
+    expect(searchTasks(tasks, '   ')).toEqual([]);
+    const hits = searchTasks(tasks, 'Login');
+    expect(hits.map((h) => h.task.id)).toEqual(['b', 'c', 'a', 'd']);
+    expect(hits.map((h) => h.field)).toEqual(['prompt', 'thread', 'title', 'branch']);
+    expect(hits[2]!.snippet).toBe('');
+    expect(hits[0]!.snippet).toBe('Move the login form into its own component');
+    expect(searchTasks(tasks, 'login component').map((h) => h.task.id)).toEqual(['b']);
+    expect(searchTasks(tasks, 'login nope')).toEqual([]);
+    const long = mk('e', { prompt: `${'x '.repeat(40)}needle ${'y '.repeat(60)}` });
+    const snip = searchTasks([long], 'needle')[0]!.snippet;
+    expect(snip.startsWith('…')).toBe(true);
+    expect(snip.endsWith('…')).toBe(true);
+    expect(snip).toContain('needle');
+  });
+
+  it('finds saved conversations by title', () => {
+    const cs = [{ title: 'Ship the release notes' }, { title: 'Refactor the proxy' }, { title: '' }];
+    expect(searchConversations(cs, 'the RELEASE')).toEqual([cs[0]]);
+    expect(searchConversations(cs, '')).toEqual([]);
+  });
+
+  it('folds full-width and compatibility forms (NFKC) before matching', () => {
+    const cs = [{ title: 'ＡＰＩ 设计 ① 版' }, { title: 'other' }];
+    expect(searchConversations(cs, 'api')).toEqual([cs[0]]);
+    expect(searchConversations(cs, 'ａｐｉ 1')).toEqual([cs[0]]);
   });
 });

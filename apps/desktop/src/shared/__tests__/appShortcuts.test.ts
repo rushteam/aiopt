@@ -51,6 +51,9 @@ describe('getEffectiveAppShortcuts (defaults + overrides)', () => {
     expect(map.get('open-settings')).toEqual([mk('Comma', { meta: true })]);
     expect(map.get('check-for-updates')).toEqual([mk('KeyU', { meta: true })]);
     expect(map.get('toggle-theme')).toEqual([mk('KeyL', { meta: true, shift: true })]);
+    expect(map.get('workbench-search')).toEqual([mk('KeyK', { meta: true })]);
+    expect(map.get('workbench-older-conversation')).toEqual([mk('BracketLeft', { meta: true })]);
+    expect(map.get('workbench-newer-conversation')).toEqual([mk('BracketRight', { meta: true })]);
   });
 
   it('uses Ctrl instead of Command off darwin', () => {

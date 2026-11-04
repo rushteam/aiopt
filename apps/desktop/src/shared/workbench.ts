@@ -44,6 +44,10 @@ export const WORKBENCH_LIMITS = {
   /** Past conversations listed (newest first); older files stay on disk, unlisted. */
   conversations: 50,
   conversationTitle: 80,
+  /** Characters of a sidebar search query. */
+  searchQuery: 200,
+  /** Conversations one full-text search returns (title hits first, then newest). */
+  searchHits: 50,
   /** Characters of a worker's terminal kept with a task for the coordinator. */
   taskOutputTail: 2000,
   /** Entries one folder-tree listing returns (directories first); the rest are cut off. */
@@ -243,6 +247,25 @@ export interface ConversationView {
   updatedAt: number;
   /** The conversation the coordinator is in now. */
   current: boolean;
+}
+
+/** Where a conversation search hit matched: its title, or a user / assistant message. */
+export type ConversationMatch = 'title' | 'user' | 'assistant';
+
+/** One saved conversation a full-text search found (main reads the session files; ids only). */
+export interface ConversationSearchHit {
+  id: string;
+  title: string;
+  updatedAt: number;
+  match: ConversationMatch;
+  /** A short excerpt around the match; '' for a title hit. */
+  snippet: string;
+}
+
+export interface ConversationSearchResult {
+  /** The query as main received it, so a late answer to an older query can be told apart. */
+  query: string;
+  hits: ConversationSearchHit[];
 }
 
 /** Where the resolved herdr binary came from (display only). */
@@ -525,6 +548,34 @@ export function sanitizeWorkbenchText(value: string): string {
     .replace(/\r\n?/g, '\n')
     .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '')
     .trim();
+}
+
+/**
+ * Search folding shared by the sidebar and main's conversation search: NFKC (full-width and
+ * half-width forms, compatibility characters) then lower case, so "ＡＢＣ" finds "abc".
+ */
+export function foldSearchText(text: string): string {
+  return text.normalize('NFKC').toLocaleLowerCase();
+}
+
+/** Folded, whitespace-separated terms of a search query; empty when there is nothing to find. */
+export function searchQueryTerms(query: string): string[] {
+  return foldSearchText(query).split(/\s+/).filter(Boolean);
+}
+
+const EXCERPT_BEFORE = 24;
+const EXCERPT_LENGTH = 90;
+
+/**
+ * An excerpt of `text` (NFKC, whitespace collapsed) around the first place `term` (a folded
+ * term) occurs, with an ellipsis on each cut side; the start of the text when it does not occur.
+ */
+export function searchExcerpt(text: string, term: string): string {
+  const flat = text.normalize('NFKC').replace(/\s+/g, ' ').trim();
+  const at = Math.max(0, foldSearchText(flat).indexOf(term));
+  const start = Math.max(0, Math.min(at, flat.length) - EXCERPT_BEFORE);
+  const body = flat.slice(start, start + EXCERPT_LENGTH).trim();
+  return `${start > 0 ? '…' : ''}${body}${start + EXCERPT_LENGTH < flat.length ? '…' : ''}`;
 }
 
 /** A branch-safe slug from a task title (ASCII only; falls back to the task id). */

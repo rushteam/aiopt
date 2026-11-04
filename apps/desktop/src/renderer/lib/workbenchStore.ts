@@ -12,7 +12,13 @@
 // window of it, so the store folds each window into the history it holds (chatHistory.ts) and
 // pages older items in on request. `snapshot.chat` is that merged view.
 
-import { DEFAULT_WORKBENCH_SETTINGS, type FilePreview, type FolderListing, type WorkbenchSnapshot } from '../../shared/workbench';
+import {
+  DEFAULT_WORKBENCH_SETTINGS,
+  type ConversationSearchResult,
+  type FilePreview,
+  type FolderListing,
+  type WorkbenchSnapshot,
+} from '../../shared/workbench';
 import { EMPTY_CHAT_HISTORY, mergeChatWindow, prependChatPage, type ChatHistory } from './chatHistory';
 import type {
   WorkbenchSettingsUpdateRequest,
@@ -149,6 +155,11 @@ export const openConversation = (conversationId: string): Promise<void> =>
   apply(wb().openConversation(conversationId));
 export const deleteConversation = (conversationId: string): Promise<void> =>
   apply(wb().deleteConversation(conversationId));
+/** Read-only full-text search; the caller drops answers to queries it no longer shows. */
+export const searchConversationsFullText = (query: string): Promise<ConversationSearchResult> =>
+  wb().searchConversations(query);
+export const renameConversation = (conversationId: string, title: string): Promise<void> =>
+  apply(wb().renameConversation(conversationId, title));
 export const updateWorkbenchSettings = (request: WorkbenchSettingsUpdateRequest): Promise<void> =>
   apply(wb().updateSettings(request));
 export const refreshHerdrProbe = (): Promise<void> => apply(wb().refreshHerdrProbe());

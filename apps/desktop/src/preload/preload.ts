@@ -63,6 +63,7 @@ import type {
   McpWriteResult,
 } from '../shared/mcp';
 import type {
+  ConversationSearchResult,
   FilePreview,
   FolderEntryResult,
   FolderImportResult,
@@ -526,6 +527,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.workbenchChatPage, { beforeId }),
     deleteConversation: (conversationId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationDelete, { conversationId }),
+    /** Full-text search of the saved conversations (read-only; main reads the files). */
+    searchConversations: (query: string): Promise<ConversationSearchResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationSearch, { query }),
+    /** '' restores the title derived from the first message. */
+    renameConversation: (conversationId: string, title: string): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchConversationRename, { conversationId, title }),
     updateSettings: (request: WorkbenchSettingsUpdateRequest): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchSettingsUpdate, request),
     refreshHerdrProbe: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchHerdrProbe),

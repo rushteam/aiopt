@@ -44,6 +44,8 @@ function setup(picked: string | null = '/work/app') {
     openConversation: vi.fn(async () => {}),
     chatPage: vi.fn(() => ({ items: [], hasMore: false, epoch: 0 })),
     deleteConversation: vi.fn(),
+    searchConversations: vi.fn((query: string) => ({ query, hits: [] })),
+    renameConversation: vi.fn(),
     updateSettings: vi.fn(),
     refreshHerdrProbe: vi.fn(async () => {}),
     installHerdr: vi.fn(async () => {}),
@@ -77,7 +79,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder, revealItem, folderOps } = setup();
-    expect(CHANNELS).toHaveLength(34);
+    expect(CHANNELS).toHaveLength(36);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
@@ -268,6 +270,28 @@ describe('workbench ipc', () => {
     }
     expect(manager.openConversation).toHaveBeenCalledTimes(1);
     expect(manager.deleteConversation).toHaveBeenCalledTimes(1);
+
+    await reg.invoke(IPC_CHANNELS.workbenchConversationRename, { conversationId: id, title: 'Release notes' }, trusted);
+    expect(manager.renameConversation).toHaveBeenCalledWith(id, 'Release notes');
+    await reg.invoke(IPC_CHANNELS.workbenchConversationRename, { conversationId: id, title: '' }, trusted);
+    expect(manager.renameConversation).toHaveBeenLastCalledWith(id, '');
+    for (const bad of [{ conversationId: '../x', title: 'a' }, { conversationId: id }, { conversationId: id, title: 'x'.repeat(321) }]) {
+      expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchConversationRename, bad, trusted))).toBe('INVALID_PARAMS');
+    }
+    expect(manager.renameConversation).toHaveBeenCalledTimes(2);
+  });
+
+  it('searches conversations by text only, with a capped query', async () => {
+    const { reg, manager } = setup();
+    expect(await reg.invoke(IPC_CHANNELS.workbenchConversationSearch, { query: 'release' }, trusted)).toEqual({
+      query: 'release',
+      hits: [],
+    });
+    expect(manager.searchConversations).toHaveBeenCalledWith('release');
+    for (const bad of [{}, { query: 7 }, { query: 'x'.repeat(201) }]) {
+      expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchConversationSearch, bad, trusted))).toBe('INVALID_PARAMS');
+    }
+    expect(manager.searchConversations).toHaveBeenCalledTimes(1);
   });
 
   it('accepts only boolean settings', async () => {

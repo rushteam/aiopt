@@ -55,6 +55,7 @@ import type {
   SkillsSnapshot,
 } from './skills';
 import type {
+  ConversationSearchResult,
   FilePreview,
   FolderEntryResult,
   FolderImportResult,
@@ -280,6 +281,8 @@ export const IPC_CHANNELS = {
   workbenchConversationOpen: 'workbench:conversation-open',
   workbenchChatPage: 'workbench:chat-page',
   workbenchConversationDelete: 'workbench:conversation-delete',
+  workbenchConversationSearch: 'workbench:conversation-search',
+  workbenchConversationRename: 'workbench:conversation-rename',
   workbenchSettingsUpdate: 'workbench:settings-update',
   workbenchHerdrProbe: 'workbench:herdr-probe',
   workbenchHerdrInstall: 'workbench:herdr-install',
@@ -1040,6 +1043,17 @@ export interface WorkbenchConversationRef {
   conversationId: string;
 }
 
+/** A full-text search of the saved conversations; main caps the query and the hits. */
+export interface WorkbenchConversationSearchRequest {
+  query: string;
+}
+
+/** A title of the user's own for a listed conversation; '' restores the derived one. */
+export interface WorkbenchConversationRenameRequest {
+  conversationId: string;
+  title: string;
+}
+
 /** Omitted fields are left as they are. */
 export interface WorkbenchSettingsUpdateRequest {
   autoRun?: boolean;
@@ -1299,6 +1313,11 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchChatPage]: { request: WorkbenchChatPageRequest; result: WorkbenchChatPage };
   [IPC_CHANNELS.workbenchConversationDelete]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchConversationSearch]: {
+    request: WorkbenchConversationSearchRequest;
+    result: ConversationSearchResult;
+  };
+  [IPC_CHANNELS.workbenchConversationRename]: { request: WorkbenchConversationRenameRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchSettingsUpdate]: { request: WorkbenchSettingsUpdateRequest; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchHerdrProbe]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchHerdrInstall]: { request: void; result: WorkbenchSnapshot };

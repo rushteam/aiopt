@@ -48,6 +48,12 @@ import {
   isValidWorkbenchBranch,
   isValidWorkbenchId,
   sanitizeWorkbenchText,
+  searchExcerpt,
+  searchQueryTerms,
+  foldSearchText,
+  type ConversationMatch,
+  type ConversationSearchHit,
+  type ConversationSearchResult,
   type ConversationView,
   type FolderEntry,
   type FilePreview,
@@ -241,6 +247,13 @@ export interface WorkbenchManager {
   runPlan(conversationId: string): void;
   /** Reopen a past conversation, named by the id `getSnapshot().conversations` listed. */
   openConversation(conversationId: string): Promise<void>;
+  /**
+   * Full-text search of the listed conversations: titles, then the user's and the assistant's
+   * words (never tool calls or their output). Every term must occur; title hits come first.
+   */
+  searchConversations(query: string): ConversationSearchResult;
+  /** Give a listed conversation a title of the user's own; '' goes back to its first message. */
+  renameConversation(conversationId: string, title: string): void;
   /** Older transcript items before `beforeId` (an id a snapshot or earlier page carried). */
   chatPage(beforeId: string): WorkbenchChatPage;
   deleteConversation(conversationId: string): void;
@@ -265,6 +278,10 @@ const SERVER_READY_DELAY_MS = 250;
 export const NOTIFY_DEBOUNCE_MS = 1500;
 /** How much of a session file is read for its title (the first user message is near the top). */
 const SESSION_HEAD_BYTES = 32 * 1024;
+/** How much of one session file a search reads (the rest of a huge transcript is not searched). */
+const SEARCH_READ_BYTES = 4 * 1024 * 1024;
+/** Characters of one conversation's words a search keeps (in memory, per listed conversation). */
+const SEARCH_TEXT_CHARS = 256 * 1024;
 /** A task's brief as the coordinator sees it on the board (the full prompt stays with the task). */
 const TASK_BRIEF_CHARS = 600;
 /** pi's session file name: `<ISO time with - for :>_<uuid>.jsonl`. */
@@ -373,6 +390,13 @@ interface ConversationRecord {
   updatedAt: number;
 }
 
+/** One user or assistant message of a saved conversation, as a search reads it. */
+interface SearchMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  folded: string;
+}
+
 interface FoldersDoc {
   version: 1;
   folders: { id: string; name: string; path: string; git: boolean }[];
@@ -413,6 +437,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   const foldersFile = path.join(deps.dataDir, 'folders.json');
   const tasksFile = path.join(deps.dataDir, 'tasks.json');
   const settingsFile = path.join(deps.dataDir, 'settings.json');
+  /** Titles the user gave conversations, by session uuid (main-owned; pi never reads it). */
+  const conversationsFile = path.join(deps.dataDir, 'conversations.json');
   const sessionsDir = path.join(deps.dataDir, 'sessions');
 
   let status: WorkbenchStatus = 'stopped';
@@ -438,6 +464,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   let tasksSignature = signatureOf();
   let settingsDoc: Record<string, unknown> = readJson(settingsFile);
   let settings: WorkbenchSettings = settingsFrom(settingsDoc);
+  const customTitles: Map<string, string> = loadCustomTitles();
+  /** What a search reads of each session file, kept while the file stays the same. */
+  const searchCache = new Map<string, { size: number; mtimeMs: number; messages: SearchMessage[] }>();
   let conversations: ConversationRecord[] = listConversations();
   /** Basename of the session file the coordinator is in now. */
   let currentSession: string | null = null;
@@ -865,29 +894,77 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
 
   // --- conversations --------------------------------------------------------------------
 
+  /**
+   * The user's or the assistant's words in one session-file line, or null for any other entry
+   * (tool results, model changes, a line cut off by the byte cap). Only text blocks count:
+   * thinking and tool calls are not what the user remembers a conversation by.
+   */
+  function messageOf(line: string): { role: 'user' | 'assistant'; text: string } | null {
+    let entry: unknown;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      return null;
+    }
+    const record = entry as { type?: unknown; message?: { role?: unknown; content?: unknown } } | null;
+    if (record?.type !== 'message') return null;
+    const role = record.message?.role;
+    if (role !== 'user' && role !== 'assistant') return null;
+    const content = record.message?.content;
+    const raw =
+      typeof content === 'string'
+        ? content
+        : Array.isArray(content)
+          ? content
+              .map((block: { type?: unknown; text?: unknown } | null) =>
+                block?.type === 'text' && typeof block.text === 'string' ? block.text : '',
+              )
+              .join(' ')
+          : '';
+    const text = sanitizeWorkbenchText(role === 'user' ? stripSessionContext(raw) : raw);
+    return text === '' ? null : { role, text };
+  }
+
   function titleOf(file: string): string {
     const head = deps.fs.readFileHead(file, SESSION_HEAD_BYTES);
     if (!head) return '';
     for (const line of head.split('\n')) {
-      let entry: unknown;
-      try {
-        entry = JSON.parse(line);
-      } catch {
-        continue; // Includes a line cut off by the byte cap.
-      }
-      const record = entry as { type?: unknown; message?: { role?: unknown; content?: unknown } } | null;
-      if (record?.type !== 'message' || record.message?.role !== 'user') continue;
-      const content = record.message.content;
-      const text =
-        typeof content === 'string'
-          ? content
-          : Array.isArray(content)
-            ? content.map((block) => (typeof block?.text === 'string' ? block.text : '')).join(' ')
-            : '';
-      const title = sanitizeWorkbenchText(stripSessionContext(text)).replace(/\s+/g, ' ').trim();
+      const message = messageOf(line);
+      if (message?.role !== 'user') continue;
+      const title = message.text.replace(/\s+/g, ' ').trim();
       if (title !== '') return title.slice(0, WORKBENCH_LIMITS.conversationTitle);
     }
     return '';
+  }
+
+  // --- custom titles (conversations.json) -------------------------------------------------
+
+  function loadCustomTitles(): Map<string, string> {
+    const raw = readJson(conversationsFile).titles;
+    const out = new Map<string, string>();
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const [id, title] of Object.entries(raw as Record<string, unknown>)) {
+      if (!isValidConversationId(id) || typeof title !== 'string') continue;
+      const clean = cleanConversationTitle(title);
+      if (clean !== '') out.set(id, clean);
+    }
+    return out;
+  }
+
+  function saveCustomTitles(): void {
+    try {
+      deps.fs.mkdirp(deps.dataDir);
+      const doc = { version: 1, titles: Object.fromEntries(customTitles) };
+      deps.fs.writeFile(conversationsFile, `${JSON.stringify(doc, null, 2)}\n`);
+    } catch (err) {
+      log.error('workbench.conversations_write_failed', { code: errorCode(err) });
+      throwIpcError('INTERNAL', 'could not save the conversation title');
+    }
+  }
+
+  /** One line of printable text, capped like a derived title. */
+  function cleanConversationTitle(value: string): string {
+    return sanitizeWorkbenchText(value).replace(/\s+/g, ' ').trim().slice(0, WORKBENCH_LIMITS.conversationTitle);
   }
 
   /** The session files pi wrote, newest first. Only names pi itself produces are accepted. */
@@ -903,8 +980,71 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
     out.sort((a, b) => b.updatedAt - a.updatedAt);
     const listed = out.slice(0, WORKBENCH_LIMITS.conversations);
-    for (const c of listed) c.title = titleOf(c.file);
+    for (const c of listed) c.title = customTitles.get(c.id) ?? titleOf(c.file);
+    // Only listed conversations are searched, so the cache never outgrows the list.
+    const files = new Set(listed.map((c) => c.file));
+    for (const file of searchCache.keys()) if (!files.has(file)) searchCache.delete(file);
     return listed;
+  }
+
+  // --- search ---------------------------------------------------------------------------
+
+  /** The user / assistant messages of a session file, read once per (size, mtime). */
+  function searchMessagesOf(file: string): SearchMessage[] {
+    const stat = deps.fs.statFile(file);
+    if (!stat) return [];
+    const cached = searchCache.get(file);
+    if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached.messages;
+    const messages: SearchMessage[] = [];
+    const contents = deps.fs.readFileHead(file, SEARCH_READ_BYTES) ?? '';
+    let budget = SEARCH_TEXT_CHARS;
+    for (const line of contents.split('\n')) {
+      if (budget <= 0) break;
+      const message = messageOf(line);
+      if (!message) continue;
+      const text = message.text.slice(0, budget);
+      budget -= text.length;
+      messages.push({ role: message.role, text, folded: foldSearchText(text) });
+    }
+    searchCache.set(file, { size: stat.size, mtimeMs: stat.mtimeMs, messages });
+    return messages;
+  }
+
+  function searchConversations(query: string): ConversationSearchResult {
+    const terms = searchQueryTerms(query.slice(0, WORKBENCH_LIMITS.searchQuery));
+    if (terms.length === 0) return { query, hits: [] };
+    refreshConversations();
+    const titleHits: ConversationSearchHit[] = [];
+    const bodyHits: ConversationSearchHit[] = [];
+    for (const c of conversations) {
+      const title = foldSearchText(c.title);
+      const base = { id: c.id, title: c.title, updatedAt: c.updatedAt };
+      if (terms.every((term) => title.includes(term))) {
+        titleHits.push({ ...base, match: 'title', snippet: '' });
+        continue;
+      }
+      if (titleHits.length >= WORKBENCH_LIMITS.searchHits) continue; // No room for a body hit.
+      const messages = searchMessagesOf(c.file);
+      const found = terms.every(
+        (term) => title.includes(term) || messages.some((m) => m.folded.includes(term)),
+      );
+      if (!found) continue;
+      // The excerpt shows the message that holds the most terms (the earliest on a tie).
+      let best: SearchMessage | null = null;
+      let bestCount = 0;
+      for (const m of messages) {
+        const count = terms.filter((term) => m.folded.includes(term)).length;
+        if (count > bestCount) {
+          best = m;
+          bestCount = count;
+        }
+      }
+      if (!best) continue;
+      const term = terms.find((x) => best.folded.includes(x))!;
+      const match: ConversationMatch = best.role;
+      bodyHits.push({ ...base, match, snippet: searchExcerpt(best.text, term) });
+    }
+    return { query, hits: [...titleHits, ...bodyHits].slice(0, WORKBENCH_LIMITS.searchHits) };
   }
 
   function refreshConversations(): void {
@@ -1440,6 +1580,16 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     changed();
   }
 
+  function renameConversation(conversationId: string, title: string): void {
+    const conversation = requireConversation(conversationId);
+    const clean = cleanConversationTitle(title);
+    if (clean === '') customTitles.delete(conversation.id);
+    else customTitles.set(conversation.id, clean);
+    saveCustomTitles();
+    refreshConversations();
+    changed();
+  }
+
   function deleteConversation(conversationId: string): void {
     const conversation = requireConversation(conversationId);
     if (path.basename(conversation.file) === currentSession) {
@@ -1450,6 +1600,13 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     } catch (err) {
       log.warn('workbench.delete_conversation_failed', { code: errorCode(err) });
       throwIpcError('INTERNAL', 'could not delete the conversation');
+    }
+    if (customTitles.delete(conversation.id)) {
+      try {
+        saveCustomTitles();
+      } catch {
+        // The file is gone already; a stale title for a missing uuid is never shown.
+      }
     }
     refreshConversations();
     changed();
@@ -2033,6 +2190,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     approveTasks,
     runPlan,
     openConversation,
+    searchConversations,
+    renameConversation,
     chatPage,
     deleteConversation,
     updateSettings,

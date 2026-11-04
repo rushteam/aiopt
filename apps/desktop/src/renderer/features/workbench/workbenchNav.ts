@@ -1,7 +1,7 @@
 // What the Workbench content area shows, and the pure helpers the sidebar and explorer use.
 
 import { layoutTaskDag } from '../../../shared/taskDagLayout';
-import type { TaskView } from '../../../shared/workbench';
+import { foldSearchText, searchExcerpt, searchQueryTerms, type TaskView } from '../../../shared/workbench';
 
 /**
  * What the content area shows: the coordinator chat, the plan graph, one task (all sidebar
@@ -68,4 +68,54 @@ export function appendMention(draft: string, mention: string, maxLength: number)
   const prefix = draft.length > 0 && !/\s$/.test(draft) ? ' ' : '';
   const next = `${draft}${prefix}${mention} `;
   return next.length > maxLength ? draft : next;
+}
+
+/** Where a sidebar search hit matched, so the row can say why it is listed. */
+export type TaskMatchField = 'title' | 'prompt' | 'thread' | 'branch';
+
+export interface TaskSearchHit<T extends TaskView> {
+  task: T;
+  field: TaskMatchField;
+  /** A short excerpt around the match; '' when the title itself matched. */
+  snippet: string;
+}
+
+/** Folded (NFKC + lower case), whitespace-separated terms of a search query. */
+export const searchTerms = searchQueryTerms;
+
+/**
+ * Tasks matching every term somewhere in their title, prompt, follow-ups or branch, most
+ * recently updated first. The hit names the field that holds the first term (title preferred)
+ * and an excerpt from it, so a row titled "Fix bug" can show the prompt line that matched.
+ */
+export function searchTasks<T extends TaskView>(tasks: readonly T[], query: string): TaskSearchHit<T>[] {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return [];
+  const hits: TaskSearchHit<T>[] = [];
+  for (const task of tasks) {
+    const fields: [TaskMatchField, string][] = [
+      ['title', task.title],
+      ['prompt', task.prompt],
+      ['thread', task.thread.map((m) => m.text).join('\n')],
+      ['branch', task.branch ?? ''],
+    ];
+    const lower = fields.map(([, text]) => foldSearchText(text));
+    if (!terms.every((term) => lower.some((text) => text.includes(term)))) continue;
+    const first = terms[0]!;
+    const i = lower.findIndex((text) => text.includes(first));
+    const [field, text] = fields[i]!;
+    const snippet = field === 'title' ? '' : searchExcerpt(text, first);
+    hits.push({ task, field, snippet });
+  }
+  return hits.sort((a, b) => b.task.updatedAt - a.task.updatedAt);
+}
+
+/** Saved conversations whose title holds every term. */
+export function searchConversations<C extends { title: string }>(conversations: readonly C[], query: string): C[] {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return [];
+  return conversations.filter((c) => {
+    const title = foldSearchText(c.title);
+    return terms.every((term) => title.includes(term));
+  });
 }

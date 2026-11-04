@@ -93,6 +93,18 @@
       "toggle-theme": {
         "label": "Toggle Light / Dark",
         "description": "Switch between the light and dark appearance."
+      },
+      "workbench-search": {
+        "label": "Search Workbench",
+        "description": "Focus the Workbench sidebar search."
+      },
+      "workbench-older-conversation": {
+        "label": "Older Conversation",
+        "description": "Open the next older saved conversation in the Workbench."
+      },
+      "workbench-newer-conversation": {
+        "label": "Newer Conversation",
+        "description": "Open the next newer saved conversation in the Workbench."
       }
     },
     "errors": {
@@ -924,6 +936,9 @@
       "current": "Current",
       "delete": "Delete",
       "deleteConfirm": "Delete this conversation?",
+      "rename": "Rename",
+      "renameLabel": "Conversation name",
+      "renamePlaceholder": "Leave empty to use the first message",
       "taskUpdate": "Task update (sent by the app)",
       "mention": {
         "label": "Mention a task or session",
@@ -937,7 +952,16 @@
       "label": "Workbench navigation",
       "collapse": "Collapse sidebar",
       "expand": "Expand sidebar",
-      "resize": "Resize sidebar"
+      "resize": "Resize sidebar",
+      "search": "Search tasks and conversations",
+      "searchPlaceholder": "Search tasks, prompts, conversations…",
+      "searchClear": "Clear search",
+      "searchResults": "Search results",
+      "searchEmpty": "Nothing matches.",
+      "searchTasks": "Tasks",
+      "searchConversations": "Conversations",
+      "searchMatchUser": "You",
+      "searchMatchAssistant": "Coordinator"
     },
     "explorer": {
       "title": "Explorer",

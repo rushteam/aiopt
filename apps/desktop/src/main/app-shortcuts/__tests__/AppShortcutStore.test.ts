@@ -64,9 +64,9 @@ describe('AppShortcutStore (darwin)', () => {
   it('clearOverride and resetAll delete overrides (back to defaults)', () => {
     const store = makeStore();
     store.setOverride('toggle-theme', mk('KeyJ', { meta: true }));
-    store.setOverride('check-for-updates', mk('KeyK', { meta: true }));
+    store.setOverride('check-for-updates', mk('KeyY', { meta: true }));
     store.clearOverride('toggle-theme');
-    expect(store.getOverrides()).toEqual({ 'check-for-updates': mk('KeyK', { meta: true }) });
+    expect(store.getOverrides()).toEqual({ 'check-for-updates': mk('KeyY', { meta: true }) });
     // Default restored for the cleared one.
     expect(store.getEffectiveCombos('toggle-theme')).toEqual([mk('KeyL', { meta: true, shift: true })]);
     store.resetAll();

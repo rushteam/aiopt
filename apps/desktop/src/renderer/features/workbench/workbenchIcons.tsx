@@ -104,3 +104,20 @@ export function CloseIcon({ size = 12 }: { size?: number }) {
     </Glyph>
   );
 }
+
+export function SearchIcon({ size }: { size?: number }) {
+  return (
+    <Glyph size={size}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.4-4.4" />
+    </Glyph>
+  );
+}
+
+export function PencilIcon({ size = 12 }: { size?: number }) {
+  return (
+    <Glyph size={size}>
+      <path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
+    </Glyph>
+  );
+}

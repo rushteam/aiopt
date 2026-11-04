@@ -93,6 +93,18 @@
       "toggle-theme": {
         "label": "Hell / Dunkel umschalten",
         "description": "Wechselt zwischen hellem und dunklem Erscheinungsbild."
+      },
+      "workbench-search": {
+        "label": "Werkbank durchsuchen",
+        "description": "Fokussiert die Suche in der Seitenleiste der Werkbank."
+      },
+      "workbench-older-conversation": {
+        "label": "Ältere Unterhaltung",
+        "description": "Öffnet in der Werkbank die nächstältere gespeicherte Unterhaltung."
+      },
+      "workbench-newer-conversation": {
+        "label": "Neuere Unterhaltung",
+        "description": "Öffnet in der Werkbank die nächstneuere gespeicherte Unterhaltung."
       }
     },
     "errors": {
@@ -924,6 +936,9 @@
       "current": "Aktuell",
       "delete": "Löschen",
       "deleteConfirm": "Diese Unterhaltung löschen?",
+      "rename": "Umbenennen",
+      "renameLabel": "Name der Unterhaltung",
+      "renamePlaceholder": "Leer lassen, um die erste Nachricht zu verwenden",
       "taskUpdate": "Aufgaben-Update (von der App gesendet)",
       "mention": {
         "label": "Aufgabe oder Sitzung erwähnen",
@@ -937,7 +952,16 @@
       "label": "Workbench-Navigation",
       "collapse": "Seitenleiste einklappen",
       "expand": "Seitenleiste ausklappen",
-      "resize": "Seitenleistenbreite ändern"
+      "resize": "Seitenleistenbreite ändern",
+      "search": "Aufgaben und Unterhaltungen durchsuchen",
+      "searchPlaceholder": "Aufgaben, Prompts, Unterhaltungen suchen…",
+      "searchClear": "Suche löschen",
+      "searchResults": "Suchergebnisse",
+      "searchEmpty": "Keine Treffer.",
+      "searchTasks": "Aufgaben",
+      "searchConversations": "Unterhaltungen",
+      "searchMatchUser": "Du",
+      "searchMatchAssistant": "Koordinator"
     },
     "explorer": {
       "title": "Explorer",
