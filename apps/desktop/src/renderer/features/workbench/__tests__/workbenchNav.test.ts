@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_NAV_DEPTH,
   appendMention,
+  lineQuoteText,
+  QUOTE_EXCERPT_CHARS,
+  sliceLines,
   folderMentionText,
   formatBytes,
   lineNumbers,
@@ -51,6 +54,15 @@ describe('workbenchNav', () => {
     expect(appendMention('look at', '@app/a.ts', 100)).toBe('look at @app/a.ts ');
     expect(appendMention('look at @app/a.ts ', '@app/a.ts', 100)).toBe('look at @app/a.ts ');
     expect(appendMention('x'.repeat(95), '@app/a.ts', 100)).toBe('x'.repeat(95));
+  });
+
+  it('slices picked lines and quotes them with a safe fence', () => {
+    expect(sliceLines('a\nb\nc\n', { start: 2, end: 3 })).toBe('b\nc');
+    expect(sliceLines('a\nb', { start: 2, end: 9 })).toBe('b');
+    expect(lineQuoteText('app', 'src/a.ts', { start: 3, end: 3 }, 'x')).toBe('@app/src/a.ts:3\n```ts\nx\n```');
+    expect(lineQuoteText('app', 'README', { start: 1, end: 2 }, 'a\n```b')).toBe('@app/README:1-2\n````\na\n```b\n````');
+    expect(lineQuoteText('my app', 'a.md', { start: 1, end: 2 }, '')).toBe('`@my app/a.md:1-2`');
+    expect(lineQuoteText('app', 'a.ts', { start: 1, end: 2 }, 'x'.repeat(QUOTE_EXCERPT_CHARS + 1))).toBe('@app/a.ts:1-2');
   });
 
   it('keys views stably', () => {

@@ -10,9 +10,11 @@ import { agentName, searchSessions, shortDir } from '../sessions/sessionSearch';
 
 export interface MentionOption {
   key: string;
-  kind: 'task' | 'session';
+  kind: 'task' | 'session' | 'dir' | 'file';
   /** Inserted into the draft. */
   token: string;
+  /** Picking it keeps the picker open on the inserted text (a directory being browsed). */
+  browse?: boolean;
   label: string;
   detail: string;
 }

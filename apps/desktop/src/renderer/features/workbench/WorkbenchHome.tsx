@@ -41,6 +41,9 @@ import { StatusLabel } from './TaskStatusLabel';
 import { WorkbenchSidebar } from './WorkbenchSidebar';
 import { WorkbenchExplorer } from './WorkbenchExplorer';
 import { FilePreviewPane } from './FilePreviewPane';
+import { SnippetPane } from './SnippetPane';
+import type { FileRefTarget } from './fileRefs';
+import { useFileProbe } from './fileProbe';
 import { PaneResizeHandle } from './workbenchPanes';
 import {
   EXPLORER_WIDTH,
@@ -52,19 +55,33 @@ import {
   writeWorkbenchLayout,
   type WorkbenchLayout,
 } from './workbenchLayout';
-import { appendMention, folderMentionText, type WorkbenchView } from './workbenchNav';
+import {
+  appendMention,
+  folderMentionText,
+  lineQuoteText,
+  type LineRange,
+  type WorkbenchView,
+} from './workbenchNav';
 import {
   ChatColumn,
   ChatEmptyState,
   ChatLoadingIndicator,
   UserBubble,
+  ChatLinksContext,
+  LinkedText,
+  UserMessageBody,
   WorkbenchChatComposer,
+  collapsedUserText,
   assistantTextStyle,
+  useComposerBlocks,
+  type ChatLinks,
   type ComposerAttachments,
+  type ComposerBlocks,
 } from './workbenchChat';
 import { readImageFile, type DraftImage, type ImageAttachError } from './chatImageAttach';
 import { acceptTaskMentionDrag, insertTaskMention, readTaskMentionDrop, renderTextWithTaskMentions } from './taskMentionUi';
 import { useMentionSource } from './mentionPicker';
+import { hasEntryDrag, readEntryDrag, type DraggedEntry } from './entryDrag';
 import type { TaskSeed } from './taskSeed';
 import { WorkspaceTabScreen } from '../../components/TabScreenShell';
 import { VirtualChatList } from '../../components/ui/VirtualChatList';
@@ -116,6 +133,8 @@ export function WorkbenchHome({
 
   // ── What the content area shows ──
   const [view, setView] = useState<WorkbenchView>({ kind: 'chat' });
+  // A code block a message holds without a source, shown in a temporary view (memory only).
+  const [snippet, setSnippet] = useState<{ id: number; text: string; lang: string } | null>(null);
   const selectedTask = view.kind === 'task' ? (wb.tasks.find((task) => task.id === view.id) ?? null) : null;
   const previewFolder = view.kind === 'file' ? (wb.folders.find((f) => f.id === view.folderId) ?? null) : null;
   // A task that left the board falls back to the plan it belonged to; a file whose folder was
@@ -123,7 +142,8 @@ export function WorkbenchHome({
   useEffect(() => {
     if (view.kind === 'task' && !wb.tasks.some((task) => task.id === view.id)) setView({ kind: 'plan' });
     if (view.kind === 'file' && !wb.folders.some((f) => f.id === view.folderId)) setView({ kind: 'chat' });
-  }, [view, wb.tasks, wb.folders]);
+    if (view.kind === 'snippet' && snippet?.id !== view.id) setView({ kind: 'chat' });
+  }, [view, wb.tasks, wb.folders, snippet]);
   const selectTask = useCallback((id: string) => setView({ kind: 'task', id }), []);
   // A draft handed over from Sessions opens the plan's new-task form.
   useEffect(() => {
@@ -132,16 +152,55 @@ export function WorkbenchHome({
 
   // The coordinator's draft lives here so the explorer can add file references to it.
   const [draft, setDraft] = useState('');
-  const insertFile = (folder: FolderView, relPath: string): void => {
-    setDraft((d) => appendMention(d, folderMentionText(folder.name, relPath), WORKBENCH_LIMITS.chatText));
+  // Quoted lines and large pastes sit in the field as short markers (see draftBlocks.ts).
+  const blocks = useComposerBlocks(t);
+  const insertFile = (folder: FolderView, relPath: string, quote?: { range: LineRange; excerpt: string }): void => {
+    if (!quote) {
+      blocks.addRef(folderMentionText(folder.name, relPath));
+      setView({ kind: 'chat' });
+      return;
+    }
+    setDraft((d) => {
+      const bare = lineQuoteText(folder.name, relPath, quote.range, '');
+      const full = lineQuoteText(folder.name, relPath, quote.range, quote.excerpt);
+      // Too long to carry its lines: the reference alone goes in, as typed text.
+      if (full === bare) return appendMention(d, bare, WORKBENCH_LIMITS.chatText);
+      if (blocks.store.markerFor(full, d)) return d;
+      const marker = blocks.store.add(full, blocks.quoteLabel(bare, quote.excerpt), true);
+      if (d.includes(marker)) return d;
+      const next = appendMention(d, marker, WORKBENCH_LIMITS.chatText);
+      const fits = blocks.store.expand(next).length <= WORKBENCH_LIMITS.chatText;
+      return fits ? next : appendMention(d, bare, WORKBENCH_LIMITS.chatText);
+    });
     setView({ kind: 'chat' });
   };
   // The tab the preview was opened from, so closing it goes back there.
   const [beforeFile, setBeforeFile] = useState<WorkbenchView>({ kind: 'chat' });
   const openFile = (folder: FolderView, relPath: string): void => {
-    if (view.kind !== 'file') setBeforeFile(view);
+    if (view.kind !== 'file' && view.kind !== 'snippet') setBeforeFile(view);
     setView({ kind: 'file', folderId: folder.id, relPath });
   };
+  // What chat messages open: a file reference goes to the preview at its lines, a bare code
+  // block to the temporary view. Folders are named by id, as the explorer names them.
+  const fileProbe = useFileProbe();
+  const chatLinks = useMemo<ChatLinks>(
+    () => ({
+      folders: wb.folders,
+      fileExists: fileProbe.fileExists,
+      probe: fileProbe.probe,
+      openFile: (target: FileRefTarget) => {
+        if (view.kind !== 'file' && view.kind !== 'snippet') setBeforeFile(view);
+        setView({ kind: 'file', folderId: target.folderId, relPath: target.relPath, range: target.range });
+      },
+      openSnippet: ({ text, lang }) => {
+        if (view.kind !== 'file' && view.kind !== 'snippet') setBeforeFile(view);
+        const id = Date.now();
+        setSnippet({ id, text, lang });
+        setView({ kind: 'snippet', id });
+      },
+    }),
+    [wb.folders, view, fileProbe],
+  );
 
   // A previewed file that was renamed / moved follows its new path; trashed, the preview closes.
   const followPath = (folderId: string, from: string, to: { folderId: string; relPath: string } | null): void => {
@@ -189,14 +248,17 @@ export function WorkbenchHome({
     view.kind === 'file' && previewFolder ? (
       // Keyed so switching files resets the preview state.
       <FilePreviewPane
-        key={`${previewFolder.id}\u0000${view.relPath}`}
+        key={`${previewFolder.id}\u0000${view.relPath}\u0000${view.range ? `${view.range.start}-${view.range.end}` : ''}`}
         folder={previewFolder}
         relPath={view.relPath}
+        focus={view.range}
         t={t}
         run={run}
-        onInsert={() => insertFile(previewFolder, view.relPath)}
+        onInsert={(quote) => insertFile(previewFolder, view.relPath, quote)}
         onClose={() => setView(beforeFile)}
       />
+    ) : view.kind === 'snippet' && snippet?.id === view.id ? (
+      <SnippetPane text={snippet.text} lang={snippet.lang} t={t} onClose={() => setView(beforeFile)} />
     ) : view.kind === 'timeline' ? (
       <TimelinePanel wb={wb} t={t} run={run} onSelectTask={selectTask} onOpenChat={() => setView({ kind: 'chat' })} />
     ) : view.kind === 'task' && selectedTask ? (
@@ -218,6 +280,7 @@ export function WorkbenchHome({
         run={run}
         draft={draft}
         setDraft={setDraft}
+        blocks={blocks}
         onSelectTask={selectTask}
       />
     );
@@ -274,7 +337,9 @@ export function WorkbenchHome({
               onResize={(w) => updateLayout({ sidebarWidth: clampWidth(w, SIDEBAR_WIDTH) })}
             />
           )}
-          <main style={contentStyle}>{content}</main>
+          <main style={contentStyle}>
+            <ChatLinksContext.Provider value={chatLinks}>{content}</ChatLinksContext.Provider>
+          </main>
           {!layout.explorerCollapsed && (
             <PaneResizeHandle
               side="right"
@@ -356,6 +421,7 @@ function ChatPane({
   run,
   draft,
   setDraft,
+  blocks,
   onSelectTask,
 }: {
   wb: WorkbenchSnapshot;
@@ -363,19 +429,28 @@ function ChatPane({
   run: Runner;
   draft: string;
   setDraft: (next: string | ((prev: string) => string)) => void;
+  blocks: ComposerBlocks;
   onSelectTask: (id: string) => void;
 }) {
   const [sent, setSent] = useState(0);
   const ready = wb.status === 'ready';
 
   const attachments = useDraftImages(t);
+  /** An explorer entry dropped on the composer or the thread becomes an `@folder/path` reference. */
+  const dropEntry = (entry: DraggedEntry): void => {
+    const folder = wb.folders.find((f) => f.id === entry.folderId);
+    if (!folder) return;
+    blocks.addRef(folderMentionText(folder.name, entry.relPath));
+  };
 
   const send = async (): Promise<void> => {
-    const text = draft.trim();
+    const text = blocks.compose(draft);
     const images = attachments.images;
     if ((!text && images.length === 0) || !ready || attachments.reading) return;
+    if (text.length > WORKBENCH_LIMITS.chatText) return;
     if (await run(() => sendChat(text, images.map(({ mimeType, data }) => ({ mimeType, data }))))) {
       setDraft('');
+      blocks.reset();
       attachments.clear();
       setSent((n) => n + 1);
     }
@@ -412,7 +487,7 @@ function ChatPane({
     setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
   };
 
-  const mentions = useMentionSource(t, wb.tasks);
+  const mentions = useMentionSource(t, wb.tasks, wb.folders);
 
   return (
     <section
@@ -432,8 +507,21 @@ function ChatPane({
         followSignal={`${wb.chatEpoch}:${sent}`}
         jumpLabel={t('workbench.chat.jumpToLatest')}
         loadingLabel={t('workbench.chat.loadingOlder')}
-        onDragOver={acceptTaskMentionDrag}
+        onDragOver={(e) => {
+          if (ready && hasEntryDrag(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            return;
+          }
+          acceptTaskMentionDrag(e);
+        }}
         onDrop={(e) => {
+          if (ready && hasEntryDrag(e.dataTransfer)) {
+            e.preventDefault();
+            const entry = readEntryDrag(e.dataTransfer);
+            if (entry) dropEntry(entry);
+            return;
+          }
           const payload = readTaskMentionDrop(e);
           if (payload) addTaskMention(payload.id);
         }}
@@ -468,8 +556,11 @@ function ChatPane({
           abortLabel={t('workbench.chat.abort')}
           onTaskMentionDrop={ready ? addTaskMention : undefined}
           dropHint={t('workbench.chat.taskMentionDrop')}
+          onEntryDrop={dropEntry}
+          entryDropHint={t('workbench.chat.entryDrop')}
           mentions={mentions}
           attachments={attachments}
+          blocks={blocks}
         />
       </div>
     </section>
@@ -483,7 +574,7 @@ function estimateChatItemHeight(item: ChatItem, width: number): number {
   const perLine = Math.max(20, Math.floor(width / 9));
   switch (item.kind) {
     case 'user':
-      return estimateTextHeight(item.text, Math.floor(perLine * 0.85));
+      return estimateTextHeight(collapsedUserText(item.text), Math.floor(perLine * 0.85));
     case 'assistant':
       return estimateTextHeight(item.text, perLine, 21, item.thinking ? 28 : 4);
     case 'proposal':
@@ -565,7 +656,7 @@ function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskVie
               {t('workbench.chat.imagesAttached').replace('{{count}}', String(item.images))}
             </span>
           ) : null}
-          {renderTextWithTaskMentions(item.text, tasks)}
+          <UserMessageBody text={item.text} t={t} renderText={(s) => renderTextWithTaskMentions(s, tasks)} />
         </UserBubble>
       );
     case 'assistant':
@@ -577,7 +668,11 @@ function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskVie
               <div style={thinkingStyle}>{item.thinking}</div>
             </details>
           )}
-          {item.text && <div style={assistantTextStyle}>{item.text}</div>}
+          {item.text && (
+            <div style={assistantTextStyle}>
+              <LinkedText text={item.text} />
+            </div>
+          )}
           {item.streaming && item.text === '' && <ChatLoadingIndicator label={t('workbench.chat.replying')} />}
         </div>
       );

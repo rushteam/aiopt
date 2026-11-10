@@ -131,3 +131,13 @@ export function PencilIcon({ size = 12 }: { size?: number }) {
     </Glyph>
   );
 }
+
+export function ImageIcon({ size = 12 }: { size?: number }) {
+  return (
+    <Glyph size={size}>
+      <rect x="3" y="4.5" width="18" height="15" rx="3" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="M4 17.5l5-4.5 3.5 3 3-2.5 4.5 4" />
+    </Glyph>
+  );
+}

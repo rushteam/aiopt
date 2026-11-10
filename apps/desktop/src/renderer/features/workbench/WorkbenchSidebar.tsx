@@ -198,8 +198,8 @@ export function WorkbenchSidebar({
         aria-selected={selected}
         aria-label={label}
         title={opts.title ?? label}
-        // A file preview selects no tab; the chat tab then keeps the list reachable by Tab.
-        tabIndex={selected || (view.kind === 'file' && target.kind === 'chat') ? 0 : -1}
+        // A file preview / snippet view selects no tab; the chat tab then keeps the list reachable by Tab.
+        tabIndex={selected || ((view.kind === 'file' || view.kind === 'snippet') && target.kind === 'chat') ? 0 : -1}
         onClick={() => onSelectView(target)}
         {...hoverBackground(selected ? token('surfaceHover') : 'transparent', token('surfaceHover'))}
         style={collapsed ? railTabStyle(selected) : tabStyle(selected, opts.depth ?? 0)}

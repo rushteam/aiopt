@@ -1,33 +1,46 @@
 // The `@` mention picker shared by the coordinator composer, task follow-ups and the task
-// form: typing `@` (at the start or after a space) opens a listbox of tasks and sessions,
-// ↑/↓ move, Enter/Tab insert the token, Escape dismisses. Matching lives in mentionSuggest.ts
-// and sessionSearch.ts (the Sessions screen's search), so both places find the same sessions.
+// form: typing `@` (at the start or after a space) opens a listbox of tasks, sessions and the
+// workbench folders' files, ↑/↓ move, Enter/Tab insert the token, Escape dismisses. Matching
+// lives in mentionSuggest.ts, sessionSearch.ts (the Sessions screen's search, so both places
+// find the same sessions) and fileMention.ts (path browsing, one directory listing at a time).
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { activeMentionQuery, applyMention, type MentionQuery } from '../sessions/sessionSearch';
 import { mentionOptions, moveHighlight, type MentionOption } from './mentionSuggest';
+import { fileMentionDir, fileMentionOptions, listingKey, type MentionFolder } from './fileMention';
+import { listFolder } from '../../lib/workbenchStore';
 import type { TranslateFn } from '../../i18n';
 import type { SessionSummary } from '../../../shared/agentSessions';
-import type { TaskView } from '../../../shared/workbench';
+import type { FolderEntry, TaskView } from '../../../shared/workbench';
 
 export interface MentionSource {
   options: (query: string) => MentionOption[];
   /** Called once per picker opening (e.g. to load the session list). */
   onOpen?: () => void;
+  /** Called with each query (e.g. to load the directory a path query browses). */
+  onQuery?: (query: string) => void;
+  /** True when `query` is already a finished reference (the picker stays closed). */
+  isComplete?: (query: string) => boolean;
+  /** When set, a picked file / directory reference goes here (a chip) instead of into the text. */
+  onRef?: (token: string) => void;
   label: string;
   empty: string;
   hint: string;
-  taskTag: string;
-  sessionTag: string;
+  tags: Record<MentionOption['kind'], string>;
 }
 
 /**
  * The picker's options and labels. Sessions are fetched when the picker opens (main serves
  * its cached scan). Pass `tasks` only where @task is understood — the coordinator; a worker
- * prompt gets sessions only.
+ * prompt gets sessions and files only. Directory listings are fetched as a path is typed and
+ * dropped when the picker reopens, so a reopened picker sees fresh listings.
  */
-export function useMentionSource(t: TranslateFn, tasks: readonly TaskView[] = []): MentionSource {
+export function useMentionSource(
+  t: TranslateFn,
+  tasks: readonly TaskView[] = [],
+  folders: readonly MentionFolder[] = [],
+): MentionSource {
   const [sessions, setSessions] = useState<readonly SessionSummary[]>([]);
   const fetching = useRef(false);
   const loadSessions = useCallback(() => {
@@ -41,15 +54,52 @@ export function useMentionSource(t: TranslateFn, tasks: readonly TaskView[] = []
         fetching.current = false;
       });
   }, []);
+  const [listings, setListings] = useState<ReadonlyMap<string, readonly FolderEntry[]>>(new Map());
+  const requested = useRef(new Set<string>());
+  const loadDir = useCallback(
+    (query: string) => {
+      const dir = fileMentionDir(query, folders);
+      if (!dir) return;
+      const key = listingKey(dir.folder.id, dir.dirRel);
+      if (requested.current.has(key)) return;
+      requested.current.add(key);
+      listFolder(dir.folder.id, dir.dirRel)
+        .then((l) => setListings((m) => new Map(m).set(key, l.entries)))
+        .catch(() => setListings((m) => new Map(m).set(key, [])));
+    },
+    [folders],
+  );
   const untitled = t('sessions.untitled');
+  const dirTag = t('workbench.chat.mention.dir');
   return {
-    options: (query) => mentionOptions(query, tasks, sessions, untitled),
-    onOpen: loadSessions,
+    options: (query) => {
+      const files = fileMentionOptions(query, folders, (id, rel) => listings.get(listingKey(id, rel)), dirTag);
+      if (fileMentionDir(query, folders)) return files;
+      const rest = mentionOptions(query, tasks, sessions, untitled);
+      const nTasks = rest.findIndex((o) => o.kind !== 'task');
+      const cut = nTasks < 0 ? rest.length : nTasks;
+      return [...rest.slice(0, cut), ...files, ...rest.slice(cut)];
+    },
+    onOpen: () => {
+      loadSessions();
+      requested.current.clear();
+      setListings(new Map());
+    },
+    onQuery: loadDir,
+    // A file path followed by a space is a finished reference (folder names may hold spaces).
+    isComplete: (query) => {
+      const dir = fileMentionDir(query, folders);
+      return dir !== null && /\s/.test(query.slice(dir.folder.name.length + 1));
+    },
     label: t('workbench.chat.mention.label'),
     empty: t('workbench.chat.mention.empty'),
     hint: t('workbench.chat.mention.hint'),
-    taskTag: t('workbench.chat.mention.task'),
-    sessionTag: t('workbench.chat.mention.session'),
+    tags: {
+      task: t('workbench.chat.mention.task'),
+      session: t('workbench.chat.mention.session'),
+      dir: dirTag,
+      file: t('workbench.chat.mention.file'),
+    },
   };
 }
 
@@ -106,19 +156,52 @@ export function useMentionPicker({
 
   const syncAt = (text: string, caret: number): void => {
     if (!mentions) return;
-    const q = activeMentionQuery(text, caret);
+    const found = activeMentionQuery(text, caret);
+    const q = found && mentions.isComplete?.(found.query) ? null : found;
     if (q && dismissedAt.current === q.start) return setMention(null);
     if (!q) dismissedAt.current = null;
     if (q && (!mention || mention.start !== q.start)) {
       mentions.onOpen?.();
       setHighlight(0);
     }
+    if (q) mentions.onQuery?.(q.query);
     setMention(q);
   };
 
   const choose = (option: MentionOption): void => {
     const el = textRef.current;
     if (!mention || !el) return;
+    if (option.browse) {
+      // A directory: replace the query with it and keep browsing inside it.
+      const head = draft.slice(0, mention.start) + option.token;
+      const tail = draft.slice(el.selectionStart);
+      if (head.length + tail.length > maxLength) return;
+      const caret = head.length;
+      setDraft(head + tail);
+      const q = { start: mention.start, query: option.token.slice(1) };
+      mentions?.onQuery?.(q.query);
+      setMention(q);
+      setHighlight(0);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      });
+      return;
+    }
+    if (mentions?.onRef && (option.kind === 'file' || option.kind === 'dir')) {
+      // Held as a chip: drop the typed @-query from the text.
+      const head = draft.slice(0, mention.start);
+      const rest = draft.slice(el.selectionStart);
+      const tail = head === '' || /\s$/.test(head) ? rest.replace(/^ /, '') : rest;
+      mentions.onRef(option.token);
+      setDraft(head + tail);
+      setMention(null);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(head.length, head.length);
+      });
+      return;
+    }
     const next = applyMention(draft, mention, el.selectionStart, option.token, maxLength);
     setDraft(next.text);
     setMention(null);
@@ -177,8 +260,7 @@ export function useMentionPicker({
           label={mentions.label}
           empty={mentions.empty}
           hint={mentions.hint}
-          taskTag={mentions.taskTag}
-          sessionTag={mentions.sessionTag}
+          tags={mentions.tags}
         />
       ) : null,
   };
@@ -194,8 +276,7 @@ function MentionMenu({
   label,
   empty,
   hint,
-  taskTag,
-  sessionTag,
+  tags,
 }: {
   idBase: string;
   placement: MentionPlacement;
@@ -206,8 +287,7 @@ function MentionMenu({
   label: string;
   empty: string;
   hint: string;
-  taskTag: string;
-  sessionTag: string;
+  tags: Record<MentionOption['kind'], string>;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -241,7 +321,7 @@ function MentionMenu({
               minWidth: 0,
             }}
           >
-            <span style={mentionTagStyle}>{o.kind === 'task' ? taskTag : sessionTag}</span>
+            <span style={mentionTagStyle}>{tags[o.kind]}</span>
             <span style={{ fontSize: fontSize.md, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flexShrink: 1 }}>
               {o.label}
             </span>

@@ -47,7 +47,8 @@ export interface MentionQuery {
   query: string;
 }
 
-const MENTION_QUERY_MAX = 60;
+/** Long enough for a file path being browsed (`@folder/src/deep/dir/name`). */
+const MENTION_QUERY_MAX = 200;
 
 /**
  * The @-query being typed at `caret`, or null. The `@` must start the text or follow

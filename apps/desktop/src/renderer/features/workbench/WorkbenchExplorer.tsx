@@ -41,6 +41,8 @@ import { WORKBENCH_LIMITS, type FolderListing, type FolderView } from '../../../
 import { ChevronIcon, CloseIcon, FileIcon, FolderIcon, PanelIcon, PlusIcon, RefreshIcon } from './workbenchIcons';
 import { IconButton } from './workbenchPanes';
 import { ExplorerContextMenu, type ContextMenuItem } from './ExplorerContextMenu';
+// Drag payload of a tree row (in-app only; never a path main has not granted).
+import { ENTRY_DRAG_TYPE } from './entryDrag';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
 
@@ -56,9 +58,6 @@ interface Target {
 type Editing =
   | { mode: 'rename'; folderId: string; relPath: string; kind: 'file' | 'dir' }
   | { mode: 'new'; folderId: string; dirRel: string; kind: 'file' | 'dir' };
-
-/** Drag payload of a tree row (in-app only; never a path main has not granted). */
-const ENTRY_DRAG_TYPE = 'application/x-aiopt-workbench-entry';
 
 const listingKey = (folderId: string, relPath: string): string => `${folderId}\u0000${relPath}`;
 const joinRel = (dir: string, name: string): string => (dir ? `${dir}/${name}` : name);

@@ -9,8 +9,10 @@ import {
   type WorkbenchSnapshot,
 } from '../../../shared/workbench';
 import { messageTask, readTaskOutput } from '../../lib/workbenchStore';
-import { WorkbenchChatComposer, WorkbenchChatThread, type WorkbenchChatLine } from './workbenchChat';
+import { useComposerBlocks, WorkbenchChatComposer, WorkbenchChatThread, type WorkbenchChatLine } from './workbenchChat';
 import { useMentionSource } from './mentionPicker';
+import type { DraggedEntry } from './entryDrag';
+import { folderMentionText } from './workbenchNav';
 
 const OUTPUT_POLL_MS = 2000;
 
@@ -26,8 +28,14 @@ export function TaskChatPane({
   run: (action: () => Promise<void>) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState('');
-  // Sessions only: a worker gets @session excerpts attached, but has no board to resolve @task.
-  const mentions = useMentionSource(t);
+  // No @task: a worker gets @session excerpts attached, but has no board to resolve @task.
+  const mentions = useMentionSource(t, [], wb.folders);
+  const blocks = useComposerBlocks(t);
+  const dropEntry = (entry: DraggedEntry): void => {
+    const folder = wb.folders.find((f) => f.id === entry.folderId);
+    if (!folder) return;
+    blocks.addRef(folderMentionText(folder.name, entry.relPath));
+  };
   const [liveOutput, setLiveOutput] = useState<string | null>(null);
   const live = isLiveTaskStatus(task.status);
   const canMessage = taskAllows('message', task.status);
@@ -69,9 +77,12 @@ export function TaskChatPane({
   }, [task, live, liveOutput]);
 
   const send = async (): Promise<void> => {
-    const text = draft.trim();
-    if (!text || !canMessage) return;
-    if (await run(() => messageTask(task.id, text))) setDraft('');
+    const text = blocks.compose(draft);
+    if (!text || !canMessage || text.length > WORKBENCH_LIMITS.taskPrompt) return;
+    if (await run(() => messageTask(task.id, text))) {
+      setDraft('');
+      blocks.reset();
+    }
   };
 
   return (
@@ -111,7 +122,10 @@ export function TaskChatPane({
           sendHint={t('workbench.chat.sendHint')}
           sendLabel={t('workbench.chat.send')}
           rows={3}
+          onEntryDrop={dropEntry}
+          entryDropHint={t('workbench.chat.entryDrop')}
           mentions={mentions}
+          blocks={blocks}
         />
       </div>
     </section>

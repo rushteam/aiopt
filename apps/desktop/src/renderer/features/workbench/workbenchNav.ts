@@ -5,18 +5,22 @@ import { foldSearchText, searchExcerpt, searchQueryTerms, type TaskView } from '
 
 /**
  * What the content area shows: the coordinator chat, the plan graph, the task timeline, one
- * task (all sidebar tabs), or a read-only preview of a file picked in the explorer.
+ * task (all sidebar tabs), a read-only preview of a file (picked in the explorer, or opened
+ * from a chat reference with the lines it names), or a temporary view of a code block a chat
+ * message holds without a source (its text stays in memory, never persisted).
  */
 export type WorkbenchView =
   | { kind: 'chat' }
   | { kind: 'plan' }
   | { kind: 'timeline' }
   | { kind: 'task'; id: string }
-  | { kind: 'file'; folderId: string; relPath: string };
+  | { kind: 'file'; folderId: string; relPath: string; range?: LineRange }
+  | { kind: 'snippet'; id: number };
 
 export function viewKey(view: WorkbenchView): string {
   if (view.kind === 'task') return `task:${view.id}`;
   if (view.kind === 'file') return `file:${view.folderId}\u0000${view.relPath}`;
+  if (view.kind === 'snippet') return `snippet:${view.id}`;
   return view.kind;
 }
 
@@ -61,6 +65,38 @@ export function sidebarTaskOrder<T extends TaskView>(tasks: readonly T[]): { tas
 export function folderMentionText(folderName: string, relPath: string): string {
   const ref = `@${folderName}/${relPath}`;
   return /\s/.test(ref) ? `\`${ref}\`` : ref;
+}
+
+/** Lines `start`..`end` (1-based, inclusive) picked in a file preview. */
+export interface LineRange {
+  start: number;
+  end: number;
+}
+
+/** The excerpt cap for a quoted line range; longer picks are referenced without the excerpt. */
+export const QUOTE_EXCERPT_CHARS = 4000;
+
+/** `start`..`end` of `text` (1-based, inclusive; clamped to the lines present). */
+export function sliceLines(text: string, range: LineRange): string {
+  const lines = text.split('\n');
+  if (text.endsWith('\n')) lines.pop();
+  return lines.slice(Math.max(0, range.start - 1), Math.max(0, range.end)).join('\n');
+}
+
+/**
+ * The text a line pick puts in the composer: the reference with its line range
+ * (`@<folder>/<path>:<start>-<end>`) and, when it fits, the lines in a fence one backtick
+ * longer than any run inside them (so the excerpt cannot close it early). Without `excerpt`
+ * (too long, or nothing to show) it is the reference alone.
+ */
+export function lineQuoteText(folderName: string, relPath: string, range: LineRange, excerpt: string): string {
+  const lines = range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`;
+  const ref = folderMentionText(folderName, `${relPath}:${lines}`);
+  if (excerpt.trim() === '' || excerpt.length > QUOTE_EXCERPT_CHARS) return ref;
+  const longestRun = Math.max(2, ...Array.from(excerpt.matchAll(/`+/g), (m) => m[0].length));
+  const fence = '`'.repeat(longestRun + 1);
+  const ext = /\.([A-Za-z0-9+#-]{1,10})$/.exec(relPath)?.[1]?.toLowerCase() ?? '';
+  return `${ref}\n${fence}${ext}\n${excerpt}\n${fence}`;
 }
 
 /** Append `mention` to a draft (space-separated, once), bounded to `maxLength`. */
