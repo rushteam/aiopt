@@ -19,6 +19,7 @@ import {
   type TimelineEvent,
   type FilePreview,
   type FolderListing,
+  type TaskChanges,
   type WorkbenchSnapshot,
 } from '../../shared/workbench';
 import { EMPTY_CHAT_HISTORY, mergeChatWindow, prependChatPage, type ChatHistory } from './chatHistory';
@@ -220,4 +221,9 @@ export function copyFolderEntryPath(folderId: string, relPath: string, relative:
 /** The worker's recent terminal text (already stripped of control characters by main). */
 export async function readTaskOutput(taskId: string): Promise<string> {
   return (await wb().taskOutput(taskId)).text;
+}
+
+/** What a task changed in its checkout (read-only; main picks the checkout). */
+export function readTaskChanges(taskId: string): Promise<TaskChanges> {
+  return wb().taskChanges(taskId);
 }

@@ -1097,6 +1097,30 @@
         "stalled": "対応が必要"
       }
     },
+    "changes": {
+      "tab": "変更",
+      "tabChat": "チャット",
+      "files": "{{count}} 件のファイル",
+      "sinceLaunch": "タスク開始以降",
+      "sinceLaunchInPlace": "タスク開始以降にこのフォルダーで変更されたすべて（自分の編集を含む）",
+      "sinceHead": "未コミットの変更（開始時のコミットが不明）",
+      "loading": "変更を読み込み中…",
+      "empty": "変更はありません",
+      "unavailable": "このタスクには変更を表示できる git チェックアウトがありません。",
+      "error": "変更を読み込めませんでした。",
+      "truncated": "変更が多すぎるため、一部のファイルや差分は表示されていません。",
+      "refresh": "更新",
+      "binary": "バイナリファイル",
+      "noPatch": "差分が大きすぎて表示できません",
+      "noContent": "内容の変更はありません",
+      "status": {
+        "added": "追加",
+        "modified": "変更",
+        "deleted": "削除",
+        "renamed": "名前変更",
+        "untracked": "未追跡"
+      }
+    },
     "taskChat": {
       "title": "タスクチャット",
       "empty": "タスクを選ぶと、最初のプロンプトがここに表示されます。",

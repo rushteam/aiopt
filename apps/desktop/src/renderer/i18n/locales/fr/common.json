@@ -1097,6 +1097,30 @@
         "stalled": "Action requise"
       }
     },
+    "changes": {
+      "tab": "Modifications",
+      "tabChat": "Discussion",
+      "files": "Fichiers : {{count}}",
+      "sinceLaunch": "Depuis le début de la tâche",
+      "sinceLaunchInPlace": "Tout ce qui a changé dans ce dossier depuis le début de la tâche, y compris vos propres modifications",
+      "sinceHead": "Modifications non validées (le commit de départ est inconnu)",
+      "loading": "Lecture des modifications…",
+      "empty": "Aucune modification",
+      "unavailable": "Cette tâche n’a pas d’extraction git dont afficher les modifications.",
+      "error": "Impossible de lire les modifications.",
+      "truncated": "Trop de modifications : certains fichiers ou diffs ne sont pas affichés.",
+      "refresh": "Actualiser",
+      "binary": "Fichier binaire",
+      "noPatch": "Diff trop volumineux pour être affiché",
+      "noContent": "Aucune modification du contenu",
+      "status": {
+        "added": "Ajouté",
+        "modified": "Modifié",
+        "deleted": "Supprimé",
+        "renamed": "Renommé",
+        "untracked": "Non suivi"
+      }
+    },
     "taskChat": {
       "title": "Chat de la tâche",
       "empty": "Sélectionnez une tâche pour afficher le prompt initial ici.",

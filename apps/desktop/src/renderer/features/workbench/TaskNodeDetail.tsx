@@ -4,7 +4,7 @@
 // Every action is the same IPC call the task board makes; main re-checks each one. The
 // disabled states here only mirror main's rules (TASK_ACTIONS, proposalBlocker).
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { disabledOpacity, fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
@@ -20,6 +20,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { pendingDependencies, taskAllows, type TaskView, type WorkbenchSnapshot } from '../../../shared/workbench';
 import { StatusLabel } from './TaskStatusLabel';
 import { TaskChatPane } from './TaskChatPane';
+import { TaskChangesPane } from './TaskChangesPane';
 import { TaskForm } from './TaskForm';
 import { proposalBlocker } from './proposalBlocker';
 
@@ -48,6 +49,12 @@ export function TaskNodeDetail({
     .filter((title): title is string => title !== undefined);
   const blocker = taskAllows('launch', task.status) ? proposalBlocker(task, wb) : null;
   const canLaunchNow = taskAllows('launch', task.status) && blocker === null;
+  // A task has a checkout to diff once it ran in a git folder (its worktree, or the folder itself).
+  const hasChanges =
+    folder?.isGitRepo === true && task.status !== 'proposed' && (!task.isolated || task.worktreeDisplay !== null);
+  const [view, setView] = useState<'chat' | 'changes'>('chat');
+  useEffect(() => setView('chat'), [task.id]);
+  const shownView = hasChanges ? view : 'chat';
 
   if (editing) {
     return (
@@ -148,7 +155,32 @@ export function TaskNodeDetail({
           <p style={{ margin: 0, fontSize: fontSize.xs, color: token('textMuted') }}>{t('workbench.plan.rerunHint')}</p>
         )}
       </div>
-      <TaskChatPane task={task} wb={wb} t={t} run={run} />
+      {hasChanges && (
+        <div role="tablist" aria-label={task.title} style={tabListStyle}>
+          {(['chat', 'changes'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={shownView === v}
+              onClick={() => setView(v)}
+              {...hoverBackground('transparent', token('surfaceHover'))}
+              style={{
+                ...tabStyle,
+                color: shownView === v ? token('text') : token('textMuted'),
+                borderBottomColor: shownView === v ? token('accent') : 'transparent',
+              }}
+            >
+              {t(v === 'chat' ? 'workbench.changes.tabChat' : 'workbench.changes.tab')}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* The chat stays mounted behind the changes view so its draft survives a switch. */}
+      <div style={{ display: shownView === 'chat' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <TaskChatPane task={task} wb={wb} t={t} run={run} />
+      </div>
+      {shownView === 'changes' && <TaskChangesPane task={task} t={t} />}
       {confirmRemove && (
         <ConfirmDialog
           title={t('workbench.removeConfirm')}
@@ -239,5 +271,22 @@ const metaStyle: CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: `${space.xs}px ${space.lg}px`,
+  fontSize: fontSize.sm,
+};
+
+const tabListStyle: CSSProperties = {
+  display: 'flex',
+  gap: space.xs,
+  padding: `0 ${space.md}px`,
+  borderBottom: `1px solid ${token('border')}`,
+  flexShrink: 0,
+};
+
+const tabStyle: CSSProperties = {
+  padding: `${space.xs}px ${space.sm}px`,
+  border: 'none',
+  borderBottom: '2px solid transparent',
+  background: 'transparent',
+  cursor: 'pointer',
   fontSize: fontSize.sm,
 };

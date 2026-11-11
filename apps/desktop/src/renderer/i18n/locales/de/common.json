@@ -1097,6 +1097,30 @@
         "stalled": "Braucht Sie"
       }
     },
+    "changes": {
+      "tab": "Änderungen",
+      "tabChat": "Chat",
+      "files": "Dateien: {{count}}",
+      "sinceLaunch": "Seit Start der Aufgabe",
+      "sinceLaunchInPlace": "Alles, was sich in diesem Ordner seit Start der Aufgabe geändert hat, einschließlich Ihrer eigenen Bearbeitungen",
+      "sinceHead": "Nicht committete Änderungen (Start-Commit unbekannt)",
+      "loading": "Änderungen werden gelesen…",
+      "empty": "Keine Änderungen",
+      "unavailable": "Diese Aufgabe hat keinen Git-Checkout, dessen Änderungen angezeigt werden können.",
+      "error": "Änderungen konnten nicht gelesen werden.",
+      "truncated": "Zu viele Änderungen: Einige Dateien oder Diffs werden nicht angezeigt.",
+      "refresh": "Aktualisieren",
+      "binary": "Binärdatei",
+      "noPatch": "Diff zu groß zum Anzeigen",
+      "noContent": "Keine inhaltlichen Änderungen",
+      "status": {
+        "added": "Hinzugefügt",
+        "modified": "Geändert",
+        "deleted": "Gelöscht",
+        "renamed": "Umbenannt",
+        "untracked": "Nicht verfolgt"
+      }
+    },
     "taskChat": {
       "title": "Aufgaben-Chat",
       "empty": "Wählen Sie eine Aufgabe, dann erscheint der Start-Prompt hier.",

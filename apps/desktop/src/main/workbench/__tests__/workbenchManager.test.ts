@@ -774,6 +774,46 @@ describe('workbench tasks', () => {
     expect(s.wb.getSnapshot().tasks).toEqual([]);
   });
 
+  it('records the launch HEAD and reads the task changes against it, in the task folder only', async () => {
+    const s = await withFolder();
+    const base = 'a'.repeat(40);
+    s.exec.mockImplementation(async (_file: string, args: readonly string[]) => {
+      if (args.includes('rev-parse')) return { code: 0, stdout: `${base}\n`, stderr: '' };
+      if (args.includes('--numstat')) return { code: 0, stdout: '1\t0\ta.ts\0', stderr: '' };
+      if (args.includes('--name-status')) return { code: 0, stdout: 'M\0a.ts\0', stderr: '' };
+      if (args.includes('--patch')) return { code: 0, stdout: 'diff --git a/a.ts b/a.ts\n@@ -0,0 +1 @@\n+x\n', stderr: '' };
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    const saved = JSON.parse(s.disk.get(path.join(DATA, 'tasks.json'))!);
+    expect(saved.tasks[0].baseCommit).toBe(base);
+
+    const out = await s.wb.taskChanges(id);
+    expect(out).toMatchObject({ since: 'launch', truncated: false });
+    expect(out.files).toEqual([
+      { path: 'a.ts', oldPath: null, status: 'modified', additions: 1, deletions: 0, patch: expect.stringContaining('+x') },
+    ]);
+    const gitCalls = s.exec.mock.calls.filter(([file]) => file === '/opt/bin/git').map(([, args]) => args);
+    for (const args of gitCalls) {
+      // Hardened, in the task's folder, never an external diff driver.
+      expect(args.slice(0, 2)).toEqual(['-c', 'core.fsmonitor=false']);
+      expect(args[args.indexOf('-C') + 1]).toBe('/work/app');
+      if (args.includes('diff')) expect(args).toContain('--no-ext-diff');
+    }
+    expect(gitCalls.some((args) => args.includes('diff') && args.includes(base))).toBe(true);
+    expect(await codeOfAsync(s.wb.taskChanges('nope000000'))).toBe('NOT_FOUND');
+  });
+
+  it('has no changes to read for a task without a git checkout', async () => {
+    const s = await started();
+    await s.wb.addFolder('/work/notes');
+    const folderId = s.wb.getSnapshot().folders[0]!.id;
+    const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId });
+    expect(await codeOfAsync(s.wb.taskChanges(id))).toBe('PRECONDITION_FAILED');
+  });
+
   it('marks a launch that herdr refuses as failed and cleans up', async () => {
     const s = await withFolder();
     s.herdr.client.agentStart.mockRejectedValueOnce(new HerdrError('agent_pane_busy', 'busy'));
