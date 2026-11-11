@@ -72,6 +72,14 @@ export const WORKBENCH_LIMITS = {
   chatImages: 4,
   /** Base64 characters of one such image (≈ 7.5 MB decoded); the renderer scales larger ones down. */
   chatImageBase64: 10 * 1024 * 1024,
+  /** Files one task-changes read lists; the rest are cut off. */
+  changedFiles: 300,
+  /** Characters of one file's patch in a task-changes read (longer patches are dropped). */
+  changePatchChars: 64_000,
+  /** Characters of all patches one task-changes read returns. */
+  changesChars: 1_000_000,
+  /** Untracked files one task-changes read shows the contents of. */
+  untrackedPatches: 30,
 } as const;
 
 /** Whether the orchestrator + herdr session are running. */
@@ -497,6 +505,33 @@ export interface WorkbenchChatPage {
 /** The tail of a worker's terminal. */
 export interface TaskOutput {
   text: string;
+}
+
+export type TaskChangeStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
+
+/** One file a task changed (paths relative to the task's folder or worktree). */
+export interface TaskChangedFile {
+  path: string;
+  /** The path before a rename. */
+  oldPath: string | null;
+  status: TaskChangeStatus;
+  /** Lines added / removed; null for a binary file. */
+  additions: number | null;
+  deletions: number | null;
+  /** The unified diff of this file; null when binary, too long, or over the read's budget. */
+  patch: string | null;
+}
+
+/**
+ * What a task changed, read-only: a worktree task against the commit its checkout started
+ * from; an in-place task against the folder's HEAD at launch (so the user's own edits there
+ * since then show too). `since: 'head'` when that commit is unknown (only uncommitted changes).
+ */
+export interface TaskChanges {
+  since: 'launch' | 'head';
+  files: TaskChangedFile[];
+  /** Files or patches were cut off by the limits. */
+  truncated: boolean;
 }
 
 /** One entry of a granted folder, as the file tree lists it. Symlinks are never listed. */

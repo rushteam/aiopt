@@ -684,6 +684,7 @@ const bridge: AiOptBridge = {
     stopTask: refused,
     removeTask: refused,
     taskOutput: async () => ({ text: '' }),
+    taskChanges: async () => ({ since: 'launch' as const, files: [], truncated: false }),
     runAll: refused,
     approveTasks: refused,
     runPlan: refused,

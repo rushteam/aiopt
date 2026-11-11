@@ -1097,6 +1097,30 @@
         "stalled": "需要你处理"
       }
     },
+    "changes": {
+      "tab": "改动",
+      "tabChat": "对话",
+      "files": "{{count}} 个文件",
+      "sinceLaunch": "自任务开始以来",
+      "sinceLaunchInPlace": "自任务开始以来此文件夹的全部改动（含你自己的修改）",
+      "sinceHead": "未提交的改动（任务开始时的提交未知）",
+      "loading": "正在读取改动…",
+      "empty": "没有改动",
+      "unavailable": "此任务没有可查看改动的 git 检出。",
+      "error": "无法读取改动。",
+      "truncated": "改动过多，部分文件或内容未显示。",
+      "refresh": "刷新",
+      "binary": "二进制文件",
+      "noPatch": "内容过长，未显示",
+      "noContent": "内容没有改动",
+      "status": {
+        "added": "新增",
+        "modified": "修改",
+        "deleted": "删除",
+        "renamed": "重命名",
+        "untracked": "未跟踪"
+      }
+    },
     "taskChat": {
       "title": "任务对话",
       "empty": "选择任务后，初始提示会显示在这里。",

@@ -63,6 +63,7 @@ import type {
   FolderImportResult,
   FolderListing,
   TaskOutput,
+  TaskChanges,
   WorkbenchChatPage,
   WorkbenchSnapshot,
 } from './workbench';
@@ -277,6 +278,7 @@ export const IPC_CHANNELS = {
   workbenchTaskStop: 'workbench:task-stop',
   workbenchTaskRemove: 'workbench:task-remove',
   workbenchTaskOutput: 'workbench:task-output',
+  workbenchTaskChanges: 'workbench:task-changes',
   workbenchTaskRunAll: 'workbench:task-run-all',
   workbenchTaskApprove: 'workbench:task-approve',
   workbenchPlanRun: 'workbench:plan-run',
@@ -1311,6 +1313,7 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchTaskStop]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskRemove]: { request: WorkbenchTaskRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskOutput]: { request: WorkbenchTaskRef; result: TaskOutput };
+  [IPC_CHANNELS.workbenchTaskChanges]: { request: WorkbenchTaskRef; result: TaskChanges };
   [IPC_CHANNELS.workbenchTaskRunAll]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskApprove]: { request: WorkbenchTaskApproveRequest; result: WorkbenchSnapshot };
   /** Approve every proposed task of one conversation's plan (the DAG runs to completion). */

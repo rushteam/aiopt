@@ -59,6 +59,7 @@ import {
   type FilePreview,
   type FolderListing,
   type FolderView,
+  type TaskChanges,
   type TaskFailure,
   type TaskOrigin,
   type TaskStatus,
@@ -115,6 +116,7 @@ import {
 } from './orchestratorExtension';
 import { installManagedHerdr } from './herdrInstall';
 import { createTimeline, parseTimeline } from './timeline';
+import { GIT_SAFE_ENV, isCommitId, readHeadCommit, readTaskChanges, type GitExec } from './taskChanges';
 import {
   herdrExecForTarget,
   herdrSpawnArgv,
@@ -244,6 +246,8 @@ export interface WorkbenchManager {
   stopTask(taskId: string): Promise<void>;
   removeTask(taskId: string): Promise<void>;
   taskOutput(taskId: string): Promise<string>;
+  /** What a task changed in its checkout (read-only git; local herdr only). */
+  taskChanges(taskId: string): Promise<TaskChanges>;
   /** Launch every proposed task that has a folder, up to the live limit; returns how many. */
   runAll(): number;
   /** Approve tasks to run; each launches once its dependencies are done and a slot is free. */
@@ -281,6 +285,8 @@ export const POLL_MS = 3000;
 export const SWEEP_EVERY_POLLS = 20;
 const SERVER_READY_TRIES = 40;
 const SERVER_READY_DELAY_MS = 250;
+/** One read-only git call of a task-changes read (a large diff can take a while). */
+const GIT_READ_TIMEOUT_MS = 20_000;
 /** Task changes that land together reach the coordinator as one update. */
 export const NOTIFY_DEBOUNCE_MS = 1500;
 /** How much of a session file is read for its title (the first user message is near the top). */
@@ -347,6 +353,8 @@ interface TaskRecord {
   /** The repo the worktree belongs to (the folder's path at launch). */
   worktreeRepo: string | null;
   repoKey: string | null;
+  /** The checkout's HEAD when the task last started fresh: what "its changes" are diffed against. */
+  baseCommit: string | null;
   /** When the worker was last given a message (for the idle grace window). */
   promptAt: number;
   /** The worker's terminal tail when it last stopped for review or input (for the coordinator). */
@@ -381,6 +389,7 @@ interface TasksDoc {
     worktreePath: string | null;
     worktreeRepo: string | null;
     repoKey: string | null;
+    baseCommit?: string | null;
     createdAt: number;
     updatedAt: number;
     dependsOn?: string[];
@@ -718,6 +727,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           worktreePath,
           worktreeRepo,
           repoKey: worktreePath && typeof r.repoKey === 'string' ? r.repoKey : null,
+          baseCommit: isCommitId(r.baseCommit) ? r.baseCommit : null,
           promptAt: 0,
           outputTail:
             typeof r.output === 'string' ? sanitizeWorkbenchText(r.output).slice(-WORKBENCH_LIMITS.taskOutputTail) : '',
@@ -759,6 +769,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         worktreePath: t.worktreePath,
         worktreeRepo: t.worktreeRepo,
         repoKey: t.repoKey,
+        baseCommit: t.baseCommit,
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
         dependsOn: t.dependsOn,
@@ -1793,6 +1804,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       worktreePath: null,
       worktreeRepo: null,
       repoKey: null,
+      baseCommit: null,
       promptAt: 0,
       outputTail: '',
       dependsOn: [],
@@ -1838,6 +1850,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         t.folderId = patch.folderId;
       }
       if (patch.isolated !== undefined) t.isolated = patch.isolated;
+      t.baseCommit = null;
     }
     if (patch.dependsOn !== undefined) {
       if (patch.dependsOn === null) t.dependsOn = [];
@@ -1936,8 +1949,11 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           t.worktreePath = ref.path;
           t.worktreeRepo = folder.path;
           t.repoKey = ref.repoKey;
+          t.baseCommit = await launchBase(ref.path);
         }
       } else {
+        // In place: the folder's HEAD when the task first ran (a relaunch continues its work).
+        if (!t.baseCommit && folder.isGitRepo) t.baseCommit = await launchBase(folder.path);
         const ref = await client.workspaceCreate(folder.path, t.title);
         workspaceId = ref.workspaceId;
         paneId = ref.paneId;
@@ -2158,6 +2174,48 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
   }
 
+  // --- task changes (read-only git) -----------------------------------------------------
+
+  /** git on this machine, run with the hardened config (see taskChanges.ts); null without git. */
+  function localGit(): GitExec | null {
+    const binary = gitBinary ?? deps.findBinary('git', candidateBinDirs(deps.env.PATH, deps.homeDir));
+    if (!binary) return null;
+    const env = {
+      ...(cliEnv.PATH !== undefined ? cliEnv : baseEnv(candidateBinDirs(deps.env.PATH, deps.homeDir))),
+      ...GIT_SAFE_ENV,
+    };
+    return (args) => deps.exec(binary, args, GIT_READ_TIMEOUT_MS, env);
+  }
+
+  /** HEAD of a checkout this machine can read, for a task's base; null when remote or unknown. */
+  async function launchBase(dir: string): Promise<string | null> {
+    if (herdrSshTarget()) return null;
+    const exec = localGit();
+    return exec ? readHeadCommit(exec, dir) : null;
+  }
+
+  async function taskChanges(taskId: string): Promise<TaskChanges> {
+    const t = tasks.get(taskId);
+    if (!t) throwIpcError('NOT_FOUND', 'task not found');
+    // A remote herdr's checkouts live on the other machine: nothing here to read.
+    if (herdrSshTarget()) throwIpcError('PRECONDITION_FAILED', 'changes are not available for a remote herdr');
+    let dir: string | null = null;
+    if (t.isolated) dir = t.worktreePath;
+    else {
+      const folder = folderById(t.folderId);
+      dir = folder?.isGitRepo ? folder.path : null;
+    }
+    if (!dir || !deps.fs.isDirectory(dir)) throwIpcError('PRECONDITION_FAILED', 'the task has no git checkout');
+    const exec = localGit();
+    if (!exec) throwIpcError('PRECONDITION_FAILED', 'git is not available');
+    try {
+      return await readTaskChanges(exec, dir, t.baseCommit);
+    } catch (err) {
+      log.warn('workbench.task_changes_failed', { code: errorCode(err) });
+      throwIpcError('INTERNAL', 'could not read the changes');
+    }
+  }
+
   // --- polling --------------------------------------------------------------------------
 
   async function poll(): Promise<void> {
@@ -2240,6 +2298,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     stopTask: (id) => endTask(id, 'stop'),
     removeTask,
     taskOutput,
+    taskChanges,
     runAll,
     approveTasks,
     runPlan,

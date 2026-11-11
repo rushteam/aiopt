@@ -198,6 +198,18 @@ A target AI coding tool that AiOpt configures (Claude Code, Codex, Cursor, Gemin
 - **zh-CN**: Agent
   - forbidden: `客户端`
 
+### Changes (`task-changes`)
+
+The read-only view of what a Workbench task changed in its checkout: the files with lines added and removed, and each file's diff, against the commit the task started from (plus untracked files). Viewing only; nothing is merged, committed, or reverted from it. Not 'diff' alone, 'modifications', or 'patch' in UI copy.
+
+- **zh-CN**: 改动
+  - forbidden: `变更集`, `补丁`
+- **ja**: 変更
+- **ko**: 변경 사항
+- **fr**: Modifications
+- **de**: Änderungen
+- **es**: Cambios
+
 ### Trusted sender (`trusted-sender`)
 
 An IPC event whose origin is verified to be the app's own top-level renderer, using only fields taken from event.sender / event.senderFrame — never renderer-reported values. Term still under discussion.

@@ -1097,6 +1097,30 @@
         "stalled": "Needs you"
       }
     },
+    "changes": {
+      "tab": "Changes",
+      "tabChat": "Chat",
+      "files": "Files: {{count}}",
+      "sinceLaunch": "Since the task started",
+      "sinceLaunchInPlace": "Everything changed in this folder since the task started, including your own edits",
+      "sinceHead": "Uncommitted changes (the starting commit is unknown)",
+      "loading": "Reading changes…",
+      "empty": "No changes",
+      "unavailable": "This task has no git checkout to show changes for.",
+      "error": "Couldn’t read the changes.",
+      "truncated": "Too many changes: some files or diffs are not shown.",
+      "refresh": "Refresh",
+      "binary": "Binary file",
+      "noPatch": "Diff too large to show",
+      "noContent": "No content changes",
+      "status": {
+        "added": "Added",
+        "modified": "Modified",
+        "deleted": "Deleted",
+        "renamed": "Renamed",
+        "untracked": "Untracked"
+      }
+    },
     "taskChat": {
       "title": "Task chat",
       "empty": "The initial prompt appears here after you select a task.",

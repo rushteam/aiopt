@@ -38,6 +38,7 @@ function setup(picked: string | null = '/work/app') {
     stopTask: vi.fn(async () => {}),
     removeTask: vi.fn(async () => {}),
     taskOutput: vi.fn(async () => 'out'),
+    taskChanges: vi.fn(async () => ({ since: 'launch' as const, files: [], truncated: false })),
     runAll: vi.fn(() => 0),
     approveTasks: vi.fn(),
     runPlan: vi.fn(),
@@ -80,7 +81,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder, revealItem, folderOps } = setup();
-    expect(CHANNELS).toHaveLength(37);
+    expect(CHANNELS).toHaveLength(38);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
@@ -195,6 +196,9 @@ describe('workbench ipc', () => {
     const { reg, manager } = setup();
     expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchTaskLaunch, { taskId: '../x' }, trusted))).toBe('INVALID_PARAMS');
     expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchTaskStop, { taskId: 7 }, trusted))).toBe('INVALID_PARAMS');
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchTaskChanges, { taskId: '/etc' }, trusted))).toBe(
+      'INVALID_PARAMS',
+    );
     expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchFolderRemove, { folderId: 'A B' }, trusted))).toBe(
       'INVALID_PARAMS',
     );
@@ -253,6 +257,9 @@ describe('workbench ipc', () => {
     await reg.invoke(IPC_CHANNELS.workbenchTaskMessage, { taskId: 'id1', text: 'go on' }, trusted);
     expect(manager.messageTask).toHaveBeenCalledWith('id1', 'go on');
     expect(await reg.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId: 'id1' }, trusted)).toEqual({ text: 'out' });
+    // Only the task id reaches the manager: a path in the payload is ignored.
+    await reg.invoke(IPC_CHANNELS.workbenchTaskChanges, { taskId: 'id1', path: '/etc' }, trusted);
+    expect(manager.taskChanges).toHaveBeenCalledWith('id1');
 
     expect(await reg.invoke(IPC_CHANNELS.workbenchTaskRunAll, undefined, trusted)).toBe(SNAP);
     expect(manager.runAll).toHaveBeenCalledTimes(1);

@@ -1097,6 +1097,30 @@
         "stalled": "Necesita tu atención"
       }
     },
+    "changes": {
+      "tab": "Cambios",
+      "tabChat": "Chat",
+      "files": "Archivos: {{count}}",
+      "sinceLaunch": "Desde que empezó la tarea",
+      "sinceLaunchInPlace": "Todo lo que cambió en esta carpeta desde que empezó la tarea, incluidas tus propias ediciones",
+      "sinceHead": "Cambios sin confirmar (se desconoce el commit inicial)",
+      "loading": "Leyendo cambios…",
+      "empty": "Sin cambios",
+      "unavailable": "Esta tarea no tiene un checkout de git del que mostrar cambios.",
+      "error": "No se pudieron leer los cambios.",
+      "truncated": "Demasiados cambios: algunos archivos o diffs no se muestran.",
+      "refresh": "Actualizar",
+      "binary": "Archivo binario",
+      "noPatch": "Diff demasiado grande para mostrarlo",
+      "noContent": "Sin cambios en el contenido",
+      "status": {
+        "added": "Añadido",
+        "modified": "Modificado",
+        "deleted": "Eliminado",
+        "renamed": "Renombrado",
+        "untracked": "Sin seguimiento"
+      }
+    },
     "taskChat": {
       "title": "Chat de la tarea",
       "empty": "Selecciona una tarea para ver el prompt inicial aquí.",

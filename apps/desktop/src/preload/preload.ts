@@ -71,6 +71,7 @@ import type {
   FolderImportResult,
   FolderListing,
   TaskOutput,
+  TaskChanges,
   WorkbenchChatPage,
   WorkbenchSnapshot,
 } from '../shared/workbench';
@@ -515,6 +516,8 @@ const api = {
     /** The worker's recent terminal text, control characters stripped. */
     taskOutput: (taskId: string): Promise<TaskOutput> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId }),
+    taskChanges: (taskId: string): Promise<TaskChanges> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskChanges, { taskId }),
     runAll: (): Promise<WorkbenchSnapshot> => ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskRunAll),
     /** Approve tasks to run; each starts once its dependencies are done. */
     approveTasks: (taskIds: string[]): Promise<WorkbenchSnapshot> =>
