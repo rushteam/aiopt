@@ -68,11 +68,10 @@ import {
   ChatLoadingIndicator,
   UserBubble,
   ChatLinksContext,
-  LinkedText,
+  AssistantMarkdown,
   UserMessageBody,
   WorkbenchChatComposer,
   collapsedUserText,
-  assistantTextStyle,
   useComposerBlocks,
   type ChatLinks,
   type ComposerAttachments,
@@ -258,7 +257,7 @@ export function WorkbenchHome({
         onClose={() => setView(beforeFile)}
       />
     ) : view.kind === 'snippet' && snippet?.id === view.id ? (
-      <SnippetPane text={snippet.text} lang={snippet.lang} t={t} onClose={() => setView(beforeFile)} />
+      <SnippetPane key={snippet.id} text={snippet.text} lang={snippet.lang} t={t} onClose={() => setView(beforeFile)} />
     ) : view.kind === 'timeline' ? (
       <TimelinePanel wb={wb} t={t} run={run} onSelectTask={selectTask} onOpenChat={() => setView({ kind: 'chat' })} />
     ) : view.kind === 'task' && selectedTask ? (
@@ -668,11 +667,7 @@ function ChatEntry({ item, tasks, t }: { item: ChatItem; tasks: readonly TaskVie
               <div style={thinkingStyle}>{item.thinking}</div>
             </details>
           )}
-          {item.text && (
-            <div style={assistantTextStyle}>
-              <LinkedText text={item.text} />
-            </div>
-          )}
+          {item.text && <AssistantMarkdown text={item.text} t={t} done={!item.streaming} />}
           {item.streaming && item.text === '' && <ChatLoadingIndicator label={t('workbench.chat.replying')} />}
         </div>
       );

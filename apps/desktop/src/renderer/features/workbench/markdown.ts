@@ -491,3 +491,55 @@ export function plainText(nodes: Inline[]): string {
     )
     .join('');
 }
+
+export interface OutlineEntry {
+  /** The heading's index among the document's top-level blocks. */
+  block: number;
+  level: 1 | 2 | 3;
+  text: string;
+}
+
+/** The document's top-level headings down to level 3, for a table of contents. */
+export function outlineOf(blocks: Block[]): OutlineEntry[] {
+  const out: OutlineEntry[] = [];
+  blocks.forEach((b, i) => {
+    if (b.type !== 'heading' || b.level > 3) return;
+    const text = plainText(b.children).replace(/\s+/g, ' ').trim();
+    if (text) out.push({ block: i, level: b.level as 1 | 2 | 3, text });
+  });
+  return out;
+}
+
+/**
+ * The file a relative link in the Markdown file at `fromRelPath` points to, as a path relative
+ * to the same folder; null for anything else (a URL or other scheme, an absolute path, a pure
+ * `#anchor`, or a path that climbs out of the folder). Main checks the path again on read.
+ */
+export function resolveRelativeHref(fromRelPath: string, href: string): string | null {
+  const bare = href.trim().replace(/[?#].*$/s, '');
+  if (bare === '' || bare.includes('\\') || bare.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(bare)) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(bare);
+  } catch {
+    return null;
+  }
+  if (decoded.includes('\0') || decoded.includes('\\')) return null;
+  const parts = fromRelPath.split('/').slice(0, -1);
+  for (const seg of decoded.split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else parts.push(seg);
+  }
+  return parts.length > 0 ? parts.join('/') : null;
+}
+
+/** A reply past this many characters reads better as a document. */
+const DOCUMENT_REPLY_CHARS = 800;
+
+/** Whether a chat reply is worth opening as a document: long, or structured like a plan. */
+export function isDocumentReply(text: string): boolean {
+  return text.length >= DOCUMENT_REPLY_CHARS || /^(#{1,3} |\|.*\|\s*$)/m.test(text);
+}
