@@ -2,7 +2,10 @@
 // rendered as HTML and never executed. A Markdown file also has a rendered view (MarkdownView
 // builds React elements from a parsed tree, never HTML); a toggle switches it with the source. The bytes come from the named
 // `workbench:folder-read` call (folder id + relative path; main confines, caps and refuses
-// symlinks/hidden entries). Nothing of it is persisted on this side.
+// symlinks/hidden entries). Nothing of it is persisted on this side. While open (and the window
+// visible) the file is re-read every couple of seconds, so a plan an agent is writing follows
+// along; the rendered view has a table of contents, and its relative links open their files
+// here (resolved inside the same folder, and main confines the read again).
 //
 // The header can reference the file in the coordinator chat, or show it in the OS file manager
 // (main resolves the path and only reveals it — it never opens or runs the file). Lines can be
@@ -11,7 +14,15 @@
 // reference that names lines (`focus`), the preview shows the source, picks them and scrolls
 // them into view.
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { fontSize, radius, space, token } from '../../themes/tokens';
 import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
@@ -20,11 +31,18 @@ import { WORKBENCH_LIMITS, type FilePreview, type FolderView } from '../../../sh
 import { CloseIcon, FileIcon, RefreshIcon } from './workbenchIcons';
 import { IconButton } from './workbenchPanes';
 import { formatBytes, lineNumbers, sliceLines, type LineRange } from './workbenchNav';
-import { isMarkdownPath } from './markdown';
-import { MarkdownView } from './MarkdownView';
-import { segmentButtonChrome, segmentedRootStyle } from '../../components/ui/controlStyles';
+import { isMarkdownPath, resolveRelativeHref } from './markdown';
+import { MarkdownModeToggle, MarkdownView, type MarkdownRenderers } from './MarkdownView';
+import { ChatLinksContext, LinkedText } from './workbenchChat';
 
 type Runner = (action: () => Promise<void>) => Promise<boolean>;
+
+/** How often an open file is re-read to follow changes. */
+const FOLLOW_INTERVAL_MS = 2000;
+
+function samePreview(a: FilePreview, b: FilePreview): boolean {
+  return a.size === b.size && a.binary === b.binary && a.truncated === b.truncated && a.text === b.text;
+}
 
 type State = { state: 'loading' } | { state: 'ready'; preview: FilePreview } | { state: 'error' };
 
@@ -61,6 +79,38 @@ export function FilePreviewPane({
       live = false;
     };
   }, [folder.id, relPath, reload]);
+
+  // Follow the file while it is open: an agent writing a plan shows up as it goes. The poll
+  // only runs while the window is visible, and an unchanged read changes nothing on screen.
+  const loaded = state.state === 'ready';
+  useEffect(() => {
+    if (!loaded) return;
+    let live = true;
+    let busy = false;
+    const poll = (): void => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      readFolderFile(folder.id, relPath).then(
+        (next) => {
+          busy = false;
+          if (!live) return;
+          setState((prev) =>
+            prev.state === 'ready' && samePreview(prev.preview, next) ? prev : { state: 'ready', preview: next },
+          );
+        },
+        () => {
+          busy = false;
+        },
+      );
+    };
+    const timer = window.setInterval(poll, FOLLOW_INTERVAL_MS);
+    window.addEventListener('focus', poll);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', poll);
+    };
+  }, [folder.id, relPath, reload, loaded]);
 
   const text = state.state === 'ready' && !state.preview.binary ? state.preview.text : '';
   const markdown = isMarkdownPath(relPath);
@@ -155,6 +205,29 @@ export function FilePreviewPane({
   };
   const rangeLabel = range ? (range.start === range.end ? `${range.start}` : `${range.start}–${range.end}`) : '';
 
+  // Paths in the text link to their files; a relative link opens its file from this folder.
+  const links = useContext(ChatLinksContext);
+  const renderers = useMemo<MarkdownRenderers>(
+    () => ({
+      text: links ? (s) => <LinkedText text={s} /> : undefined,
+      localLink: (href, children) => {
+        const target = links ? resolveRelativeHref(relPath, href) : null;
+        if (!links || !target) return <span title={href}>{children}</span>;
+        return (
+          <button
+            type="button"
+            title={href}
+            onClick={() => links.openFile({ folderId: folder.id, relPath: target })}
+            style={localLinkButtonStyle}
+          >
+            {children}
+          </button>
+        );
+      },
+    }),
+    [links, folder.id, relPath],
+  );
+
   const name = relPath.split('/').pop() ?? relPath;
   const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
 
@@ -168,33 +241,7 @@ export function FilePreviewPane({
         </div>
         {state.state === 'ready' && <span style={metaStyle}>{formatBytes(state.preview.size)}</span>}
         {markdown && state.state === 'ready' && !state.preview.binary && (
-          <div
-            role="group"
-            aria-label={t('workbench.explorer.viewMode')}
-            style={{ ...segmentedRootStyle, flexShrink: 0 }}
-          >
-            {(['rendered', 'source'] as const).map((m, index) => {
-              const active = mode === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setMode(m)}
-                  style={{
-                    ...segmentButtonChrome('sm'),
-                    fontSize: fontSize.xs,
-                    borderLeft: index === 0 ? 'none' : `1px solid ${token('border')}`,
-                    background: active ? token('accent') : 'transparent',
-                    color: active ? token('accentText') : token('text'),
-                    cursor: active ? 'default' : 'pointer',
-                  }}
-                >
-                  {t(m === 'rendered' ? 'workbench.explorer.rendered' : 'workbench.explorer.source')}
-                </button>
-              );
-            })}
-          </div>
+          <MarkdownModeToggle mode={mode} onChange={setMode} t={t} />
         )}
         <IconButton label={t('workbench.explorer.refresh')} onClick={() => setReload((n) => n + 1)} size={24}>
           <RefreshIcon size={14} />
@@ -240,7 +287,12 @@ export function FilePreviewPane({
           {/* One scroller for gutter + text so the numbers stay aligned (lines never wrap). */}
           {rendered ? (
             <div style={renderedScrollStyle} tabIndex={0} aria-label={name}>
-              <MarkdownView text={state.preview.text} imageLabel={t('workbench.explorer.image')} />
+              <MarkdownView
+                text={state.preview.text}
+                imageLabel={t('workbench.explorer.image')}
+                renderers={renderers}
+                outlineLabel={t('workbench.explorer.outline')}
+              />
             </div>
           ) : (
             <div
@@ -375,6 +427,20 @@ const scrollStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
   outline: 'none',
+};
+
+const localLinkButtonStyle: CSSProperties = {
+  display: 'inline',
+  padding: 0,
+  margin: 0,
+  border: 'none',
+  background: 'transparent',
+  color: token('accent'),
+  font: 'inherit',
+  textAlign: 'left',
+  textDecoration: 'underline',
+  textUnderlineOffset: 2,
+  cursor: 'pointer',
 };
 
 const renderedScrollStyle: CSSProperties = { flex: 1, minHeight: 0, overflow: 'auto', outline: 'none' };

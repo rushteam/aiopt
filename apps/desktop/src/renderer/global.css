@@ -154,3 +154,12 @@ body {
 .aiopt-chat-input::placeholder {
   color: var(--color-text-muted);
 }
+
+/* Rendered Markdown (features/workbench/MarkdownView.tsx): no gap above the first block or
+ * below the last, so a chat reply sits flush in its row. */
+.aiopt-md > :first-child {
+  margin-top: 0 !important;
+}
+.aiopt-md > :last-child {
+  margin-bottom: 0 !important;
+}

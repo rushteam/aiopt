@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { isExternalHref, isMarkdownPath, parseInline, parseMarkdown, plainText } from '../markdown';
+import {
+  isDocumentReply,
+  isExternalHref,
+  isMarkdownPath,
+  outlineOf,
+  parseInline,
+  parseMarkdown,
+  plainText,
+  resolveRelativeHref,
+} from '../markdown';
 
 describe('markdown', () => {
   it('recognises Markdown file names', () => {
@@ -129,5 +138,53 @@ describe('markdown', () => {
     const started = performance.now();
     parseMarkdown(noisy);
     expect(performance.now() - started).toBeLessThan(2000);
+  });
+});
+
+describe('outlineOf', () => {
+  it('lists top-level headings down to level 3 with their block index', () => {
+    const blocks = parseMarkdown('# Plan\n\nintro\n\n## Step **one**\n\n#### deep\n\n> # quoted\n\n### Risks');
+    expect(outlineOf(blocks)).toEqual([
+      { block: 0, level: 1, text: 'Plan' },
+      { block: 2, level: 2, text: 'Step one' },
+      { block: 5, level: 3, text: 'Risks' },
+    ]);
+  });
+});
+
+describe('resolveRelativeHref', () => {
+  it('resolves a relative link against the file and drops anchors / queries', () => {
+    expect(resolveRelativeHref('docs/plan.md', 'step-1.md')).toBe('docs/step-1.md');
+    expect(resolveRelativeHref('docs/plan.md', './a/b.md#part')).toBe('docs/a/b.md');
+    expect(resolveRelativeHref('docs/plan.md', '../src/x.ts?raw')).toBe('src/x.ts');
+    expect(resolveRelativeHref('plan.md', 'my%20notes.md')).toBe('my notes.md');
+  });
+
+  it('refuses anything outside the folder or not a relative path', () => {
+    for (const href of [
+      '../outside.md',
+      'docs/../../x',
+      '/etc/passwd',
+      'file:///etc/passwd',
+      'javascript:alert(1)',
+      'mailto:a@b.c',
+      '#top',
+      '',
+      'a\\b.md',
+      'a%5Cb.md',
+      '%E0%A4%A',
+      'x%00.md',
+    ]) {
+      expect(resolveRelativeHref('plan.md', href)).toBeNull();
+    }
+  });
+});
+
+describe('isDocumentReply', () => {
+  it('flags long or plan-shaped replies only', () => {
+    expect(isDocumentReply('Done — 3 files changed.')).toBe(false);
+    expect(isDocumentReply('## Plan\n\n1. a')).toBe(true);
+    expect(isDocumentReply('| a | b |\n|---|---|\n| 1 | 2 |')).toBe(true);
+    expect(isDocumentReply('x'.repeat(800))).toBe(true);
   });
 });

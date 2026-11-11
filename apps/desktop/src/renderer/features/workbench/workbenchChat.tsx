@@ -41,6 +41,8 @@ import {
   type RefFolder,
 } from './fileRefs';
 import { hasEntryDrag, readEntryDrag, type DraggedEntry } from './entryDrag';
+import { MarkdownView, type MarkdownRenderers } from './MarkdownView';
+import { isDocumentReply } from './markdown';
 
 /**
  * What chat messages can open: a file reference opens the file preview (at its lines), a code
@@ -99,6 +101,107 @@ export function LinkedText({ text, render = (s) => s }: { text: string; render?:
   if (last < text.length) parts.push(<span key={`t${last}`}>{render(text.slice(last))}</span>);
   return <>{parts}</>;
 }
+
+/** A Markdown link to a local path: a link to the file when it resolves, plain text otherwise. */
+function ChatLocalLink({ href, children }: { href: string; children: ReactNode }) {
+  const links = useContext(ChatLinksContext);
+  const folders = links?.folders;
+  const match = useMemo(() => {
+    if (!folders) return null;
+    const target = href.trim();
+    return findPathRefs(target, folders).find((c) => c.index === 0 && c.length === target.length) ?? null;
+  }, [href, folders]);
+  const probe = links?.probe;
+  useEffect(() => {
+    if (probe && match && !match.explicit) probe(match.targets);
+  }, [match, probe]);
+  const target =
+    !links || !match
+      ? undefined
+      : match.explicit
+        ? match.targets[0]
+        : match.targets.find((t) => links.fileExists(t) === true);
+  if (!links || !target) return <span title={href}>{children}</span>;
+  return (
+    <button
+      type="button"
+      title={href}
+      onClick={() => {
+        const { folderId, relPath, range } = target;
+        links.openFile(range ? { folderId, relPath, range } : { folderId, relPath });
+      }}
+      style={refLinkStyle}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** How Markdown from a chat reply links: paths open their files, code blocks show like chat's. */
+export function useChatMarkdownRenderers(t: TranslateFn): MarkdownRenderers {
+  const links = useContext(ChatLinksContext);
+  return useMemo<MarkdownRenderers>(
+    () => ({
+      text: (s) => <LinkedText text={s} />,
+      localLink: (href, children) => <ChatLocalLink href={href}>{children}</ChatLocalLink>,
+      codeBlock: ({ lang, text }) => (
+        <CollapsibleBlock
+          text={text}
+          code={{
+            lang,
+            open: links
+              ? { label: t('workbench.chat.openSnippet'), run: () => links.openSnippet({ text, lang }) }
+              : undefined,
+          }}
+          maxLines={COLLAPSE_CODE_LINES}
+          t={t}
+          render={(s) => s}
+        />
+      ),
+    }),
+    [links, t],
+  );
+}
+
+/**
+ * A coordinator reply rendered as Markdown. Paths in it link to their files, code blocks show
+ * like the user's (collapsible, openable), and a finished long reply can open as a document.
+ */
+export function AssistantMarkdown({ text, t, done }: { text: string; t: TranslateFn; done: boolean }) {
+  const links = useContext(ChatLinksContext);
+  const renderers = useChatMarkdownRenderers(t);
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: space.sm, maxWidth: '100%' }}
+    >
+      <div style={{ maxWidth: '100%', minWidth: 0, alignSelf: 'stretch' }}>
+        <MarkdownView text={text} imageLabel={t('workbench.explorer.image')} variant="chat" renderers={renderers} />
+      </div>
+      {done && links && isDocumentReply(text) && (
+        <button
+          type="button"
+          onClick={() => links.openSnippet({ text, lang: 'markdown' })}
+          {...hoverBackground('transparent', token('surfaceHover'))}
+          style={openDocumentStyle}
+        >
+          {t('workbench.chat.openAsDocument')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const openDocumentStyle: CSSProperties = {
+  padding: '2px 8px',
+  marginLeft: -8,
+  border: 'none',
+  borderRadius: radius.sm,
+  background: 'transparent',
+  color: token('textMuted'),
+  font: 'inherit',
+  fontSize: fontSize.sm,
+  cursor: 'pointer',
+};
 
 const refLinkStyle: CSSProperties = {
   display: 'inline',

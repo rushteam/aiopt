@@ -1,13 +1,17 @@
 // A temporary, read-only view of a code block from a chat message that has no source file
 // (pasted or typed code): the text with line numbers, never rendered as HTML or run. The text
-// is the message's own and stays in memory; closing the view drops it.
+// is the message's own and stays in memory; closing the view drops it. A coordinator reply
+// opened "as a document" (`lang` markdown) shows rendered, with a table of contents and a
+// switch to its source.
 
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { fontSize, space, token } from '../../themes/tokens';
 import type { TranslateFn } from '../../i18n';
 import { CloseIcon, FileIcon } from './workbenchIcons';
 import { IconButton } from './workbenchPanes';
 import { lineNumbers } from './workbenchNav';
+import { MarkdownModeToggle, MarkdownView } from './MarkdownView';
+import { useChatMarkdownRenderers } from './workbenchChat';
 
 export function SnippetPane({
   text,
@@ -22,7 +26,10 @@ export function SnippetPane({
 }) {
   const gutter = lineNumbers(text);
   const lines = gutter.split('\n').length;
-  const title = t('workbench.chat.snippetTitle');
+  const markdown = lang === 'markdown';
+  const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
+  const renderers = useChatMarkdownRenderers(t);
+  const title = t(markdown ? 'workbench.chat.documentTitle' : 'workbench.chat.snippetTitle');
   return (
     <section aria-label={title} style={paneStyle}>
       <div style={headerStyle}>
@@ -33,17 +40,29 @@ export function SnippetPane({
             {[lang, t('workbench.chat.snippetLines').replace('{{lines}}', String(lines))].filter(Boolean).join(' · ')}
           </span>
         </div>
+        {markdown && <MarkdownModeToggle mode={mode} onChange={setMode} t={t} />}
         <IconButton label={t('workbench.explorer.closePreview')} onClick={onClose} size={24}>
           <CloseIcon />
         </IconButton>
       </div>
-      {/* One scroller for gutter + text so the numbers stay aligned (lines never wrap). */}
-      <div style={scrollStyle} tabIndex={0} aria-label={title}>
-        <pre aria-hidden style={gutterStyle}>
-          {gutter}
-        </pre>
-        <pre style={codeStyle}>{text}</pre>
-      </div>
+      {markdown && mode === 'rendered' ? (
+        <div style={renderedScrollStyle} tabIndex={0} aria-label={title}>
+          <MarkdownView
+            text={text}
+            imageLabel={t('workbench.explorer.image')}
+            renderers={renderers}
+            outlineLabel={t('workbench.explorer.outline')}
+          />
+        </div>
+      ) : (
+        // One scroller for gutter + text so the numbers stay aligned (lines never wrap).
+        <div style={scrollStyle} tabIndex={0} aria-label={title}>
+          <pre aria-hidden style={gutterStyle}>
+            {gutter}
+          </pre>
+          <pre style={codeStyle}>{text}</pre>
+        </div>
+      )}
     </section>
   );
 }
@@ -93,6 +112,8 @@ const scrollStyle: CSSProperties = {
   alignItems: 'flex-start',
   outline: 'none',
 };
+
+const renderedScrollStyle: CSSProperties = { flex: 1, minHeight: 0, overflow: 'auto', outline: 'none' };
 
 const preBase: CSSProperties = {
   margin: 0,
