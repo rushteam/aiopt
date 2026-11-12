@@ -2,7 +2,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GIT_SAFE_CONFIG,
   isCommitId,
@@ -11,7 +11,7 @@ import {
   readHeadCommit,
   readTaskChanges,
   splitPatch,
-  type GitExec,
+  type GitExecResult,
 } from '../taskChanges';
 
 describe('task changes parsing', () => {
@@ -56,7 +56,33 @@ function gitAvailable(): boolean {
   }
 }
 
-const realExec: GitExec = (args) =>
+/**
+ * The few host variables git needs to start. Windows git fails without SystemRoot /
+ * USERPROFILE / TEMP; everything else (the user's git config included) stays out.
+ */
+function hostEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const name of ['PATH', 'HOME', 'SystemRoot', 'windir', 'USERPROFILE', 'TEMP', 'TMP', 'PATHEXT', 'ComSpec']) {
+    const value = process.env[name];
+    if (value) env[name] = value;
+  }
+  return env;
+}
+
+// An empty file, not os.devNull: Windows git rejects \\.\nul as a config path.
+let emptyGlobalConfig = '';
+let globalConfigDir = '';
+beforeAll(() => {
+  globalConfigDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-taskchanges-cfg-'));
+  emptyGlobalConfig = path.join(globalConfigDir, 'gitconfig');
+  fs.writeFileSync(emptyGlobalConfig, '');
+});
+afterAll(() => {
+  fs.rmSync(globalConfigDir, { recursive: true, force: true });
+});
+
+/** A GitExec that also keeps stderr, so a failed setup step says why. */
+const realExec: (args: readonly string[]) => Promise<GitExecResult & { stderr: string }> = (args) =>
   new Promise((resolve, reject) => {
     execFile(
       'git',
@@ -64,19 +90,19 @@ const realExec: GitExec = (args) =>
       {
         encoding: 'utf8',
         env: {
-          PATH: process.env.PATH ?? '',
+          ...hostEnv(),
           GIT_CONFIG_NOSYSTEM: '1',
-          GIT_CONFIG_GLOBAL: os.devNull,
+          GIT_CONFIG_GLOBAL: emptyGlobalConfig,
           GIT_AUTHOR_NAME: 't',
           GIT_AUTHOR_EMAIL: 't@example.com',
           GIT_COMMITTER_NAME: 't',
           GIT_COMMITTER_EMAIL: 't@example.com',
         },
       },
-      (err, stdout) => {
+      (err, stdout, stderr) => {
         const code = err && typeof (err as { code?: unknown }).code === 'number' ? (err as { code: number }).code : 0;
         if (err && typeof (err as { code?: unknown }).code !== 'number') reject(err);
-        else resolve({ code, stdout });
+        else resolve({ code, stdout, stderr });
       },
     );
   });
@@ -85,7 +111,7 @@ describe.skipIf(!gitAvailable())('readTaskChanges (real git)', () => {
   let dir = '';
   const run = async (...args: string[]) => {
     const out = await realExec(['-C', dir, ...args]);
-    if (out.code !== 0) throw new Error(`git ${args.join(' ')} failed`);
+    if (out.code !== 0) throw new Error(`git ${args.join(' ')} failed: ${out.stderr ?? ''}`);
   };
 
   beforeEach(async () => {
