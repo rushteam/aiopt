@@ -125,8 +125,12 @@ Hermes, OpenCode, pi**. 그중 8개는 공급자에 바인딩할 수 있습니�
 **macOS(Apple Silicon)는 Homebrew로 설치하는 것을 권장합니다.**
 
 ```sh
+brew tap rushteam/tap
+brew trust --cask rushteam/tap/aiopt
 brew install --cask rushteam/tap/aiopt
 ```
+
+최신 Homebrew는 신뢰하지 않은 서드파티 tap의 cask를 불러오지 않으므로 먼저 `brew trust`를 실행합니다.
 
 이 cask는 **AiOpt.app**을 `/Applications`에 설치하고 macOS 격리 플래그를 지우므로, 첫 실행 때 Gatekeeper
 확인 창이 뜨지 않습니다. `brew upgrade --cask aiopt`로 새 릴리스로 업그레이드하고, `brew uninstall --cask aiopt`로

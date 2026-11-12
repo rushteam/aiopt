@@ -133,8 +133,13 @@ adopts `~/.agents/skills` when that directory already exists.
 **macOS (Apple Silicon): install with Homebrew.** This is the recommended route:
 
 ```sh
+brew tap rushteam/tap
+brew trust --cask rushteam/tap/aiopt
 brew install --cask rushteam/tap/aiopt
 ```
+
+Recent Homebrew refuses casks from a third-party tap until you trust them, hence the
+`brew trust` step.
 
 The cask puts **AiOpt.app** in `/Applications` and clears the macOS quarantine flag, so the
 first launch shows no Gatekeeper prompt. `brew upgrade --cask aiopt` moves to a new release;

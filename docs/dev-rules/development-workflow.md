@@ -95,7 +95,9 @@ To release:
    on `main` here and runs `brew style`, `brew audit --cask --strict --online`, and a real
    install. A change of only `version` and `sha256` is committed to the tap's `main` directly.
    Any other difference opens a pull request in the tap for review. The cask is the primary
-   macOS install route: `brew install --cask rushteam/tap/aiopt`.
+   macOS install route: `brew tap rushteam/tap`, `brew trust --cask rushteam/tap/aiopt`, then
+   `brew install --cask rushteam/tap/aiopt` (recent Homebrew refuses an untrusted tap's casks,
+   so the sync workflow trusts the cask before its audit too).
 
    So change the cask's structure (url, postflight, zap, caveats) here, through a PR. The
    `version` and `sha256` in this repository's copy may lag the tap and need no bump. Drafts

@@ -109,8 +109,12 @@ AiOpt 用一个统一的供应商管理入口、每个 Agent 一个切换开关�
 **macOS（Apple Silicon）推荐用 Homebrew 安装：**
 
 ```sh
+brew tap rushteam/tap
+brew trust --cask rushteam/tap/aiopt
 brew install --cask rushteam/tap/aiopt
 ```
+
+新版 Homebrew 不会加载未信任的第三方 tap 里的 cask，所以需要先执行 `brew trust`。
 
 该 cask 会把 **AiOpt.app** 装进 `/Applications` 并清除 macOS 的隔离标记，首次启动不会弹出 Gatekeeper 提示。
 `brew upgrade --cask aiopt` 升级到新版本；`brew uninstall --cask aiopt` 卸载应用，加上 `--zap` 还会删除它的
