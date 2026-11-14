@@ -71,7 +71,9 @@ function memFs(files: Map<string, { text: string; mtimeMs: number }>): Workbench
     readFile: (file) => files.get(file)?.text ?? null,
     isDirectory: () => false,
     realpath: (p) => p,
-    listDir: (dir) => [...files.keys()].filter((f) => path.dirname(f) === dir).map((f) => path.basename(f)),
+    // Keys are `path.join`ed (backslashes on Windows); compare like for like.
+    listDir: (dir) =>
+      [...files.keys()].filter((f) => path.dirname(f) === path.normalize(dir)).map((f) => path.basename(f)),
     listDirEntries: () => [],
     statFile: (file) => {
       const f = files.get(file);
