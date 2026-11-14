@@ -11,6 +11,7 @@ import {
 import { messageTask, readTaskOutput } from '../../lib/workbenchStore';
 import { useComposerBlocks, WorkbenchChatComposer, WorkbenchChatThread, type WorkbenchChatLine } from './workbenchChat';
 import { useMentionSource } from './mentionPicker';
+import { WriteRequestCards } from './WriteRequestCard';
 import type { DraggedEntry } from './entryDrag';
 import { folderMentionText } from './workbenchNav';
 
@@ -106,6 +107,7 @@ export function TaskChatPane({
         }
       />
       <div style={{ flexShrink: 0 }}>
+        <WriteRequestCards requests={wb.pendingWrites.filter((r) => r.taskId === task.id)} tasks={wb.tasks} t={t} run={run} />
         <WorkbenchChatComposer
           draft={draft}
           setDraft={setDraft}

@@ -522,6 +522,9 @@ const api = {
     /** Approve tasks to run; each starts once its dependencies are done. */
     approveTasks: (taskIds: string[]): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchTaskApprove, { taskIds }),
+    /** Answer a worker's held write outside the workbench folders (main accepts it once). */
+    decideWrite: (requestId: string, allow: boolean): Promise<WorkbenchSnapshot> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workbenchWriteDecide, { requestId, allow }),
     /** Approve one conversation's whole plan. */
     runPlan: (conversationId: string): Promise<WorkbenchSnapshot> =>
       ipcRenderer.invoke(IPC_CHANNELS.workbenchPlanRun, { conversationId }),

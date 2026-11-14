@@ -17,6 +17,7 @@ import {
   isValidFolderRelPath,
   isValidFolderSegment,
   isValidWorkbenchId,
+  isValidWriteRequestId,
 } from '../../shared/workbench';
 import type { WorkbenchManager } from './workbenchManager';
 import type { FolderOps } from './folderOps';
@@ -342,6 +343,17 @@ export function registerWorkbenchIpc(
   registry.register(IPC_CHANNELS.workbenchTaskApprove, (payload, meta) => {
     meta.assertTrustedSender();
     manager.approveTasks(requireTaskIds(requireObject(payload).taskIds));
+    return snapshot();
+  });
+
+  // The answer to a worker's held write (writeGate.ts). The renderer names the request only;
+  // main accepts one answer, for a request it is still holding.
+  registry.register(IPC_CHANNELS.workbenchWriteDecide, (payload, meta) => {
+    meta.assertTrustedSender();
+    const obj = requireObject(payload);
+    if (!isValidWriteRequestId(obj.requestId)) throwIpcError('INVALID_PARAMS', 'invalid requestId');
+    if (typeof obj.allow !== 'boolean') throwIpcError('INVALID_PARAMS', 'allow must be a boolean');
+    if (!manager.decideWrite(obj.requestId, obj.allow)) throwIpcError('NOT_FOUND', 'no such write request');
     return snapshot();
   });
 

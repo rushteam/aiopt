@@ -899,6 +899,15 @@
       "git": "git",
       "hint": "Los agentes solo se ejecutan dentro de estas carpetas; el coordinador solo puede leerlas."
     },
+    "writeGate": {
+      "title": "Escribir fuera de las carpetas del banco de trabajo",
+      "writeMessage": "La tarea «{{task}}» quiere escribir un archivo fuera de las carpetas del banco de trabajo:",
+      "editMessage": "La tarea «{{task}}» quiere modificar un archivo fuera de las carpetas del banco de trabajo:",
+      "note": "Solo las carpetas del explorador se pueden cambiar sin confirmación. Esto cubre escribir y modificar archivos; los comandos que ejecuta la tarea no se comprueban. Si no respondes en 10 minutos, se deniega.",
+      "allow": "Permitir esta vez",
+      "deny": "Denegar",
+      "waiting": "Esperando tu respuesta"
+    },
     "proposal": {
       "title": "Tareas propuestas",
       "hint": "Elige una carpeta para cada tarea y luego apruébala. Nada se ejecuta hasta que lo apruebes.",

@@ -36,6 +36,7 @@ const EMPTY: WorkbenchSnapshot = {
   issue: null,
   model: null,
   lastNotify: null,
+  pendingWrites: [],
   streaming: false,
   chat: [],
   chatHasMore: false,
@@ -154,6 +155,9 @@ export const removeTask = (taskId: string): Promise<void> => apply(wb().removeTa
 /** Launch every proposed task that has a folder (up to the running limit). */
 export const runAllTasks = (): Promise<void> => apply(wb().runAll());
 export const approveTasks = (taskIds: string[]): Promise<void> => apply(wb().approveTasks(taskIds));
+/** Answer a worker's held write outside the workbench folders. */
+export const decideWrite = (requestId: string, allow: boolean): Promise<void> =>
+  apply(wb().decideWrite(requestId, allow));
 export const runPlan = (conversationId: string): Promise<void> => apply(wb().runPlan(conversationId));
 export const openConversation = (conversationId: string): Promise<void> =>
   apply(wb().openConversation(conversationId));

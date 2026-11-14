@@ -35,6 +35,7 @@ import {
 import { PlanPanel } from './PlanPanel';
 import { TimelinePanel } from './TimelinePanel';
 import { ProposalCard, type ProposalBoard } from './ProposalCard';
+import { WriteRequestCards } from './WriteRequestCard';
 import { WorkbenchTopBar } from './WorkbenchTopBar';
 import { TaskNodeDetail } from './TaskNodeDetail';
 import { StatusLabel } from './TaskStatusLabel';
@@ -541,6 +542,7 @@ function ChatPane({
         }
       />
       <div style={{ flexShrink: 0 }}>
+        <WriteRequestCards requests={wb.pendingWrites} tasks={wb.tasks} t={t} run={run} onSelectTask={onSelectTask} />
         <WorkbenchChatComposer
           draft={draft}
           setDraft={setDraft}

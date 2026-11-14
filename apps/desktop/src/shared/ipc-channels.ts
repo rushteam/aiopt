@@ -281,6 +281,7 @@ export const IPC_CHANNELS = {
   workbenchTaskChanges: 'workbench:task-changes',
   workbenchTaskRunAll: 'workbench:task-run-all',
   workbenchTaskApprove: 'workbench:task-approve',
+  workbenchWriteDecide: 'workbench:write-decide',
   workbenchPlanRun: 'workbench:plan-run',
   workbenchConversationOpen: 'workbench:conversation-open',
   workbenchChatPage: 'workbench:chat-page',
@@ -1013,6 +1014,12 @@ export interface WorkbenchFolderCopyPathRequest extends WorkbenchFolderListReque
   relative: boolean;
 }
 
+/** Answer a worker's held write outside the workbench folders (by request id only). */
+export interface WorkbenchWriteDecideRequest {
+  requestId: string;
+  allow: boolean;
+}
+
 export interface WorkbenchTaskRef {
   taskId: string;
 }
@@ -1316,6 +1323,7 @@ export interface IpcContract {
   [IPC_CHANNELS.workbenchTaskChanges]: { request: WorkbenchTaskRef; result: TaskChanges };
   [IPC_CHANNELS.workbenchTaskRunAll]: { request: void; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchTaskApprove]: { request: WorkbenchTaskApproveRequest; result: WorkbenchSnapshot };
+  [IPC_CHANNELS.workbenchWriteDecide]: { request: WorkbenchWriteDecideRequest; result: WorkbenchSnapshot };
   /** Approve every proposed task of one conversation's plan (the DAG runs to completion). */
   [IPC_CHANNELS.workbenchPlanRun]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };
   [IPC_CHANNELS.workbenchConversationOpen]: { request: WorkbenchConversationRef; result: WorkbenchSnapshot };

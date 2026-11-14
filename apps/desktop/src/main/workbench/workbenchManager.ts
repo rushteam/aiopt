@@ -30,7 +30,9 @@
 //     argv (visible in `ps`), never logged, and never part of the snapshot;
 //   - the orchestrator gets only read-only tools, confined to the granted folders by its
 //     extension (orchestratorExtension.ts). Workers are full coding agents: they run with the
-//     user's permissions in the folder the user approved, like running pi by hand there.
+//     user's permissions in the folder the user approved, like running pi by hand there. Local
+//     workers' `write` / `edit` outside their folder and the granted folders wait for the
+//     user's confirmation in the workbench (workerExtension.ts, writeGate.ts); `bash` is not gated.
 //
 // Electron-free: every side effect goes through the injected deps, so it unit-tests with fakes.
 
@@ -115,6 +117,8 @@ import {
   TASK_UPDATE_COMMAND,
 } from './orchestratorExtension';
 import { installManagedHerdr } from './herdrInstall';
+import { WORKER_EXTENSION_SOURCE } from './workerExtension';
+import { WRITE_GATE_DIR_ENV, createWriteGate, type WriteGate } from './writeGate';
 import { createTimeline, parseTimeline } from './timeline';
 import { GIT_SAFE_ENV, isCommitId, readHeadCommit, readTaskChanges, type GitExec } from './taskChanges';
 import {
@@ -198,6 +202,11 @@ export interface WorkbenchDeps {
    * mentions stay as typed. Its text goes to the coordinator fenced as untrusted data.
    */
   readSession?: (ref: SessionRef) => Promise<SessionTranscript>;
+  /**
+   * A worker's `write` / `edit` outside the workbench folders is now waiting for the user
+   * (writeGate.ts): raise a notification when no AiOpt window has focus.
+   */
+  onWriteRequest?: (req: { taskTitle: string }) => void;
 }
 
 export interface TaskDraft {
@@ -254,6 +263,11 @@ export interface WorkbenchManager {
   approveTasks(taskIds: readonly string[]): void;
   /** Approve every proposed task of one conversation's plan (runs the DAG to completion). */
   runPlan(conversationId: string): void;
+  /**
+   * Answer a worker's held write outside the workbench folders, named by the id
+   * `getSnapshot().pendingWrites` listed. False when it is not (or no longer) waiting.
+   */
+  decideWrite(requestId: string, allow: boolean): boolean;
   /** Reopen a past conversation, named by the id `getSnapshot().conversations` listed. */
   openConversation(conversationId: string): Promise<void>;
   /**
@@ -451,6 +465,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   const orchestratorCwd = path.join(deps.dataDir, 'orchestrator');
   const extensionFile = path.join(deps.dataDir, 'orchestrator-extension.mjs');
   const foldersFile = path.join(deps.dataDir, 'folders.json');
+  /** Local workers' pi extension: the write gate (workerExtension.ts). */
+  const workerExtensionFile = path.join(deps.dataDir, 'worker-extension.mjs');
+  /** Where workers hold writes outside the workbench folders for the user (writeGate.ts). */
+  const writeGateDir = path.join(deps.dataDir, 'write-gate');
   const tasksFile = path.join(deps.dataDir, 'tasks.json');
   const settingsFile = path.join(deps.dataDir, 'settings.json');
   /** Titles the user gave conversations, by session uuid (main-owned; pi never reads it). */
@@ -470,6 +488,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   /** Whether THIS process started the aiopt herdr server (so a restart may reuse it). */
   let ownsServer = false;
   let cancelPoll: (() => void) | null = null;
+  /** Set while local workers run with the write gate (not over SSH: the files would be remote). */
+  let writeGate: WriteGate | null = null;
+  /** Each launched task's herdr pane (memory only), naming who asks through the write gate. */
+  const paneOfTask = new Map<string, string>();
   let polling = false;
   let pollsSinceSweep = 0;
   let startSeq = 0;
@@ -657,6 +679,33 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
 
   function folderById(id: string | null): FolderRecord | null {
     return id ? (folders.find((f) => f.id === id) ?? null) : null;
+  }
+
+  /** Worker flags with the write gate loaded (local herdr only). */
+  function workerArgs(): string[] {
+    return [...WORKER_PI_ARGS, '--extension', workerExtensionFile];
+  }
+
+  /**
+   * The live task whose worker runs in `cwd` (its worktree, or its folder when in
+   * place), or null. A write-gate request names its `cwd`; one that matches no live task is
+   * refused without asking the user.
+   */
+  function liveTaskIn(cwd: string, pane: string | null): { id: string; title: string } | null {
+    const want = deps.fs.realpath(cwd);
+    if (!want) return null;
+    const hits: TaskRecord[] = [];
+    for (const t of tasks.values()) {
+      if (!isLiveTaskStatus(t.status)) continue;
+      // A task whose pane we know is not the one asking from another pane.
+      const known = paneOfTask.get(t.id);
+      if (pane && known && known !== pane) continue;
+      const dir = t.worktreePath ?? folderById(t.folderId)?.path ?? null;
+      if (dir && deps.fs.realpath(dir) === want) hits.push(t);
+    }
+    // Several in-place tasks in one folder, and the pane does not say which: ask on nobody's behalf.
+    const [t] = hits;
+    return hits.length === 1 && t ? { id: t.id, title: t.title } : null;
   }
 
   /** Map the orchestrator's folder hint to a granted folder. */
@@ -1173,6 +1222,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       conversations: conversations.map(conversationView),
       timelineRevision: timeline.revision(),
       currentConversationId,
+      pendingWrites: writeGate?.pending() ?? [],
       settings: { ...settings },
     };
   }
@@ -1234,6 +1284,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     };
     deps.fs.writeFile(piSettingsFile, `${JSON.stringify(piSettings, null, 2)}\n`);
     deps.fs.writeFile(extensionFile, ORCHESTRATOR_EXTENSION_SOURCE);
+    deps.fs.writeFile(workerExtensionFile, WORKER_EXTENSION_SOURCE);
+    deps.fs.mkdirp(writeGateDir);
   }
 
   // --- lifecycle ------------------------------------------------------------------------
@@ -1247,6 +1299,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   function stopPolling(): void {
     cancelPoll?.();
     cancelPoll = null;
+    // A waiting worker gets its "no" now rather than at its timeout.
+    writeGate?.denyAll();
+    writeGate = null;
   }
 
   function disposeOrchestrator(): void {
@@ -1384,11 +1439,27 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
           sleep: deps.sleep,
         });
         try {
-          await startServer(hc, binary, agentEnv, sshTarget);
+          // Workers inherit the server's env: a local one tells them where the folder list and
+          // the write gate are. Over SSH the worker runs remotely and gets neither.
+          const serverEnv = sshTarget
+            ? agentEnv
+            : { ...agentEnv, [FOLDERS_FILE_ENV]: foldersFile, [WRITE_GATE_DIR_ENV]: writeGateDir };
+          await startServer(hc, binary, serverEnv, sshTarget);
           // The pi integration lets herdr see each worker's state; it installs into the
           // workbench's own pi agent dir (created above), not the user's.
           await hc.installPiIntegration();
           herdr = hc;
+          writeGate = sshTarget
+            ? null
+            : createWriteGate({
+                fs: deps.fs,
+                dir: writeGateDir,
+                now: deps.now,
+                taskFor: liveTaskIn,
+                onChange: () => deps.onChange(),
+                onRequest: deps.onWriteRequest,
+                logger: log,
+              });
         } catch (err) {
           // Chat still works without herdr; tasks just can't launch.
           log.warn('workbench.herdr_unavailable', { code: errorCode(err) });
@@ -1404,7 +1475,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       }
       setStatus('ready', null);
       if (herdr) await sweepOrphanWorkspaces(herdr);
-      cancelPoll = deps.every(POLL_MS, () => void poll());
+      cancelPoll = deps.every(POLL_MS, () => {
+        writeGate?.pump();
+        void poll();
+      });
       advance();
       log.info('workbench.started', { herdr: herdr !== null, proxied: resolved.view.proxied });
     } catch (err) {
@@ -1959,9 +2033,10 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         paneId = ref.paneId;
       }
       t.workspaceId = workspaceId;
+      paneOfTask.set(t.id, paneId);
       const agentName = `wb-${t.id}`;
       t.agentName = agentName;
-      await client.agentStart(agentName, paneId, WORKER_PI_ARGS);
+      await client.agentStart(agentName, paneId, writeGate ? workerArgs() : WORKER_PI_ARGS);
       // The board keeps the prompt as written; @session excerpts are attached only on the way
       // to the worker (same as the coordinator chat), so the snapshot and list_tasks stay small.
       await client.agentPrompt(agentName, await withSessionContext(t.prompt));
@@ -2108,6 +2183,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       }
     }
     tasks.delete(taskId);
+    paneOfTask.delete(taskId);
     for (const other of tasks.values()) {
       if (other.dependsOn.includes(taskId)) {
         other.dependsOn = other.dependsOn.filter((id) => id !== taskId);
@@ -2301,6 +2377,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     taskChanges,
     runAll,
     approveTasks,
+    decideWrite: (requestId, allow) => writeGate?.resolve(requestId, allow) ?? false,
     runPlan,
     openConversation,
     searchConversations,

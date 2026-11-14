@@ -430,6 +430,7 @@ const DEMO_FILES: Record<string, string> = {
 
 const workbenchSnapshot: WorkbenchSnapshot = {
   lastNotify: null,
+  pendingWrites: [],
   timelineRevision: 0,
   status: 'ready',
   issue: null,
@@ -687,6 +688,7 @@ const bridge: AiOptBridge = {
     taskChanges: async () => ({ since: 'launch' as const, files: [], truncated: false }),
     runAll: refused,
     approveTasks: refused,
+    decideWrite: refused,
     runPlan: refused,
     openConversation: refused,
     chatPage: async () => ({ items: [], hasMore: false, epoch: 1 }),

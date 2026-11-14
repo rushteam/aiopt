@@ -899,6 +899,15 @@
       "git": "git",
       "hint": "Les agents ne s'exécutent que dans ces dossiers ; le coordinateur peut seulement les lire."
     },
+    "writeGate": {
+      "title": "Écrire hors des dossiers de l’atelier",
+      "writeMessage": "La tâche « {{task}} » veut écrire un fichier hors des dossiers de l’atelier :",
+      "editMessage": "La tâche « {{task}} » veut modifier un fichier hors des dossiers de l’atelier :",
+      "note": "Seuls les dossiers de l’explorateur peuvent être modifiés sans confirmation. Cela couvre l’écriture et la modification de fichiers ; les commandes lancées par la tâche ne sont pas vérifiées. Sans réponse sous 10 minutes, la demande est refusée.",
+      "allow": "Autoriser cette fois",
+      "deny": "Refuser",
+      "waiting": "En attente de vous"
+    },
     "proposal": {
       "title": "Tâches proposées",
       "hint": "Choisissez un dossier pour chaque tâche, puis approuvez-la. Rien ne s’exécute avant votre accord.",

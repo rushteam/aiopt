@@ -461,6 +461,20 @@ export interface WorkbenchNotifyPreview {
   at: number;
 }
 
+/**
+ * A worker's `write` / `edit` outside the workbench folders, held until the user answers
+ * (main/workbench/writeGate.ts). Display data only: `path` is what the worker asked for,
+ * sanitized; answering names the request by `id` and nothing else.
+ */
+export interface PendingWriteView {
+  /** The request id (a lowercase uuid). */
+  id: string;
+  taskId: string;
+  tool: 'write' | 'edit';
+  path: string;
+  requestedAt: number;
+}
+
 export interface WorkbenchSnapshot {
   status: WorkbenchStatus;
   issue: WorkbenchIssue | null;
@@ -492,6 +506,8 @@ export interface WorkbenchSnapshot {
   timelineRevision: number;
   /** The conversation the coordinator is in now, whose plan the task pane shows. */
   currentConversationId: string | null;
+  /** Workers' writes outside the workbench folders waiting for the user, oldest first. */
+  pendingWrites: PendingWriteView[];
   settings: WorkbenchSettings;
 }
 
@@ -603,6 +619,11 @@ export function isValidWorkbenchId(value: unknown): value is string {
 const CONVERSATION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function isValidConversationId(value: unknown): value is string {
+  return typeof value === 'string' && CONVERSATION_ID_RE.test(value);
+}
+
+/** A held write's request id: a lowercase uuid. */
+export function isValidWriteRequestId(value: unknown): value is string {
   return typeof value === 'string' && CONVERSATION_ID_RE.test(value);
 }
 
