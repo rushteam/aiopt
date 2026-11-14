@@ -98,7 +98,12 @@ export function TaskNodeDetail({
           <h3 style={titleStyle} title={task.title}>
             {task.title}
           </h3>
-          <StatusLabel status={task.status} approved={task.approved} t={t} />
+          <StatusLabel
+            status={task.status}
+            approved={task.approved}
+            waiting={wb.pendingWrites.some((r) => r.taskId === task.id)}
+            t={t}
+          />
         </div>
         <dl style={metaStyle}>
           <Meta label={t('workbench.tasks.folderLabel')}>{folder?.name ?? t('workbench.tasks.noFolder')}</Meta>

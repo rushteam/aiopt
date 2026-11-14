@@ -899,6 +899,15 @@
       "git": "git",
       "hint": "Workers only run inside these folders; the coordinator can only read them."
     },
+    "writeGate": {
+      "title": "Write outside the workbench folders",
+      "writeMessage": "Task “{{task}}” wants to write a file outside the workbench folders:",
+      "editMessage": "Task “{{task}}” wants to edit a file outside the workbench folders:",
+      "note": "Only the folders in the explorer can be changed without asking. This covers writing and editing files; commands the task runs are not checked. No answer within 10 minutes counts as Deny.",
+      "allow": "Allow once",
+      "deny": "Deny",
+      "waiting": "Waiting for you"
+    },
     "proposal": {
       "title": "Proposed tasks",
       "hint": "Pick a folder for each task, then approve it. Nothing runs until you do.",

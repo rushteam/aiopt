@@ -899,6 +899,15 @@
       "git": "git",
       "hint": "Agenten laufen nur in diesen Ordnern; der Koordinator kann sie nur lesen."
     },
+    "writeGate": {
+      "title": "Außerhalb der Werkbank-Ordner schreiben",
+      "writeMessage": "Die Aufgabe „{{task}}“ möchte eine Datei außerhalb der Werkbank-Ordner schreiben:",
+      "editMessage": "Die Aufgabe „{{task}}“ möchte eine Datei außerhalb der Werkbank-Ordner bearbeiten:",
+      "note": "Nur die Ordner im Explorer dürfen ohne Rückfrage geändert werden. Das gilt für das Schreiben und Bearbeiten von Dateien; Befehle der Aufgabe werden nicht geprüft. Ohne Antwort innerhalb von 10 Minuten gilt die Anfrage als abgelehnt.",
+      "allow": "Einmal erlauben",
+      "deny": "Ablehnen",
+      "waiting": "Wartet auf Sie"
+    },
     "proposal": {
       "title": "Vorgeschlagene Aufgaben",
       "hint": "Wählen Sie für jede Aufgabe einen Ordner und geben Sie sie dann frei. Ohne Ihre Freigabe läuft nichts.",

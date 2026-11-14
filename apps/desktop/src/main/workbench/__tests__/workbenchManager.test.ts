@@ -683,7 +683,11 @@ describe('workbench tasks', () => {
     expect(s.wb.getSnapshot().tasks[0]!.status).toBe('starting');
     await flush();
     expect(s.herdr.client.workspaceCreate).toHaveBeenCalledWith('/work/app', 'Fix');
-    expect(s.herdr.client.agentStart).toHaveBeenCalledWith(`wb-${id}`, expect.any(String), WORKER_PI_ARGS);
+    expect(s.herdr.client.agentStart).toHaveBeenCalledWith(`wb-${id}`, expect.any(String), [
+      ...WORKER_PI_ARGS,
+      '--extension',
+      path.join(DATA, 'worker-extension.mjs'),
+    ]);
     expect(s.herdr.client.agentPrompt).toHaveBeenCalledWith(`wb-${id}`, 'fix the bug');
     expect(s.wb.getSnapshot().tasks[0]).toMatchObject({ status: 'working', agentName: `wb-${id}` });
 
@@ -1350,6 +1354,94 @@ describe('workbench plans', () => {
       }),
     });
     expect(s.wb.getSnapshot().tasks[0]).toMatchObject({ id: 'old1', conversationId: null, approved: false });
+  });
+});
+
+describe('workbench write gate', () => {
+  const GATE = path.join(DATA, 'write-gate');
+  const REQ_ID = 'cccccccc-0000-4000-8000-000000000003';
+  const request = (cwd: string) =>
+    JSON.stringify({ v: 1, tool: 'write', path: '/etc/hosts', cwd });
+
+  it('loads the gate into local workers and tells them where it is', async () => {
+    const s = await started();
+    const [, , serverEnv] = s.spawnDetached.mock.calls[0]!;
+    expect(serverEnv.AIOPT_WB_WRITE_GATE_DIR).toBe(GATE);
+    expect(serverEnv.AIOPT_WB_FOLDERS_FILE).toBe(path.join(DATA, 'folders.json'));
+    expect(s.disk.get(path.join(DATA, 'worker-extension.mjs'))).toContain('process.env.AIOPT_WB_WRITE_GATE_DIR');
+  });
+
+  it("lists a live task's held write until the user answers it", async () => {
+    const onWriteRequest = vi.fn();
+    const s = await withFolder({ onWriteRequest });
+    const id = s.wb.createTask({ title: 'Fix', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    s.disk.set(path.join(GATE, `${REQ_ID}.req.json`), request('/work/app'));
+    s.tick();
+    await flush();
+    expect(onWriteRequest).toHaveBeenCalledWith({ taskTitle: 'Fix' });
+    expect(s.wb.getSnapshot().pendingWrites).toEqual([
+      expect.objectContaining({ id: REQ_ID, taskId: id, tool: 'write', path: '/etc/hosts' }),
+    ]);
+    expect(s.disk.has(path.join(GATE, `${REQ_ID}.res.json`))).toBe(false);
+
+    expect(s.wb.decideWrite(REQ_ID, true)).toBe(true);
+    expect(JSON.parse(s.disk.get(path.join(GATE, `${REQ_ID}.res.json`))!)).toEqual({ allow: true });
+    expect(s.wb.getSnapshot().pendingWrites).toEqual([]);
+    // One answer per request.
+    expect(s.wb.decideWrite(REQ_ID, false)).toBe(false);
+    s.tick();
+    await flush();
+    expect(onWriteRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses every held write when the workbench stops', async () => {
+    const s = await withFolder();
+    const id = s.wb.createTask({ title: 'Fix', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    s.disk.set(path.join(GATE, `${REQ_ID}.req.json`), request('/work/app'));
+    s.tick();
+    await flush();
+    await s.wb.stop();
+    expect(JSON.parse(s.disk.get(path.join(GATE, `${REQ_ID}.res.json`))!)).toEqual({ allow: false });
+    expect(s.wb.decideWrite(REQ_ID, true)).toBe(false);
+  });
+
+  it('tells apart tasks working in the same folder by their herdr pane', async () => {
+    const s = await withFolder();
+    const first = s.wb.createTask({ title: 'One', prompt: 'p', folderId: s.folderId });
+    const second = s.wb.createTask({ title: 'Two', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(first);
+    s.wb.launchTask(second);
+    await flush();
+    const panes = s.herdr.client.workspaceCreate.mock.results.map((r) => r.value);
+    const secondPane = (await panes.at(-1)).paneId as string;
+    const ask = (id: string, pane?: string) =>
+      s.disk.set(
+        path.join(GATE, `${id}.req.json`),
+        JSON.stringify({ v: 1, tool: 'write', path: '/etc/hosts', cwd: '/work/app', pane }),
+      );
+    ask(REQ_ID, secondPane);
+    // No pane: either task could be asking, so nobody is asked.
+    const unnamed = 'dddddddd-0000-4000-8000-000000000004';
+    ask(unnamed);
+    s.tick();
+    await flush();
+    expect(s.wb.getSnapshot().pendingWrites.map((r) => [r.id, r.taskId])).toEqual([[REQ_ID, second]]);
+    expect(JSON.parse(s.disk.get(path.join(GATE, `${unnamed}.res.json`))!)).toEqual({ allow: false });
+  });
+
+  it('refuses without listing when no live task works in that directory', async () => {
+    const onWriteRequest = vi.fn();
+    const s = await withFolder({ onWriteRequest });
+    s.disk.set(path.join(GATE, `${REQ_ID}.req.json`), request('/work/app'));
+    s.tick();
+    await flush();
+    expect(onWriteRequest).not.toHaveBeenCalled();
+    expect(s.wb.getSnapshot().pendingWrites).toEqual([]);
+    expect(JSON.parse(s.disk.get(path.join(GATE, `${REQ_ID}.res.json`))!)).toEqual({ allow: false });
   });
 });
 

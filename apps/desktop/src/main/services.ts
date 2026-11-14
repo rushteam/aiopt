@@ -6,7 +6,7 @@
 // Electron-free and unit-tested with injected adapters.
 
 import fs from 'node:fs';
-import { BrowserWindow, app, clipboard, dialog, net, safeStorage, session, shell } from 'electron';
+import { BrowserWindow, Notification, app, clipboard, dialog, net, safeStorage, session, shell } from 'electron';
 import {
   createConfigStore,
   createFilePreferencePersistence,
@@ -64,6 +64,9 @@ import { candidateBinDirs } from './workbench/herdrCli';
 import { resolveMenuLocaleForPreference } from './menu/menuLabels';
 import { createFolderOps, type FolderOps } from './workbench/folderOps';
 import { buildFolderImportConfirm } from './workbench/folderImportConfirm';
+import { buildWriteRequestNotification } from './workbench/writeGate';
+import { dispatchToRenderer } from './menu/dispatchToRenderer';
+import { MENU_COMMANDS } from '../shared/menuCommands';
 import { homeShortenedPath } from './providers/agentConfigView';
 import { agentConfigDir, agentHome } from './providers/agentPaths';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
@@ -656,6 +659,8 @@ export function getSkillsStore(): SkillsStore {
  * environment only. A throttled `workbench:changed` snapshot keeps the view live while the
  * orchestrator streams.
  */
+let writeRequestNote: Notification | null = null;
+
 export function getWorkbenchManager(): WorkbenchManager {
   if (!workbenchManager) {
     let manager: WorkbenchManager | null = null;
@@ -682,6 +687,25 @@ export function getWorkbenchManager(): WorkbenchManager {
       logger: logger.child('workbench'),
       // @session mentions in the coordinator chat: read-only, named by (agentId, sessionId).
       readSession: (ref) => getAgentSessionStore().transcript(ref),
+      // A worker's write / edit outside the workbench folders waits for an Allow / Deny card in
+      // the workbench; when AiOpt is in the background, a notification points there.
+      onWriteRequest: (req) => {
+        if (BrowserWindow.getFocusedWindow() || !Notification.isSupported()) return;
+        const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
+        const note = new Notification(buildWriteRequestNotification(locale, req.taskTitle));
+        // Held so the click handler outlives garbage collection; the next one replaces it.
+        writeRequestNote = note;
+        note.on('click', () => {
+          const win = BrowserWindow.getAllWindows()[0];
+          if (win && !win.isDestroyed()) {
+            win.show();
+            if (win.isMinimized()) win.restore();
+            win.focus();
+          }
+          dispatchToRenderer(MENU_COMMANDS.showWorkbench);
+        });
+        note.show();
+      },
     });
     workbenchManager = manager;
     syncWorkbenchTrayHint(manager.getSnapshot());

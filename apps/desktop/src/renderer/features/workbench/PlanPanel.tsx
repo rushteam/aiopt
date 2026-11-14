@@ -38,6 +38,7 @@ export function PlanPanel({
 }) {
   const conversationId = wb.currentConversationId;
   const plan = useMemo(() => planTasksOf(wb.tasks, conversationId), [wb.tasks, conversationId]);
+  const waitingIds = useMemo(() => new Set(wb.pendingWrites.map((r) => r.taskId)), [wb.pendingWrites]);
   const progress = planProgress(plan);
   const [creating, setCreating] = useState(false);
   const [draftSeed, setDraftSeed] = useState<TaskSeed | null>(null);
@@ -128,7 +129,14 @@ export function PlanPanel({
         </p>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-          <TaskDagView tasks={plan} selectedId={selectedId} onSelect={onSelectTask} t={t} maxHeight={null} />
+          <TaskDagView
+            tasks={plan}
+            selectedId={selectedId}
+            onSelect={onSelectTask}
+            t={t}
+            maxHeight={null}
+            waitingIds={waitingIds}
+          />
           <p style={{ margin: 0, padding: `0 ${space.lg}px ${space.lg}px`, fontSize: fontSize.sm, color: token('textMuted') }}>
             {t('workbench.plan.pickNode')}
           </p>

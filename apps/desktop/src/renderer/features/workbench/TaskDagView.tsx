@@ -25,6 +25,7 @@ export function TaskDagView({
   onSelect,
   t,
   maxHeight = 120,
+  waitingIds,
 }: {
   tasks: readonly TaskView[];
   selectedId: string | null;
@@ -32,6 +33,8 @@ export function TaskDagView({
   t: TranslateFn;
   /** Height cap before the graph scrolls; null lets the parent size it. */
   maxHeight?: number | null;
+  /** Tasks whose worker waits for the user to allow a write outside the folders. */
+  waitingIds?: ReadonlySet<string>;
 }) {
   const layout = useMemo(() => layoutTaskDag(tasks), [tasks]);
   // One arrow marker per graph: two views on a page must not share an id.
@@ -94,8 +97,13 @@ export function TaskDagView({
                 onSelect(n.id);
               }
             };
+            const waiting = waitingIds?.has(n.id) ?? false;
             const label = `${n.title} · ${
-              isApproved && n.status === 'proposed' ? t('workbench.plan.queued') : t(`workbench.taskStatus.${n.status}`)
+              waiting
+                ? t('workbench.writeGate.waiting')
+                : isApproved && n.status === 'proposed'
+                  ? t('workbench.plan.queued')
+                  : t(`workbench.taskStatus.${n.status}`)
             }`;
             return (
               <g
@@ -119,7 +127,7 @@ export function TaskDagView({
                   stroke={selected ? token('accent') : token('borderStrong')}
                   strokeWidth={selected ? 2 : 1}
                 />
-                <circle cx={p.x + 8} cy={p.y + NODE_H / 2} r={4} fill={statusColor(n.status)} />
+                <circle cx={p.x + 8} cy={p.y + NODE_H / 2} r={4} fill={waiting ? token('warning') : statusColor(n.status)} />
                 {/* Approved and waiting: a small check in the corner (the label says it too). */}
                 {isApproved && n.status === 'proposed' && (
                   <path

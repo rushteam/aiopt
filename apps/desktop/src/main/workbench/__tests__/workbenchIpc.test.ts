@@ -41,6 +41,7 @@ function setup(picked: string | null = '/work/app') {
     taskChanges: vi.fn(async () => ({ since: 'launch' as const, files: [], truncated: false })),
     runAll: vi.fn(() => 0),
     approveTasks: vi.fn(),
+    decideWrite: vi.fn(() => true),
     runPlan: vi.fn(),
     openConversation: vi.fn(async () => {}),
     chatPage: vi.fn(() => ({ items: [], hasMore: false, epoch: 0 })),
@@ -81,7 +82,7 @@ const CHANNELS = Object.entries(IPC_CHANNELS).filter(([key]) => key.startsWith('
 describe('workbench ipc', () => {
   it('registers every workbench channel and asserts the trusted sender first', async () => {
     const { reg, manager, pickFolder, revealItem, folderOps } = setup();
-    expect(CHANNELS).toHaveLength(38);
+    expect(CHANNELS).toHaveLength(39);
     for (const [, channel] of CHANNELS) {
       expect(await codeOf(reg.invoke(channel, { taskId: 'id1', folderId: 'id1', text: 'x' }, untrusted))).toBe(
         'PERMISSION_DENIED',
@@ -292,6 +293,26 @@ describe('workbench ipc', () => {
       expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchConversationRename, bad, trusted))).toBe('INVALID_PARAMS');
     }
     expect(manager.renameConversation).toHaveBeenCalledTimes(2);
+  });
+
+  it('answers a held write by request id only, once', async () => {
+    const { reg, manager } = setup();
+    const id = 'cccccccc-0000-4000-8000-000000000003';
+    await reg.invoke(IPC_CHANNELS.workbenchWriteDecide, { requestId: id, allow: true }, trusted);
+    expect(manager.decideWrite).toHaveBeenCalledWith(id, true);
+    for (const bad of [
+      { requestId: '../x', allow: true },
+      { requestId: id.toUpperCase(), allow: true },
+      { requestId: id, allow: 'yes' },
+      { requestId: id },
+    ]) {
+      expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchWriteDecide, bad, trusted))).toBe('INVALID_PARAMS');
+    }
+    expect(manager.decideWrite).toHaveBeenCalledTimes(1);
+    manager.decideWrite.mockReturnValueOnce(false);
+    expect(await codeOf(reg.invoke(IPC_CHANNELS.workbenchWriteDecide, { requestId: id, allow: false }, trusted))).toBe(
+      'NOT_FOUND',
+    );
   });
 
   it('searches conversations by text only, with a capped query', async () => {
