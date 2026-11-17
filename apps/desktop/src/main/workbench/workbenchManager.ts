@@ -120,6 +120,14 @@ import { installManagedHerdr } from './herdrInstall';
 import { WORKER_EXTENSION_SOURCE } from './workerExtension';
 import { WRITE_GATE_DIR_ENV, createWriteGate, type WriteGate } from './writeGate';
 import { createTimeline, parseTimeline } from './timeline';
+import {
+  EMPTY_SKILL_SCAN,
+  skillScanSignature,
+  skillViews,
+  workerSkillArgs,
+  skillCommandLine,
+  type SkillLibraryScan,
+} from './workbenchSkills';
 import { GIT_SAFE_ENV, isCommitId, readHeadCommit, readTaskChanges, type GitExec } from './taskChanges';
 import {
   herdrExecForTarget,
@@ -207,6 +215,11 @@ export interface WorkbenchDeps {
    * (writeGate.ts): raise a notification when no AiOpt window has focus.
    */
   onWriteRequest?: (req: { taskTitle: string }) => void;
+  /**
+   * Scan the Skills library (workbenchSkills.ts). Absent: workers get no skill flags and the
+   * `/` picker offers no skills.
+   */
+  scanSkills?: () => SkillLibraryScan;
 }
 
 export interface TaskDraft {
@@ -324,6 +337,8 @@ const TASK_FAILURES: readonly TaskFailure[] = ['herdr_error', 'folder_missing', 
  * workbench's own settings.json, so nothing secret or model-specific is on the command line.
  */
 export const WORKER_PI_ARGS: readonly string[] = ['--no-approve', '--offline'];
+/** How often polling rescans the Skills library for the `/` picker. */
+const SKILL_RESCAN_MS = 15_000;
 
 /** Variables carried over from the launching environment. Everything else is dropped. */
 const ENV_ALLOWLIST = [
@@ -505,6 +520,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   const timeline = createTimeline(parseTimeline(deps.fs.readFile(timelineFile)), tasks.values(), deps.now);
   let settingsDoc: Record<string, unknown> = readJson(settingsFile);
   let settings: WorkbenchSettings = settingsFrom(settingsDoc);
+  /** The Skills library as last scanned; refreshed on start, before a launch, and while polling. */
+  let skillScan: SkillLibraryScan = EMPTY_SKILL_SCAN;
+  let skillScanAt = Number.NEGATIVE_INFINITY;
   const customTitles: Map<string, string> = loadCustomTitles();
   /** What a search reads of each session file, kept while the file stays the same. */
   const searchCache = new Map<string, { size: number; mtimeMs: number; messages: SearchMessage[] }>();
@@ -681,9 +699,27 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     return id ? (folders.find((f) => f.id === id) ?? null) : null;
   }
 
-  /** Worker flags with the write gate loaded (local herdr only). */
+  /** Worker flags with the write gate and the Skills library loaded (local herdr only). */
   function workerArgs(): string[] {
-    return [...WORKER_PI_ARGS, '--extension', workerExtensionFile];
+    return [...WORKER_PI_ARGS, '--extension', workerExtensionFile, ...workerSkillArgs(skillScan, settings.taskSkills)];
+  }
+
+  /** Rescan the Skills library at most every SKILL_RESCAN_MS unless `force`d. */
+  function refreshSkills(force: boolean): void {
+    if (!deps.scanSkills) return;
+    const now = deps.now();
+    if (!force && now - skillScanAt < SKILL_RESCAN_MS) return;
+    skillScanAt = now;
+    let next: SkillLibraryScan;
+    try {
+      next = deps.scanSkills();
+    } catch (err) {
+      log.warn('workbench.skills_scan_failed', { code: errorCode(err) });
+      next = EMPTY_SKILL_SCAN;
+    }
+    const before = skillScanSignature(skillScan);
+    skillScan = next;
+    if (skillScanSignature(next) !== before) changed();
   }
 
   /**
@@ -942,6 +978,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
         typeof doc.herdrSshTarget === 'string' && isValidHerdrSshTarget(doc.herdrSshTarget)
           ? doc.herdrSshTarget
           : DEFAULT_WORKBENCH_SETTINGS.herdrSshTarget,
+      taskSkills: typeof doc.taskSkills === 'boolean' ? doc.taskSkills : DEFAULT_WORKBENCH_SETTINGS.taskSkills,
     };
   }
 
@@ -949,7 +986,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     // Only overrides are stored: a value equal to the default removes its key. Keys this build
     // does not know are kept.
     const next: Record<string, unknown> = { ...readJson(settingsFile) };
-    for (const key of ['autoRun', 'notifyCoordinator', 'autoLaunchDependents'] as const) {
+    for (const key of ['autoRun', 'notifyCoordinator', 'autoLaunchDependents', 'taskSkills'] as const) {
       const value = patch[key];
       if (value === undefined) continue;
       if (value === DEFAULT_WORKBENCH_SETTINGS[key]) delete next[key];
@@ -1223,6 +1260,8 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       timelineRevision: timeline.revision(),
       currentConversationId,
       pendingWrites: writeGate?.pending() ?? [],
+      // Only local workers load the library (an SSH worker's skills are on the remote host).
+      skills: writeGate && settings.taskSkills ? skillViews(skillScan) : [],
       settings: { ...settings },
     };
   }
@@ -1460,6 +1499,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
                 onRequest: deps.onWriteRequest,
                 logger: log,
               });
+          if (writeGate) refreshSkills(true);
         } catch (err) {
           // Chat still works without herdr; tasks just can't launch.
           log.warn('workbench.herdr_unavailable', { code: errorCode(err) });
@@ -2036,10 +2076,11 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       paneOfTask.set(t.id, paneId);
       const agentName = `wb-${t.id}`;
       t.agentName = agentName;
+      if (writeGate) refreshSkills(true);
       await client.agentStart(agentName, paneId, writeGate ? workerArgs() : WORKER_PI_ARGS);
       // The board keeps the prompt as written; @session excerpts are attached only on the way
       // to the worker (same as the coordinator chat), so the snapshot and list_tasks stay small.
-      await client.agentPrompt(agentName, await withSessionContext(t.prompt));
+      await client.agentPrompt(agentName, skillCommandLine(await withSessionContext(t.prompt)));
       if (seq !== startSeq || t.status !== 'starting') {
         // Stopped (or the workbench restarted) while the worker came up: nothing will ever
         // close this workspace if we don't, since stop already ran past it.
@@ -2141,7 +2182,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     const message = sanitizeWorkbenchText(text).slice(0, WORKBENCH_LIMITS.taskPrompt);
     if (message === '' || !t.agentName) throwIpcError('INVALID_PARAMS', 'message is empty');
     try {
-      await client.agentPrompt(t.agentName, await withSessionContext(message));
+      await client.agentPrompt(t.agentName, skillCommandLine(await withSessionContext(message)));
     } catch (err) {
       log.warn('workbench.task_message_failed', { code: errorCode(err) });
       throwIpcError('UPSTREAM_ERROR', 'could not reach the worker');
@@ -2297,6 +2338,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   async function poll(): Promise<void> {
     const client = herdr;
     if (polling || !client || status !== 'ready') return;
+    refreshSkills(false);
     // Sweep only between launches: a launch opens its workspace before the task records it.
     pollsSinceSweep += 1;
     if (pollsSinceSweep >= SWEEP_EVERY_POLLS && launching.size === 0) {

@@ -317,6 +317,11 @@ export interface WorkbenchSettings {
    * `--remote` TUI attach flag — Workbench drives the socket API over SSH instead.
    */
   herdrSshTarget: string | null;
+  /**
+   * Local task workers load the Skills library and can run `/skill:<name>`. Off, they start with
+   * no skills at all (`--no-skills`). Not applied over SSH.
+   */
+  taskSkills: boolean;
 }
 
 export const DEFAULT_WORKBENCH_SETTINGS: Readonly<WorkbenchSettings> = {
@@ -324,6 +329,7 @@ export const DEFAULT_WORKBENCH_SETTINGS: Readonly<WorkbenchSettings> = {
   notifyCoordinator: true,
   autoLaunchDependents: false,
   herdrSshTarget: null,
+  taskSkills: true,
 };
 
 const HERDR_SSH_TARGET_RE = /^[a-zA-Z0-9._@:\-]{1,200}$/;
@@ -508,7 +514,17 @@ export interface WorkbenchSnapshot {
   currentConversationId: string | null;
   /** Workers' writes outside the workbench folders waiting for the user, oldest first. */
   pendingWrites: PendingWriteView[];
+  /** Skills a task can run as `/skill:<name>` (empty when task skills are off, or over SSH). */
+  skills: WorkbenchSkillView[];
   settings: WorkbenchSettings;
+}
+
+/** A Skills-library skill as the `/` picker shows it. No path crosses to the renderer. */
+export interface WorkbenchSkillView {
+  /** Command name: `/skill:<name>`. */
+  name: string;
+  /** One line, bounded. */
+  description: string;
 }
 
 /** One page of older transcript items (oldest first), ending just before the item asked for. */

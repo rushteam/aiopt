@@ -983,6 +983,15 @@
         "session": "Sesión",
         "dir": "Carpeta",
         "file": "Archivo"
+      },
+      "slash": {
+        "label": "Comandos y habilidades",
+        "empty": "No hay comandos ni habilidades que coincidan.",
+        "hint": "↑↓ para moverte · Enter para insertar · Esc para cerrar",
+        "coordinatorHint": "El coordinador no ejecuta habilidades por sí mismo: propone una tarea que ejecuta la habilidad.",
+        "skill": "Habilidad",
+        "command": "Comando",
+        "new": "Empezar una conversación nueva"
       }
     },
     "sidebar": {
@@ -1178,6 +1187,8 @@
       "waitingOn": "Esperando a:",
       "notify": "Informar al coordinador",
       "notifyHint": "Cuando una tarea necesite revisión o respuesta, falle o se marque hecha o detenida, avisar al coordinador para que lo resuma en el chat.",
+      "skills": "Habilidades en tareas",
+      "skillsHint": "Los agentes de las tareas cargan las habilidades de tu biblioteca Skills y puedes ejecutar una con /skill:nombre. Desactivado: las tareas empiezan sin habilidades.",
       "promptPlaceholder": "p. ej.: Añade validación al formulario de registro en src/auth, luego ejecuta las pruebas unitarias y corrige los fallos.",
       "promptHint": "El agente solo ve este texto, no el chat. Indica el objetivo, los archivos implicados y cómo comprobar el resultado. Escribe @ para añadir una sesión como contexto."
     },

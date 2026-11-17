@@ -108,6 +108,7 @@ export function WorkbenchTopBar({
     notifyCoordinator?: boolean;
     autoLaunchDependents?: boolean;
     herdrSshTarget?: string | null;
+    taskSkills?: boolean;
   }): void => {
     setSavingSettings(true);
     void run(() => updateWorkbenchSettings(patch)).finally(() => setSavingSettings(false));
@@ -220,6 +221,13 @@ export function WorkbenchTopBar({
             checked={wb.settings.notifyCoordinator}
             disabled={savingSettings}
             onChange={(notifyCoordinator) => setSetting({ notifyCoordinator })}
+          />
+          <SettingToggle
+            label={t('workbench.tasks.skills')}
+            hint={t('workbench.tasks.skillsHint')}
+            checked={wb.settings.taskSkills}
+            disabled={savingSettings}
+            onChange={(taskSkills) => setSetting({ taskSkills })}
           />
         </div>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: fontSize.sm, color: token('textMuted') }}>

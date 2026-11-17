@@ -983,6 +983,15 @@
         "session": "Sitzung",
         "dir": "Ordner",
         "file": "Datei"
+      },
+      "slash": {
+        "label": "Befehle und Skills",
+        "empty": "Keine passenden Befehle oder Skills.",
+        "hint": "↑↓ zum Bewegen · Enter zum Einfügen · Esc zum Schließen",
+        "coordinatorHint": "Der Koordinator führt Skills nicht selbst aus, sondern schlägt eine Aufgabe vor, die den Skill ausführt.",
+        "skill": "Skill",
+        "command": "Befehl",
+        "new": "Neue Unterhaltung beginnen"
       }
     },
     "sidebar": {
@@ -1178,6 +1187,8 @@
       "waitingOn": "Wartet auf:",
       "notify": "Koordinator informieren",
       "notifyHint": "Wenn eine Aufgabe Prüfung oder Eingabe braucht, fehlschlägt oder als erledigt/gestoppt markiert wird, den Koordinator benachrichtigen, damit er es im Chat zusammenfasst.",
+      "skills": "Skills in Aufgaben",
+      "skillsHint": "Aufgaben-Agents laden die Skills aus deiner Skills-Bibliothek; mit /skill:name führst du einen aus. Aus: Aufgaben starten ohne Skills.",
       "promptPlaceholder": "z. B. Dem Registrierungsformular in src/auth eine Eingabeprüfung hinzufügen, dann die Unit-Tests ausführen und Fehler beheben.",
       "promptHint": "Der Agent sieht nur diesen Text, nicht den Chat. Nennen Sie das Ziel, die betroffenen Dateien und wie das Ergebnis geprüft wird. Geben Sie @ ein, um eine Sitzung als Hintergrund hinzuzufügen."
     },

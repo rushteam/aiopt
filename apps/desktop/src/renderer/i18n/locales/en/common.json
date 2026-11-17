@@ -983,6 +983,15 @@
         "session": "Session",
         "dir": "Folder",
         "file": "File"
+      },
+      "slash": {
+        "label": "Commands and skills",
+        "empty": "No matching commands or skills.",
+        "hint": "↑↓ to move · Enter to insert · Esc to close",
+        "coordinatorHint": "The coordinator doesn't run skills itself: it proposes a task that runs the skill.",
+        "skill": "Skill",
+        "command": "Command",
+        "new": "Start a new conversation"
       }
     },
     "sidebar": {
@@ -1178,6 +1187,8 @@
       "waitingOn": "Waiting for:",
       "notify": "Report back to the coordinator",
       "notifyHint": "When a task needs review, needs input, fails, or is marked done or stopped, tell the coordinator so it can summarize in the chat.",
+      "skills": "Task skills",
+      "skillsHint": "Task agents load the skills in your Skills library, and you can run one with /skill:name. Off: tasks start with no skills.",
       "promptPlaceholder": "e.g. Add input validation to the signup form in src/auth, then run the unit tests and fix any failures.",
       "promptHint": "The agent sees only this text, not the chat. Include the goal, the files involved, and how to check the result. Type @ to add a session as background."
     },

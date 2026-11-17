@@ -62,6 +62,7 @@ export function TaskNodeDetail({
         <TaskForm
           t={t}
           folders={wb.folders}
+          skills={wb.skills}
           submitLabel={t('workbench.tasks.save')}
           lockPlace={task.worktreeDisplay !== null}
           dependencyChoices={planTasks.filter((x) => x.id !== task.id).map((x) => ({ id: x.id, title: x.title }))}

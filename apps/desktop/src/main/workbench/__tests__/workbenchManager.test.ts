@@ -6,6 +6,7 @@ import { IMAGE_ONLY_MESSAGE, WORKBENCH_LIMITS } from '../../../shared/workbench'
 import type { Logger } from '../../logger';
 import { HerdrError, type HerdrAgentRow, type HerdrClient, type HerdrWorkspaceRow } from '../herdrCli';
 import type { PiChild } from '../piRpc';
+import type { SkillLibraryScan } from '../workbenchSkills';
 import {
   LIST_TASKS_TOOL,
   ORCHESTRATOR_EXTENSION_SOURCE,
@@ -1455,6 +1456,7 @@ describe('workbench settings', () => {
       notifyCoordinator: true,
       autoLaunchDependents: false,
       herdrSshTarget: null,
+      taskSkills: true,
     });
 
     s.wb.updateSettings({ autoRun: true });
@@ -1464,6 +1466,7 @@ describe('workbench settings', () => {
       notifyCoordinator: true,
       autoLaunchDependents: false,
       herdrSshTarget: null,
+      taskSkills: true,
     });
 
     s.wb.updateSettings({ autoRun: false, notifyCoordinator: false });
@@ -1475,7 +1478,61 @@ describe('workbench settings', () => {
       notifyCoordinator: false,
       autoLaunchDependents: false,
       herdrSshTarget: null,
+      taskSkills: true,
     });
+  });
+});
+
+describe('workbench task skills', () => {
+  const lib = '/u/lib/skills';
+  const scan = (): SkillLibraryScan => ({
+    autoDiscovered: false,
+    skills: [{ name: 'review', description: 'Review a diff', dir: `${lib}/review` }],
+  });
+
+  it('loads the library into local workers and offers it to the picker without paths', async () => {
+    const s = await withFolder({ scanSkills: scan });
+    expect(s.wb.getSnapshot().skills).toEqual([{ name: 'review', description: 'Review a diff' }]);
+    const id = s.wb.createTask({ title: 'R', prompt: '/skill:review\n  the last commit', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    expect(s.herdr.client.agentStart).toHaveBeenCalledWith(`wb-${id}`, expect.any(String), [
+      ...WORKER_PI_ARGS,
+      '--extension',
+      path.join(DATA, 'worker-extension.mjs'),
+      '--skill',
+      `${lib}/review`,
+    ]);
+    // pi expands `/skill:name` only when a space follows the name.
+    expect(s.herdr.client.agentPrompt).toHaveBeenCalledWith(`wb-${id}`, '/skill:review the last commit');
+  });
+
+  it('starts workers with no skills at all when task skills are off', async () => {
+    const s = await withFolder({ scanSkills: scan });
+    s.wb.updateSettings({ taskSkills: false });
+    expect(s.wb.getSnapshot().skills).toEqual([]);
+    const id = s.wb.createTask({ title: 'R', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    expect(s.herdr.client.agentStart).toHaveBeenCalledWith(`wb-${id}`, expect.any(String), [
+      ...WORKER_PI_ARGS,
+      '--extension',
+      path.join(DATA, 'worker-extension.mjs'),
+      '--no-skills',
+    ]);
+  });
+
+  it('keeps working when the library cannot be read', async () => {
+    const s = await withFolder({
+      scanSkills: () => {
+        throw new Error('EACCES');
+      },
+    });
+    expect(s.wb.getSnapshot().skills).toEqual([]);
+    const id = s.wb.createTask({ title: 'R', prompt: 'p', folderId: s.folderId });
+    s.wb.launchTask(id);
+    await flush();
+    expect(s.wb.getSnapshot().tasks[0]!.status).toBe('working');
   });
 });
 

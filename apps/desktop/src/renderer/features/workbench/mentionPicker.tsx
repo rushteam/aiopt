@@ -3,16 +3,19 @@
 // workbench folders' files, ↑/↓ move, Enter/Tab insert the token, Escape dismisses. Matching
 // lives in mentionSuggest.ts, sessionSearch.ts (the Sessions screen's search, so both places
 // find the same sessions) and fileMention.ts (path browsing, one directory listing at a time).
+// Where a source has `slash`, a `/` at the start of the draft opens commands and skills instead
+// (slashCommands.ts).
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { elevation, token, fontSize, radius, space } from '../../themes/tokens';
 import { activeMentionQuery, applyMention, type MentionQuery } from '../sessions/sessionSearch';
+import { activeSlashQuery, slashOptions, type LocalSlashCommand } from './slashCommands';
 import { mentionOptions, moveHighlight, type MentionOption } from './mentionSuggest';
 import { fileMentionDir, fileMentionOptions, listingKey, type MentionFolder } from './fileMention';
 import { listFolder } from '../../lib/workbenchStore';
 import type { TranslateFn } from '../../i18n';
 import type { SessionSummary } from '../../../shared/agentSessions';
-import type { FolderEntry, TaskView } from '../../../shared/workbench';
+import type { FolderEntry, TaskView, WorkbenchSkillView } from '../../../shared/workbench';
 
 export interface MentionSource {
   options: (query: string) => MentionOption[];
@@ -28,7 +31,19 @@ export interface MentionSource {
   empty: string;
   hint: string;
   tags: Record<MentionOption['kind'], string>;
+  /** When set, a `/` at the very start of the draft opens these commands and skills instead. */
+  slash?: SlashSource;
 }
+
+export interface SlashSource {
+  options: (query: string) => MentionOption[];
+  label: string;
+  empty: string;
+  hint: string;
+}
+
+/** The open picker: an `@` mention, or (`slash`) the leading `/` command word. */
+type PickerQuery = MentionQuery & { slash?: boolean };
 
 /**
  * The picker's options and labels. Sessions are fetched when the picker opens (main serves
@@ -40,6 +55,7 @@ export function useMentionSource(
   t: TranslateFn,
   tasks: readonly TaskView[] = [],
   folders: readonly MentionFolder[] = [],
+  slashItems?: { skills: readonly WorkbenchSkillView[]; commands?: readonly LocalSlashCommand[]; hint?: string },
 ): MentionSource {
   const [sessions, setSessions] = useState<readonly SessionSummary[]>([]);
   const fetching = useRef(false);
@@ -99,7 +115,17 @@ export function useMentionSource(
       session: t('workbench.chat.mention.session'),
       dir: dirTag,
       file: t('workbench.chat.mention.file'),
+      skill: t('workbench.chat.slash.skill'),
+      command: t('workbench.chat.slash.command'),
     },
+    slash: slashItems
+      ? {
+          options: (query) => slashOptions(query, slashItems.commands ?? [], slashItems.skills),
+          label: t('workbench.chat.slash.label'),
+          empty: t('workbench.chat.slash.empty'),
+          hint: slashItems.hint ?? t('workbench.chat.slash.hint'),
+        }
+      : undefined,
   };
 }
 
@@ -147,30 +173,49 @@ export function useMentionPicker({
   placement?: MentionPlacement;
 }): MentionPicker {
   const idBase = `mention${useId().replace(/:/g, '')}`;
-  const [mention, setMention] = useState<MentionQuery | null>(null);
+  const [mention, setMention] = useState<PickerQuery | null>(null);
   const [highlight, setHighlight] = useState(0);
   /** An @-query the user dismissed with Escape stays closed until the caret leaves it. */
   const dismissedAt = useRef<number | null>(null);
-  const options = mention && mentions ? mentions.options(mention.query) : [];
+  const slash = mention?.slash ? mentions?.slash : undefined;
+  const options = mention && mentions ? (slash ? slash.options(mention.query) : mentions.options(mention.query)) : [];
   const menuOpen = mentions !== undefined && mention !== null && !disabled;
 
   const syncAt = (text: string, caret: number): void => {
     if (!mentions) return;
-    const found = activeMentionQuery(text, caret);
-    const q = found && mentions.isComplete?.(found.query) ? null : found;
+    const slashQ = mentions.slash ? activeSlashQuery(text, caret) : null;
+    let q: PickerQuery | null;
+    if (slashQ) {
+      q = { ...slashQ, slash: true };
+    } else {
+      const found = activeMentionQuery(text, caret);
+      q = found && mentions.isComplete?.(found.query) ? null : found;
+    }
     if (q && dismissedAt.current === q.start) return setMention(null);
     if (!q) dismissedAt.current = null;
-    if (q && (!mention || mention.start !== q.start)) {
-      mentions.onOpen?.();
+    if (q && (!mention || mention.start !== q.start || mention.slash !== q.slash)) {
+      if (!q.slash) mentions.onOpen?.();
       setHighlight(0);
     }
-    if (q) mentions.onQuery?.(q.query);
+    if (q && !q.slash) mentions.onQuery?.(q.query);
     setMention(q);
   };
 
   const choose = (option: MentionOption): void => {
     const el = textRef.current;
     if (!mention || !el) return;
+    if (option.run) {
+      // An app command: it is run here, so the typed `/word` leaves the draft.
+      const rest = draft.slice(el.selectionStart).replace(/^ /, '');
+      setDraft(draft.slice(0, mention.start) + rest);
+      setMention(null);
+      option.run();
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(mention.start, mention.start);
+      });
+      return;
+    }
     if (option.browse) {
       // A directory: replace the query with it and keep browsing inside it.
       const head = draft.slice(0, mention.start) + option.token;
@@ -257,9 +302,9 @@ export function useMentionPicker({
           highlight={highlight}
           onHighlight={setHighlight}
           onChoose={choose}
-          label={mentions.label}
-          empty={mentions.empty}
-          hint={mentions.hint}
+          label={(slash ?? mentions).label}
+          empty={(slash ?? mentions).empty}
+          hint={(slash ?? mentions).hint}
           tags={mentions.tags}
         />
       ) : null,

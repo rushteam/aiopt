@@ -6,6 +6,7 @@
 // Electron-free and unit-tested with injected adapters.
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { BrowserWindow, Notification, app, clipboard, dialog, net, safeStorage, session, shell } from 'electron';
 import {
   createConfigStore,
@@ -71,6 +72,7 @@ import { homeShortenedPath } from './providers/agentConfigView';
 import { agentConfigDir, agentHome } from './providers/agentPaths';
 import { createSkillsStore, type SkillsStore } from './skills/skillsStore';
 import { createNodeSkillsFs } from './skills/skillsFs';
+import { scanSkillLibrary } from './workbench/workbenchSkills';
 import { isRealDirectory } from './skills/skillsLibraryDir';
 import { preferStandardSkillsLibrary } from '../shared/skills';
 import { homeRelativeDisplayPath } from './displayPath';
@@ -705,6 +707,21 @@ export function getWorkbenchManager(): WorkbenchManager {
           dispatchToRenderer(MENU_COMMANDS.showWorkbench);
         });
         note.show();
+      },
+      // `/skill:<name>` in task chats: the Skills screen's central library, read-only (names and
+      // descriptions for the picker; directories become `--skill` flags for local workers).
+      scanSkills: () => {
+        const dir = skillsLibraryPath(getConfigStore().get('skillsLibrary'));
+        const real = (p: string): string | null => {
+          try {
+            return fs.realpathSync(p);
+          } catch {
+            return null;
+          }
+        };
+        const libraryReal = real(dir);
+        const autoDiscovered = libraryReal !== null && libraryReal === real(skillsLibraryPath('agents'));
+        return scanSkillLibrary(createNodeSkillsFs(), dir, path.join, autoDiscovered);
       },
     });
     workbenchManager = manager;

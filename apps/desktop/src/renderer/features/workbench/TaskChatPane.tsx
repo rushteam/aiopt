@@ -30,7 +30,7 @@ export function TaskChatPane({
 }) {
   const [draft, setDraft] = useState('');
   // No @task: a worker gets @session excerpts attached, but has no board to resolve @task.
-  const mentions = useMentionSource(t, [], wb.folders);
+  const mentions = useMentionSource(t, [], wb.folders, { skills: wb.skills });
   const blocks = useComposerBlocks(t);
   const dropEntry = (entry: DraggedEntry): void => {
     const folder = wb.folders.find((f) => f.id === entry.folderId);

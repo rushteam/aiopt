@@ -1075,6 +1075,7 @@ export interface WorkbenchSettingsUpdateRequest {
   autoLaunchDependents?: boolean;
   /** Empty string clears the target. */
   herdrSshTarget?: string | null;
+  taskSkills?: boolean;
 }
 
 // --- Skills wire contract -------------------------------------------------

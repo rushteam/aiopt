@@ -10,9 +10,11 @@ import { agentName, searchSessions, shortDir } from '../sessions/sessionSearch';
 
 export interface MentionOption {
   key: string;
-  kind: 'task' | 'session' | 'dir' | 'file';
+  kind: 'task' | 'session' | 'dir' | 'file' | 'skill' | 'command';
   /** Inserted into the draft. */
   token: string;
+  /** A `/` command the composer runs itself: picking it clears the typed command and calls this. */
+  run?: () => void;
   /** Picking it keeps the picker open on the inserted text (a directory being browsed). */
   browse?: boolean;
   label: string;
