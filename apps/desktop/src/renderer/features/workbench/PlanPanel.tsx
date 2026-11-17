@@ -107,6 +107,7 @@ export function PlanPanel({
             key={seedCount}
             t={t}
             folders={wb.folders}
+            skills={wb.skills}
             submitLabel={t('workbench.tasks.create')}
             initial={{
               title: draftSeed?.title ?? '',

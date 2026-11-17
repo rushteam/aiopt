@@ -423,6 +423,7 @@ export function registerWorkbenchIpc(
       notifyCoordinator: optionalBoolean(obj.notifyCoordinator, 'notifyCoordinator'),
       autoLaunchDependents: optionalBoolean(obj.autoLaunchDependents, 'autoLaunchDependents'),
       herdrSshTarget,
+      taskSkills: optionalBoolean(obj.taskSkills, 'taskSkills'),
     });
     return snapshot();
   });

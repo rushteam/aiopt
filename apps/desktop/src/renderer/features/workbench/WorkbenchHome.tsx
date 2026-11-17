@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { token, fontSize, radius, space } from '../../themes/tokens';
 import { useT, type TranslateFn } from '../../i18n';
 import { useWorkbench } from '../../hooks/useWorkbench';
-import { abortChat, loadOlderChat, sendChat, startWorkbench, stopWorkbench } from '../../lib/workbenchStore';
+import { abortChat, loadOlderChat, resetChat, sendChat, startWorkbench, stopWorkbench } from '../../lib/workbenchStore';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { workbenchErrorMessage } from './errors';
 import {
@@ -487,7 +487,16 @@ function ChatPane({
     setDraft((d) => insertTaskMention(d, taskId, WORKBENCH_LIMITS.chatText));
   };
 
-  const mentions = useMentionSource(t, wb.tasks, wb.folders);
+  // `/new` starts a fresh conversation (not while a reply streams); a skill is not run by the
+  // coordinator but handed to a task it proposes (see the orchestrator prompt).
+  const slashCommands = wb.streaming
+    ? []
+    : [{ name: 'new', description: t('workbench.chat.slash.new'), run: () => void run(resetChat) }];
+  const mentions = useMentionSource(t, wb.tasks, wb.folders, {
+    skills: wb.skills,
+    commands: slashCommands,
+    hint: t('workbench.chat.slash.coordinatorHint'),
+  });
 
   return (
     <section

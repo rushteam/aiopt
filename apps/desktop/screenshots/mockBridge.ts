@@ -431,6 +431,7 @@ const DEMO_FILES: Record<string, string> = {
 const workbenchSnapshot: WorkbenchSnapshot = {
   lastNotify: null,
   pendingWrites: [],
+  skills: [],
   timelineRevision: 0,
   status: 'ready',
   issue: null,
@@ -546,7 +547,7 @@ const workbenchSnapshot: WorkbenchSnapshot = {
     { id: '0a1b2c3d-0000-4000-8000-000000000002', title: 'Summarize last week’s support tickets', updatedAt: NOW - 26 * 60 * 60_000, current: false },
   ],
   currentConversationId: '0a1b2c3d-0000-4000-8000-000000000001',
-  settings: { autoRun: false, notifyCoordinator: true, autoLaunchDependents: false, herdrSshTarget: null },
+  settings: { autoRun: false, notifyCoordinator: true, autoLaunchDependents: false, herdrSshTarget: null, taskSkills: true },
 };
 
 const noop = (): void => {};

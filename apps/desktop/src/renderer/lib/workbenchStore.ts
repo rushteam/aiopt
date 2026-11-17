@@ -37,6 +37,7 @@ const EMPTY: WorkbenchSnapshot = {
   model: null,
   lastNotify: null,
   pendingWrites: [],
+  skills: [],
   streaming: false,
   chat: [],
   chatHasMore: false,

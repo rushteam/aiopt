@@ -983,6 +983,15 @@
         "session": "Session",
         "dir": "Dossier",
         "file": "Fichier"
+      },
+      "slash": {
+        "label": "Commandes et compétences",
+        "empty": "Aucune commande ni compétence correspondante.",
+        "hint": "↑↓ pour naviguer · Entrée pour insérer · Échap pour fermer",
+        "coordinatorHint": "Le coordinateur n'exécute pas les compétences lui-même : il propose une tâche qui exécute la compétence.",
+        "skill": "Compétence",
+        "command": "Commande",
+        "new": "Démarrer une nouvelle conversation"
       }
     },
     "sidebar": {
@@ -1178,6 +1187,8 @@
       "waitingOn": "En attente de :",
       "notify": "Informer le coordinateur",
       "notifyHint": "Quand une tâche attend une revue, une réponse, échoue ou est marquée terminée/arrêtée, prévenir le coordinateur pour qu'il résume dans la conversation.",
+      "skills": "Compétences des tâches",
+      "skillsHint": "Les agents des tâches chargent les compétences de votre bibliothèque Skills ; lancez-en une avec /skill:nom. Désactivé : les tâches démarrent sans compétence.",
       "promptPlaceholder": "Ex. : ajouter la validation des champs au formulaire d'inscription dans src/auth, puis lancer les tests unitaires et corriger les échecs.",
       "promptHint": "L'agent ne voit que ce texte, pas la conversation. Indiquez l'objectif, les fichiers concernés et comment vérifier le résultat. Tapez @ pour ajouter une session comme contexte."
     },

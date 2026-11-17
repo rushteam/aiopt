@@ -7,7 +7,7 @@ import { hoverBackground } from '../../lib/hover';
 import type { TranslateFn } from '../../i18n';
 import { CheckboxField } from '../../components/ui/Checkbox';
 import { Select } from '../../components/ui/Select';
-import { WORKBENCH_LIMITS, type FolderView } from '../../../shared/workbench';
+import { WORKBENCH_LIMITS, type FolderView, type WorkbenchSkillView } from '../../../shared/workbench';
 import { useMentionPicker, useMentionSource } from './mentionPicker';
 
 export interface Draft {
@@ -22,6 +22,7 @@ export interface Draft {
 export function TaskForm({
   t,
   folders,
+  skills = [],
   initial,
   submitLabel,
   lockPlace = false,
@@ -31,6 +32,8 @@ export function TaskForm({
 }: {
   t: TranslateFn;
   folders: readonly FolderView[];
+  /** Offered after a leading `/` in the prompt (the worker runs `/skill:<name>`). */
+  skills?: readonly WorkbenchSkillView[];
   initial: Draft;
   submitLabel: string;
   /** The task already has a worktree, so where it runs can't change. */
@@ -45,7 +48,7 @@ export function TaskForm({
   const promptRef = useRef<HTMLTextAreaElement>(null);
   // `@` in the prompt picks a session; its excerpt is attached when the worker starts.
   const picker = useMentionPicker({
-    mentions: useMentionSource(t),
+    mentions: useMentionSource(t, [], [], { skills }),
     draft: draft.prompt,
     setDraft: (prompt) => setDraft((d) => ({ ...d, prompt })),
     maxLength: WORKBENCH_LIMITS.taskPrompt,
