@@ -103,7 +103,31 @@ export const nodeWorkbenchFs: WorkbenchFs = {
       if (fd !== null) fs.closeSync(fd);
     }
   },
+  readRegularFileTail: (file, maxBytes) => {
+    let fd: number | null = null;
+    try {
+      const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
+      fd = fs.openSync(file, flags);
+      const st = fs.fstatSync(fd);
+      if (!st.isFile()) return null;
+      const length = Math.min(maxBytes, st.size);
+      const buf = Buffer.alloc(length);
+      const n = length > 0 ? fs.readSync(fd, buf, 0, length, st.size - length) : 0;
+      return { tail: buf.subarray(0, n).toString('utf8'), size: st.size };
+    } catch {
+      return null;
+    } finally {
+      if (fd !== null) fs.closeSync(fd);
+    }
+  },
   removeFile: (file) => fs.unlinkSync(file),
+  removeEmptyDir: (dir) => {
+    try {
+      fs.rmdirSync(dir);
+    } catch {
+      // Not empty, missing, or not a directory: leave it.
+    }
+  },
 };
 
 function execNode(

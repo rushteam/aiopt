@@ -37,7 +37,7 @@ function setup(picked: string | null = '/work/app') {
     completeTask: vi.fn(async () => {}),
     stopTask: vi.fn(async () => {}),
     removeTask: vi.fn(async () => {}),
-    taskOutput: vi.fn(async () => 'out'),
+    taskOutput: vi.fn(async () => ({ text: 'out', items: null })),
     taskChanges: vi.fn(async () => ({ since: 'launch' as const, files: [], truncated: false })),
     runAll: vi.fn(() => 0),
     approveTasks: vi.fn(),
@@ -257,7 +257,7 @@ describe('workbench ipc', () => {
 
     await reg.invoke(IPC_CHANNELS.workbenchTaskMessage, { taskId: 'id1', text: 'go on' }, trusted);
     expect(manager.messageTask).toHaveBeenCalledWith('id1', 'go on');
-    expect(await reg.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId: 'id1' }, trusted)).toEqual({ text: 'out' });
+    expect(await reg.invoke(IPC_CHANNELS.workbenchTaskOutput, { taskId: 'id1' }, trusted)).toEqual({ text: 'out', items: null });
     // Only the task id reaches the manager: a path in the payload is ignored.
     await reg.invoke(IPC_CHANNELS.workbenchTaskChanges, { taskId: 'id1', path: '/etc' }, trusted);
     expect(manager.taskChanges).toHaveBeenCalledWith('id1');

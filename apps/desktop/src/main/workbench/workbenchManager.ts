@@ -17,7 +17,9 @@
 //   - `sessions/`: pi's own session files, one per conversation, so "new conversation" keeps
 //     the old one and the last one reopens on start. The renderer names a conversation by the
 //     uuid in a file name main listed itself, never by a path;
-//   - `settings.json`: the user's workbench preferences, overrides only.
+//   - `settings.json`: the user's workbench preferences, overrides only;
+//   - `task-sessions/<taskId>/`: a local worker's own pi session file (its worker chat, read
+//     back by `taskOutput`), removed with the task.
 //
 // Security notes (docs/dev-rules/electron-security-and-process-boundaries.md,
 // credentials-and-local-storage.md):
@@ -62,6 +64,8 @@ import {
   type FolderListing,
   type FolderView,
   type TaskChanges,
+  type TaskOutput,
+  type ChatItem,
   type TaskFailure,
   type TaskOrigin,
   type TaskStatus,
@@ -120,6 +124,7 @@ import { installManagedHerdr } from './herdrInstall';
 import { WORKER_EXTENSION_SOURCE } from './workerExtension';
 import { WRITE_GATE_DIR_ENV, createWriteGate, type WriteGate } from './writeGate';
 import { createTimeline, parseTimeline } from './timeline';
+import { TASK_SESSION_TAIL_BYTES, newestSessionFile, parseTaskSession } from './taskSession';
 import {
   EMPTY_SKILL_SCAN,
   skillScanSignature,
@@ -170,7 +175,11 @@ export interface WorkbenchFs {
    * symlink followed, never blocking on a FIFO/device); null when it is anything else.
    */
   readRegularFileHead(file: string, maxBytes: number): { head: string; size: number } | null;
+  /** The last `maxBytes` of a REGULAR file plus its size, checked like `readRegularFileHead`. */
+  readRegularFileTail(file: string, maxBytes: number): { tail: string; size: number } | null;
   removeFile(file: string): void;
+  /** Remove a directory if it is empty (anything else is left alone, silently). */
+  removeEmptyDir(dir: string): void;
 }
 
 export interface WorkbenchDeps {
@@ -267,7 +276,7 @@ export interface WorkbenchManager {
   completeTask(taskId: string): Promise<void>;
   stopTask(taskId: string): Promise<void>;
   removeTask(taskId: string): Promise<void>;
-  taskOutput(taskId: string): Promise<string>;
+  taskOutput(taskId: string): Promise<TaskOutput>;
   /** What a task changed in its checkout (read-only git; local herdr only). */
   taskChanges(taskId: string): Promise<TaskChanges>;
   /** Launch every proposed task that has a folder, up to the live limit; returns how many. */
@@ -491,6 +500,9 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   /** Task status changes and coordinator turns for the timeline view (display data only). */
   const timelineFile = path.join(deps.dataDir, 'timeline.json');
   const sessionsDir = path.join(deps.dataDir, 'sessions');
+  const taskSessionsDir = path.join(deps.dataDir, 'task-sessions');
+  /** The last parse of each task's session file, reused while the file is unchanged. */
+  const taskChatCache = new Map<string, { file: string; size: number; mtimeMs: number; items: ChatItem[] }>();
 
   let status: WorkbenchStatus = 'stopped';
   let issue: WorkbenchIssue | null = null;
@@ -700,8 +712,20 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
   }
 
   /** Worker flags with the write gate and the Skills library loaded (local herdr only). */
-  function workerArgs(): string[] {
-    return [...WORKER_PI_ARGS, '--extension', workerExtensionFile, ...workerSkillArgs(skillScan, settings.taskSkills)];
+  function workerArgs(taskId: string): string[] {
+    return [
+      ...WORKER_PI_ARGS,
+      '--extension',
+      workerExtensionFile,
+      '--session-dir',
+      taskSessionDir(taskId),
+      ...workerSkillArgs(skillScan, settings.taskSkills),
+    ];
+  }
+
+  /** A local worker's pi session directory (main-built: the task id is one main minted). */
+  function taskSessionDir(taskId: string): string {
+    return path.join(taskSessionsDir, taskId);
   }
 
   /** Rescan the Skills library at most every SKILL_RESCAN_MS unless `force`d. */
@@ -2076,8 +2100,11 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
       paneOfTask.set(t.id, paneId);
       const agentName = `wb-${t.id}`;
       t.agentName = agentName;
-      if (writeGate) refreshSkills(true);
-      await client.agentStart(agentName, paneId, writeGate ? workerArgs() : WORKER_PI_ARGS);
+      if (writeGate) {
+        refreshSkills(true);
+        deps.fs.mkdirp(taskSessionDir(t.id));
+      }
+      await client.agentStart(agentName, paneId, writeGate ? workerArgs(t.id) : WORKER_PI_ARGS);
       // The board keeps the prompt as written; @session excerpts are attached only on the way
       // to the worker (same as the coordinator chat), so the snapshot and list_tasks stay small.
       await client.agentPrompt(agentName, skillCommandLine(await withSessionContext(t.prompt)));
@@ -2225,6 +2252,7 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
     tasks.delete(taskId);
     paneOfTask.delete(taskId);
+    removeTaskSession(taskId);
     for (const other of tasks.values()) {
       if (other.dependsOn.includes(taskId)) {
         other.dependsOn = other.dependsOn.filter((id) => id !== taskId);
@@ -2276,19 +2304,65 @@ export function createWorkbenchManager(deps: WorkbenchDeps): WorkbenchManager {
     }
   }
 
-  async function taskOutput(taskId: string): Promise<string> {
+  async function taskOutput(taskId: string): Promise<TaskOutput> {
     const t = tasks.get(taskId);
     if (!t) throwIpcError('NOT_FOUND', 'task not found');
-    if (!t.agentName || !isLiveTaskStatus(t.status) || launching.has(taskId)) return '';
+    const items = taskChatItems(taskId);
+    if (!t.agentName || !isLiveTaskStatus(t.status) || launching.has(taskId)) return { text: '', items };
     const client = requireHerdr();
     try {
       const text = await client.agentRead(t.agentName, WORKBENCH_LIMITS.outputLines);
       // Terminal text is shown as plain text: strip control characters (escape sequences).
-      return sanitizeWorkbenchText(text).slice(-WORKBENCH_LIMITS.itemText);
+      return { text: sanitizeWorkbenchText(text).slice(-WORKBENCH_LIMITS.itemText), items };
     } catch (err) {
       log.debug('workbench.task_output_failed', { code: errorCode(err) });
-      return '';
+      return { text: '', items };
     }
+  }
+
+  /**
+   * The worker chat from the task's newest session file, or null when it has none (an SSH
+   * worker, or a task that ran before session directories). Only regular files of a no-follow
+   * listing are read, and only their capped tail.
+   */
+  function taskChatItems(taskId: string): ChatItem[] | null {
+    const dir = taskSessionDir(taskId);
+    const entries = deps.fs
+      .listDirEntries(dir)
+      .filter((e) => e.kind === 'file')
+      .map((e) => ({ ...e, mtimeMs: deps.fs.statFile(path.join(dir, e.name))?.mtimeMs ?? 0 }));
+    const name = newestSessionFile(entries);
+    if (!name) {
+      taskChatCache.delete(taskId);
+      return null;
+    }
+    const file = path.join(dir, name);
+    const stat = deps.fs.statFile(file);
+    if (!stat) return null;
+    const cached = taskChatCache.get(taskId);
+    if (cached && cached.file === file && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) {
+      return cached.items;
+    }
+    const read = deps.fs.readRegularFileTail(file, TASK_SESSION_TAIL_BYTES);
+    if (!read) return null;
+    const items = parseTaskSession(read.tail, read.size > TASK_SESSION_TAIL_BYTES);
+    taskChatCache.set(taskId, { file, size: stat.size, mtimeMs: stat.mtimeMs, items });
+    return items;
+  }
+
+  /** Delete a removed task's session files (only regular files; then the empty directory). */
+  function removeTaskSession(taskId: string): void {
+    taskChatCache.delete(taskId);
+    const dir = taskSessionDir(taskId);
+    for (const e of deps.fs.listDirEntries(dir)) {
+      if (e.kind !== 'file') continue;
+      try {
+        deps.fs.removeFile(path.join(dir, e.name));
+      } catch (err) {
+        log.debug('workbench.task_session_remove_failed', { code: errorCode(err) });
+      }
+    }
+    deps.fs.removeEmptyDir(dir);
   }
 
   // --- task changes (read-only git) -----------------------------------------------------

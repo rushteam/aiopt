@@ -1146,7 +1146,11 @@
       "title": "タスクチャット",
       "empty": "タスクを選ぶと、最初のプロンプトがここに表示されます。",
       "placeholder": "この Agent への追加指示",
-      "waitLaunch": "タスクを実行してから Agent とチャットできます。"
+      "waitLaunch": "タスクを実行してから Agent とチャットできます。",
+      "viewMode": "表示",
+      "viewChat": "チャット",
+      "viewTerminal": "ターミナル",
+      "terminalEmpty": "ターミナル出力はまだありません。"
     },
     "tasks": {
       "title": "タスク",

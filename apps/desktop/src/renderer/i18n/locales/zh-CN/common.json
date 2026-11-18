@@ -1146,7 +1146,11 @@
       "title": "任务对话",
       "empty": "选择任务后，初始提示会显示在这里。",
       "placeholder": "给该 Agent 的补充说明",
-      "waitLaunch": "请先运行任务，再与 Agent 对话。"
+      "waitLaunch": "请先运行任务，再与 Agent 对话。",
+      "viewMode": "视图",
+      "viewChat": "对话",
+      "viewTerminal": "终端",
+      "terminalEmpty": "暂无终端输出。"
     },
     "tasks": {
       "title": "任务",

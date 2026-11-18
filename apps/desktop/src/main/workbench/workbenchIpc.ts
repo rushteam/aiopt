@@ -325,7 +325,7 @@ export function registerWorkbenchIpc(
 
   registry.register(IPC_CHANNELS.workbenchTaskOutput, async (payload, meta) => {
     meta.assertTrustedSender();
-    return { text: await manager.taskOutput(taskId(payload)) };
+    return manager.taskOutput(taskId(payload));
   });
 
   // Read-only: main picks the checkout from its own task record (never a renderer path).
