@@ -57,6 +57,16 @@ describe('promptText', () => {
     expect(promptText('  fix the bug')).toBe('fix the bug');
   });
 
+  it('lets only a well-formed /skill: command through', () => {
+    expect(promptText('/skill:code-review the last commit')).toBe('/skill:code-review the last commit');
+    expect(promptText('/skill:code-review')).toBe('/skill:code-review');
+    expect(promptText('/skill:Bad_Name x')).toBe('Message: /skill:Bad_Name x');
+    expect(promptText('/skill:review;rm x')).toBe('Message: /skill:review;rm x');
+    expect(promptText('/skill: x')).toBe('Message: /skill: x');
+    expect(promptText('/skills x')).toBe('Message: /skills x');
+    expect(promptText(`/skill:${'a'.repeat(65)} x`)).toBe(`Message: /skill:${'a'.repeat(65)} x`);
+  });
+
   it('strips control characters (an ESC typed into a terminal is a command)', () => {
     expect(promptText('a\u001b[2Jb\r\nc')).toBe('a[2Jb\nc');
   });

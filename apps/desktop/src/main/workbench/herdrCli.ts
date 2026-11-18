@@ -17,6 +17,7 @@
 
 import { isValidAgentName, isValidWorkbenchBranch, sanitizeWorkbenchText } from '../../shared/workbench';
 import { toHerdrAgentStatus, type HerdrAgentStatus } from './taskModel';
+import { isSkillCommandName } from './workbenchSkills';
 
 export interface ExecResult {
   code: number | null;
@@ -154,10 +155,20 @@ function firstLine(text: string): string {
  * command and a leading `/` a slash command — and a leading `-` would be read by herdr's own
  * option parser. A task prompt must only ever be a message, so any of those is prefixed with a
  * word (a leading space is NOT enough: pi trims it).
+ *
+ * The one slash command let through is `/skill:<name>` with a valid skill name, followed by a
+ * space or the end: pi only expands it into that skill's instructions (an unknown name stays
+ * plain text). It runs nothing and changes no setting, unlike other commands or `!`.
  */
 export function promptText(text: string): string {
   const clean = sanitizeWorkbenchText(text).slice(0, MAX_PROMPT);
+  if (isSkillCommand(clean)) return clean;
   return /^[!/-]/.test(clean) ? `Message: ${clean}` : clean;
+}
+
+function isSkillCommand(text: string): boolean {
+  const m = /^\/skill:([^\s]*)(?:[ \t]|$)/.exec(text);
+  return m !== null && isSkillCommandName(m[1]);
 }
 
 function paneRef(result: Record<string, unknown>): HerdrPaneRef {
