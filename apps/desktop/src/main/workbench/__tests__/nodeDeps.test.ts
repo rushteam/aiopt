@@ -37,3 +37,38 @@ describe('nodeWorkbenchFs.readRegularFileHead', () => {
     }
   });
 });
+
+describe('nodeWorkbenchFs.readRegularFileTail / removeEmptyDir', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aiopt-wb-nodedeps-'));
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('reads the tail of a regular file with its full size, and refuses a directory', () => {
+    const file = path.join(dir, 'a.txt');
+    fs.writeFileSync(file, 'hello world');
+    expect(nodeWorkbenchFs.readRegularFileTail(file, 5)).toEqual({ tail: 'world', size: 11 });
+    expect(nodeWorkbenchFs.readRegularFileTail(file, 50)).toEqual({ tail: 'hello world', size: 11 });
+    expect(nodeWorkbenchFs.readRegularFileTail(dir, 5)).toBeNull();
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(file, path.join(dir, 'link'));
+      expect(nodeWorkbenchFs.readRegularFileTail(path.join(dir, 'link'), 5)).toBeNull();
+    }
+  });
+
+  it('removes only an empty directory', () => {
+    const full = path.join(dir, 'full');
+    fs.mkdirSync(full);
+    fs.writeFileSync(path.join(full, 'x'), 'x');
+    nodeWorkbenchFs.removeEmptyDir(full);
+    expect(fs.existsSync(full)).toBe(true);
+    const empty = path.join(dir, 'empty');
+    fs.mkdirSync(empty);
+    nodeWorkbenchFs.removeEmptyDir(empty);
+    expect(fs.existsSync(empty)).toBe(false);
+    nodeWorkbenchFs.removeEmptyDir(path.join(dir, 'missing'));
+  });
+});

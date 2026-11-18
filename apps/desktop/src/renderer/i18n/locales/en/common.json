@@ -1146,7 +1146,11 @@
       "title": "Task chat",
       "empty": "The initial prompt appears here after you select a task.",
       "placeholder": "Follow-up instructions for this agent",
-      "waitLaunch": "Run the task to chat with its agent."
+      "waitLaunch": "Run the task to chat with its agent.",
+      "viewMode": "View",
+      "viewChat": "Chat",
+      "viewTerminal": "Terminal",
+      "terminalEmpty": "No terminal output yet."
     },
     "tasks": {
       "title": "Tasks",

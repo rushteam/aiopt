@@ -1146,7 +1146,11 @@
       "title": "Chat de la tarea",
       "empty": "Selecciona una tarea para ver el prompt inicial aquí.",
       "placeholder": "Instrucciones de seguimiento para este agente",
-      "waitLaunch": "Ejecuta la tarea para chatear con su agente."
+      "waitLaunch": "Ejecuta la tarea para chatear con su agente.",
+      "viewMode": "Vista",
+      "viewChat": "Chat",
+      "viewTerminal": "Terminal",
+      "terminalEmpty": "Aún no hay salida de terminal."
     },
     "tasks": {
       "title": "Tareas",

@@ -534,9 +534,15 @@ export interface WorkbenchChatPage {
   epoch: number;
 }
 
-/** The tail of a worker's terminal. */
+/** A worker's recent terminal text and its chat (from its own pi session file). */
 export interface TaskOutput {
+  /** The tail of the worker's terminal; '' when it is not running. */
   text: string;
+  /**
+   * The worker's messages and tool calls, newest last (capped); null when the task has no
+   * session file AiOpt can read (an SSH worker, or one launched before task sessions).
+   */
+  items: ChatItem[] | null;
 }
 
 export type TaskChangeStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';

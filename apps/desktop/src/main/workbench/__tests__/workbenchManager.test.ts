@@ -214,7 +214,7 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
     homeDir: '/u',
     env: { PATH: '/usr/bin', HOME: '/u', OPENAI_API_KEY: 'leak-me-not' },
     fs: {
-      mkdirp: () => {},
+      mkdirp: vi.fn(),
       writeFile: (file, contents) => void disk.set(file, contents),
       readFile: (file) => disk.get(file) ?? null,
       isDirectory: (p) => dirs.has(p),
@@ -241,8 +241,15 @@ function setup(over: Partial<WorkbenchDeps> = {}, files: Record<string, string> 
         const contents = disk.get(file);
         return contents === undefined ? null : { head: contents.slice(0, maxBytes), size: contents.length };
       },
+      readRegularFileTail: (file, maxBytes) => {
+        const contents = disk.get(file);
+        return contents === undefined ? null : { tail: contents.slice(-maxBytes), size: contents.length };
+      },
       removeFile: (file) => {
         if (!disk.delete(file)) throw new Error('ENOENT');
+      },
+      removeEmptyDir: (dir) => {
+        if ([...disk.keys()].every((f) => path.dirname(f) !== dir)) dirs.delete(dir);
       },
     },
     findBinary: (name) => `/opt/bin/${name}`,
@@ -688,7 +695,10 @@ describe('workbench tasks', () => {
       ...WORKER_PI_ARGS,
       '--extension',
       path.join(DATA, 'worker-extension.mjs'),
+      '--session-dir',
+      path.join(DATA, 'task-sessions', id),
     ]);
+    expect(s.deps.fs.mkdirp).toHaveBeenCalledWith(path.join(DATA, 'task-sessions', id));
     expect(s.herdr.client.agentPrompt).toHaveBeenCalledWith(`wb-${id}`, 'fix the bug');
     expect(s.wb.getSnapshot().tasks[0]).toMatchObject({ status: 'working', agentName: `wb-${id}` });
 
@@ -841,10 +851,32 @@ describe('workbench tasks', () => {
   it('reads worker output as plain text', async () => {
     const s = await withFolder();
     const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId: s.folderId });
-    expect(await s.wb.taskOutput(id)).toBe('');
+    expect(await s.wb.taskOutput(id)).toEqual({ text: '', items: null });
     s.wb.launchTask(id);
     await flush();
-    expect(await s.wb.taskOutput(id)).toBe('hello[2J world');
+    expect(await s.wb.taskOutput(id)).toEqual({ text: 'hello[2J world', items: null });
+  });
+
+  it("reads the worker chat from the task's newest session file, and removes it with the task", async () => {
+    const s = await withFolder();
+    const id = s.wb.createTask({ title: 'T', prompt: 'p', folderId: s.folderId });
+    const dir = path.join(DATA, 'task-sessions', id);
+    const line = (role: string, text: string) =>
+      JSON.stringify({ type: 'message', message: { role, content: [{ type: 'text', text }] } });
+    s.disk.set(path.join(dir, '2026-01-01T00-00-00-000Z_a.jsonl'), `${line('user', 'old')}\n`);
+    s.disk.set(
+      path.join(dir, '2026-01-02T00-00-00-000Z_b.jsonl'),
+      [JSON.stringify({ type: 'session' }), line('user', 'Message: /login'), line('assistant', 'done')].join('\n'),
+    );
+    // A symlink planted in the directory is never read.
+    s.links.set(path.join(dir, '2026-01-09T00-00-00-000Z_z.jsonl'), '/etc/passwd');
+    const out = await s.wb.taskOutput(id);
+    expect(out.items?.map((i) => (i.kind === 'user' || i.kind === 'assistant' ? [i.kind, i.text] : i.kind))).toEqual([
+      ['user', '/login'],
+      ['assistant', 'done'],
+    ]);
+    await s.wb.removeTask(id);
+    expect([...s.disk.keys()].some((f) => f.startsWith(dir))).toBe(false);
   });
 });
 
@@ -1500,6 +1532,8 @@ describe('workbench task skills', () => {
       ...WORKER_PI_ARGS,
       '--extension',
       path.join(DATA, 'worker-extension.mjs'),
+      '--session-dir',
+      path.join(DATA, 'task-sessions', id),
       '--skill',
       `${lib}/review`,
     ]);
@@ -1518,6 +1552,8 @@ describe('workbench task skills', () => {
       ...WORKER_PI_ARGS,
       '--extension',
       path.join(DATA, 'worker-extension.mjs'),
+      '--session-dir',
+      path.join(DATA, 'task-sessions', id),
       '--no-skills',
     ]);
   });

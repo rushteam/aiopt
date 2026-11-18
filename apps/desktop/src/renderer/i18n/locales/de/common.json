@@ -1146,7 +1146,11 @@
       "title": "Aufgaben-Chat",
       "empty": "Wählen Sie eine Aufgabe, dann erscheint der Start-Prompt hier.",
       "placeholder": "Nachfolgende Anweisungen an den Agenten",
-      "waitLaunch": "Starten Sie die Aufgabe, um mit dem Agenten zu chatten."
+      "waitLaunch": "Starten Sie die Aufgabe, um mit dem Agenten zu chatten.",
+      "viewMode": "Ansicht",
+      "viewChat": "Chat",
+      "viewTerminal": "Terminal",
+      "terminalEmpty": "Noch keine Terminalausgabe."
     },
     "tasks": {
       "title": "Aufgaben",

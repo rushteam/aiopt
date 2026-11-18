@@ -84,7 +84,12 @@ function memFs(files: Map<string, { text: string; mtimeMs: number }>): Workbench
       const f = files.get(file);
       return f ? { head: f.text.slice(0, max), size: f.text.length } : null;
     },
+    readRegularFileTail: (file, max) => {
+      const f = files.get(file);
+      return f ? { tail: f.text.slice(-max), size: f.text.length } : null;
+    },
     removeFile: (file) => void files.delete(file),
+    removeEmptyDir: () => {},
   };
 }
 

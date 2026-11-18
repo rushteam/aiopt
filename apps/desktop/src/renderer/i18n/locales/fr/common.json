@@ -1146,7 +1146,11 @@
       "title": "Chat de la tâche",
       "empty": "Sélectionnez une tâche pour afficher le prompt initial ici.",
       "placeholder": "Instructions de suivi pour cet agent",
-      "waitLaunch": "Lancez la tâche pour discuter avec son agent."
+      "waitLaunch": "Lancez la tâche pour discuter avec son agent.",
+      "viewMode": "Affichage",
+      "viewChat": "Discussion",
+      "viewTerminal": "Terminal",
+      "terminalEmpty": "Aucune sortie de terminal pour l’instant."
     },
     "tasks": {
       "title": "Tâches",
