@@ -15,12 +15,14 @@ import { generateOAuthState, generatePkce } from './pkce';
 import { startOAuthCallbackServer } from './callbackServer';
 import { clearOAuthTokens, readOAuthTokens, writeOAuthTokens } from './oauthTokenStore';
 import { getOAuthDriver } from './drivers/registry';
-import type { OAuthFetch } from './drivers/types';
+import type { OAuthDeviceCodePrompt, OAuthFetch } from './drivers/types';
 import { logger } from '../logger';
 
 const log = logger.child('oauth');
 
 const REFRESH_SKEW_MS = 60_000;
+/** Back-off after a failed refresh before the token endpoint is tried again. */
+const REFRESH_RETRY_MS = 60_000;
 
 export interface OAuthManager {
   getStatus(providerId: string): OAuthProviderStatus;
@@ -44,8 +46,14 @@ export function createOAuthManager(deps: {
   secrets: SecretStore;
   fetchImpl: OAuthFetch;
   onProvidersChanged: () => void;
+  /** Main-owned native dialog for device-code logins (GitHub Copilot). */
+  showDeviceCode?: (prompt: OAuthDeviceCodePrompt) => Promise<boolean>;
 }): OAuthManager {
   let pending: PendingFlow | null = null;
+  // One refresh per provider at a time: vendors rotate refresh tokens (single use), so two
+  // concurrent proxy requests must share the same refresh rather than burn the token twice.
+  const refreshing = new Map<string, Promise<string | null>>();
+  const refreshFailedAt = new Map<string, number>();
 
   function requireOAuthProvider(providerId: string): Provider {
     const provider = deps.store.getProvider(providerId);
@@ -93,6 +101,10 @@ export function createOAuthManager(deps: {
       },
       deps.fetchImpl,
     );
+    // A disconnect (or re-login) during the refresh wins: don't resurrect cleared tokens.
+    if (readOAuthTokens(deps.secrets, provider.id)?.accessToken !== bundle.accessToken) {
+      throwIpcError('PRECONDITION_FAILED', 'OAuth tokens changed during refresh');
+    }
     writeOAuthTokens(deps.secrets, provider.id, next);
     return next;
   }
@@ -101,14 +113,27 @@ export function createOAuthManager(deps: {
     return readOAuthTokens(deps.secrets, providerId)?.accessToken ?? null;
   }
 
-  async function getAccessToken(providerId: string): Promise<string | null> {
+  function getAccessToken(providerId: string): Promise<string | null> {
+    const inflight = refreshing.get(providerId);
+    if (inflight) return inflight;
+    const run = resolveAccessToken(providerId).finally(() => refreshing.delete(providerId));
+    refreshing.set(providerId, run);
+    return run;
+  }
+
+  async function resolveAccessToken(providerId: string): Promise<string | null> {
     const provider = deps.store.getProvider(providerId);
     if (!provider || !providerUsesOAuth(provider.credentialMode)) return null;
     let bundle = readOAuthTokens(deps.secrets, providerId);
     if (!bundle) return null;
+    // After a failed refresh, wait before hitting the vendor's token endpoint again.
+    const failed = refreshFailedAt.get(providerId);
+    if (failed !== undefined && Date.now() - failed < REFRESH_RETRY_MS) return null;
     try {
       bundle = await refreshIfNeeded(provider, bundle);
+      refreshFailedAt.delete(providerId);
     } catch (err) {
+      refreshFailedAt.set(providerId, Date.now());
       log.warn('oauth.refresh_failed', {
         code: err instanceof Error ? err.message.match(/^\[([A-Z_]+)\]/)?.[1] : undefined,
       });
@@ -130,8 +155,10 @@ export function createOAuthManager(deps: {
         const outcome = await driver.runLogin({
           fetchImpl: deps.fetchImpl,
           openExternal: openExternalUrl,
+          showDeviceCode: deps.showDeviceCode,
         });
         writeOAuthTokens(deps.secrets, providerId, outcome.tokens);
+        refreshFailedAt.delete(providerId);
         const label = outcome.accountLabel?.trim() || 'Connected';
         deps.store.replaceProvider({
           ...provider,
@@ -176,6 +203,7 @@ export function createOAuthManager(deps: {
         deps.fetchImpl,
       );
       writeOAuthTokens(deps.secrets, providerId, tokens);
+      refreshFailedAt.delete(providerId);
 
       const updated: Provider = {
         ...provider,
@@ -192,6 +220,7 @@ export function createOAuthManager(deps: {
 
   function disconnect(providerId: string): void {
     clearOAuthTokens(deps.secrets, providerId);
+    refreshFailedAt.delete(providerId);
     const provider = deps.store.getProvider(providerId);
     if (provider?.oauth) {
       deps.store.replaceProvider({

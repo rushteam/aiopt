@@ -37,6 +37,7 @@ import type { ProxyStateStore } from './proxyStore';
 import { geminiOutboundUrl, outboundHeaders, outboundUrl, type ProxyFetch } from './upstream';
 import { sanitizeOutboundBody } from './sanitize';
 import { applyExtraBody, autoFixRequest } from './requestFixes';
+import { adaptSubscriptionRequest, type SubscriptionWire } from './subscriptionWire';
 import { injectPromptCache } from './promptCache';
 import { SseDecoder, serializeSse, type SseEvent } from './translate/streaming';
 import { createUsageSniffer, readResponseUsage, zeroUsage, type UsageCounts } from './usageSniffer';
@@ -104,6 +105,16 @@ export interface TranslationProxyDeps {
   getPromptCache?: () => boolean;
   /** Extra outbound headers for a provider (imported sign-ins that want the key both ways). */
   getExtraHeaders?: (providerId: string, apiKey: string | null) => Record<string, string>;
+  /**
+   * Subscription wire for a provider (ChatGPT / Claude / Copilot sign-ins; see
+   * subscriptionWire.ts), live. Absent / null = the plain API-key wire.
+   */
+  getSubscriptionWire?: (providerId: string) => SubscriptionWire | null;
+  /**
+   * Refresh a provider's short-lived token before {@link getKey} reads it (OAuth). Must not
+   * throw; a failed refresh leaves the stored token for the upstream to judge.
+   */
+  refreshKey?: (providerId: string) => Promise<void>;
   /**
    * Record one upstream attempt (counts + identifiers only; the store stamps `ts`).
    * Optional so existing constructors/tests need not supply it. Never throws into the
@@ -523,15 +534,27 @@ export function createTranslationProxy(deps: TranslationProxyDeps): TranslationP
           return;
         }
 
+        await deps.refreshKey?.(candidate.providerId).catch(() => undefined);
         const apiKey = deps.getKey(candidate.providerId);
-        const url =
+        let url =
           candidate.outboundFormat === 'gemini'
             ? geminiOutboundUrl(candidate.upstreamBaseUrl, candidate.modelId, wantsStream)
             : outboundUrl(candidate.outboundFormat, candidate.upstreamBaseUrl);
-        const headers = {
+        const headers: Record<string, string> = {
           ...outboundHeaders(candidate.outboundFormat, apiKey),
           ...deps.getExtraHeaders?.(candidate.providerId, apiKey),
         };
+        const wire = deps.getSubscriptionWire?.(candidate.providerId) ?? null;
+        if (wire) {
+          // Shallow copy: an identity transform may hand back the parsed request itself, and a
+          // later failover candidate must not inherit this vendor's body fields.
+          outboundBody = { ...outboundBody };
+          url = adaptSubscriptionRequest(wire, candidate.outboundFormat, candidate.upstreamBaseUrl, apiKey, {
+            url,
+            headers,
+            body: outboundBody,
+          });
+        }
 
         const send = (body: Record<string, unknown>) =>
           deps

@@ -276,7 +276,7 @@
       "keySavedHidden": "A key is saved · hidden for security. Leave blank to keep it, or type to replace.",
       "credentialModeLocked": "Authentication type cannot be changed after the provider is created.",
       "oauthHint": "After saving, use Connect on the provider card to sign in. Tokens stay in the app — they are never written to agent config.",
-      "oauthStubHint": "Built-in ChatGPT / Claude / Copilot sign-in is coming in a gated release. For now use an API key preset or Custom OAuth for your own IdP.",
+      "oauthSubscriptionHint": "Sign-in uses the service's own client (the same flow as its CLI). Make sure your use complies with the subscription's terms.",
       "oauthScopesPlaceholder": "space-separated scopes",
       "dropNone": "Nothing stripped",
       "dropHint": "Some upstreams reject a request carrying a parameter they don't recognize instead of ignoring it — a gateway in front of a strict backend is the usual cause. Pick the parameters to strip before AiOpt forwards a request to this provider.",

@@ -54,6 +54,9 @@ import { createKiroAuth } from './upstreams/kiro/auth';
 import { createCodeArtsDriver, type CodeArtsFetch } from './upstreams/codearts/driver';
 import { createCodeArtsAuth } from './upstreams/codearts/auth';
 import { vendorHeaders } from './proxy/vendorHeaders';
+import { subscriptionWireFor } from './proxy/subscriptionWire';
+import { buildDeviceCodeDialog } from './oauth/deviceCodeDialog';
+import { providerUsesOAuth } from '../shared/oauthProviders';
 import { createUsageStore, createFileUsagePersistence, type UsageStore } from './usage/usageStore';
 import { createAgentSessionStore, type AgentSessionStore } from './sessions/agentSessionStore';
 import { createMcpStore, type McpStore } from './mcp/mcpStore';
@@ -295,6 +298,14 @@ export function getOAuthManager(): OAuthManager {
       store: getProviderStore(),
       secrets: getSecretStore(),
       fetchImpl: (url, init) => net.fetch(url, init),
+      // Device-code sign-in (Copilot): the user code stays in a main-owned dialog; confirming
+      // copies it to the clipboard before the driver opens the vendor's device page.
+      showDeviceCode: async (prompt) => {
+        const locale = resolveMenuLocaleForPreference(getConfigStore().get('language'), app.getLocale());
+        const ok = await showNativeConfirm(buildDeviceCodeDialog(locale, prompt));
+        if (ok) clipboard.writeText(prompt.userCode);
+        return ok;
+      },
       onProvidersChanged: () => {
         if (providerManager) {
           broadcastToRenderers(IPC_EVENTS.providersChanged, providerManager.getSnapshot());
@@ -447,6 +458,13 @@ export function getTranslationProxy(): TranslationProxy {
       // Imported sign-ins that want the key both ways (Command Code, ZCode), live.
       getExtraHeaders: (providerId, apiKey) =>
         vendorHeaders(getProviderStore().getProvider(providerId)?.agentImport?.agentId, apiKey),
+      // ChatGPT / Claude / Copilot sign-ins need their vendor's wire (subscriptionWire.ts), live.
+      getSubscriptionWire: (providerId) => subscriptionWireFor(getProviderStore().getProvider(providerId)),
+      // Short-lived OAuth tokens are refreshed (single-flight) before the key is read.
+      refreshKey: async (providerId) => {
+        const provider = getProviderStore().getProvider(providerId);
+        if (provider && providerUsesOAuth(provider.credentialMode)) await getOAuthManager().getAccessToken(providerId);
+      },
       // Record every upstream attempt (counts + ids only) for the statistics view.
       recordUsage: (event) => getUsageStore().record(event),
       // Persist the port + route tokens so they survive a restart (see proxyStore.ts).

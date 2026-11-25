@@ -32,8 +32,14 @@ API-key providers are unchanged (`credentialMode` absent or `api_key`).
 
 ## Outbound / proxy
 
-- `providerManager.resolveUpstreamKey` reads a **fresh access token** from the OAuth manager
-  (refresh when near expiry if a refresh token exists).
+- Before each upstream attempt the proxy calls its `refreshKey` dep, which runs
+  `oauthManager.getAccessToken` (refresh when near expiry if a refresh token exists); the
+  synchronous `providerManager.resolveUpstreamKey` then reads the stored token. Refreshes are
+  **single-flight per provider** (vendors rotate refresh tokens — two concurrent refreshes
+  would burn one), a failed refresh **backs off 60 s** before the token endpoint is hit again,
+  and a refresh that finishes after a disconnect / re-login is discarded (never resurrects
+  cleared tokens). A failed refresh never blocks the request: the stored token goes upstream
+  and the vendor's 401 surfaces as usual.
 - Agent disk configs still receive **loopback proxy** URL + binding token for proxied routes;
   OAuth access tokens are **not** written into agent config files.
 
@@ -54,8 +60,51 @@ review (ToS / client id policy) — not only UI.
 
 Subscription kinds (`openai_codex`, `anthropic_claude`, `github_copilot`) use **built-in
 driver metadata** — the add-provider form must not ask for authorize/token URLs for these
-(only pick the subscription preset and Connect). They may ship as stubs until endpoints and
-client policy are approved.
+(only pick the subscription preset and Connect).
+
+## Built-in subscription drivers (ChatGPT / Claude / Copilot)
+
+These mirror each vendor's own CLI / editor login and **borrow its public client id** —
+there is no third-party client registration for these subscriptions. That is a **ToS gray
+area**: the vendor may block the client id, change the flow, or restrict the account. The
+maintainer accepted that risk for a local client acting on the user's own sign-in; the
+add-provider form shows `providers.form.oauthSubscriptionHint` so the user decides too. Any
+change of client id, endpoint or identity header is a driver + preset review.
+
+| Kind | Flow | Client id | Callback | Token store |
+| --- | --- | --- | --- | --- |
+| `openai_codex` | Browser, PKCE + state, form exchange at `auth.openai.com` | Codex CLI's | **Fixed** `localhost:1455/auth/callback` (the client id only allows it); a busy port (Codex CLI mid-login) fails loudly with `PRECONDITION_FAILED` | access = ChatGPT JWT (must carry a `chatgpt_account_id`), refresh rotates |
+| `anthropic_claude` | Browser, PKCE + separate state, JSON exchange at `platform.claude.com` | Claude Code's | `localhost:53692/callback`, falls back to an ephemeral loopback port (Anthropic accepts any) | access = `sk-ant-oat…`, refresh rotates (old kept only if a reply omits it) |
+| `github_copilot` | GitHub **device code** (`read:user`), then `copilot_internal/v2/token` | Copilot editor plugins' | none | access = Copilot API token (~30 min), **refresh slot = the GitHub OAuth token** (re-exchanged, never rotated); github.com only |
+
+- The loopback listener always binds `127.0.0.1` (the redirect URI may say `localhost`).
+- **Device code:** the user code is shown in a **main-owned native dialog**
+  (`main/oauth/deviceCodeDialog.ts`), never sent to the renderer; confirming copies it to the
+  clipboard and opens the device page. Only an `https://github.com/…` verification URI from
+  the server is opened (`trustedVerificationUri`). Without the dialog dep the flow is
+  `UNSUPPORTED_CAPABILITY`. Polling honors `slow_down`; the deadline is
+  `min(expires_in, 15 min)`.
+- Token-endpoint error bodies are never surfaced or logged (they may echo request fields).
+
+### Subscription wire (`main/proxy/subscriptionWire.ts`)
+
+A subscription token only works with the vendor client's request shape. The proxy applies it
+main-side for these kinds **and** for imported Codex / Claude sign-ins (same token types):
+
+- **Codex** (`openai-responses` only): URL `<base>/responses` (no `/v1`),
+  `chatgpt-account-id` from the JWT, `originator: aiopt`, `OpenAI-Beta: responses=experimental`,
+  body `store: false` and a default `instructions` when absent. The ChatGPT backend only
+  streams — a non-streaming client request is rejected upstream.
+- **Claude** (`anthropic` only): `authorization: Bearer` instead of `x-api-key`, the
+  `oauth-2025-04-20` + `claude-code-20250219` betas, Claude Code's `user-agent` / `x-app`,
+  and Claude Code's identity as the first system block (required by the subscription
+  backend). Claude Code's tool-name casing is not applied.
+- **Copilot** (`openai` only): the editor identity headers; the API host comes from the
+  token's `proxy-ep` (`*.githubcopilot.com` only), else the preset base. Models that need a
+  policy opt-in (`/models/<id>/policy`) must be enabled in GitHub first. (An imported Copilot
+  sign-in is a GitHub token, not a Copilot API token, and keeps the plain path.)
+
+The body is shallow-copied before adaptation so a failover candidate never inherits it.
 
 Some vendors need a **custom login** (`OAuthDriver.runLogin`): the driver owns the loopback
 port, authorize URL, and token exchange (e.g. Huawei CodeArts portal + STS PKCE/DPoP). The

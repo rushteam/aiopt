@@ -50,7 +50,8 @@ macOS Keychain reads use `security find-generic-password` main-side only; tokens
 Same as OAuth providers: **always proxied** — upstream tokens never written into other
 agents' config files. `resolveUpstreamKey` calls the agent-import reader synchronously;
 near-expiry refresh runs on async test paths and token refresh helpers write back to the
-agent file when applicable.
+agent file when applicable. Imported Codex / Claude sign-ins get the same **subscription wire**
+as the built-in OAuth kinds (`main/proxy/subscriptionWire.ts`, see `oauth-providers.md`).
 
 ### Cursor is not an HTTP API
 

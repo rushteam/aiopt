@@ -34,7 +34,8 @@ const OAUTH_PRESETS: AddProviderPreset[] = [
     key: 'oauth-openai-codex',
     name: 'ChatGPT (Codex)',
     apiFormats: ['openai-responses'],
-    baseUrl: 'https://api.openai.com/v1',
+    // The ChatGPT subscription backend (same as the Codex CLI), not the API platform.
+    baseUrl: 'https://chatgpt.com/backend-api/codex',
     models: [{ id: 'gpt-5' }],
     credentialMode: 'oauth',
     oauthKind: 'openai_codex',

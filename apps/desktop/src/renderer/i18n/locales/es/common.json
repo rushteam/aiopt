@@ -269,7 +269,7 @@
       "keySavedHidden": "Hay una clave guardada · oculta por seguridad. Déjala en blanco para conservarla, o escribe para reemplazarla.",
       "credentialModeLocked": "El tipo de autenticación no se puede cambiar después de crear el proveedor.",
       "oauthHint": "Tras guardar, usa Conectar en la tarjeta del proveedor. Los tokens permanecen en la app — no se escriben en la config del agente.",
-      "oauthStubHint": "El inicio de sesión integrado de ChatGPT, Claude o Copilot llegará en una versión posterior. Por ahora usa un preset con clave API u OAuth personalizado.",
+      "oauthSubscriptionHint": "El inicio de sesión usa el cliente oficial del servicio (el mismo flujo que su CLI). Asegúrate de cumplir los términos de la suscripción.",
       "oauthScopesPlaceholder": "scopes separados por espacios",
       "dropNone": "No se quita nada",
       "dropHint": "Algunos upstreams rechazan una solicitud que lleva un parámetro que no reconocen en lugar de ignorarlo; lo habitual es una pasarela delante de un backend estricto. Elige los parámetros que se quitarán antes de que AiOpt envíe una solicitud a este proveedor.",
