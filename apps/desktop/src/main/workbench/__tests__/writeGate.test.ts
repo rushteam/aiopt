@@ -252,7 +252,13 @@ describe.skipIf(process.platform === 'win32')('worker extension', () => {
         try {
           const req = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as { path: string };
           if (!asked.includes(req.path)) asked.push(req.path);
-          fs.writeFileSync(path.join(dir, name.replace('.req.', '.res.')), JSON.stringify({ allow }));
+          // Atomic, as main's writeFileAtomicSync: the worker must never read a half-written answer.
+          const tmp = path.join(dir, `${name}.answer`);
+          fs.writeFileSync(tmp, JSON.stringify({ allow }));
+          const res = path.join(dir, name.replace('.req.', '.res.'));
+          fs.renameSync(tmp, res);
+          // The worker finished meanwhile: drop the stray answer, as main's sweep would.
+          if (!fs.existsSync(path.join(dir, name))) fs.rmSync(res, { force: true });
         } catch {
           // The worker took its answer and cleaned up meanwhile.
         }
