@@ -28,7 +28,6 @@ import {
 } from '../../../shared/aiProviders';
 import type { ProviderSummary } from '../../../shared/ipc-channels';
 import {
-  isOAuthStubKind,
   type OAuthSubscriptionKind,
   type ProviderCredentialMode,
 } from '../../../shared/oauthProviders';
@@ -48,6 +47,13 @@ import { noDragRegion } from '../../components/ui/modal';
 // A single editable model row. Fields stay as strings (empty allowed while typing);
 // blanks are dropped on submit.
 type ModelRow = { id: string; alias: string };
+
+/** Subscription kinds that sign in with the vendor's own public client (ToS note shown). */
+const VENDOR_CLIENT_OAUTH_KINDS: ReadonlySet<OAuthSubscriptionKind> = new Set([
+  'openai_codex',
+  'anthropic_claude',
+  'github_copilot',
+]);
 
 function toRows(models: ProviderModel[]): ModelRow[] {
   return models.map((m) => ({ id: m.id, alias: m.alias ?? '' }));
@@ -532,9 +538,9 @@ export function ProviderFormDialog({
                   />
                 </label>
               )}
-              {isOAuthStubKind(oauthKind) && (
+              {VENDOR_CLIENT_OAUTH_KINDS.has(oauthKind) && (
                 <p style={{ margin: 0, fontSize: fontSize.sm, color: token('textMuted') }}>
-                  {t('providers.form.oauthStubHint')}
+                  {t('providers.form.oauthSubscriptionHint')}
                 </p>
               )}
               {oauthKind === 'generic_pkce' && (showManualCredential || presetKey === 'oauth-generic-pkce') && (

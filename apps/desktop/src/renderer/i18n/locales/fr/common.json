@@ -269,7 +269,7 @@
       "keySavedHidden": "Une clé est enregistrée · masquée par sécurité. Laissez vide pour la conserver, ou saisissez-en une pour la remplacer.",
       "credentialModeLocked": "Le type d’authentification ne peut pas être modifié après la création du fournisseur.",
       "oauthHint": "Après l’enregistrement, utilisez Connexion sur la fiche du fournisseur. Les jetons restent dans l’app — ils ne sont pas écrits dans la config de l’agent.",
-      "oauthStubHint": "La connexion ChatGPT, Claude ou Copilot intégrée arrive dans une version ultérieure. En attendant, preset avec clé API ou OAuth personnalisé.",
+      "oauthSubscriptionHint": "La connexion utilise le client officiel du service (le même flux que sa CLI). Veillez à respecter les conditions de l’abonnement.",
       "oauthScopesPlaceholder": "scopes séparés par des espaces",
       "dropNone": "Aucun paramètre retiré",
       "dropHint": "Certains services amont rejettent une requête portant un paramètre qu'ils ne reconnaissent pas, au lieu de l'ignorer — en général une passerelle devant un backend strict. Choisissez les paramètres à retirer avant qu'AiOpt ne transmette une requête à ce fournisseur.",

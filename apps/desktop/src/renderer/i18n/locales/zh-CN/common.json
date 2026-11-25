@@ -276,7 +276,7 @@
       "keySavedHidden": "已保存密钥 · 出于安全不显示。留空保持不变，输入则替换。",
       "credentialModeLocked": "创建后不能更改认证方式。",
       "oauthHint": "保存后请在供应商卡片上点「连接」登录。令牌只留在应用内，不会写入 Agent 配置。",
-      "oauthStubHint": "ChatGPT / Claude / Copilot 内置登录将在后续版本开放。目前请用 API 密钥模板，或「自定义 OAuth」对接自建 IdP。",
+      "oauthSubscriptionHint": "登录沿用该服务官方客户端（与其 CLI 相同的流程）。请确认你的使用方式符合该订阅的服务条款。",
       "oauthScopesPlaceholder": "多个 scope 用空格分隔",
       "dropNone": "不剥离任何参数",
       "dropHint": "有些上游遇到不认识的参数会直接报错，而不是忽略它——通常是网关后面接了一个严格校验的后端。在这里选择 AiOpt 转发请求给该供应商之前需要剥离的参数。",

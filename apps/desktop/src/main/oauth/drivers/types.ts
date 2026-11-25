@@ -27,9 +27,21 @@ export interface OAuthCustomLoginResult {
   accountLabel?: string;
 }
 
+export interface OAuthDeviceCodePrompt {
+  userCode: string;
+  verificationUri: string;
+}
+
 export interface OAuthCustomLoginDeps {
   fetchImpl: OAuthFetch;
   openExternal: (url: string) => Promise<boolean>;
+  /**
+   * Device-code flows: show the user code in a main-owned native dialog (never the
+   * renderer). Resolves false when the user cancels. Absent = device flows unavailable.
+   */
+  showDeviceCode?: (prompt: OAuthDeviceCodePrompt) => Promise<boolean>;
+  /** Poll delay; injectable for tests. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface OAuthDriver {

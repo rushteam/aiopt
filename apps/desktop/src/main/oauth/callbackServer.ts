@@ -11,15 +11,27 @@ export interface OAuthCallbackResult {
   state: string | null;
 }
 
+export interface OAuthCallbackServerOptions {
+  /** Fixed port a vendor's registered redirect URI requires; default 0 (ephemeral). */
+  port?: number;
+  /** Redirect path (default `/callback`). */
+  path?: string;
+  /** Host written into the redirect URI (default `127.0.0.1`); the bind is always 127.0.0.1. */
+  redirectHost?: string;
+  /** How long to wait for the browser (default 120 s). */
+  timeoutMs?: number;
+}
+
 /**
  * Ephemeral loopback listener for OAuth redirects. Binds `127.0.0.1` only.
  */
-export function startOAuthCallbackServer(): Promise<{
+export function startOAuthCallbackServer(opts: OAuthCallbackServerOptions = {}): Promise<{
   redirectUri: string;
   port: number;
   result: Promise<OAuthCallbackResult>;
   close: () => void;
 }> {
+  const callbackPath = opts.path ?? '/callback';
   return new Promise((resolve, reject) => {
     let settled = false;
     let resolveResult!: (value: OAuthCallbackResult) => void;
@@ -28,12 +40,12 @@ export function startOAuthCallbackServer(): Promise<{
     });
 
     const server = http.createServer((req, res) => {
-      if (!req.url?.startsWith('/callback')) {
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      if (url.pathname !== callbackPath) {
         res.writeHead(404);
         res.end();
         return;
       }
-      const url = new URL(req.url, 'http://127.0.0.1');
       const code = url.searchParams.get('code');
       const error = url.searchParams.get('error');
       const state = url.searchParams.get('state');
@@ -48,10 +60,10 @@ export function startOAuthCallbackServer(): Promise<{
     });
 
     server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(opts.port ?? 0, '127.0.0.1', () => {
       const addr = server.address();
       const port = typeof addr === 'object' && addr ? addr.port : 0;
-      const redirectUri = `http://127.0.0.1:${port}/callback`;
+      const redirectUri = `http://${opts.redirectHost ?? '127.0.0.1'}:${port}${callbackPath}`;
 
       const timer = setTimeout(() => {
         if (!settled) {
@@ -59,7 +71,7 @@ export function startOAuthCallbackServer(): Promise<{
           log.info('oauth.callback_timeout');
           resolveResult({ code: null, error: 'timeout', state: null });
         }
-      }, FLOW_TIMEOUT_MS);
+      }, opts.timeoutMs ?? FLOW_TIMEOUT_MS);
 
       const close = (): void => {
         clearTimeout(timer);

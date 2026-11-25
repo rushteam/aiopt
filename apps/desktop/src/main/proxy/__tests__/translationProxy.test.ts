@@ -662,3 +662,53 @@ describe('translation proxy — routing group failover', () => {
     expect(JSON.stringify(d)).not.toContain('busy');
   });
 });
+
+describe('translation proxy — subscription wire', () => {
+  const started: TranslationProxy[] = [];
+  afterEach(async () => {
+    for (const p of started.splice(0)) await p.stop();
+  });
+
+  it('refreshes the key first, then applies the Claude subscription wire', async () => {
+    const seen: { url: string; headers: Record<string, string>; body: Record<string, unknown> }[] = [];
+    const impl: ProxyFetch = (url, init) => {
+      seen.push({ url, headers: init.headers as Record<string, string>, body: JSON.parse(init.body as string) });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        body: null,
+        text: () => Promise.resolve(JSON.stringify({ id: 'x', content: [] })),
+      });
+    };
+    let key = 'sk-ant-oat-old';
+    const order: string[] = [];
+    const proxy = createTranslationProxy({
+      fetchImpl: impl,
+      getKey: () => {
+        order.push('getKey');
+        return key;
+      },
+      refreshKey: async () => {
+        order.push('refresh');
+        key = 'sk-ant-oat-new';
+      },
+      getSubscriptionWire: () => 'claude',
+    });
+    started.push(proxy);
+    await proxy.start();
+    const { token } = proxy.registerRoute(spec());
+    const res = await fetch(`http://127.0.0.1:${proxy.getPort()}/${token}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-x', system: 'be brief', messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    expect(res.status).toBe(200);
+    expect(order).toEqual(['refresh', 'getKey']);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.headers.authorization).toBe('Bearer sk-ant-oat-new');
+    expect(seen[0]!.headers).not.toHaveProperty('x-api-key');
+    expect(seen[0]!.headers['anthropic-beta']).toContain('oauth-2025-04-20');
+    expect((seen[0]!.body.system as { text: string }[])[0]!.text).toContain('Claude Code');
+  });
+});

@@ -269,7 +269,7 @@
       "keySavedHidden": "Ein Schlüssel ist gespeichert · aus Sicherheitsgründen verborgen. Leer lassen, um ihn beizubehalten, oder tippen, um ihn zu ersetzen.",
       "credentialModeLocked": "Der Authentifizierungstyp kann nach dem Anlegen nicht geändert werden.",
       "oauthHint": "Nach dem Speichern auf der Anbieterkarte „Verbinden“ wählen. Tokens bleiben in der App — sie werden nicht in die Agent-Konfiguration geschrieben.",
-      "oauthStubHint": "ChatGPT-, Claude- und Copilot-Anmeldung kommt in einer späteren Version. Bis dahin API-Schlüssel-Preset oder „Eigenes OAuth“ nutzen.",
+      "oauthSubscriptionHint": "Die Anmeldung nutzt den offiziellen Client des Dienstes (wie dessen CLI). Bitte die Nutzungsbedingungen des Abos beachten.",
       "oauthScopesPlaceholder": "Scopes durch Leerzeichen getrennt",
       "dropNone": "Nichts entfernen",
       "dropHint": "Manche Upstreams lehnen eine Anfrage mit einem unbekannten Parameter ab, statt ihn zu ignorieren — meist ein Gateway vor einem streng prüfenden Backend. Wählen Sie die Parameter, die entfernt werden, bevor AiOpt eine Anfrage an diesen Anbieter weiterleitet.",

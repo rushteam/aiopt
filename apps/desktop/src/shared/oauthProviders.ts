@@ -5,7 +5,7 @@ export type ProviderCredentialMode = 'api_key' | 'oauth' | 'agent_import';
 
 /**
  * Built-in OAuth driver ids. `generic_pkce` is user-configured; subscription kinds use
- * fixed driver metadata when enabled.
+ * fixed driver metadata (main/oauth/drivers/).
  */
 export const OAUTH_SUBSCRIPTION_KINDS = [
   'generic_pkce',
@@ -16,15 +16,6 @@ export const OAUTH_SUBSCRIPTION_KINDS = [
 ] as const;
 
 export type OAuthSubscriptionKind = (typeof OAUTH_SUBSCRIPTION_KINDS)[number];
-
-/** Built-in subscription kinds awaiting gated driver enablement. */
-export const OAUTH_STUB_KINDS = ['openai_codex', 'anthropic_claude', 'github_copilot'] as const;
-
-export type OAuthStubKind = (typeof OAUTH_STUB_KINDS)[number];
-
-export function isOAuthStubKind(kind: OAuthSubscriptionKind): boolean {
-  return (OAUTH_STUB_KINDS as readonly string[]).includes(kind);
-}
 
 /** Public OAuth configuration persisted on the provider (no secrets). */
 export interface OAuthProviderConfig {
